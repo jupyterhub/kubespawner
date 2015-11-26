@@ -95,11 +95,13 @@ class KubeSpawner(Spawner):
         state['hi'] = 'hello'
         return state
 
+    @gen.coroutine
     def get_pod_info(self, pod_name):
         resp = self.session.get(
             self._get_pod_url(),
-            params={'labelSelector': 'name = %s' % pod_name}).result()
-        return resp.json()
+            params={'labelSelector': 'name = %s' % pod_name})
+        data = yield resp
+        return data.json()
 
     def is_pod_running(self, pod_info):
         return 'items' in pod_info and len(pod_info['items']) > 0 and \
@@ -114,7 +116,8 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def poll(self):
-        data = self.get_pod_info(self.pod_name)
+        data = yield self.get_pod_info(self.pod_name)
+        self.log.info(repr(data))
         if self.is_pod_running(data):
             return None
         return 1
@@ -128,13 +131,13 @@ class KubeSpawner(Spawner):
         template['metadata']['labels']['name'] = self.pod_name
         template['spec']['containers'][0]['env'] = env_mapping
         self.log.info(self._get_pod_url())
-        resp = self.session.post(
+        resp = yield self.session.post(
             self._get_pod_url(),
-            data=json.dumps(template)).result()
+            data=json.dumps(template))
         self.log.info(repr(resp.headers))
         self.log.info(repr(resp.text))
         while True:
-            data = self.get_pod_info(self.pod_name)
+            data = yield self.get_pod_info(self.pod_name)
             self.log.info(data)
             if self.is_pod_running(data):
                 break
@@ -148,7 +151,7 @@ class KubeSpawner(Spawner):
     @gen.coroutine
     def stop(self):
         self.log.info('stop called! boo!')
-        resp = self.session.delete(self._get_pod_url(self.pod_name)).result()
+        resp = yield self.session.delete(self._get_pod_url(self.pod_name))
         self.log.info(resp.text)
 
     def _public_hub_api_url(self):
