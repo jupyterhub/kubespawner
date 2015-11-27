@@ -23,6 +23,15 @@ template = {
 }
 
 
+class UnicodeOrFalse(Unicode):
+    info_text = 'a unicode string or False'
+
+    def validate(self, obj, value):
+        if value is False:
+            return value
+        return super(UnicodeOrFalse, self).validate(obj, value)
+
+
 class KubeSpawner(Spawner):
     kube_api_endpoint = Unicode(
         config=True,
@@ -53,7 +62,7 @@ class KubeSpawner(Spawner):
         help='Endpoint that containers should use to contact the hub'
     )
 
-    kube_ca_path = Unicode(
+    kube_ca_path = UnicodeOrFalse(
         '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt',
         config=True,
         help='Path to the CA crt to use to connect to the kube API server'
