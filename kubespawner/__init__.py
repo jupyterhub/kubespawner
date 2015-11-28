@@ -6,23 +6,6 @@ import time
 from traitlets import Unicode
 
 
-template = {
-    'apiVersion': 'v1',
-    'kind': 'Pod',
-    'metadata': {
-        'name': 'jupyter',
-        'labels': {
-            'name': 'jupyter',
-        }
-    },
-    'spec': {
-        'containers': [
-            {'name': 'jupyter', 'image': 'jupyter/singleuser'},
-        ]
-    }
-}
-
-
 class UnicodeOrFalse(Unicode):
     info_text = 'a unicode string or False'
 
@@ -79,6 +62,64 @@ class KubeSpawner(Spawner):
         config=True,
         help='Name of Docker image to use when spawning user pods'
     )
+
+    cpu_limit = Unicode(
+        "2000m",
+        config=True,
+        help='Max number of CPU cores that a single user can use'
+    )
+
+    cpu_request = Unicode(
+        "200m",
+        config=True,
+        help='Min nmber of CPU cores that a single user is guaranteed'
+    )
+
+    mem_limit = Unicode(
+        "1Gi",
+        config=True,
+        help='Max amount of memory a single user can use'
+    )
+
+    mem_request = Unicode(
+        "128Mi",
+        config=True,
+        help='Min amount of memory a single user is guaranteed'
+    )
+
+    def get_pod_manifest(self):
+        return {
+            'apiVersion': 'v1',
+            'kind': 'Pod',
+            'metadata': {
+                'name': self.pod_name,
+                'labels': {
+                    'name': self.pod_name
+                }
+            },
+            'spec': {
+                'containers': [
+                    {
+                        'name': 'jupyter',
+                        'image': self.singleuser_image_spec,
+                        'resources': {
+                            'requests': {
+                                'memory': self.mem_request,
+                                'cpu': self.cpu_request,
+                            },
+                            'limits': {
+                                'memory': self.mem_limit,
+                                'cpu': self.cpu_limit
+                            }
+                        },
+                        'env': [
+                            {'name': k, 'value': v}
+                            for k, v in self._env_default().items()
+                        ]
+                    }
+                ]
+            }
+        }
 
     def _get_pod_url(self, pod_name=None):
         url = '{host}/api/{version}/namespaces/{namespace}/pods'.format(
@@ -140,16 +181,11 @@ class KubeSpawner(Spawner):
     @gen.coroutine
     def start(self):
         self.log.info('start called')
-        env = self._env_default()
-        env_mapping = [{'name': k, 'value': v} for k, v in env.items()]
-        template['metadata']['name'] = self.pod_name
-        template['metadata']['labels']['name'] = self.pod_name
-        template['spec']['containers'][0]['env'] = env_mapping
-        template['spec']['containers'][0]['image'] = self.singleuser_image_spec
+        pod_manifest = self.get_pod_manifest()
         self.log.info(self._get_pod_url())
         resp = yield self.session.post(
             self._get_pod_url(),
-            data=json.dumps(template))
+            data=json.dumps(pod_manifest))
         self.log.info(repr(resp.headers))
         self.log.info(repr(resp.text))
         while True:
@@ -162,7 +198,7 @@ class KubeSpawner(Spawner):
         self.user.server.ip = data['items'][0]['status']['podIP']
         self.user.server.port = 8888
         self.db.commit()
-        self.log.info(template)
+        self.log.info(pod_manifest)
 
     @gen.coroutine
     def stop(self):
