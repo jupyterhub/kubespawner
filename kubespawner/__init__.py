@@ -74,6 +74,12 @@ class KubeSpawner(Spawner):
         help='Kubernetes API authorization token'
     )
 
+    singleuser_image_spec = Unicode(
+        'jupyter/singleuser',
+        config=True,
+        help='Name of Docker image to use when spawning user pods'
+    )
+
     def _get_pod_url(self, pod_name=None):
         url = '{host}/api/{version}/namespaces/{namespace}/pods'.format(
             host=self.kube_api_endpoint,
@@ -139,6 +145,7 @@ class KubeSpawner(Spawner):
         template['metadata']['name'] = self.pod_name
         template['metadata']['labels']['name'] = self.pod_name
         template['spec']['containers'][0]['env'] = env_mapping
+        template['spec']['containers'][0]['image'] = self.singleuser_image_spec
         self.log.info(self._get_pod_url())
         resp = yield self.session.post(
             self._get_pod_url(),
