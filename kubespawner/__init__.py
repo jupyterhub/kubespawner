@@ -3,7 +3,9 @@ from tornado import gen
 from requests_futures.sessions import FuturesSession
 import json
 import time
+import string
 from traitlets import Unicode
+from escapism import escape
 
 
 class UnicodeOrFalse(Unicode):
@@ -34,7 +36,7 @@ class KubeSpawner(Spawner):
     )
 
     pod_name_template = Unicode(
-        'jupyter-{user}',
+        'jupyter-{username}-{userid}',
         config=True,
         help='Template to generate pod names. Supports: {user} for username'
     )
@@ -166,8 +168,10 @@ class KubeSpawner(Spawner):
 
     @property
     def pod_name(self):
+        safe_chars = set(string.ascii_lowercase + string.digits + '-')
         return self.pod_name_template.format(
-            user=self.user.id
+            userid=self.user.id,
+            username=escape(self.user.name.lower(), safe_chars, '_')
         )
 
     @gen.coroutine
