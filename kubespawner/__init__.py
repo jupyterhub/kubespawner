@@ -4,7 +4,7 @@ from requests_futures.sessions import FuturesSession
 import json
 import time
 import string
-from traitlets import Unicode
+from traitlets import Unicode, List
 from escapism import escape
 
 
@@ -89,6 +89,34 @@ class KubeSpawner(Spawner):
         help='Min amount of memory a single user is guaranteed'
     )
 
+    volumes = List(
+        [],
+        config=True,
+        help='Config for volumes present in the spawned user pod. {username} and {userid} are expanded.'
+    )
+    volume_mounts = List(
+        [],
+        config=True,
+        help='Config for volume mounts in the spawned user pod. {username} and {userid} are expanded.'
+    )
+
+    def _expand_user_properties(self, template):
+        safe_chars = set(string.ascii_lowercase + string.digits + '-')
+        return template.format(
+            userid=self.user.id,
+            username=escape(self.user.name.lower(), safe_chars, '_')
+        )
+
+    def _expand_all(self, src):
+        if isinstance(src, list):
+            return [self._expand_all(i) for i in src]
+        elif isinstance(src, dict):
+            return {k: self._expand_all(v) for k, v in src.items()}
+        elif isinstance(src, str):
+            return self._expand_user_properties(src)
+        else:
+            return src
+
     def get_pod_manifest(self):
         return {
             'apiVersion': 'v1',
@@ -117,9 +145,11 @@ class KubeSpawner(Spawner):
                         'env': [
                             {'name': k, 'value': v}
                             for k, v in self._env_default().items()
-                        ]
+                        ],
+                        'volumeMounts': self._expand_all(self.volume_mounts)
                     }
-                ]
+                ],
+                'volumes': self._expand_all(self.volumes)
             }
         }
 
@@ -168,11 +198,7 @@ class KubeSpawner(Spawner):
 
     @property
     def pod_name(self):
-        safe_chars = set(string.ascii_lowercase + string.digits + '-')
-        return self.pod_name_template.format(
-            userid=self.user.id,
-            username=escape(self.user.name.lower(), safe_chars, '_')
-        )
+        return self._expand_user_properties(self.pod_name_template)
 
     @gen.coroutine
     def poll(self):
