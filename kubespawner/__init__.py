@@ -5,7 +5,6 @@ import json
 import time
 import string
 from traitlets import Unicode, List
-from escapism import escape
 
 
 class UnicodeOrFalse(Unicode):
@@ -101,10 +100,12 @@ class KubeSpawner(Spawner):
     )
 
     def _expand_user_properties(self, template):
-        safe_chars = set(string.ascii_lowercase + string.digits + '-')
+        # Make sure username matches the restrictions for DNS labels
+        safe_chars = set(string.ascii_lowercase + string.digits)
+        safe_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
         return template.format(
             userid=self.user.id,
-            username=escape(self.user.name.lower(), safe_chars, '_')
+            username=safe_username
         )
 
     def _expand_all(self, src):
