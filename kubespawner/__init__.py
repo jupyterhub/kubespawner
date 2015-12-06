@@ -145,7 +145,7 @@ class KubeSpawner(Spawner):
                         },
                         'env': [
                             {'name': k, 'value': v}
-                            for k, v in self._env_default().items()
+                            for k, v in self.env.items()
                         ],
                         'volumeMounts': self._expand_all(self.volume_mounts)
                     }
