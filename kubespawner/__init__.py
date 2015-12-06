@@ -4,7 +4,7 @@ from requests_futures.sessions import FuturesSession
 import json
 import time
 import string
-from traitlets import Unicode, List
+from traitlets import Unicode, List, Integer
 
 
 class UnicodeOrFalse(Unicode):
@@ -64,6 +64,12 @@ class KubeSpawner(Spawner):
         help='Name of Docker image to use when spawning user pods'
     )
 
+    kube_termination_grace = Integer(
+        0,
+        config=True,
+        help='Number of seconds to wait before terminating a pod'
+    )
+
     cpu_limit = Unicode(
         "2000m",
         config=True,
@@ -98,6 +104,7 @@ class KubeSpawner(Spawner):
         config=True,
         help='Config for volume mounts in the spawned user pod. {username} and {userid} are expanded.'
     )
+
 
     def _expand_user_properties(self, template):
         # Make sure username matches the restrictions for DNS labels
@@ -204,7 +211,6 @@ class KubeSpawner(Spawner):
     @gen.coroutine
     def poll(self):
         data = yield self.get_pod_info(self.pod_name)
-        self.log.info(repr(data))
         if self.is_pod_running(data):
             return None
         return 1
@@ -234,7 +240,18 @@ class KubeSpawner(Spawner):
     @gen.coroutine
     def stop(self):
         self.log.info('stop called! boo!')
-        resp = yield self.session.delete(self._get_pod_url(self.pod_name))
+        body = {
+            'kind': "DeleteOptions",
+            'apiVersion': 'v1',
+            'gracePeriodSeconds': self.kube_termination_grace
+        }
+        resp = yield self.session.delete(self._get_pod_url(self.pod_name), data=json.dumps(body))
+        while True:
+            data = yield self.get_pod_info(self.pod_name)
+            self.log.warn(data)
+            if 'items' not in data or len(data['items']) == 0:
+                break
+            time.sleep(5)
         self.log.info(resp.text)
 
     def _public_hub_api_url(self):
