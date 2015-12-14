@@ -97,12 +97,14 @@ class KubeSpawner(Spawner):
     volumes = List(
         [],
         config=True,
-        help='Config for volumes present in the spawned user pod. {username} and {userid} are expanded.'
+        help='Config for volumes present in the spawned user pod.' +
+             '{username} and {userid} are expanded.'
     )
     volume_mounts = List(
         [],
         config=True,
-        help='Config for volume mounts in the spawned user pod. {username} and {userid} are expanded.'
+        help='Config for volume mounts in the spawned user pod.' +
+             '{username} and {userid} are expanded.'
     )
 
     def _expand_user_properties(self, template):
