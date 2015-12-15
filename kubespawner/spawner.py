@@ -185,7 +185,6 @@ class KubeSpawner(Spawner):
 
     def load_state(self, state):
         super(KubeSpawner, self).load_state(state)
-        self.log.info(repr(state))
 
     def get_state(self):
         state = super(KubeSpawner, self).get_state()
@@ -218,29 +217,21 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def start(self):
-        self.log.info('start called')
         pod_manifest = self.get_pod_manifest()
-        self.log.info(self._get_pod_url())
         resp = yield self.session.post(
             self._get_pod_url(),
             data=json.dumps(pod_manifest))
-        self.log.info(repr(resp.headers))
-        self.log.info(repr(resp.text))
         while True:
             data = yield self.get_pod_info(self.pod_name)
-            self.log.info(data)
             if self.is_pod_running(data):
                 break
-            self.log.info('not ready yet!')
             time.sleep(5)
         self.user.server.ip = data['items'][0]['status']['podIP']
         self.user.server.port = 8888
         self.db.commit()
-        self.log.info(pod_manifest)
 
     @gen.coroutine
     def stop(self):
-        self.log.info('stop called! boo!')
         body = {
             'kind': "DeleteOptions",
             'apiVersion': 'v1',
@@ -249,11 +240,9 @@ class KubeSpawner(Spawner):
         resp = yield self.session.delete(self._get_pod_url(self.pod_name), data=json.dumps(body))
         while True:
             data = yield self.get_pod_info(self.pod_name)
-            self.log.warn(data)
             if 'items' not in data or len(data['items']) == 0:
                 break
             time.sleep(5)
-        self.log.info(resp.text)
 
     def _public_hub_api_url(self):
         if self.hub_ip_connect:
