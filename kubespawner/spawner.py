@@ -53,10 +53,16 @@ class KubeSpawner(Spawner):
     )
 
     kube_token = Unicode(
-        '',
         config=True,
         help='Kubernetes API authorization token'
     )
+
+    def _kube_token_default(self):
+        try:
+            with open('/var/run/secrets/kubernetes.io/serviceaccount/token') as f:
+                return f.read().strip()
+        except:
+            return ''
 
     singleuser_image_spec = Unicode(
         'jupyter/singleuser',
