@@ -133,6 +133,15 @@ class KubeSpawner(Spawner):
             return src
 
     def get_pod_manifest(self):
+        # Allow environment variables to contain callable functions,
+        # which can get info about current spawner state and set up
+        # accordingly
+        realized_env = {}
+        for k, v in self.env.items():
+            if callable(v):
+                realized_env[k] = v(self)
+            else:
+                realized_env[k] = v
         return {
             'apiVersion': 'v1',
             'kind': 'Pod',
@@ -159,7 +168,7 @@ class KubeSpawner(Spawner):
                         },
                         'env': [
                             {'name': k, 'value': v}
-                            for k, v in self.env.items()
+                            for k, v in realized_env.items()
                         ],
                         'volumeMounts': self._expand_all(self.volume_mounts)
                     }
