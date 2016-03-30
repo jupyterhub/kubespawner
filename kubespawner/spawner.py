@@ -282,8 +282,8 @@ class KubeSpawner(Spawner):
     def _env_keep_default(self):
         return []
 
-    def get_env(self):
-        env = super(KubeSpawner, self).get_env()
+    def _env_default(self):
+        env = super(KubeSpawner, self)._env_default()
         env.update(dict(
                     JPY_USER=self.user.name,
                     JPY_COOKIE_NAME=self.user.server.cookie_name,
