@@ -144,7 +144,7 @@ class KubeSpawner(Spawner):
         # Allow environment variables to contain callable functions,
         # which can get info about current spawner state and set up
         # accordingly
-        realized_env = self.env.copy()
+        realized_env = self.environment.copy()
         for k, v in self.extra_env.items():
             if callable(v):
                 realized_env[k] = v(self)
