@@ -4,7 +4,7 @@ from requests_futures.sessions import FuturesSession
 import json
 import time
 import string
-from traitlets import Unicode, List, Integer, Dict
+from traitlets import Unicode, List, Integer
 
 
 class UnicodeOrFalse(Unicode):
@@ -113,14 +113,6 @@ class KubeSpawner(Spawner):
              '{username} and {userid} are expanded.'
     )
 
-    extra_env = Dict(
-        {},
-        config=True,
-        help='Extra environment variables to be added to the user environments. ' +
-             'Values can be simple strings or a callable that will be called ' +
-             'with current spawner instance as a parameter to produce a string.'
-    )
-
     def _expand_user_properties(self, template):
         # Make sure username matches the restrictions for DNS labels
         safe_chars = set(string.ascii_lowercase + string.digits)
@@ -141,15 +133,6 @@ class KubeSpawner(Spawner):
             return src
 
     def get_pod_manifest(self):
-        # Allow environment variables to contain callable functions,
-        # which can get info about current spawner state and set up
-        # accordingly
-        realized_env = self.get_env().copy()
-        for k, v in self.extra_env.items():
-            if callable(v):
-                realized_env[k] = v(self)
-            else:
-                realized_env[k] = v
         return {
             'apiVersion': 'v1',
             'kind': 'Pod',
@@ -176,7 +159,7 @@ class KubeSpawner(Spawner):
                         },
                         'env': [
                             {'name': k, 'value': v}
-                            for k, v in realized_env.items()
+                            for k, v in self.get_env()
                         ],
                         'volumeMounts': self._expand_all(self.volume_mounts)
                     }
