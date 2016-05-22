@@ -133,6 +133,18 @@ class KubeSpawner(Spawner):
             return src
 
     def get_pod_manifest(self):
+        # Add a hack to ensure that no service accounts are mounted in spawned pods
+        # See https://github.com/kubernetes/kubernetes/issues/16779#issuecomment-157460294
+        hack_volumes = [{
+            'name': 'no-api-access-please',
+            'emptyDir': {}
+        }]
+        hack_volume_mounts = [{
+            'name': 'no-api-access-pleasej',
+            'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
+            'readOnly': True
+        }]
+
         return {
             'apiVersion': 'v1',
             'kind': 'Pod',
@@ -161,10 +173,10 @@ class KubeSpawner(Spawner):
                             {'name': k, 'value': v}
                             for k, v in self.get_env().items()
                         ],
-                        'volumeMounts': self._expand_all(self.volume_mounts)
+                        'volumeMounts': self._expand_all(self.volume_mounts) + hack_volume_mounts
                     }
                 ],
-                'volumes': self._expand_all(self.volumes)
+                'volumes': self._expand_all(self.volumes) + hack_volumes
             }
         }
 
