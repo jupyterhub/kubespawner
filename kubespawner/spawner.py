@@ -140,7 +140,7 @@ class KubeSpawner(Spawner):
             'emptyDir': {}
         }]
         hack_volume_mounts = [{
-            'name': 'no-api-access-pleasej',
+            'name': 'no-api-access-please',
             'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
             'readOnly': True
         }]
