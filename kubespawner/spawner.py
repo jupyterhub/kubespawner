@@ -218,8 +218,6 @@ class KubeSpawner(Spawner):
         return data.json()
 
     def is_pod_running(self, pod_info):
-        self.log.info("poll is")
-        self.log.info(pod_info)
         return 'items' in pod_info and len(pod_info['items']) > 0 and \
             pod_info['items'][0]['status']['phase'] == 'Running'
 
@@ -237,8 +235,6 @@ class KubeSpawner(Spawner):
     @gen.coroutine
     def start(self):
         pod_manifest = self.get_pod_manifest()
-        self.log.info("attempting to start with")
-        self.log.info(pod_manifest)
         resp = yield self.session.post(
             self._get_pod_url(),
             data=json.dumps(pod_manifest))
