@@ -1,32 +1,20 @@
 from jupyterhub.spawner import Spawner
 from tornado import gen
-from requests_futures.sessions import FuturesSession
+from tornado.httputil import url_concat
+from tornado.httpclient import AsyncHTTPClient
+from kubespawner.utils import request_maker
 import json
 import time
 import string
 from traitlets import Unicode, List, Integer
 
 
-class UnicodeOrFalse(Unicode):
-    info_text = 'a unicode string or False'
-
-    def validate(self, obj, value):
-        if value is False:
-            return value
-        return super(UnicodeOrFalse, self).validate(obj, value)
-
-
 class KubeSpawner(Spawner):
-    kube_api_endpoint = Unicode(
-        config=True,
-        help='Endpoint to use for kubernetes API calls'
-    )
-
-    kube_api_version = Unicode(
-        'v1',
-        config=True,
-        help='Kubernetes API version to use'
-    )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.httpclient = AsyncHTTPClient()
+        # FIXME: Support more than just kubeconfig
+        self.request = request_maker()
 
     kube_namespace = Unicode(
         'jupyter',
@@ -45,24 +33,6 @@ class KubeSpawner(Spawner):
         config=True,
         help='Endpoint that containers should use to contact the hub'
     )
-
-    kube_ca_path = UnicodeOrFalse(
-        '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt',
-        config=True,
-        help='Path to the CA crt to use to connect to the kube API server'
-    )
-
-    kube_token = Unicode(
-        config=True,
-        help='Kubernetes API authorization token'
-    )
-
-    def _kube_token_default(self):
-        try:
-            with open('/var/run/secrets/kubernetes.io/serviceaccount/token') as f:
-                return f.read().strip()
-        except:
-            return ''
 
     singleuser_image_spec = Unicode(
         'jupyter/singleuser',
@@ -159,6 +129,11 @@ class KubeSpawner(Spawner):
                     {
                         'name': 'jupyter',
                         'image': self.singleuser_image_spec,
+                        'ports': [
+                            {
+                                'containerPort': 8888,
+                            }
+                        ],
                         'resources': {
                             'requests': {
                                 'memory': self.mem_request,
@@ -181,41 +156,29 @@ class KubeSpawner(Spawner):
         }
 
     def _get_pod_url(self, pod_name=None):
-        url = '{host}/api/{version}/namespaces/{namespace}/pods'.format(
-            host=self.kube_api_endpoint,
-            version=self.kube_api_version,
+        url = '/api/v1/namespaces/{namespace}/pods'.format(
             namespace=self.kube_namespace
         )
         if pod_name:
             return url + '/' + pod_name
         return url
 
-    @property
-    def session(self):
-        if hasattr(self, '_session'):
-            return self._session
-        else:
-            self._session = FuturesSession()
-            auth_header = 'Bearer %s' % self.kube_token
-            self._session.headers['Authorization'] = auth_header
-            self._session.verify = self.kube_ca_path
-            return self._session
-
     def load_state(self, state):
         super(KubeSpawner, self).load_state(state)
 
     def get_state(self):
         state = super(KubeSpawner, self).get_state()
-        state['hi'] = 'hello'
         return state
 
     @gen.coroutine
     def get_pod_info(self, pod_name):
-        resp = self.session.get(
-            self._get_pod_url(),
-            params={'labelSelector': 'name = %s' % pod_name})
-        data = yield resp
-        return data.json()
+        resp = yield self.httpclient.fetch(self.request(
+            url=url_concat(
+                self._get_pod_url(),
+                {'labelSelector': 'name = %s' % pod_name}
+        )))
+        data = resp.body.decode('utf-8')
+        return json.loads(data)
 
     def is_pod_running(self, pod_info):
         return 'items' in pod_info and len(pod_info['items']) > 0 and \
@@ -235,9 +198,12 @@ class KubeSpawner(Spawner):
     @gen.coroutine
     def start(self):
         pod_manifest = self.get_pod_manifest()
-        resp = yield self.session.post(
-            self._get_pod_url(),
-            data=json.dumps(pod_manifest))
+        resp = yield self.httpclient.fetch(self.request(
+            url=self._get_pod_url(),
+            body=json.dumps(pod_manifest),
+            method='POST',
+            headers={'Content-Type': 'application/json'}
+        ))
         while True:
             data = yield self.get_pod_info(self.pod_name)
             if self.is_pod_running(data):
@@ -254,7 +220,17 @@ class KubeSpawner(Spawner):
             'apiVersion': 'v1',
             'gracePeriodSeconds': self.kube_termination_grace
         }
-        resp = yield self.session.delete(self._get_pod_url(self.pod_name), data=json.dumps(body))
+        resp = yield self.httpclient.fetch(
+            self.request(
+                url=self._get_pod_url(self.pod_name),
+                method='DELETE',
+                body=json.dumps(body),
+                headers={'Content-Type': 'application/json'},
+                # Tornado's client thinks DELETE requests shouldn't have a body
+                # which is a bogus restriction
+                allow_nonstandard_methods=True,
+            )
+        )
         while True:
             data = yield self.get_pod_info(self.pod_name)
             if 'items' not in data or len(data['items']) == 0:
@@ -264,12 +240,14 @@ class KubeSpawner(Spawner):
     def _public_hub_api_url(self):
         if self.hub_ip_connect:
             proto, path = self.hub.api_url.split('://', 1)
-            ip, rest = path.split('/', 1)
-            return '{proto}://{ip}/{rest}'.format(
+            ip, rest = path.split(':', 1)
+            url = '{proto}://{ip}:{rest}'.format(
                     proto=proto,
                     ip=self.hub_ip_connect,
                     rest=rest
                 )
+            self.log.info('basgdasgsdg'  + url)
+            return url
         else:
             return self.hub.api_url
 
