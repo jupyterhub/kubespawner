@@ -7,18 +7,67 @@ import yaml
 from tornado.httpclient import HTTPRequest
 
 
-def request_maker(path='~/.kube/config'):
+def request_maker():
     """
-    Return a function that creates Kubernetes API aware HTTPRequest objects
+    Return a k8s api aware HTTPRequest factory that autodiscovers connection info
+    """
+    if os.path.exists('/var/run/secrets/kubernetes.io/serviceaccount/token'):
+        # We are running in a pod, and have access to a service account!
+        return request_maker_serviceaccount()
+    else:
+        return request_maker_kubeconfig()
+
+
+def request_maker_serviceaccount():
+    """
+    Return a k8s api aware HTTPRequest factory that discovers connection info from a service account
+
+    Discovers the hostname, port, protocol & authentication details for talking to
+    the kubernetes API from a ServiceAccount. This requires that service accounts are
+    turned on in your kubernetes cluster and that the calling code is running in a pod.
+    """
+    with open('/var/run/secrets/kubernetes.io/serviceaccount/token') as f:
+        token = f.read()
+    api_url = 'https://{host}:{port}'.format(
+        host=os.environ['KUBERNETES_SERVICE_HOST'],
+        port=os.environ['KUBERNETES_SERVICE_PORT']
+    )
+
+    def make_request(url, **kwargs):
+        """
+        Make & return a HTTPRequest object suited to making requests to a Kubernetes cluster
+
+        The following changes are made to the passed in arguments
+         * url
+           No hostname / protocol should be provided, only path (and query strings, if any).
+           The hostname / protocol / port will be automatically provided.
+         * headers
+           Appropriate Authorization header will be added
+         * ca_certs
+           Appropriate CA bundle path will be set
+        """
+        headers = kwargs.get('headers', {})
+        headers['Authorization'] = 'Bearer {token}'.format(token=token)
+        kwargs.update({
+            'url': api_url + url,
+            'ca_certs': '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt',
+            'headers': headers,
+        })
+        return HTTPRequest(**kwargs)
+
+    return make_request
+
+
+def request_maker_kubeconfig():
+    """
+    Return a k8s api aware HTTPRequest factory that discovers connection info from a .kube/config file
 
     Reads a .kube/config file from the given path, and constructs a function
     that can make HTTPRequest objects with all the authentication stuff
     filled in to the kubernetes context set as current-context in that .kube/config
     file.
-
-    TODO: Pick up info from service accounts + env variables too
     """
-    with open(os.path.expanduser(path)) as f:
+    with open(os.path.expanduser('~/.kube/config')) as f:
         config = yaml.safe_load(f)
 
     current_context = config['current-context']
@@ -39,9 +88,9 @@ def request_maker(path='~/.kube/config'):
            No hostname / protocol should be provided, only path (and query strings, if any).
            The hostname / protocol / port will be automatically provided.
          * client_key / client_cert:
-           These will be automatically set if required
+           Appropriate client certificate / key will be set if specified in .kube/config
          * ca_certs
-           This will also be automatically set if required
+           Appropriate ca will be set if specified in .kube/config
         """
         kwargs.update({
             'url': cluster['server'] + url,
