@@ -12,9 +12,22 @@ from traitlets import Unicode, List, Integer
 class KubeSpawner(Spawner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # By now, all the traitlets have been set, so we can use them to compute
+        # other attributes
         self.httpclient = AsyncHTTPClient()
         # FIXME: Support more than just kubeconfig
         self.request = request_maker()
+        self.pod_name = self._expand_user_properties(self.pod_name_template)
+        if self.hub_ip_connect:
+            proto, path = self.hub.api_url.split('://', 1)
+            ip, rest = path.split(':', 1)
+            self.accessible_hub_api_url = '{proto}://{ip}:{rest}'.format(
+                    proto=proto,
+                    ip=self.hub_ip_connect,
+                    rest=rest
+                )
+        else:
+            self.accessible_hub_api_url = self.hub.api_url
 
     kube_namespace = Unicode(
         'jupyter',
@@ -163,13 +176,6 @@ class KubeSpawner(Spawner):
             return url + '/' + pod_name
         return url
 
-    def load_state(self, state):
-        super(KubeSpawner, self).load_state(state)
-
-    def get_state(self):
-        state = super(KubeSpawner, self).get_state()
-        return state
-
     @gen.coroutine
     def get_pod_info(self, pod_name):
         resp = yield self.httpclient.fetch(self.request(
@@ -183,10 +189,6 @@ class KubeSpawner(Spawner):
     def is_pod_running(self, pod_info):
         return 'items' in pod_info and len(pod_info['items']) > 0 and \
             pod_info['items'][0]['status']['phase'] == 'Running'
-
-    @property
-    def pod_name(self):
-        return self._expand_user_properties(self.pod_name_template)
 
     @gen.coroutine
     def poll(self):
@@ -237,20 +239,6 @@ class KubeSpawner(Spawner):
                 break
             time.sleep(5)
 
-    def _public_hub_api_url(self):
-        if self.hub_ip_connect:
-            proto, path = self.hub.api_url.split('://', 1)
-            ip, rest = path.split(':', 1)
-            url = '{proto}://{ip}:{rest}'.format(
-                    proto=proto,
-                    ip=self.hub_ip_connect,
-                    rest=rest
-                )
-            self.log.info('basgdasgsdg'  + url)
-            return url
-        else:
-            return self.hub.api_url
-
     def _env_keep_default(self):
         return []
 
@@ -261,6 +249,5 @@ class KubeSpawner(Spawner):
                     JPY_COOKIE_NAME=self.user.server.cookie_name,
                     JPY_BASE_URL=self.user.server.base_url,
                     JPY_HUB_PREFIX=self.hub.server.base_url,
-                    JPY_HUB_API_URL=self._public_hub_api_url()
-                ))
+                    JPY_HUB_API_URL=self.accessible_hub_api_url))
         return env
