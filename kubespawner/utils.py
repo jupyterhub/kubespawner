@@ -5,6 +5,7 @@ import os
 import yaml
 
 from tornado.httpclient import HTTPRequest
+from tornado.httputil import url_concat
 
 
 def request_maker():
@@ -101,3 +102,27 @@ def request_maker_kubeconfig():
         return HTTPRequest(**kwargs)
 
     return make_request
+
+
+def k8s_url(namespace, kind, name=None, label_selector=None):
+    """
+    Construct URL referring to a set of kubernetes resources
+    """
+    url_parts = [
+        'api',
+        'v1',
+        'namespaces',
+        namespace,
+        kind
+    ]
+    if name is not None:
+        url_parts.append(name)
+    path = '/' + '/'.join(url_parts)
+    print(path)
+    if label_selector is not None:
+        # FIXME: Validate label!
+        return url_concat(path, {
+            'labelSelector': label_selector
+        })
+    else:
+        return path

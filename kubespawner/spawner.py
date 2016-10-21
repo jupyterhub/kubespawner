@@ -2,7 +2,7 @@ from jupyterhub.spawner import Spawner
 from tornado import gen
 from tornado.httputil import url_concat
 from tornado.httpclient import AsyncHTTPClient
-from kubespawner.utils import request_maker
+from kubespawner.utils import request_maker, k8s_url
 from urllib.parse import urlparse, urlunparse
 import json
 import time
@@ -29,8 +29,8 @@ class KubeSpawner(Spawner):
         else:
             self.accessible_hub_api_url = self.hub.api_url
 
-    kube_namespace = Unicode(
-        'jupyter',
+    namespace = Unicode(
+        'default',
         config=True,
         help='Kubernetes Namespace to create pods in'
     )
@@ -177,21 +177,15 @@ class KubeSpawner(Spawner):
             }
         }
 
-    def _get_pod_url(self, pod_name=None):
-        url = '/api/v1/namespaces/{namespace}/pods'.format(
-            namespace=self.kube_namespace
-        )
-        if pod_name:
-            return url + '/' + pod_name
-        return url
-
     @gen.coroutine
     def get_pod_info(self, pod_name):
         resp = yield self.httpclient.fetch(self.request(
-            url=url_concat(
-                self._get_pod_url(),
-                {'labelSelector': 'name = %s' % pod_name}
-        )))
+            k8s_url(
+                self.namespace,
+                'pods',
+                label_selector='name={name}'.format(name=self.pod_name)
+            )
+        ))
         data = resp.body.decode('utf-8')
         return json.loads(data)
 
@@ -210,7 +204,7 @@ class KubeSpawner(Spawner):
     def start(self):
         pod_manifest = self.get_pod_manifest()
         resp = yield self.httpclient.fetch(self.request(
-            url=self._get_pod_url(),
+            url=k8s_url(self.namespace, 'pods'),
             body=json.dumps(pod_manifest),
             method='POST',
             headers={'Content-Type': 'application/json'}
@@ -233,7 +227,7 @@ class KubeSpawner(Spawner):
         }
         resp = yield self.httpclient.fetch(
             self.request(
-                url=self._get_pod_url(self.pod_name),
+                url=k8s_url(self.namespace, 'pods', self.pod_name),
                 method='DELETE',
                 body=json.dumps(body),
                 headers={'Content-Type': 'application/json'},
