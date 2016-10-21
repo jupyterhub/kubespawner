@@ -1,11 +1,11 @@
 from setuptools import setup
 
 setup(
-    name='kubespawner',
+    name='jupyterhub-kubespawner',
     version='0.1',
     install_requires=[
-        'requests-futures>=0.9.7',
-        'jupyterhub>=0.4.0',
+        'jupyterhub',
+        'pyyaml',
     ],
     description='JupyterHub Spawner targetting Kubernetes',
     url='http://github.com/yuvipanda/jupyterhub-kubernetes-spawner',
