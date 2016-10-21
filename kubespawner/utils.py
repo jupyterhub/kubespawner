@@ -118,7 +118,6 @@ def k8s_url(namespace, kind, name=None, label_selector=None):
     if name is not None:
         url_parts.append(name)
     path = '/' + '/'.join(url_parts)
-    print(path)
     if label_selector is not None:
         # FIXME: Validate label!
         return url_concat(path, {
