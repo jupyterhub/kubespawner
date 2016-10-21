@@ -193,6 +193,34 @@ class KubeSpawner(Spawner):
         return 'items' in pod_info and len(pod_info['items']) > 0 and \
             pod_info['items'][0]['status']['phase'] == 'Running'
 
+    def get_state(self):
+        """
+        Save state required to reinstate this user's pod from scratch
+
+        We save the pod_name, even though we could easily compute it,
+        because JupyterHub requires you save *some* state! Otherwise
+        it assumes your server is dead. This works around that.
+
+        It's also useful for cases when the pod_template changes between
+        restarts - this keeps the old pods around.
+        """
+        state = super().get_state()
+        state['pod_name'] = self.pod_name
+        return state
+
+    def load_state(self, state):
+        """
+        Load state from storage required to reinstate this user's pod
+
+        Since this runs after __init__, this will override the generated pod_name
+        if there's one we have saved in state. These are the same in most cases,
+        but if the pod_template has changed in between restarts, it will no longer
+        be the case. This allows us to continue serving from the old pods with
+        the old names.
+        """
+        if 'pod_name' in state:
+            self.pod_name = state['pod_name']
+
     @gen.coroutine
     def poll(self):
         data = yield self.get_pod_info(self.pod_name)
