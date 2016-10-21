@@ -3,6 +3,7 @@ from tornado import gen
 from tornado.httputil import url_concat
 from tornado.httpclient import AsyncHTTPClient
 from kubespawner.utils import request_maker
+from urllib.parse import urlparse, urlunparse
 import json
 import time
 import string
@@ -18,14 +19,13 @@ class KubeSpawner(Spawner):
         # FIXME: Support more than just kubeconfig
         self.request = request_maker()
         self.pod_name = self._expand_user_properties(self.pod_name_template)
-        if self.hub_ip_connect:
-            proto, path = self.hub.api_url.split('://', 1)
-            ip, rest = path.split(':', 1)
-            self.accessible_hub_api_url = '{proto}://{ip}:{rest}'.format(
-                    proto=proto,
-                    ip=self.hub_ip_connect,
-                    rest=rest
-                )
+        if self.hub_connect_ip:
+            scheme, netloc, path, params, query, fragment = urlparse(self.hub.api_url)
+            netloc = '{ip}:{port}'.format(
+                ip=self.hub_connect_ip,
+                port=self.hub_connect_port,
+            )
+            self.accessible_hub_api_url = urlunparse((scheme, netloc, path, params, query, fragment))
         else:
             self.accessible_hub_api_url = self.hub.api_url
 
@@ -41,11 +41,20 @@ class KubeSpawner(Spawner):
         help='Template to generate pod names. Supports: {user} for username'
     )
 
-    hub_ip_connect = Unicode(
+    hub_connect_ip = Unicode(
         "",
         config=True,
-        help='Endpoint that containers should use to contact the hub'
+        help='IP that containers should use to contact the hub'
     )
+
+    hub_connect_port = Integer(
+        config=True,
+        help='Port that containers should use to contact the hub. Defaults to the hub_port parameter'
+    )
+
+    def _hub_connect_port_default(self):
+        return self.hub.server.port
+
 
     singleuser_image_spec = Unicode(
         'jupyter/singleuser',
