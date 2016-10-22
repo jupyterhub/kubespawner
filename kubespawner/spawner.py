@@ -1,3 +1,4 @@
+import os
 from jupyterhub.spawner import Spawner
 from tornado import gen
 from tornado.httputil import url_concat
@@ -30,10 +31,19 @@ class KubeSpawner(Spawner):
             self.accessible_hub_api_url = self.hub.api_url
 
     namespace = Unicode(
-        'default',
         config=True,
         help='Kubernetes Namespace to create pods in'
     )
+
+    def _namespace_default(self):
+        """
+        Set namespace default to current namespace if running in a k8s cluster
+        """
+        ns_path = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
+        if os.path.exists(ns_path):
+            with open(ns_path) as f:
+                return f.read().strip()
+        return 'default'
 
     pod_name_template = Unicode(
         'jupyter-{username}-{userid}',
