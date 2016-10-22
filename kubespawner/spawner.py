@@ -72,12 +72,6 @@ class KubeSpawner(Spawner):
         help='Name of Docker image to use when spawning user pods'
     )
 
-    kube_termination_grace = Integer(
-        0,
-        config=True,
-        help='Number of seconds to wait before terminating a pod'
-    )
-
     cpu_limit = Unicode(
         "2000m",
         config=True,
@@ -265,7 +259,7 @@ class KubeSpawner(Spawner):
         body = {
             'kind': "DeleteOptions",
             'apiVersion': 'v1',
-            'gracePeriodSeconds': self.kube_termination_grace
+            'gracePeriodSeconds': 0
         }
         resp = yield self.httpclient.fetch(
             self.request(
