@@ -104,7 +104,7 @@ def request_maker_kubeconfig():
     return make_request
 
 
-def k8s_url(namespace, kind, name=None, label_selector=None):
+def k8s_url(namespace, kind, name=None):
     """
     Construct URL referring to a set of kubernetes resources
     """
@@ -117,11 +117,4 @@ def k8s_url(namespace, kind, name=None, label_selector=None):
     ]
     if name is not None:
         url_parts.append(name)
-    path = '/' + '/'.join(url_parts)
-    if label_selector is not None:
-        # FIXME: Validate label!
-        return url_concat(path, {
-            'labelSelector': label_selector
-        })
-    else:
-        return path
+    return '/' + '/'.join(url_parts)

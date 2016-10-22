@@ -2,7 +2,7 @@ import os
 from jupyterhub.spawner import Spawner
 from tornado import gen
 from tornado.httputil import url_concat
-from tornado.httpclient import AsyncHTTPClient
+from tornado.httpclient import AsyncHTTPClient, HTTPError
 from kubespawner.utils import request_maker, k8s_url
 from urllib.parse import urlparse, urlunparse
 import json
@@ -189,19 +189,23 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def get_pod_info(self, pod_name):
-        resp = yield self.httpclient.fetch(self.request(
-            k8s_url(
-                self.namespace,
-                'pods',
-                label_selector='name={name}'.format(name=self.pod_name)
-            )
-        ))
+        try:
+            resp = yield self.httpclient.fetch(self.request(
+                k8s_url(
+                    self.namespace,
+                    'pods',
+                    pod_name,
+                )
+            ))
+        except HTTPError as e:
+            if e.code == 404:
+                return None
+            raise
         data = resp.body.decode('utf-8')
         return json.loads(data)
 
     def is_pod_running(self, pod_info):
-        return 'items' in pod_info and len(pod_info['items']) > 0 and \
-            pod_info['items'][0]['status']['phase'] == 'Running'
+        return pod_info['status']['phase'] == 'Running'
 
     def get_state(self):
         """
@@ -234,7 +238,7 @@ class KubeSpawner(Spawner):
     @gen.coroutine
     def poll(self):
         data = yield self.get_pod_info(self.pod_name)
-        if self.is_pod_running(data):
+        if data is not None and self.is_pod_running(data):
             return None
         return 1
 
@@ -249,10 +253,10 @@ class KubeSpawner(Spawner):
         ))
         while True:
             data = yield self.get_pod_info(self.pod_name)
-            if self.is_pod_running(data):
+            if data is not None and self.is_pod_running(data):
                 break
             time.sleep(5)
-        self.user.server.ip = data['items'][0]['status']['podIP']
+        self.user.server.ip = data['status']['podIP']
         self.user.server.port = 8888
         self.db.commit()
 
@@ -276,7 +280,7 @@ class KubeSpawner(Spawner):
         )
         while True:
             data = yield self.get_pod_info(self.pod_name)
-            if 'items' not in data or len(data['items']) == 0:
+            if data is not None:
                 break
             time.sleep(5)
 
