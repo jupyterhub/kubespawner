@@ -361,7 +361,7 @@ class KubeSpawner(Spawner):
             # shut down to complete
             while True:
                 data = yield self.get_pod_info(self.pod_name)
-                if data is not None:
+                if data is None:
                     break
                 time.sleep(5)
 
