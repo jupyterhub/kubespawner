@@ -7,6 +7,8 @@ setup(
         'jupyterhub',
         'pyyaml',
     ],
+    setup_requires=['pytest-runner'],
+    tests_require=['pytest'],
     description='JupyterHub Spawner targetting Kubernetes',
     url='http://github.com/yuvipanda/jupyterhub-kubernetes-spawner',
     author='Yuvi Panda',

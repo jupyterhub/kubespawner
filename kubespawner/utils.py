@@ -107,6 +107,11 @@ def request_maker_kubeconfig():
 def k8s_url(namespace, kind, name=None):
     """
     Construct URL referring to a set of kubernetes resources
+
+    Only supports the subset of URLs that we need to generate for use
+    in kubespawner. This currently covers:
+      - All resources of a specific kind in a namespace
+      - A resource with a specific name of a specific kind
     """
     url_parts = [
         'api',
