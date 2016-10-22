@@ -1,7 +1,6 @@
 import os
 from jupyterhub.spawner import Spawner
 from tornado import gen
-from tornado.httputil import url_concat
 from tornado.httpclient import AsyncHTTPClient, HTTPError
 from kubespawner.utils import request_maker, k8s_url
 from urllib.parse import urlparse, urlunparse
@@ -322,7 +321,7 @@ class KubeSpawner(Spawner):
     @gen.coroutine
     def start(self):
         pod_manifest = self.get_pod_manifest()
-        resp = yield self.httpclient.fetch(self.request(
+        yield self.httpclient.fetch(self.request(
             url=k8s_url(self.namespace, 'pods'),
             body=json.dumps(pod_manifest),
             method='POST',
@@ -344,7 +343,7 @@ class KubeSpawner(Spawner):
             'apiVersion': 'v1',
             'gracePeriodSeconds': 0
         }
-        resp = yield self.httpclient.fetch(
+        yield self.httpclient.fetch(
             self.request(
                 url=k8s_url(self.namespace, 'pods', self.pod_name),
                 method='DELETE',
