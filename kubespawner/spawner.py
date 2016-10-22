@@ -52,8 +52,9 @@ class KubeSpawner(Spawner):
     )
 
     hub_connect_ip = Unicode(
-        "",
+        None,
         config=True,
+        allow_none=True,
         help='IP that containers should use to contact the hub'
     )
 
