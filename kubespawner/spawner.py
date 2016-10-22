@@ -219,14 +219,50 @@ class KubeSpawner(Spawner):
     volumes = List(
         [],
         config=True,
-        help='Config for volumes present in the spawned user pod.' +
-             '{username} and {userid} are expanded.'
+        help="""
+        List of Kubernetes Volume specifications that will be mounted in the user pod.
+
+        This list will be directly added under `volumes` in the kubernetes pod spec,
+        so you should use the same structure. Each item in the list must have the
+        following two keys:
+          - name
+            Name that'll be later used in the `volume_mounts` config to mount this
+            volume at a specific path.
+          - <name-of-a-supported-volume-type> (such as `hostPath`, `persistentVolumeClaim`,
+            etc)
+            The key name determines the type of volume to mount, and the value should
+            be an object specifying the various options available for that kind of
+            volume.
+
+        See http://kubernetes.io/docs/user-guide/volumes/ for more information on the
+        various kinds of volumes available and their options. Your kubernetes cluster
+        must already be configured to support the volume types you want to use.
+
+        {username} and {userid} are expanded to the escaped, dns-label safe
+        username & integer user id respectively, wherever they are used.
+        """
     )
     volume_mounts = List(
         [],
         config=True,
-        help='Config for volume mounts in the spawned user pod.' +
-             '{username} and {userid} are expanded.'
+        help="""
+        List of paths on which to mount volumes in the user notebook's pod.
+
+        This list will be added to the values of the `volumeMounts` key under the user's
+        container in the kubernetes pod spec, so you should use the same structure as that.
+        Each item in the list should be a dictionary with at least these two keys:
+          - mountPath
+            The path on the container in which we want to mount the volume.
+          - name
+            The name of the volume we want to mount, as specified in the `volumes`
+            config.
+
+        See http://kubernetes.io/docs/user-guide/volumes/ for more information on how
+        the volumeMount item works.
+
+        {username} and {userid} are expanded to the escaped, dns-label safe
+        username & integer user id respectively, wherever they are used.
+        """
     )
 
     def _expand_user_properties(self, template):
