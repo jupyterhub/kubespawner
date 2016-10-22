@@ -6,10 +6,11 @@ from urllib.parse import urlparse, urlunparse
 
 from tornado import gen
 from tornado.httpclient import AsyncHTTPClient, HTTPError
-from traitlets import Unicode, List, Integer
+from traitlets import Unicode, List, Integer, Float
 from jupyterhub.spawner import Spawner
 
 from kubespawner.utils import request_maker, k8s_url
+from kubespawner.objects import make_pod_spec
 
 
 class KubeSpawner(Spawner):
@@ -146,28 +147,73 @@ class KubeSpawner(Spawner):
         """
     )
 
-    cpu_limit = Unicode(
-        "2000m",
+    cpu_limit = Float(
+        None,
         config=True,
-        help='Max number of CPU cores that a single user can use'
+        allow_none=True,
+        help="""
+        Maximum number of CPU cores a user's notebook can use.
+
+        Can be fractional. None means no limit, and is the default.
+
+        See http://kubernetes.io/docs/user-guide/compute-resources/#meaning-of-cpu
+        for a detailed explanation of how to set this and what it means.
+        """
     )
 
-    cpu_request = Unicode(
-        "200m",
+    cpu_guarantee = Float(
+        None,
         config=True,
-        help='Min nmber of CPU cores that a single user is guaranteed'
+        allow_none=True,
+        help="""
+        Minimum number of CPU cores a user's notebook is guaranteed to have access to.
+
+        Kubernetes scheduler will ensure that no matter how crowded a node
+        gets, a user's container will always have access to this many CPUs.
+
+        Can be fractional. None means no guarantee, and is the default.
+
+        See http://kubernetes.io/docs/user-guide/compute-resources/#meaning-of-cpu
+        for a detailed explanation of how this is calculated.
+        """
     )
 
     mem_limit = Unicode(
-        "1Gi",
+        None,
         config=True,
-        help='Max amount of memory a single user can use'
+        allow_none=True,
+        help="""
+        Maximum RAM that a user's notebook is allowed to use.
+
+        Once the user's notebook container uses more than this much RAM,
+        requests for more RAM will be denied. This will manifest to the
+        user in various forms depending on the kernel being run - it will
+        most likely die due to `malloc` failure.
+
+        You can use suffixes such as `Ki`, `Mi`, `Gi` to represent powers
+        of two. Otherwise it is interpreted as a raw byte value.
+
+        See http://kubernetes.io/docs/user-guide/compute-resources/#meaning-of-memory
+        for more information.
+        """
     )
 
-    mem_request = Unicode(
-        "128Mi",
+    mem_guarantee = Unicode(
+        None,
         config=True,
-        help='Min amount of memory a single user is guaranteed'
+        allow_none=True,
+        help="""
+        Maximum RAM that a user's notebook is guaranteed to have access to.
+
+        The scheduler will make sure that the notebook will have access to
+        at least this much memory at all times.
+
+        You can use suffixes such as `Ki`, `Mi`, `Gi` to represent powers
+        of two. Otherwise it is interpreted as a raw byte value.
+
+        See http://kubernetes.io/docs/user-guide/compute-resources/#meaning-of-memory
+        for more information.
+        """
     )
 
     volumes = List(
@@ -204,6 +250,8 @@ class KubeSpawner(Spawner):
 
     def get_pod_manifest(self):
         # Add a hack to ensure that no service accounts are mounted in spawned pods
+        # This makes sure that we don't accidentally give access to the whole
+        # kubernetes API to the users in the spawned pods.
         # See https://github.com/kubernetes/kubernetes/issues/16779#issuecomment-157460294
         hack_volumes = [{
             'name': 'no-api-access-please',
@@ -214,46 +262,18 @@ class KubeSpawner(Spawner):
             'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
             'readOnly': True
         }]
+        return make_pod_spec(
+            self.pod_name,
+            self.singleuser_image_spec,
+            self.get_env(),
+            self._expand_all(self.volumes) + hack_volumes,
+            self._expand_all(self.volume_mounts) + hack_volume_mounts,
+            self.cpu_limit,
+            self.cpu_guarantee,
+            self.mem_limit,
+            self.mem_guarantee,
+        )
 
-        return {
-            'apiVersion': 'v1',
-            'kind': 'Pod',
-            'metadata': {
-                'name': self.pod_name,
-                'labels': {
-                    'name': self.pod_name
-                }
-            },
-            'spec': {
-                'containers': [
-                    {
-                        'name': 'jupyter',
-                        'image': self.singleuser_image_spec,
-                        'ports': [
-                            {
-                                'containerPort': 8888,
-                            }
-                        ],
-                        'resources': {
-                            'requests': {
-                                'memory': self.mem_request,
-                                'cpu': self.cpu_request,
-                            },
-                            'limits': {
-                                'memory': self.mem_limit,
-                                'cpu': self.cpu_limit
-                            }
-                        },
-                        'env': [
-                            {'name': k, 'value': v}
-                            for k, v in self.get_env().items()
-                        ],
-                        'volumeMounts': self._expand_all(self.volume_mounts) + hack_volume_mounts
-                    }
-                ],
-                'volumes': self._expand_all(self.volumes) + hack_volumes
-            }
-        }
 
     @gen.coroutine
     def get_pod_info(self, pod_name):
