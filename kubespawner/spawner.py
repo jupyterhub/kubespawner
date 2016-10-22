@@ -32,12 +32,20 @@ class KubeSpawner(Spawner):
 
     namespace = Unicode(
         config=True,
-        help='Kubernetes Namespace to create pods in'
+        help="""
+        Kubernetes namespace to spawn user pods in.
+
+        If running inside a kubernetes cluster with service accounts enabled,
+        defaults to the current namespace. If not, defaults to 'default'
+        """
     )
 
     def _namespace_default(self):
         """
         Set namespace default to current namespace if running in a k8s cluster
+
+        If not in a k8s cluster with service accounts enabled, default to
+        'default'
         """
         ns_path = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
         if os.path.exists(ns_path):
@@ -48,29 +56,93 @@ class KubeSpawner(Spawner):
     pod_name_template = Unicode(
         'jupyter-{username}-{userid}',
         config=True,
-        help='Template to generate pod names. Supports: {user} for username'
+        help="""
+        Template to use to form the name of user's pods.
+
+        {username} and {userid} are expanded to the escaped, dns-label safe
+        username & integer user id respectively.
+
+        This must be unique within the namespace the pods are being spawned
+        in, so if you are running multiple jupyterhubs spawning in the
+        same namespace, consider setting this to be something more unique.
+        """
     )
 
     hub_connect_ip = Unicode(
         None,
         config=True,
         allow_none=True,
-        help='IP that containers should use to contact the hub'
+        help="""
+        IP/DNS hostname to be used by pods to reach out to the hub API.
+
+        Defaults to `None`, in which case the `hub_ip` config is used.
+
+        In kubernetes contexts, this is often not the same as `hub_ip`,
+        since the hub runs in a pod which is fronted by a service. This IP
+        should be something that pods can access to reach the hub process.
+        This can also be through the proxy - API access is authenticated
+        with a token that is passed only to the hub, so security is fine.
+
+        Usually set to the service IP / DNS name of the service that fronts
+        the hub pod (deployment/replicationcontroller/replicaset)
+
+        Used together with `hub_connect_port` configuration.
+        """
     )
 
     hub_connect_port = Integer(
         config=True,
-        help='Port that containers should use to contact the hub. Defaults to the hub_port parameter'
+        help="""
+        Port to use by pods to reach out to the hub API.
+
+        Defaults to be the same as `hub_port`.
+
+        In kubernetes contexts, this is often not the same as `hub_port`,
+        since the hub runs in a pod which is fronted by a service. This
+        allows easy port mapping, and some systems take advantage of it.
+
+        This should be set to the `port` attribute of a service that is
+        fronting the hub pod.
+        """
     )
 
     def _hub_connect_port_default(self):
+        """
+        Set default port on which pods connect to hub to be the hub port
+
+        The hub needs to be accessible to the pods at this port. We default
+        to the port the hub is listening on. This would be overriden in case
+        some amount of port mapping is happening.
+        """
         return self.hub.server.port
 
-
     singleuser_image_spec = Unicode(
-        'jupyter/singleuser',
+        'jupyter/singleuser:latest',
         config=True,
-        help='Name of Docker image to use when spawning user pods'
+        help="""
+        Docker image spec to use for spawning user's containers.
+
+        Defaults to `jupyter/singleuser:latest`
+
+        Name of the container + a tag, same as would be used with
+        a `docker pull` command. If tag is set to `latest`, kubernetes will
+        check the registry each time a new user is spawned to see if there
+        is a newer image available. If available, new image will be pulled.
+        Note that this could cause long delays when spawning, especially
+        if the image is large. If you do not specify a tag, whatever version
+        of the image is first pulled on the node will be used, thus possibly
+        leading to inconsistent images on different nodes. For all these
+        reasons, it is recommended to specify a specific immutable tag
+        for the imagespec.
+
+        If your image is very large, you might need to increase the timeout
+        for starting the single user container from the default. You can
+        set this with:
+
+        ```
+        c.KubeSpawner.start_timeout = 60 * 5  # Upto 5 minutes
+        ```
+        """
     )
 
     cpu_limit = Unicode(
@@ -184,6 +256,11 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def get_pod_info(self, pod_name):
+        """
+        Fetch info about a specific pod with the given pod name in current namespace
+
+        Return `None` if pod with given name does not exist in current namespace
+        """
         try:
             resp = yield self.httpclient.fetch(self.request(
                 k8s_url(
@@ -199,8 +276,13 @@ class KubeSpawner(Spawner):
         data = resp.body.decode('utf-8')
         return json.loads(data)
 
-    def is_pod_running(self, pod_info):
-        return pod_info['status']['phase'] == 'Running'
+    def is_pod_running(self, pod):
+        """
+        Check if the given pod is running
+
+        pod must be a dictionary representing a Pod kubernets API object.
+        """
+        return pod['status']['phase'] == 'Running'
 
     def get_state(self):
         """
