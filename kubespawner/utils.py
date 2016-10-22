@@ -5,7 +5,6 @@ import os
 import yaml
 
 from tornado.httpclient import HTTPRequest
-from tornado.httputil import url_concat
 
 
 def request_maker():

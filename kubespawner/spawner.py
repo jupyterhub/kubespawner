@@ -1,13 +1,15 @@
 import os
-from jupyterhub.spawner import Spawner
-from tornado import gen
-from tornado.httpclient import AsyncHTTPClient, HTTPError
-from kubespawner.utils import request_maker, k8s_url
-from urllib.parse import urlparse, urlunparse
 import json
 import time
 import string
+from urllib.parse import urlparse, urlunparse
+
+from tornado import gen
+from tornado.httpclient import AsyncHTTPClient, HTTPError
 from traitlets import Unicode, List, Integer
+from jupyterhub.spawner import Spawner
+
+from kubespawner.utils import request_maker, k8s_url
 
 
 class KubeSpawner(Spawner):
@@ -337,7 +339,7 @@ class KubeSpawner(Spawner):
         self.db.commit()
 
     @gen.coroutine
-    def stop(self):
+    def stop(self, now=False):
         body = {
             'kind': "DeleteOptions",
             'apiVersion': 'v1',
@@ -354,21 +356,25 @@ class KubeSpawner(Spawner):
                 allow_nonstandard_methods=True,
             )
         )
-        while True:
-            data = yield self.get_pod_info(self.pod_name)
-            if data is not None:
-                break
-            time.sleep(5)
+        if not now:
+            # If now is true, just return immediately, do not wait for
+            # shut down to complete
+            while True:
+                data = yield self.get_pod_info(self.pod_name)
+                if data is not None:
+                    break
+                time.sleep(5)
 
     def _env_keep_default(self):
         return []
 
     def get_env(self):
         env = super(KubeSpawner, self).get_env()
-        env.update(dict(
-                    JPY_USER=self.user.name,
-                    JPY_COOKIE_NAME=self.user.server.cookie_name,
-                    JPY_BASE_URL=self.user.server.base_url,
-                    JPY_HUB_PREFIX=self.hub.server.base_url,
-                    JPY_HUB_API_URL=self.accessible_hub_api_url))
+        env.update({
+            'JPY_USER': self.user.name,
+            'JPY_COOKIE_NAME': self.user.server.cookie_name,
+            'JPY_BASE_URL': self.user.server.base_url,
+            'JPY_HUB_PREFIX': self.hub.server.base_url,
+            'JPY_HUB_API_URL': self.accessible_hub_api_url
+        })
         return env
