@@ -1,3 +1,9 @@
+"""
+JupyterHub Spawner to spawn user notebooks on a Kubernetes cluster.
+
+This module exports `KubeSpawner` class, which is the actual spawner
+implementation that should be used by JupyterHub.
+"""
 import os
 import json
 import time
@@ -14,6 +20,10 @@ from kubespawner.objects import make_pod_spec
 
 
 class KubeSpawner(Spawner):
+    """
+    Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
+
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # By now, all the traitlets have been set, so we can use them to compute
@@ -285,6 +295,9 @@ class KubeSpawner(Spawner):
             return src
 
     def get_pod_manifest(self):
+        """
+        Make a pod manifest that will spawn current user's notebook pod.
+        """
         # Add a hack to ensure that no service accounts are mounted in spawned pods
         # This makes sure that we don't accidentally give access to the whole
         # kubernetes API to the users in the spawned pods.

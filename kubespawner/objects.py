@@ -1,8 +1,6 @@
 """
 Helper methods for generating k8s API objects.
 """
-
-
 def make_pod_spec(
     name,
     image_spec,
