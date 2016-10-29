@@ -6,7 +6,6 @@ implementation that should be used by JupyterHub.
 """
 import os
 import json
-import time
 import string
 from urllib.parse import urlparse, urlunparse
 
@@ -402,7 +401,7 @@ class KubeSpawner(Spawner):
             data = yield self.get_pod_info(self.pod_name)
             if data is not None and self.is_pod_running(data):
                 break
-            time.sleep(1)
+            yield gen.sleep(1)
         self.user.server.ip = data['status']['podIP']
         self.user.server.port = 8888
         self.db.commit()
@@ -432,7 +431,7 @@ class KubeSpawner(Spawner):
                 data = yield self.get_pod_info(self.pod_name)
                 if data is None:
                     break
-                time.sleep(1)
+                yield gen.sleep(1)
 
     def _env_keep_default(self):
         return []
