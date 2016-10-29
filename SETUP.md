@@ -29,7 +29,7 @@ at this time, but should work for OS X too.
    In this case, our interface name is `vboxnet4`.
 5. Run the following command on your host
    ```
-   VBoxManage modifyvm  minikube --nic3 hostonly --cableconnected3 on --hostonlyadapter3 vboxnet5
+   VBoxManage modifyvm  minikube --nic3 hostonly --cableconnected3 on --hostonlyadapter3 vboxnet4
    ```
    Instead of `vboxnet4` use whatever the output from step 4 was.
 6. Start up minikube again with `minikube start`.
