@@ -1,3 +1,6 @@
+import os
+
+
 c.JupyterHub.spawner_class = 'kubespawner.KubeSpawner'
 
 c.JupyterHub.ip = '0.0.0.0'
@@ -14,7 +17,7 @@ c.KubeSpawner.start_timeout = 60 * 5
 c.KubeSpawner.singleuser_image_spec = 'yuvipanda/simple-singleuser:v1'
 
 # The spawned containers need to be able to talk to the hub through the proxy!
-c.KubeSpawner.hub_connect_ip = '192.168.61.1'
+c.KubeSpawner.hub_connect_ip = os.ENVIRON['HUB_CONNECT_IP']
 
 # Do not use any authentication at all - any username / password will work.
 c.JupyterHub.authenticator_class = 'dummyauthenticator.DummyAuthenticator'
