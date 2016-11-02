@@ -14,8 +14,8 @@ from tornado.httpclient import AsyncHTTPClient, HTTPError
 from traitlets import Unicode, List, Integer, Float
 from jupyterhub.spawner import Spawner
 
-from kubespawner.utils import request_maker, k8s_url
-from kubespawner.objects import make_pod_spec
+from .utils import request_maker, k8s_url
+from .objects import make_pod_spec
 
 
 class KubernetesSpawner(Spawner):

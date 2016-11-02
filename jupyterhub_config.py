@@ -1,7 +1,7 @@
 import os
 
 
-c.JupyterHub.spawner_class = 'kubespawner.KubernetesSpawner'
+c.JupyterHub.spawner_class = 'kubernetesspawner.KubernetesSpawner'
 
 c.JupyterHub.ip = '0.0.0.0'
 c.JupyterHub.hub_ip = '0.0.0.0'
