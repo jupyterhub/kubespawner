@@ -331,7 +331,7 @@ class KubeSpawner(Spawner):
         Return `None` if pod with given name does not exist in current namespace
         """
         try:
-            resp = yield self.httpclient.fetch(self.request(
+            response = yield self.httpclient.fetch(self.request(
                 k8s_url(
                     self.namespace,
                     'pods',
@@ -342,14 +342,14 @@ class KubeSpawner(Spawner):
             if e.code == 404:
                 return None
             raise
-        data = resp.body.decode('utf-8')
+        data = response.body.decode('utf-8')
         return json.loads(data)
 
     def is_pod_running(self, pod):
         """
         Check if the given pod is running
 
-        pod must be a dictionary representing a Pod kubernets API object.
+        pod must be a dictionary representing a Pod kubernetes API object.
         """
         return pod['status']['phase'] == 'Running'
 
@@ -383,6 +383,12 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def poll(self):
+        """
+        Check if the pod is still running.
+
+        Returns None if it is, and 1 if it isn't. These are the return values
+        JupyterHub expects.
+        """
         data = yield self.get_pod_info(self.pod_name)
         if data is not None and self.is_pod_running(data):
             return None
