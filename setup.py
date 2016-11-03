@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='jupyterhub-kubespawner',
@@ -14,5 +14,5 @@ setup(
     author='Yuvi Panda',
     author_email='yuvipanda@riseup.net',
     license='BSD',
-    packages=['kubespawner'],
+    packages=find_packages(),
 )
