@@ -9,8 +9,9 @@ c.JupyterHub.spawner_class = 'kubespawner.KubeSpawner'
 
 in your `jupyterhub_config.py` file.
 
-We export KubeSpawner specifically here, so people can import kubespawner.KubeSpawner
-instead of kubespawner.spawner.KubeSpawner
+We export KubeSpawner specifically here. This simplifies import for users.
+Users can simply import kubespawner.KubeSpawner in their applications
+instead of the more verbose import kubespawner.spawner.KubeSpawner.
 """
 from kubespawner.spawner import KubeSpawner
 
