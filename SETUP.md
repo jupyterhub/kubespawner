@@ -29,7 +29,7 @@ at this time, but should work for OS X too.
    In this case, our interface name is `vboxnet4`.
 5. Run the following command on your host
    ```
-   VBoxManage modifyvm  minikube --nic3 hostonly --cableconnected3 on --hostonlyadapter3 vboxnet5
+   VBoxManage modifyvm  minikube --nic3 hostonly --cableconnected3 on --hostonlyadapter3 vboxnet4
    ```
    Instead of `vboxnet4` use whatever the output from step 4 was.
 6. Start up minikube again with `minikube start`.
@@ -59,3 +59,31 @@ TADA! Now you have a kubernetes cluster that has two way communication with your
 run JupyterHub on your host (for faster development) while spawning pods inside Kubernetes in the
 VM.
    
+## Setting up JupyterHub for development ##
+
+Once you have kubernetes setup this way, you can stup JupyterHub for development fairly easily on your
+host machine.
+
+1. Clone this repository
+2. Setup a virtualenv
+   ```
+   python3 -m venv .
+   source bin/activate
+   ```
+3. Setup a dev installation of the kubernetes spawner:
+   ```
+   pip install -e .
+   ```
+4. Install the nodejs configurable HTTP proxy:
+   ```
+   sudo npm -g configurable-http-proxy
+   ```
+5. You can now test run a jupyterhub with the kubernetes spawner by running:
+   ```
+   export HUB_CONNECT_IP=`ip addr show vboxnet4 | grep 'scope global' | awk '{ print $2; }' | sed 's/\/.*$//'`
+   jupyterhub --no-ssl
+   ```
+
+   The `jupyterhub_config.py` file that ships in this repo will read that environment variable to figure out what IP the pods should connect to the JupyterHub on. Replace `vboxnet4` with whatever interface name you used in step 4 of the previous section.
+
+This will give you a running JupyterHub that spawns nodes inside the minikube VM! It'll be setup with [DummyAuthenticator](http://github.com/yuvipanda/jupyterhub-dummy-authenticator), so any user + password combo will allow you to log in. You can make changes to the spawner and restart jupyterhub, and rapidly iterate :)

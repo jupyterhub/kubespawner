@@ -1,16 +1,18 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
-    name='kubespawner',
-    version='0.1',
+    name='jupyterhub-kubespawner',
+    version='0.5',
     install_requires=[
-        'requests-futures>=0.9.7',
-        'jupyterhub>=0.4.0',
+        'jupyterhub',
+        'pyyaml',
     ],
+    setup_requires=['pytest-runner'],
+    tests_require=['pytest'],
     description='JupyterHub Spawner targetting Kubernetes',
     url='http://github.com/yuvipanda/jupyterhub-kubernetes-spawner',
     author='Yuvi Panda',
-    author_email='yuvipanda@riseup.net',
+    author_email='yuvipanda@gmail.com',
     license='BSD',
-    packages=['kubespawner'],
+    packages=find_packages(),
 )
