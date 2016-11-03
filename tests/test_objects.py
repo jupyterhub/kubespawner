@@ -1,7 +1,7 @@
 """
 Test functions used to create k8s objects
 """
-from kubernetesspawner.objects import make_pod_spec
+from kubespawner.objects import make_pod_spec
 
 
 def test_make_simplest_pod():

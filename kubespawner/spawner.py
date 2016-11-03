@@ -1,7 +1,7 @@
 """
 JupyterHub Spawner to spawn user notebooks on a Kubernetes cluster.
 
-This module exports `KubernetesSpawner` class, which is the actual spawner
+This module exports `KubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
 import os
@@ -14,11 +14,11 @@ from tornado.httpclient import AsyncHTTPClient, HTTPError
 from traitlets import Unicode, List, Integer, Float
 from jupyterhub.spawner import Spawner
 
-from .utils import request_maker, k8s_url
-from .objects import make_pod_spec
+from kubespawner.utils import request_maker, k8s_url
+from kubespawner.objects import make_pod_spec
 
 
-class KubernetesSpawner(Spawner):
+class KubeSpawner(Spawner):
     """
     Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
 
@@ -151,7 +151,7 @@ class KubernetesSpawner(Spawner):
         set this with:
 
         ```
-        c.KubernetesSpawner.start_timeout = 60 * 5  # Upto 5 minutes
+        c.KubeSpawner.start_timeout = 60 * 5  # Upto 5 minutes
         ```
         """
     )
@@ -443,7 +443,7 @@ class KubernetesSpawner(Spawner):
         return []
 
     def get_env(self):
-        env = super().get_env()
+        env = super(KubeSpawner, self).get_env()
         env.update({
             'JPY_USER': self.user.name,
             'JPY_COOKIE_NAME': self.user.server.cookie_name,

@@ -1,7 +1,7 @@
 """
-Tests for kubernetesspawner.utils
+Tests for kubespawner.utils
 """
-from kubernetesspawner.utils import k8s_url
+from kubespawner.utils import k8s_url
 
 
 def test_k8s_url():
