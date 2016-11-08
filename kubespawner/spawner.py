@@ -18,6 +18,14 @@ from kubespawner.utils import request_maker, k8s_url
 from kubespawner.objects import make_pod_spec
 
 
+# The suffixes that systemd supports
+MEMORY_UNIT_SUFFIXES = {
+    'Ki': 1024,
+    'Gi': 1024 * 1024,
+    'Ti': 1024 * 1024 * 1024,
+}
+
+
 class KubeSpawner(Spawner):
     """
     Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
@@ -451,4 +459,17 @@ class KubeSpawner(Spawner):
             'JPY_HUB_PREFIX': self.hub.server.base_url,
             'JPY_HUB_API_URL': self.accessible_hub_api_url
         })
+
+        # Set memory limits
+        if self.mem_limit:
+            if not self.mem_limit.isdigit():
+                mem_limit_num = float(self.mem_limit[:-2])
+                mem_limit_suffix = self.mem_limit[-2:]
+                env['LIMIT_MEM'] = str(int(mem_limit_num * MEMORY_UNIT_SUFFIXES[mem_limit_suffix]))
+            else:
+                env['LIMIT_MEM'] = str(self.mem_limit)
+
+        if self.cpu_limit:
+            env['LIMIT_CPU'] = str(self.cpu_limit)
+
         return env
