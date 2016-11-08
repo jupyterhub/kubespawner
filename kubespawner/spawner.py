@@ -460,9 +460,11 @@ class KubeSpawner(Spawner):
             'JPY_HUB_API_URL': self.accessible_hub_api_url
         })
 
-        # Set memory limits
+        # Expose memory and CPU limits to the single user notebook
+        # Note that environment variable values should always be strings...
         if self.mem_limit:
             if not self.mem_limit.isdigit():
+                # Memory limits must be specified in integer bytes
                 mem_limit_num = float(self.mem_limit[:-2])
                 mem_limit_suffix = self.mem_limit[-2:]
                 env['LIMIT_MEM'] = str(int(mem_limit_num * MEMORY_UNIT_SUFFIXES[mem_limit_suffix]))
