@@ -18,14 +18,6 @@ from kubespawner.utils import request_maker, k8s_url
 from kubespawner.objects import make_pod_spec
 
 
-# The suffixes that systemd supports
-MEMORY_UNIT_SUFFIXES = {
-    'Ki': 1024,
-    'Gi': 1024 * 1024,
-    'Ti': 1024 * 1024 * 1024,
-}
-
-
 class KubeSpawner(Spawner):
     """
     Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
@@ -161,75 +153,6 @@ class KubeSpawner(Spawner):
         ```
         c.KubeSpawner.start_timeout = 60 * 5  # Upto 5 minutes
         ```
-        """
-    )
-
-    cpu_limit = Float(
-        None,
-        config=True,
-        allow_none=True,
-        help="""
-        Maximum number of CPU cores a user's notebook can use.
-
-        Can be fractional. None means no limit, and is the default.
-
-        See http://kubernetes.io/docs/user-guide/compute-resources/#meaning-of-cpu
-        for a detailed explanation of how to set this and what it means.
-        """
-    )
-
-    cpu_guarantee = Float(
-        None,
-        config=True,
-        allow_none=True,
-        help="""
-        Minimum number of CPU cores a user's notebook is guaranteed to have access to.
-
-        Kubernetes scheduler will ensure that no matter how crowded a node
-        gets, a user's container will always have access to this many CPUs.
-
-        Can be fractional. None means no guarantee, and is the default.
-
-        See http://kubernetes.io/docs/user-guide/compute-resources/#meaning-of-cpu
-        for a detailed explanation of how this is calculated.
-        """
-    )
-
-    mem_limit = Unicode(
-        None,
-        config=True,
-        allow_none=True,
-        help="""
-        Maximum RAM that a user's notebook is allowed to use.
-
-        Once the user's notebook container uses more than this much RAM,
-        requests for more RAM will be denied. This will manifest to the
-        user in various forms depending on the kernel being run - it will
-        most likely die due to `malloc` failure.
-
-        You can use suffixes such as `Ki`, `Mi`, `Gi` to represent powers
-        of two. Otherwise it is interpreted as a raw byte value.
-
-        See http://kubernetes.io/docs/user-guide/compute-resources/#meaning-of-memory
-        for more information.
-        """
-    )
-
-    mem_guarantee = Unicode(
-        None,
-        config=True,
-        allow_none=True,
-        help="""
-        Maximum RAM that a user's notebook is guaranteed to have access to.
-
-        The scheduler will make sure that the notebook will have access to
-        at least this much memory at all times.
-
-        You can use suffixes such as `Ki`, `Mi`, `Gi` to represent powers
-        of two. Otherwise it is interpreted as a raw byte value.
-
-        See http://kubernetes.io/docs/user-guide/compute-resources/#meaning-of-memory
-        for more information.
         """
     )
 
@@ -459,19 +382,4 @@ class KubeSpawner(Spawner):
             'JPY_HUB_PREFIX': self.hub.server.base_url,
             'JPY_HUB_API_URL': self.accessible_hub_api_url
         })
-
-        # Expose memory and CPU limits to the single user notebook
-        # Note that environment variable values should always be strings...
-        if self.mem_limit:
-            if not self.mem_limit.isdigit():
-                # Memory limits must be specified in integer bytes
-                mem_limit_num = float(self.mem_limit[:-2])
-                mem_limit_suffix = self.mem_limit[-2:]
-                env['LIMIT_MEM'] = str(int(mem_limit_num * MEMORY_UNIT_SUFFIXES[mem_limit_suffix]))
-            else:
-                env['LIMIT_MEM'] = str(self.mem_limit)
-
-        if self.cpu_limit:
-            env['LIMIT_CPU'] = str(self.cpu_limit)
-
         return env
