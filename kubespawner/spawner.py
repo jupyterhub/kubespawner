@@ -384,12 +384,15 @@ class KubeSpawner(Spawner):
         # TODO:
         # Check if pvc already exists. If it does, then don't create a new one.
         pvc_manifest = self.get_pvc_manifest()
-        yield self.httpclient.fetch(self.request(
-            url=k8s_url(self.namespace, 'persistentvolumeclaims'),
-            body=json.dumps(pvc_manifest),
-            method='POST',
-            headers={'Content-Type': 'application/json'}
-        ))
+        try:
+            yield self.httpclient.fetch(self.request(
+                url=k8s_url(self.namespace, 'persistentvolumeclaims'),
+                body=json.dumps(pvc_manifest),
+                method='POST',
+                headers={'Content-Type': 'application/json'}
+            ))
+        except:
+            self.log.info("Pvc " + self.pvc_name + " already exists, so did not create new pod.")
         pod_manifest = self.get_pod_manifest()
         yield self.httpclient.fetch(self.request(
             url=k8s_url(self.namespace, 'pods'),
