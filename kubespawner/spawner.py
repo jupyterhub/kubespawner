@@ -15,7 +15,7 @@ from traitlets import Unicode, List, Integer, Float
 from jupyterhub.spawner import Spawner
 
 from kubespawner.utils import request_maker, k8s_url
-from kubespawner.objects import make_pod_spec
+from kubespawner.objects import make_pod_spec, make_pvc_spec
 
 
 class KubeSpawner(Spawner):
@@ -31,6 +31,7 @@ class KubeSpawner(Spawner):
         # FIXME: Support more than just kubeconfig
         self.request = request_maker()
         self.pod_name = self._expand_user_properties(self.pod_name_template)
+        self.pvc_name = self._expand_user_properties(self.pvc_name_template)
         if self.hub_connect_ip:
             scheme, netloc, path, params, query, fragment = urlparse(self.hub.api_url)
             netloc = '{ip}:{port}'.format(
@@ -74,6 +75,21 @@ class KubeSpawner(Spawner):
         username & integer user id respectively.
 
         This must be unique within the namespace the pods are being spawned
+        in, so if you are running multiple jupyterhubs spawning in the
+        same namespace, consider setting this to be something more unique.
+        """
+    )
+
+    pvc_name_template = Unicode(
+        'claim-{username}-{userid}',
+        config=True,
+        help="""
+        Template to use to form the name of user's pvc.
+
+        {username} and {userid} are expanded to the escaped, dns-label safe
+        username & integer user id respectively.
+
+        This must be unique within the namespace the pvc are being spawned
         in, so if you are running multiple jupyterhubs spawning in the
         same namespace, consider setting this to be something more unique.
         """
@@ -182,6 +198,7 @@ class KubeSpawner(Spawner):
         username & integer user id respectively, wherever they are used.
         """
     )
+
     volume_mounts = List(
         [],
         config=True,
@@ -204,6 +221,32 @@ class KubeSpawner(Spawner):
         username & integer user id respectively, wherever they are used.
         """
     )
+
+    storage = Unicode(
+    	"1Gi",
+    	config=True,
+    	help="""
+    	The ammount of storage space to request from the volume that the pvc will
+    	mount to.
+    	"""
+    )
+
+    storage_class = Unicode(
+    	"single-user-storage",
+    	config=True,
+    	help="""
+    	The storage class that the pvc will use. If left blank, the pvc will use no class.
+    	"""
+	)
+
+    access_modes = List(
+    	["ReadWriteOnce"],
+    	config=True,
+    	help="""
+    	List of access modes for pvc.
+    	"""
+    )
+
 
     def _expand_user_properties(self, template):
         # Make sure username matches the restrictions for DNS labels
@@ -251,6 +294,17 @@ class KubeSpawner(Spawner):
             self.cpu_guarantee,
             self.mem_limit,
             self.mem_guarantee,
+        )
+
+    def get_pvc_manifest(self):
+    	"""
+        Make a pvc manifest that will spawn current user's pvc.
+        """
+        return make_pvc_spec(
+        	self.pvc_name,
+        	self.storage_class,
+        	self.access_modes,
+        	self.storage
         )
 
 
@@ -327,6 +381,15 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def start(self):
+    	# TODO:
+    	# Check if pvc already exists. If it does, then don't create a new one.
+    	pvc_manifest = self.get_pvc_manifest()
+    	yield self.httpclient.fetch(self.request(
+            url=k8s_url(self.namespace, 'persistentvolumeclaims'),
+            body=json.dumps(pvc_manifest),
+            method='POST',
+            headers={'Content-Type': 'application/json'}
+        ))
         pod_manifest = self.get_pod_manifest()
         yield self.httpclient.fetch(self.request(
             url=k8s_url(self.namespace, 'pods'),

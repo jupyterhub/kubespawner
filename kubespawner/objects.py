@@ -84,3 +84,39 @@ def make_pod_spec(
             'volumes': volumes
         }
     }
+
+def make_pvc_spec(
+    name,
+    storage_class,
+    accessModes,
+    storage
+):
+    """
+    Make a k8s pod specification for running a user notebook.
+
+    Parameters:
+      - name:
+        Name of persistent volume claim. Must be unique within the namespace the object is
+        going to be created in. Must be a valid DNS label.
+      - storage_class
+      - accessModes:
+      - storage
+    """
+    return {
+        'apiVersion': 'v1',
+        'kind': 'PersistentVolumeClaim',
+        'metadata': {
+            'name': name,
+            'annotations:': {
+                'volume.beta.kubernetes.io/storage-class': storage_class
+            }
+        },
+        'spec': {
+            'accessModes': accessModes,
+            'resources': {
+                'requests': {
+                    'storage': storage
+                }
+            }        
+        }
+    }
