@@ -341,7 +341,7 @@ class KubeSpawner(Spawner):
             response = yield self.httpclient.fetch(self.request(
                 k8s_url(
                     self.namespace,
-                    'PersistentVolumeClaim',
+                    'persistentvolumeclaims',
                     pvc_name,
                 )
             ))
