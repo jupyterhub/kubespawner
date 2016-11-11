@@ -88,7 +88,7 @@ def make_pod_spec(
 def make_pvc_spec(
     name,
     storage_class,
-    accessModes,
+    access_modes,
     storage
 ):
     """
@@ -103,20 +103,22 @@ def make_pvc_spec(
       - storage
     """
     return {
-        'apiVersion': 'v1',
         'kind': 'PersistentVolumeClaim',
+        'apiVersion': 'v1',
         'metadata': {
             'name': name,
-            'annotations:': {
-                'volume.beta.kubernetes.io/storage-class': storage_class
+            'annotations': {
+                'volume.beta.kubernetes.io/storage-class': 'single-user-storage'
             }
         },
         'spec': {
-            'accessModes': accessModes,
+            'accessModes': [
+                'ReadWriteOnce'
+            ],
             'resources': {
                 'requests': {
-                    'storage': storage
+                    'storage': '1Gi'
                 }
-            }        
+            }
         }
     }
