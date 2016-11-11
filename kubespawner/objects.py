@@ -108,16 +108,14 @@ def make_pvc_spec(
         'metadata': {
             'name': name,
             'annotations': {
-                'volume.beta.kubernetes.io/storage-class': 'single-user-storage'
+                'volume.beta.kubernetes.io/storage-class': storage_class
             }
         },
         'spec': {
-            'accessModes': [
-                'ReadWriteOnce'
-            ],
+            'accessModes': access_modes,
             'resources': {
                 'requests': {
-                    'storage': '1Gi'
+                    'storage': storage
                 }
             }
         }
