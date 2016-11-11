@@ -301,7 +301,7 @@ class KubeSpawner(Spawner):
     )
 
     storage_class = Unicode(
-        "single-user-storage",
+        "",
         config=True,
         help="""
         The storage class that the pvc will use. If left blank, the pvc will use no class.
@@ -309,7 +309,7 @@ class KubeSpawner(Spawner):
     )
 
     access_modes = List(
-        ["ReadWriteOnce"],
+        [],
         config=True,
         help="""
         List of access modes for pvc.
@@ -472,16 +472,17 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def start(self):
-        pvc_manifest = self.get_pvc_manifest()
-        try:
-            yield self.httpclient.fetch(self.request(
-                url=k8s_url(self.namespace, 'persistentvolumeclaims'),
-                body=json.dumps(pvc_manifest),
-                method='POST',
-                headers={'Content-Type': 'application/json'}
-            ))
-        except:
-            self.log.info("Pvc " + self.pvc_name + " already exists, so did not create new pod.")
+        if storage_class:
+            pvc_manifest = self.get_pvc_manifest()
+            try:
+                yield self.httpclient.fetch(self.request(
+                    url=k8s_url(self.namespace, 'persistentvolumeclaims'),
+                    body=json.dumps(pvc_manifest),
+                    method='POST',
+                    headers={'Content-Type': 'application/json'}
+                ))
+            except:
+                self.log.info("Pvc " + self.pvc_name + " already exists, so did not create new pod.")
         pod_manifest = self.get_pod_manifest()
         yield self.httpclient.fetch(self.request(
             url=k8s_url(self.namespace, 'pods'),
