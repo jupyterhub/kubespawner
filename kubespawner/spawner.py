@@ -472,7 +472,7 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def start(self):
-        if storage_class:
+        if self.storage_class:
             pvc_manifest = self.get_pvc_manifest()
             try:
                 yield self.httpclient.fetch(self.request(
