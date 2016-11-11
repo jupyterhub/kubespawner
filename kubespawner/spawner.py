@@ -404,7 +404,7 @@ class KubeSpawner(Spawner):
     @gen.coroutine
     def start(self):
         pvc_data = get_pvc_info(self.pvc_name)
-        if pvc_data is not None:
+        if pvc_data is None:
             pvc_manifest = self.get_pvc_manifest()
             yield self.httpclient.fetch(self.request(
                 url=k8s_url(self.namespace, 'persistentvolumeclaims'),
