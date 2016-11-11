@@ -399,6 +399,28 @@ class KubeSpawner(Spawner):
         data = response.body.decode('utf-8')
         return json.loads(data)
 
+    @gen.coroutine
+    def get_pvc_info(self, pvc_name):
+        """
+        Fetch info about a specific pvc with the given pvc name in current namespace
+
+        Return `None` if pvc with given name does not exist in current namespace
+        """
+        try:
+            response = yield self.httpclient.fetch(self.request(
+                k8s_url(
+                    self.namespace,
+                    'PersistentVolumeClaim',
+                    pvc_name,
+                )
+            ))
+        except HTTPError as e:
+            if e.code == 404:
+                return None
+            raise
+        data = response.body.decode('utf-8')
+        return json.loads(data)
+
     def is_pod_running(self, pod):
         """
         Check if the given pod is running
@@ -450,18 +472,15 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def start(self):
-        # TODO:
-        # Check if pvc already exists. If it does, then don't create a new one.
-        pvc_manifest = self.get_pvc_manifest()
-        try:
+        pvc_data = get_pvc_info(self.pvc_name)
+        if pvc_data is not None:
+            pvc_manifest = self.get_pvc_manifest()
             yield self.httpclient.fetch(self.request(
                 url=k8s_url(self.namespace, 'persistentvolumeclaims'),
                 body=json.dumps(pvc_manifest),
                 method='POST',
                 headers={'Content-Type': 'application/json'}
             ))
-        except:
-            self.log.info("Pvc " + self.pvc_name + " already exists, so did not create new pod.")
         pod_manifest = self.get_pod_manifest()
         yield self.httpclient.fetch(self.request(
             url=k8s_url(self.namespace, 'pods'),
