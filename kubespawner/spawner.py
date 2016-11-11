@@ -292,28 +292,28 @@ class KubeSpawner(Spawner):
     )
 
     storage = Unicode(
-    	"1Gi",
-    	config=True,
-    	help="""
-    	The ammount of storage space to request from the volume that the pvc will
-    	mount to.
-    	"""
+        "1Gi",
+        config=True,
+        help="""
+        The ammount of storage space to request from the volume that the pvc will
+        mount to.
+        """
     )
 
     storage_class = Unicode(
-    	"single-user-storage",
-    	config=True,
-    	help="""
-    	The storage class that the pvc will use. If left blank, the pvc will use no class.
-    	"""
-	)
+        "single-user-storage",
+        config=True,
+        help="""
+        The storage class that the pvc will use. If left blank, the pvc will use no class.
+        """
+    )
 
     access_modes = List(
-    	["ReadWriteOnce"],
-    	config=True,
-    	help="""
-    	List of access modes for pvc.
-    	"""
+        ["ReadWriteOnce"],
+        config=True,
+        help="""
+        List of access modes for pvc.
+        """
     )
 
 
@@ -366,14 +366,14 @@ class KubeSpawner(Spawner):
         )
 
     def get_pvc_manifest(self):
-    	"""
+        """
         Make a pvc manifest that will spawn current user's pvc.
         """
         return make_pvc_spec(
-        	self.pvc_name,
-        	self.storage_class,
-        	self.access_modes,
-        	self.storage
+            self.pvc_name,
+            self.storage_class,
+            self.access_modes,
+            self.storage
         )
 
 
@@ -450,10 +450,10 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def start(self):
-    	# TODO:
-    	# Check if pvc already exists. If it does, then don't create a new one.
-    	pvc_manifest = self.get_pvc_manifest()
-    	yield self.httpclient.fetch(self.request(
+        # TODO:
+        # Check if pvc already exists. If it does, then don't create a new one.
+        pvc_manifest = self.get_pvc_manifest()
+        yield self.httpclient.fetch(self.request(
             url=k8s_url(self.namespace, 'persistentvolumeclaims'),
             body=json.dumps(pvc_manifest),
             method='POST',
