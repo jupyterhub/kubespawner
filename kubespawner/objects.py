@@ -92,7 +92,7 @@ def make_pvc_spec(
     storage
 ):
     """
-    Make a k8s pod specification for running a user notebook.
+    Make a k8s pvc specification for running a user notebook.
 
     Parameters:
       - name:
@@ -100,7 +100,7 @@ def make_pvc_spec(
         going to be created in. Must be a valid DNS label.
       - storage_class
       String of the name of the k8s Storage Class to use.
-      - accessModes:
+      - access_modes:
       A list of specifying what access mode the pod should have towards the pvc
       - storage
       The ammount of storage needed for the pvc
