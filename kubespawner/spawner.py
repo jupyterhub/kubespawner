@@ -472,15 +472,16 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def start(self):
-        pvc_data = self.get_pvc_info(self.pvc_name)
-        if pvc_data is None:
-            pvc_manifest = self.get_pvc_manifest()
+        pvc_manifest = self.get_pvc_manifest()
+        try:
             yield self.httpclient.fetch(self.request(
                 url=k8s_url(self.namespace, 'persistentvolumeclaims'),
                 body=json.dumps(pvc_manifest),
                 method='POST',
                 headers={'Content-Type': 'application/json'}
             ))
+        except:
+            self.log.info("Pvc " + self.pvc_name + " already exists, so did not create new pod.")
         pod_manifest = self.get_pod_manifest()
         yield self.httpclient.fetch(self.request(
             url=k8s_url(self.namespace, 'pods'),
