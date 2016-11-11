@@ -235,7 +235,8 @@ class KubeSpawner(Spawner):
         "",
         config=True,
         help="""
-        The storage class that the pvc will use. If left blank, the pvc will use no class.
+        The storage class that the pvc will use. If left blank, the kubespawner will not
+        create a pvc for the pod.
         """
     )
 
@@ -246,7 +247,6 @@ class KubeSpawner(Spawner):
         List of access modes for pvc.
         """
     )
-
 
     def _expand_user_properties(self, template):
         # Make sure username matches the restrictions for DNS labels
