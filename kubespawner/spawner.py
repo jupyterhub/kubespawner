@@ -384,12 +384,6 @@ class KubeSpawner(Spawner):
         # TODO:
         # Check if pvc already exists. If it does, then don't create a new one.
         pvc_manifest = self.get_pvc_manifest()
-        # For debuggin. TODO: Remove the following lines
-        print('pvc name: ', self.pvc_name)
-        print('storage class: ', self.storage_class)
-        print('access modes', self.access_modes)
-        print('storage', self.storage)
-        print(json.dumps(pvc_manifest))
         yield self.httpclient.fetch(self.request(
             url=k8s_url(self.namespace, 'persistentvolumeclaims'),
             body=json.dumps(pvc_manifest),
