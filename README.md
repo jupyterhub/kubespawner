@@ -1,6 +1,6 @@
-# jupyterhub-kubernetes-spawner (kubespawner)#
+# kubespawner (jupyterhub-kubernetes-spawner) #
 
-The Kubernetes Spawner (also known as kubespawner) enables JupyterHub to spawn
+The *kubespawner* (also known as JupyterHub Kubernetes Spawner) enables JupyterHub to spawn
 single-user notebook servers on a [Kubernetes](https://kubernetes.io/)
 cluster.
 
@@ -13,7 +13,7 @@ simultaneous users), Kubernetes is a wonderful way to do it. Features include:
 
 * Easily and elasticly run anywhere between 2 and thousands of nodes with the
   same set of powerful abstractions. Scale up and down as required by simply
-  adding (or removing) nodes.
+  adding or removing nodes.
 
 * Run JupyterHub itself inside Kubernetes easily. This allows you to manage
   many JupyterHub deployments with only Kubernetes, without requiring an extra
@@ -78,9 +78,9 @@ All code is licensed under the terms of the revised BSD license.
 
 ## Resources
 
-#### JupyterHub and jupyterhub-kubernetes-spawner
+#### JupyterHub and kubespawner
 
-- [Reporting Issues](https://github.com/jupyterhub/jupyterhub-kubernetes-spawner/issues)
+- [Reporting Issues](https://github.com/jupyterhub/kubespawner/issues)
 - [Documentation for JupyterHub](http://jupyterhub.readthedocs.io/en/latest/) | [PDF (latest)](https://media.readthedocs.org/pdf/jupyterhub/latest/jupyterhub.pdf) | [PDF (stable)](https://media.readthedocs.org/pdf/jupyterhub/stable/jupyterhub.pdf)
 - [Documentation for JupyterHub's REST API](http://petstore.swagger.io/?url=https://raw.githubusercontent.com/jupyter/jupyterhub/master/docs/rest-api.yml#/default)
 
