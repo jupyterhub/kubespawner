@@ -277,10 +277,6 @@ class KubeSpawner(Spawner):
                 ReadWriteOnce – the volume can be mounted as read-write by a single node
                 ReadOnlyMany – the volume can be mounted read-only by many nodes
                 ReadWriteMany – the volume can be mounted as read-write by many nodes
-            In the CLI, the access modes are abbreviated to:
-                RWO - ReadWriteOnce
-                ROX - ReadOnlyMany
-                RWX - ReadWriteMany
 
         See http://kubernetes.io/docs/user-guide/persistent-volumes/#access-modes for
         more information on how access modes work.
