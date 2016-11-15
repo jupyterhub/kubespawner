@@ -438,7 +438,7 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def start(self):
-        if self.user_storage_class and self.user_storage_capacity:
+        if self.user_storage_class is not None and self.user_storage_capacity is not None:
             pvc_manifest = self.get_pvc_manifest()
             try:
                 yield self.httpclient.fetch(self.request(
