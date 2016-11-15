@@ -291,29 +291,68 @@ class KubeSpawner(Spawner):
         """
     )
 
-    storage = Unicode(
-        "1Gi",
+    user_storage_capacity = Unicode(
+        None,
         config=True,
+        allow_none=True,
         help="""
         The ammount of storage space to request from the volume that the pvc will
-        mount to.
+        mount to. This ammount will be the ammount of storage space the user has
+        to work with on their notebook. If left blank, the kubespawner will not
+        create a pvc for the pod.
+
+        This will be added to the `resources: requests: storage:` in the k8s pod spec.
+
+        See http://kubernetes.io/docs/user-guide/persistent-volumes/#persistentvolumeclaims
+        for more information on how storage works.
+
+        Quantities can be represented externally as unadorned integers, or as fixed-point
+        integers with one of these SI suffices (E, P, T, G, M, K, m) or their power-of-two
+        equivalents (Ei, Pi, Ti, Gi, Mi, Ki). For example, the following represent roughly
+        'the same value: 128974848, "129e6", "129M" , "123Mi".
+        (https://github.com/kubernetes/kubernetes/blob/master/docs/design/resources.md)
         """
     )
 
-    storage_class = Unicode(
-        "",
+    user_storage_class = Unicode(
+        None,
         config=True,
+        allow_none=True,
         help="""
         The storage class that the pvc will use. If left blank, the kubespawner will not
         create a pvc for the pod.
+
+        This will be added to the `annotations: volume.beta.kubernetes.io/storage-class:`
+        in the pvc metadata.
+
+        This will determine what type of volume the pvc will request to use. If one exists
+        that matches the criteria of the StorageClass, the pvc will mount to that. Otherwise,
+        b/c it has a storage class, k8s will dynamicallly spawn a pv for the pvc to bind to
+        and a machine in the cluster for the pv to bind to.
+
+        See http://kubernetes.io/docs/user-guide/persistent-volumes/#storageclasses for
+        more information on how StorageClasses work.
         """
     )
 
-    access_modes = List(
-        [],
+    user_storage_access_modes = List(
+        ["ReadWriteOnce"],
         config=True,
         help="""
-        List of access modes for pvc.
+        List of access modes the user has for the pvc.
+
+        The access modes are:
+            The access modes are:
+                ReadWriteOnce – the volume can be mounted as read-write by a single node
+                ReadOnlyMany – the volume can be mounted read-only by many nodes
+                ReadWriteMany – the volume can be mounted as read-write by many nodes
+            In the CLI, the access modes are abbreviated to:
+                RWO - ReadWriteOnce
+                ROX - ReadOnlyMany
+                RWX - ReadWriteMany
+
+        See http://kubernetes.io/docs/user-guide/persistent-volumes/#access-modes for
+        more information on how access modes work.
         """
     )
 
@@ -371,9 +410,9 @@ class KubeSpawner(Spawner):
         """
         return make_pvc_spec(
             self.pvc_name,
-            self.storage_class,
-            self.access_modes,
-            self.storage
+            self.user_storage_class,
+            self.user_storage_access_modes,
+            self.user_storage_capacity
         )
 
 
@@ -472,7 +511,7 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def start(self):
-        if self.storage_class:
+        if self.user_storage_class && self.user_storage_capacity:
             pvc_manifest = self.get_pvc_manifest()
             try:
                 yield self.httpclient.fetch(self.request(
