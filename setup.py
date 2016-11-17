@@ -10,7 +10,7 @@ setup(
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
     description='JupyterHub Spawner targetting Kubernetes',
-    url='http://github.com/yuvipanda/jupyterhub-kubernetes-spawner',
+    url='http://github.com/jupyterhub/kubespawner',
     author='Yuvi Panda',
     author_email='yuvipanda@gmail.com',
     license='BSD',
