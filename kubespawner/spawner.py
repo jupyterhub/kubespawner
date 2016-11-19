@@ -172,6 +172,24 @@ class KubeSpawner(Spawner):
         """
     )
 
+    singleuser_image_pull_policy = Unicode(
+        'IfNotPresent',
+        config=True,
+        help="""
+        The image pull policy of the docker container specified in
+        singleuser_image_spec.
+
+        Defaults to `IfNotPresent` which causes the Kubelet to NOT pull the image
+        specified in singleuser_image_spec if it already exists, except if the tag
+        is :latest. For more information on image pull policy, refer to
+        http://kubernetes.io/docs/user-guide/images/
+
+        This configuration is primarily used in development if you are
+        actively changing the singleuser_image_spec and would like to pull the image
+        whenever a user container is spawned.
+        """
+    )
+
     volumes = List(
         [],
         config=True,
@@ -322,6 +340,7 @@ class KubeSpawner(Spawner):
         return make_pod_spec(
             self.pod_name,
             self.singleuser_image_spec,
+            self.singleuser_image_pull_policy,
             self.get_env(),
             self._expand_all(self.volumes) + hack_volumes,
             self._expand_all(self.volume_mounts) + hack_volume_mounts,

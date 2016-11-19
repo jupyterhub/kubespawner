@@ -4,6 +4,7 @@ Helper methods for generating k8s API objects.
 def make_pod_spec(
     name,
     image_spec,
+    image_pull_policy,
     env,
     volumes,
     volume_mounts,
@@ -58,6 +59,7 @@ def make_pod_spec(
                 {
                     'name': 'notebook',
                     'image': image_spec,
+                    'imagePullPolicy': image_pull_policy,
                     'ports': [{
                         'containerPort': 8888,
                     }],
