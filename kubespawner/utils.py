@@ -74,7 +74,7 @@ def request_maker_kubeconfig():
 
     context = [c for c in config['contexts'] if c['name'] == current_context][0]['context']
     cluster = [c for c in config['clusters'] if c['name'] == context['cluster']][0]['cluster']
-    if 'user' in context:  # Since user accounts aren't strictly required
+    if 'user' in context and context['user']:  # Since user accounts aren't strictly required
         user = [u for u in config['users'] if u['name'] == context['user']][0]['user']
     else:
         user = {}
