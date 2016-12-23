@@ -11,7 +11,7 @@ from urllib.parse import urlparse, urlunparse
 
 from tornado import gen
 from tornado.httpclient import AsyncHTTPClient, HTTPError
-from traitlets import Unicode, List, Integer, Float
+from traitlets import Unicode, List, Integer, Float, Dict
 from jupyterhub.spawner import Spawner
 
 from kubespawner.utils import request_maker, k8s_url
@@ -283,6 +283,21 @@ class KubeSpawner(Spawner):
         """
     )
 
+    resources = Dict(
+        None,
+        config=True,
+        allow_none=True,
+        help="""
+        Dictionary of the user's notebook server's resource requirements.
+
+        This dictionary will be added as the values of the `resources` key under the user's
+        container in the kubernetes pod spec, so you should use the same structure as that.
+
+        See http://kubernetes.io/docs/user-guide/compute-resources/ for more information on
+        how resource requests and limits work.
+        """
+    )
+
     def _expand_user_properties(self, template):
         # Make sure username matches the restrictions for DNS labels
         safe_chars = set(string.ascii_lowercase + string.digits)
@@ -325,10 +340,7 @@ class KubeSpawner(Spawner):
             self.get_env(),
             self._expand_all(self.volumes) + hack_volumes,
             self._expand_all(self.volume_mounts) + hack_volume_mounts,
-            self.cpu_limit,
-            self.cpu_guarantee,
-            self.mem_limit,
-            self.mem_guarantee,
+            self.resources
         )
 
     def get_pvc_manifest(self):

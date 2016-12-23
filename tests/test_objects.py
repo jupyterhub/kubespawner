@@ -14,10 +14,7 @@ def test_make_simplest_pod():
         env={},
         volumes=[],
         volume_mounts=[],
-        cpu_limit=None,
-        cpu_guarantee=None,
-        mem_limit=None,
-        mem_guarantee=None
+        resources=None
     ) == {
         "metadata": {
             "name": "test"
@@ -32,16 +29,6 @@ def test_make_simplest_pod():
                         "containerPort": 8888
                     }],
                     "volumeMounts": [],
-                    "resources": {
-                        "limits": {
-                            "cpu": None,
-                            "memory": None
-                        },
-                        "requests": {
-                            "cpu": None,
-                            "memory": None
-                        }
-                    }
                 }
             ],
             "volumes": []
@@ -61,10 +48,16 @@ def test_make_pod_resources_all():
         env={},
         volumes=[],
         volume_mounts=[],
-        cpu_limit=2,
-        cpu_guarantee=1,
-        mem_limit='1Gi',
-        mem_guarantee='512Mi'
+        resources={
+            "limits": {
+                "cpu": 2,
+                "memory": '1Gi'
+            },
+            "requests": {
+                "cpu": 1,
+                "memory": '512Mi'
+            }
+        }
     ) == {
         "metadata": {
             "name": "test"
@@ -110,10 +103,7 @@ def test_make_pod_with_env():
         },
         volumes=[],
         volume_mounts=[],
-        cpu_limit=None,
-        cpu_guarantee=None,
-        mem_limit=None,
-        mem_guarantee=None
+        resources=None
     ) == {
         "metadata": {
             "name": "test"
@@ -128,16 +118,6 @@ def test_make_pod_with_env():
                         "containerPort": 8888
                     }],
                     "volumeMounts": [],
-                    "resources": {
-                        "limits": {
-                            "cpu": None,
-                            "memory": None
-                        },
-                        "requests": {
-                            "cpu": None,
-                            "memory": None
-                        }
-                    }
                 }
             ],
             "volumes": []

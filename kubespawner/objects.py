@@ -7,10 +7,7 @@ def make_pod_spec(
     env,
     volumes,
     volume_mounts,
-    cpu_limit,
-    cpu_guarantee,
-    mem_limit,
-    mem_guarantee
+    resources
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -33,21 +30,10 @@ def make_pod_spec(
         List of dictionaries mapping paths in the container and the volume(
         specified in volumes) that should be mounted on them. See the k8s
         documentaiton for more details
-      - cpu_limit:
-        Float specifying the max number of CPU cores the user's pod is
-        allowed to use.
-      - cpu_guarentee:
-        Float specifying the max number of CPU cores the user's pod is
-        guaranteed to have access to, by the scheduler.
-      - mem_limit:
-        String specifying the max amount of RAM the user's pod is allowed
-        to use. String instead of float/int since common suffixes are allowed
-      - mem_guarantee:
-        String specifying the max amount of RAM the user's pod is guaranteed
-        to have access to. String ins loat/int since common suffixes
-        are allowed
+      - resources:
+        Dictionary containing the pod's resource requirements.
     """
-    return {
+    pod_spec = {
         'apiVersion': 'v1',
         'kind': 'Pod',
         'metadata': {
@@ -61,19 +47,6 @@ def make_pod_spec(
                     'ports': [{
                         'containerPort': 8888,
                     }],
-                    'resources': {
-                        'requests': {
-                            # If these are None, it's ok. the k8s API
-                            # seems to interpret that as 'no limit',
-                            # which is what we want.
-                            'memory': mem_guarantee,
-                            'cpu': cpu_guarantee,
-                        },
-                        'limits': {
-                            'memory': mem_limit,
-                            'cpu': cpu_limit,
-                        }
-                    },
                     'env': [
                         {'name': k, 'value': v}
                         for k, v in env.items()
@@ -84,6 +57,11 @@ def make_pod_spec(
             'volumes': volumes
         }
     }
+
+    if resources:
+        pod_spec['spec']['containers'][0]['resources'] = resources
+
+    return pod_spec
 
 def make_pvc_spec(
     name,
