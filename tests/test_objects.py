@@ -17,7 +17,8 @@ def test_make_simplest_pod():
         cpu_limit=None,
         cpu_guarantee=None,
         mem_limit=None,
-        mem_guarantee=None
+        mem_guarantee=None,
+        image_pull_policy='IfNotPresent',
     ) == {
         "metadata": {
             "name": "test"
@@ -28,6 +29,7 @@ def test_make_simplest_pod():
                     "env": [],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
                     "ports": [{
                         "containerPort": 8888
                     }],
@@ -64,7 +66,8 @@ def test_make_pod_resources_all():
         cpu_limit=2,
         cpu_guarantee=1,
         mem_limit='1Gi',
-        mem_guarantee='512Mi'
+        mem_guarantee='512Mi',
+        image_pull_policy='IfNotPresent',
     ) == {
         "metadata": {
             "name": "test"
@@ -75,6 +78,7 @@ def test_make_pod_resources_all():
                     "env": [],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
                     "ports": [{
                         "containerPort": 8888
                     }],
@@ -113,7 +117,8 @@ def test_make_pod_with_env():
         cpu_limit=None,
         cpu_guarantee=None,
         mem_limit=None,
-        mem_guarantee=None
+        mem_guarantee=None,
+        image_pull_policy='IfNotPresent',
     ) == {
         "metadata": {
             "name": "test"
@@ -124,6 +129,7 @@ def test_make_pod_with_env():
                     "env": [{'name': 'TEST_KEY', 'value': 'TEST_VALUE'}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
                     "ports": [{
                         "containerPort": 8888
                     }],
