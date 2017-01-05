@@ -18,12 +18,69 @@ def test_make_simplest_pod():
         cpu_guarantee=None,
         mem_limit=None,
         mem_guarantee=None,
+        run_as_uid=None,
+        fs_gid=None,
         image_pull_policy='IfNotPresent',
     ) == {
         "metadata": {
             "name": "test"
         },
         "spec": {
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "ports": [{
+                        "containerPort": 8888
+                    }],
+                    "volumeMounts": [],
+                    "resources": {
+                        "limits": {
+                            "cpu": None,
+                            "memory": None
+                        },
+                        "requests": {
+                            "cpu": None,
+                            "memory": None
+                        }
+                    }
+                }
+            ],
+            "volumes": []
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+def test_set_pod_uid_fs_gid():
+    """
+    Test specification of the simplest possible pod specification
+    """
+    assert make_pod_spec(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        env={},
+        volumes=[],
+        volume_mounts=[],
+        cpu_limit=None,
+        cpu_guarantee=None,
+        mem_limit=None,
+        mem_guarantee=None,
+        run_as_uid=1000,
+        fs_gid=1000,
+        image_pull_policy='IfNotPresent',
+    ) == {
+        "metadata": {
+            "name": "test"
+        },
+        "spec": {
+            "securityContext": {
+                "runAsUser": 1000,
+                "fsGroup": 1000
+            },
             "containers": [
                 {
                     "env": [],
@@ -68,11 +125,14 @@ def test_make_pod_resources_all():
         mem_limit='1Gi',
         mem_guarantee='512Mi',
         image_pull_policy='IfNotPresent',
+        run_as_uid=None,
+        fs_gid=None,
     ) == {
         "metadata": {
             "name": "test"
         },
         "spec": {
+            "securityContext": {},
             "containers": [
                 {
                     "env": [],
@@ -119,11 +179,14 @@ def test_make_pod_with_env():
         mem_limit=None,
         mem_guarantee=None,
         image_pull_policy='IfNotPresent',
+        run_as_uid=None,
+        fs_gid=None,
     ) == {
         "metadata": {
             "name": "test"
         },
         "spec": {
+            "securityContext": {},
             "containers": [
                 {
                     "env": [{'name': 'TEST_KEY', 'value': 'TEST_VALUE'}],

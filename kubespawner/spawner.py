@@ -190,6 +190,45 @@ class KubeSpawner(Spawner):
         """
     )
 
+    singleuser_uid = Integer(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        The UID to run the single-user server containers as.
+
+        This UID should ideally map to a user that already exists in the container
+        image being used. Running as root is discouraged.
+
+        If set to `None`, the user specified with the `USER` directive in the
+        container metadata is used.
+        """
+    )
+
+    singleuser_fs_gid = Integer(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        The GID of the group that should own any volumes that are created & mounted.
+
+        A special supplemental group that applies primarily to the volumes mounted
+        in the single-user server. In volumes from supported providers, the following
+        things happen:
+
+          1. The owning GID will be the this GID
+          2. The setgid bit is set (new files created in the volume will be owned by
+             this GID)
+          3. The permission bits are OR’d with rw-rw
+
+        The single-user server will also be run with this gid as part of its supplemental
+        groups.
+
+        You'll *have* to set this if you are using auto-provisioned volumes with most
+        cloud providers. See [fsGroup](http://kubernetes.io/docs/api-reference/v1/definitions/#_v1_podsecuritycontext)
+        for more details.
+        """
+    )
     volumes = List(
         [],
         config=True,
@@ -341,6 +380,8 @@ class KubeSpawner(Spawner):
             self.pod_name,
             self.singleuser_image_spec,
             self.singleuser_image_pull_policy,
+            self.singleuser_uid,
+            self.singleuser_fs_gid,
             self.get_env(),
             self._expand_all(self.volumes) + hack_volumes,
             self._expand_all(self.volume_mounts) + hack_volume_mounts,

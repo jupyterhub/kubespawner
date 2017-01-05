@@ -5,6 +5,8 @@ def make_pod_spec(
     name,
     image_spec,
     image_pull_policy,
+    run_as_uid,
+    fs_gid,
     env,
     volumes,
     volume_mounts,
@@ -24,6 +26,18 @@ def make_pod_spec(
         Image specification - usually a image name and tag in the form
         of image_name:tag. Same thing you would use with docker commandline
         arguments
+      - image_pull_policy:
+        Image pull policy - one of 'Always', 'IfNotPresent' or 'Never'. Decides
+        when kubernetes will check for a newer version of image and pull it when
+        running a pod.
+      - run_as_uid:
+        The UID used to run single-user pods. The default is to run as the user
+        specified in the Dockerfile, if this is set to None.
+      - fs_gid
+        The gid that will own any fresh volumes mounted into this pod, if using
+        volume types that support this (such as GCE). This should be a group that
+        the uid the process is running as should be a member of, so that it can
+        read / write to the volumes mounted.
       - env:
         Dictionary of environment variables.
       - volumes:
@@ -48,6 +62,11 @@ def make_pod_spec(
         to have access to. String ins loat/int since common suffixes
         are allowed
     """
+    pod_security_context = {}
+    if run_as_uid is not None:
+        pod_security_context['runAsUser'] = int(run_as_uid)
+    if fs_gid is not None:
+        pod_security_context['fsGroup'] = int(fs_gid)
     return {
         'apiVersion': 'v1',
         'kind': 'Pod',
@@ -55,6 +74,7 @@ def make_pod_spec(
             'name': name,
         },
         'spec': {
+            'securityContext': pod_security_context,
             'containers': [
                 {
                     'name': 'notebook',
@@ -86,6 +106,7 @@ def make_pod_spec(
             'volumes': volumes
         }
     }
+
 
 def make_pvc_spec(
     name,
