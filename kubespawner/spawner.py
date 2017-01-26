@@ -509,6 +509,14 @@ class KubeSpawner(Spawner):
                 ))
             except:
                 self.log.info("Pvc " + self.pvc_name + " already exists, so did not create new pvc.")
+
+        # If the pod already exists, we need to get rid of it
+        data = yield self.get_pod_info(self.pod_name)
+        if data is not None:
+            # Pod already exists, so let's just delete it first.
+            self.log.info('Pod %s exists, so deleting', self.pod_name)
+            yield self.stop(True)
+            self.log.info('Pod %s deleted prior to starting', self.pod_name)
         pod_manifest = self.get_pod_manifest()
         yield self.httpclient.fetch(self.request(
             url=k8s_url(self.namespace, 'pods'),
