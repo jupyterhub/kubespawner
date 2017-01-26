@@ -508,7 +508,7 @@ class KubeSpawner(Spawner):
                     headers={'Content-Type': 'application/json'}
                 ))
             except:
-                self.log.info("Pvc " + self.pvc_name + " already exists, so did not create new pod.")
+                self.log.info("Pvc " + self.pvc_name + " already exists, so did not create new pvc.")
         pod_manifest = self.get_pod_manifest()
         yield self.httpclient.fetch(self.request(
             url=k8s_url(self.namespace, 'pods'),
