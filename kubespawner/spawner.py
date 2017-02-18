@@ -515,6 +515,7 @@ class KubeSpawner(Spawner):
         # try again. We try 4 times, and if it still fails we give up.
         # FIXME: Have better / cleaner retry logic!
         retry_times = 4
+        pod_manifest = self.get_pod_manifest()
         for i in range(retry_times):
             try:
                 yield self.httpclient.fetch(self.request(
