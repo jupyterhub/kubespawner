@@ -510,20 +510,31 @@ class KubeSpawner(Spawner):
             except:
                 self.log.info("Pvc " + self.pvc_name + " already exists, so did not create new pvc.")
 
-        # If the pod already exists, we need to get rid of it
-        data = yield self.get_pod_info(self.pod_name)
-        if data is not None:
-            # Pod already exists, so let's just delete it first.
-            self.log.info('Pod %s exists, so deleting', self.pod_name)
-            yield self.stop(True)
-            self.log.info('Pod %s deleted prior to starting', self.pod_name)
-        pod_manifest = self.get_pod_manifest()
-        yield self.httpclient.fetch(self.request(
-            url=k8s_url(self.namespace, 'pods'),
-            body=json.dumps(pod_manifest),
-            method='POST',
-            headers={'Content-Type': 'application/json'}
-        ))
+        # If we run into a 409 Conflict error, it means a pod with the
+        # same name already exists. We stop it, wait for it to stop, and
+        # try again. We try 4 times, and if it still fails we give up.
+        # FIXME: Have better / cleaner retry logic!
+        retry_times = 4
+        for i in range(retry_times):
+            try:
+                yield self.httpclient.fetch(self.request(
+                    url=k8s_url(self.namespace, 'pods'),
+                    body=json.dumps(pod_manifest),
+                    method='POST',
+                    headers={'Content-Type': 'application/json'}
+                ))
+                break
+            except HTTPError as e:
+                if e.code != 409:
+                    # We only want to handle 409 conflict errors
+                    raise
+                self.log.info('Found existing pod %s, attempting to kill', self.pod_name)
+                yield self.stop(True)
+                self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
+        else:
+            raise Exception(
+                'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
+
         while True:
             data = yield self.get_pod_info(self.pod_name)
             if data is not None and self.is_pod_running(data):
