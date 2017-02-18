@@ -541,9 +541,7 @@ class KubeSpawner(Spawner):
             if data is not None and self.is_pod_running(data):
                 break
             yield gen.sleep(1)
-        self.user.server.ip = data['status']['podIP']
-        self.user.server.port = 8888
-        self.db.commit()
+        return (data['status']['podIP'], 8888)
 
     @gen.coroutine
     def stop(self, now=False):
