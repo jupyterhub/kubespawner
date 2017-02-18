@@ -195,8 +195,14 @@ class KubeSpawner(Spawner):
         allow_none=True,
         config=True,
         help="""
-        To allow the Kubernetes to pull an image from a private image repository,
-	set this option to the secret's name in your kubernetes namespace.
+        The kubernetes secret to use for pulling images from private repository.
+
+        Set this to the name of a Kubernetes secret containing the docker configuration
+        required to pull the image specified in singleuser_image_spec.
+
+        https://kubernetes.io/docs/user-guide/images/#specifying-imagepullsecrets-on-a-pod
+        has more information on when and why this might need to be set, and what it
+        should be set to.
         """
     )
 
