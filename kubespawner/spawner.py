@@ -190,6 +190,16 @@ class KubeSpawner(Spawner):
         """
     )
 
+    singleuser_image_pull_secrets = Unicode(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        To allow the Kubernetes to pull an image from a private image repository,
+	set this option to the secret's name in your kubernetes namespace. 
+        """
+    )
+
     singleuser_uid = Integer(
         None,
         allow_none=True,
@@ -380,6 +390,7 @@ class KubeSpawner(Spawner):
             self.pod_name,
             self.singleuser_image_spec,
             self.singleuser_image_pull_policy,
+            self.singleuser_image_pull_secrets,
             self.singleuser_uid,
             self.singleuser_fs_gid,
             self.get_env(),

@@ -5,6 +5,7 @@ def make_pod_spec(
     name,
     image_spec,
     image_pull_policy,
+    image_pull_secret,
     run_as_uid,
     fs_gid,
     env,
@@ -30,6 +31,9 @@ def make_pod_spec(
         Image pull policy - one of 'Always', 'IfNotPresent' or 'Never'. Decides
         when kubernetes will check for a newer version of image and pull it when
         running a pod.
+      - image_pull_secret:
+        Image pull secret - Default is None -- set to your secret name to pull
+        from private docker registry.
       - run_as_uid:
         The UID used to run single-user pods. The default is to run as the user
         specified in the Dockerfile, if this is set to None.
@@ -67,6 +71,9 @@ def make_pod_spec(
         pod_security_context['runAsUser'] = int(run_as_uid)
     if fs_gid is not None:
         pod_security_context['fsGroup'] = int(fs_gid)
+    image_secret = []
+    if image_pull_secret is not None:
+        image_secret = [{"name": image_pull_secret}]
     return {
         'apiVersion': 'v1',
         'kind': 'Pod',
@@ -75,6 +82,7 @@ def make_pod_spec(
         },
         'spec': {
             'securityContext': pod_security_context,
+            "imagePullSecrets": image_secret,
             'containers': [
                 {
                     'name': 'notebook',
