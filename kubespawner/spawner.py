@@ -11,10 +11,10 @@ from urllib.parse import urlparse, urlunparse
 
 from tornado import gen
 from tornado.httpclient import AsyncHTTPClient, HTTPError
-from traitlets import Unicode, List, Integer, Float
+from traitlets import Unicode, List, Integer, Union
 from jupyterhub.spawner import Spawner
 
-from kubespawner.utils import request_maker, k8s_url
+from kubespawner.utils import request_maker, k8s_url, Callable
 from kubespawner.objects import make_pod_spec, make_pvc_spec
 
 
@@ -206,8 +206,10 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_uid = Integer(
-        None,
+    singleuser_uid = Union([
+            Integer(),
+            Callable()
+        ],
         allow_none=True,
         config=True,
         help="""
@@ -216,13 +218,22 @@ class KubeSpawner(Spawner):
         This UID should ideally map to a user that already exists in the container
         image being used. Running as root is discouraged.
 
+        Instead of an integer, this could also be a callable that takes as one
+        parameter the current spawner instance and returns an integer. The callable
+        will be called asynchronously if it returns a future. Note that
+        the interface of the spawner class is not deemed stable across versions,
+        so using this functionality might cause your JupyterHub or kubespawner
+        upgrades to break.
+
         If set to `None`, the user specified with the `USER` directive in the
         container metadata is used.
         """
     )
 
-    singleuser_fs_gid = Integer(
-        None,
+    singleuser_fs_gid = Union([
+            Integer(),
+            Callable()
+        ],
         allow_none=True,
         config=True,
         help="""
@@ -239,6 +250,13 @@ class KubeSpawner(Spawner):
 
         The single-user server will also be run with this gid as part of its supplemental
         groups.
+
+        Instead of an integer, this could also be a callable that takes as one
+        parameter the current spawner instance and returns an integer. The callable will
+        be called asynchronously if it returns a future, rather than an int. Note that
+        the interface of the spawner class is not deemed stable across versions,
+        so using this functionality might cause your JupyterHub or kubespawner
+        upgrades to break.
 
         You'll *have* to set this if you are using auto-provisioned volumes with most
         cloud providers. See [fsGroup](http://kubernetes.io/docs/api-reference/v1/definitions/#_v1_podsecuritycontext)
@@ -375,6 +393,7 @@ class KubeSpawner(Spawner):
         else:
             return src
 
+    @gen.coroutine
     def get_pod_manifest(self):
         """
         Make a pod manifest that will spawn current user's notebook pod.
@@ -392,13 +411,23 @@ class KubeSpawner(Spawner):
             'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
             'readOnly': True
         }]
+        if callable(self.singleuser_uid):
+            singleuser_uid = yield gen.maybe_future(self.singleuser_uid(self))
+        else:
+            singleuser_uid = self.singleuser_uid
+
+        if callable(self.singleuser_fs_gid):
+            singleuser_fs_gid = yield gen.maybe_future(self.singleuser_fs_gid(self))
+        else:
+            singleuser_fs_gid = self.singleuser_fs_gid
+
         return make_pod_spec(
             self.pod_name,
             self.singleuser_image_spec,
             self.singleuser_image_pull_policy,
             self.singleuser_image_pull_secrets,
-            self.singleuser_uid,
-            self.singleuser_fs_gid,
+            singleuser_uid,
+            singleuser_fs_gid,
             self.get_env(),
             self._expand_all(self.volumes) + hack_volumes,
             self._expand_all(self.volume_mounts) + hack_volume_mounts,
@@ -532,7 +561,7 @@ class KubeSpawner(Spawner):
         # try again. We try 4 times, and if it still fails we give up.
         # FIXME: Have better / cleaner retry logic!
         retry_times = 4
-        pod_manifest = self.get_pod_manifest()
+        pod_manifest = yield self.get_pod_manifest()
         for i in range(retry_times):
             try:
                 yield self.httpclient.fetch(self.request(
