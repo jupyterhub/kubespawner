@@ -62,6 +62,13 @@ If you are just getting started and want a kubernetes cluster to play with,
 probably the nicest option. For AWS/Azure,
 [kops](https://github.com/kubernetes/kops) is probably the way to go.
 
+### Python dependencies ###
+
+[pycurl](http://pycurl.io/) needs to be installed for KubeSpawner to work.
+
+If you are on debian / ubuntu and use pip to install KubeSpawner, you also need the following packages
+to be installed: `python3-dev libcurl4-openssl-dev libssl-dev`
+
 ## Getting help ##
 
 We encourage you to ask questions on the
