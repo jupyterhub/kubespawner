@@ -10,7 +10,8 @@ import string
 from urllib.parse import urlparse, urlunparse
 
 from tornado import gen
-from tornado.curl_httpclient import CurlAsyncHTTPClient, HTTPError
+from tornado.curl_httpclient import CurlAsyncHTTPClient
+from tornado.httpclient import HTTPError
 from traitlets import Unicode, List, Integer, Union
 from jupyterhub.spawner import Spawner
 
