@@ -99,6 +99,12 @@ def request_maker_kubeconfig():
             'client_key': user.get('client-key', None),
             'client_cert': user.get('client-certificate', None)
         })
+        if 'token' in user:
+            headers = kwargs.get('headers', {})
+            headers['Authorization'] = 'Bearer {token}'.format(token=user['token'])
+            kwargs.update({
+                'headers': headers
+            })
         return HTTPRequest(**kwargs)
 
     return make_request
