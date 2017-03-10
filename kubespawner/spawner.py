@@ -11,7 +11,7 @@ from urllib.parse import urlparse, urlunparse
 
 from tornado import gen
 from tornado.httpclient import AsyncHTTPClient, HTTPError
-from traitlets import Unicode, List, Integer, Float
+from traitlets import Unicode, List, Integer, Union, Float, Dict
 from jupyterhub.spawner import Spawner
 
 from kubespawner.utils import request_maker, k8s_url
@@ -142,6 +142,26 @@ class KubeSpawner(Spawner):
         some amount of port mapping is happening.
         """
         return self.hub.server.port
+
+    singleuser_configmap = Unicode(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        To allow the singleuser pod to access a configmap, set the name
+        of the configmap here.
+        """
+    )
+
+    singleuser_configmap_envs =  Dict(
+        {},
+        config=True,
+        help="""
+        To create environment variables with values associated with a
+        configmap, create a dictionary with Env name associated with
+        its associated key in the configmap.
+        """
+    )
 
     singleuser_image_spec = Unicode(
         'jupyter/singleuser:latest',
@@ -400,6 +420,8 @@ class KubeSpawner(Spawner):
             self.cpu_guarantee,
             self.mem_limit,
             self.mem_guarantee,
+            self.singleuser_configmap,
+            self.singleuser_configmap_envs,
         )
 
     def get_pvc_manifest(self):

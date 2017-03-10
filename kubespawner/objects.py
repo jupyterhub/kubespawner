@@ -14,7 +14,9 @@ def make_pod_spec(
     cpu_limit,
     cpu_guarantee,
     mem_limit,
-    mem_guarantee
+    mem_guarantee,
+    singleuser_configmap,
+    singleuser_configmap_envs
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -65,6 +67,10 @@ def make_pod_spec(
         String specifying the max amount of RAM the user's pod is guaranteed
         to have access to. String ins loat/int since common suffixes
         are allowed
+      - singleuser_configmap
+        Singleuser pod has access to kubernetes configmap
+      - singleuser_configmap_envs
+        Singleuser environment variables and their associated keys in configmap
     """
     pod_security_context = {}
     if run_as_uid is not None:
@@ -74,6 +80,9 @@ def make_pod_spec(
     image_secret = []
     if image_pull_secret is not None:
         image_secret = [{"name": image_pull_secret}]
+    envs = [{'name': k, 'value': v} for k, v in env.items()]
+    if singleuser_configmap is not None and len(singleuser_configmap_envs) != 0:
+        envs.extend([{'name': k, 'valueFrom': {"configMapKeyRef": { "name": singleuser_configmap, "key": v }}} for k, v in singleuser_configmap_envs.items()])
     return {
         'apiVersion': 'v1',
         'kind': 'Pod',
@@ -104,10 +113,7 @@ def make_pod_spec(
                             'cpu': cpu_limit,
                         }
                     },
-                    'env': [
-                        {'name': k, 'value': v}
-                        for k, v in env.items()
-                    ],
+                    'env': envs,
                     'volumeMounts': volume_mounts
                 }
             ],
