@@ -19,6 +19,11 @@ c.KubeSpawner.singleuser_image_spec = 'yuvipanda/simple-singleuser:v1'
 # The spawned containers need to be able to talk to the hub through the proxy!
 c.KubeSpawner.hub_connect_ip = os.environ['HUB_CONNECT_IP']
 
+# Add new environment variables here and to the credentials configmap -> {"ENV_NAME": "configmap-key", "ENV_NAME2": "configmap-key2"}
+c.KubeSpawner.singleuser_configmap = 'credentials'
+c.KubeSpawner.singleuser_configmap_envs = {"ENV_NAME": "configmap-key", "ENV_NAME2": "configmap-key2"}
+
+
 c.KubeSpawner.mem_limit = '2G'
 
 c.KubeSpawner.cpu_limit = 1
