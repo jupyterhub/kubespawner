@@ -5,6 +5,7 @@ import os
 import yaml
 
 from tornado.httpclient import HTTPRequest
+from traitlets import TraitType
 
 
 def request_maker():
@@ -98,6 +99,12 @@ def request_maker_kubeconfig():
             'client_key': user.get('client-key', None),
             'client_cert': user.get('client-certificate', None)
         })
+        if 'token' in user:
+            headers = kwargs.get('headers', {})
+            headers['Authorization'] = 'Bearer {token}'.format(token=user['token'])
+            kwargs.update({
+                'headers': headers
+            })
         return HTTPRequest(**kwargs)
 
     return make_request
@@ -122,3 +129,20 @@ def k8s_url(namespace, kind, name=None):
     if name is not None:
         url_parts.append(name)
     return '/' + '/'.join(url_parts)
+
+
+class Callable(TraitType):
+    """
+    A trait which is callable.
+
+    Classes are callable, as are instances
+    with a __call__() method.
+    """
+
+    info_text = 'a callable'
+
+    def validate(self, obj, value):
+        if callable(value):
+           return value
+        else:
+            self.error(obj, value)
