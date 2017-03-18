@@ -10,7 +10,7 @@ import string
 from urllib.parse import urlparse, urlunparse
 
 from tornado import gen
-from tornado.curl_httpclient import CurlAsyncHTTPClient
+from tornado.httpclient import AsyncHTTPClient
 from tornado.httpclient import HTTPError
 from traitlets import Unicode, List, Integer, Union
 from jupyterhub.spawner import Spawner
@@ -28,8 +28,13 @@ class KubeSpawner(Spawner):
         super().__init__(*args, **kwargs)
         # By now, all the traitlets have been set, so we can use them to compute
         # other attributes
-        # FIXME: Make this param tuneable?
-        self.httpclient = CurlAsyncHTTPClient(max_clients=64)
+        # Use curl HTTPClient if available, else fall back to Simple one 
+        try:
+            from tornado.curl_httpclient import CurlAsyncHTTPClient
+            self.httpclient = CurlAsyncHTTPClient(max_clients=64)
+        except ImportError:
+            from tornado.simple_httpclient import SimpleAsyncHTTPClient
+            self.httpclient = SimpleAsyncHTTPClient(max_clients=64)
         # FIXME: Support more than just kubeconfig
         self.request = request_maker()
         self.pod_name = self._expand_user_properties(self.pod_name_template)
