@@ -76,6 +76,15 @@ class KubeSpawner(Spawner):
                 return f.read().strip()
         return 'default'
 
+    ip = Unicode('0.0.0.0',
+        help="""
+        The IP address (or hostname) the single-user server should listen on.
+
+        We override this from the parent so we can set a more sane default for
+        the Kubernetes setup.
+        """
+    ).tag(config=True)
+
     pod_name_template = Unicode(
         'jupyter-{username}-{userid}',
         config=True,
