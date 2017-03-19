@@ -49,6 +49,10 @@ class KubeSpawner(Spawner):
         else:
             self.accessible_hub_api_url = self.hub.api_url
 
+        if self.port == 0:
+            # Our default port is 8888
+            self.port = 8888
+
     namespace = Unicode(
         config=True,
         help="""
@@ -433,6 +437,8 @@ class KubeSpawner(Spawner):
             self.singleuser_image_spec,
             self.singleuser_image_pull_policy,
             self.singleuser_image_pull_secrets,
+            self.port,
+            self.cmd + self.get_args(),
             singleuser_uid,
             singleuser_fs_gid,
             self.get_env(),
@@ -581,9 +587,11 @@ class KubeSpawner(Spawner):
             except HTTPError as e:
                 if e.code != 409:
                     # We only want to handle 409 conflict errors
+                    self.log.exception("Failed for %s", json.dumps(pod_manifest))
                     raise
                 self.log.info('Found existing pod %s, attempting to kill', self.pod_name)
                 yield self.stop(True)
+
                 self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
         else:
             raise Exception(
@@ -594,7 +602,7 @@ class KubeSpawner(Spawner):
             if data is not None and self.is_pod_running(data):
                 break
             yield gen.sleep(1)
-        return (data['status']['podIP'], 8888)
+        return (data['status']['podIP'], self.port)
 
     @gen.coroutine
     def stop(self, now=False):
@@ -626,13 +634,19 @@ class KubeSpawner(Spawner):
     def _env_keep_default(self):
         return []
 
-    def get_env(self):
-        env = super(KubeSpawner, self).get_env()
-        env.update({
-            'JPY_USER': self.user.name,
-            'JPY_COOKIE_NAME': self.user.server.cookie_name,
-            'JPY_BASE_URL': self.user.server.base_url,
-            'JPY_HUB_PREFIX': self.hub.server.base_url,
-            'JPY_HUB_API_URL': self.accessible_hub_api_url
-        })
-        return env
+    def get_args(self):
+        args = super(KubeSpawner, self).get_args()
+
+        # HACK: we wanna replace --hub-api-url=self.hub.api_url with
+        # self.accessible_hub_api_url. This is required in situations where
+        # the IP the hub is listening on (such as 0.0.0.0) is not the IP where
+        # it can be reached by the pods (such as the service IP used for the hub!)
+        # FIXME: Make this better?
+        print(args)
+        to_replace = '--hub-api-url="%s"' % (self.hub.api_url)
+        print(to_replace)
+        for i in range(len(args)):
+            if args[i] == to_replace:
+                args[i] = '--hub-api-url="%s"' % (self.accessible_hub_api_url)
+                break
+        return args
