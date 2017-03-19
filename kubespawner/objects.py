@@ -6,6 +6,8 @@ def make_pod_spec(
     image_spec,
     image_pull_policy,
     image_pull_secret,
+    port,
+    cmd,
     run_as_uid,
     fs_gid,
     env,
@@ -34,6 +36,10 @@ def make_pod_spec(
       - image_pull_secret:
         Image pull secret - Default is None -- set to your secret name to pull
         from private docker registry.
+      - port:
+        Port the notebook server is going to be listening on
+      - cmd:
+        The command used to execute the singleuser server.
       - run_as_uid:
         The UID used to run single-user pods. The default is to run as the user
         specified in the Dockerfile, if this is set to None.
@@ -87,9 +93,10 @@ def make_pod_spec(
                 {
                     'name': 'notebook',
                     'image': image_spec,
+                    'command': cmd,
                     'imagePullPolicy': image_pull_policy,
                     'ports': [{
-                        'containerPort': 8888,
+                        'containerPort': port,
                     }],
                     'resources': {
                         'requests': {

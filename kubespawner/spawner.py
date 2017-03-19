@@ -10,7 +10,7 @@ import string
 from urllib.parse import urlparse, urlunparse
 
 from tornado import gen
-from tornado.curl_httpclient import CurlAsyncHTTPClient
+from tornado.httpclient import AsyncHTTPClient
 from tornado.httpclient import HTTPError
 from traitlets import Unicode, List, Integer, Union
 from jupyterhub.spawner import Spawner
@@ -28,8 +28,13 @@ class KubeSpawner(Spawner):
         super().__init__(*args, **kwargs)
         # By now, all the traitlets have been set, so we can use them to compute
         # other attributes
-        # FIXME: Make this param tuneable?
-        self.httpclient = CurlAsyncHTTPClient(max_clients=64)
+        # Use curl HTTPClient if available, else fall back to Simple one 
+        try:
+            from tornado.curl_httpclient import CurlAsyncHTTPClient
+            self.httpclient = CurlAsyncHTTPClient(max_clients=64)
+        except ImportError:
+            from tornado.simple_httpclient import SimpleAsyncHTTPClient
+            self.httpclient = SimpleAsyncHTTPClient(max_clients=64)
         # FIXME: Support more than just kubeconfig
         self.request = request_maker()
         self.pod_name = self._expand_user_properties(self.pod_name_template)
@@ -43,6 +48,10 @@ class KubeSpawner(Spawner):
             self.accessible_hub_api_url = urlunparse((scheme, netloc, path, params, query, fragment))
         else:
             self.accessible_hub_api_url = self.hub.api_url
+
+        if self.port == 0:
+            # Our default port is 8888
+            self.port = 8888
 
     namespace = Unicode(
         config=True,
@@ -66,6 +75,15 @@ class KubeSpawner(Spawner):
             with open(ns_path) as f:
                 return f.read().strip()
         return 'default'
+
+    ip = Unicode('0.0.0.0',
+        help="""
+        The IP address (or hostname) the single-user server should listen on.
+
+        We override this from the parent so we can set a more sane default for
+        the Kubernetes setup.
+        """
+    ).tag(config=True)
 
     pod_name_template = Unicode(
         'jupyter-{username}-{userid}',
@@ -428,6 +446,8 @@ class KubeSpawner(Spawner):
             self.singleuser_image_spec,
             self.singleuser_image_pull_policy,
             self.singleuser_image_pull_secrets,
+            self.port,
+            self.cmd + self.get_args(),
             singleuser_uid,
             singleuser_fs_gid,
             self.get_env(),
@@ -576,9 +596,11 @@ class KubeSpawner(Spawner):
             except HTTPError as e:
                 if e.code != 409:
                     # We only want to handle 409 conflict errors
+                    self.log.exception("Failed for %s", json.dumps(pod_manifest))
                     raise
                 self.log.info('Found existing pod %s, attempting to kill', self.pod_name)
                 yield self.stop(True)
+
                 self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
         else:
             raise Exception(
@@ -589,7 +611,7 @@ class KubeSpawner(Spawner):
             if data is not None and self.is_pod_running(data):
                 break
             yield gen.sleep(1)
-        return (data['status']['podIP'], 8888)
+        return (data['status']['podIP'], self.port)
 
     @gen.coroutine
     def stop(self, now=False):
@@ -621,13 +643,19 @@ class KubeSpawner(Spawner):
     def _env_keep_default(self):
         return []
 
-    def get_env(self):
-        env = super(KubeSpawner, self).get_env()
-        env.update({
-            'JPY_USER': self.user.name,
-            'JPY_COOKIE_NAME': self.user.server.cookie_name,
-            'JPY_BASE_URL': self.user.server.base_url,
-            'JPY_HUB_PREFIX': self.hub.server.base_url,
-            'JPY_HUB_API_URL': self.accessible_hub_api_url
-        })
-        return env
+    def get_args(self):
+        args = super(KubeSpawner, self).get_args()
+
+        # HACK: we wanna replace --hub-api-url=self.hub.api_url with
+        # self.accessible_hub_api_url. This is required in situations where
+        # the IP the hub is listening on (such as 0.0.0.0) is not the IP where
+        # it can be reached by the pods (such as the service IP used for the hub!)
+        # FIXME: Make this better?
+        print(args)
+        to_replace = '--hub-api-url="%s"' % (self.hub.api_url)
+        print(to_replace)
+        for i in range(len(args)):
+            if args[i] == to_replace:
+                args[i] = '--hub-api-url="%s"' % (self.accessible_hub_api_url)
+                break
+        return args
