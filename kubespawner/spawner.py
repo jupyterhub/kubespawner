@@ -651,11 +651,22 @@ class KubeSpawner(Spawner):
         # the IP the hub is listening on (such as 0.0.0.0) is not the IP where
         # it can be reached by the pods (such as the service IP used for the hub!)
         # FIXME: Make this better?
-        print(args)
         to_replace = '--hub-api-url="%s"' % (self.hub.api_url)
-        print(to_replace)
         for i in range(len(args)):
             if args[i] == to_replace:
                 args[i] = '--hub-api-url="%s"' % (self.accessible_hub_api_url)
                 break
         return args
+
+    def get_env(self):
+        # HACK: This is deprecated, and should be removed soon.
+        # We set these to be compatible with DockerSpawner and earlie KubeSpawner
+        env = super(KubeSpawner, self).get_env()
+        env.update({
+            'JPY_USER': self.user.name,
+            'JPY_COOKIE_NAME': self.user.server.cookie_name,
+            'JPY_BASE_URL': self.user.server.base_url,
+            'JPY_HUB_PREFIX': self.hub.server.base_url,
+            'JPY_HUB_API_URL': self.accessible_hub_api_url
+        })
+        return env
