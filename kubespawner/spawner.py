@@ -651,9 +651,7 @@ class KubeSpawner(Spawner):
         # the IP the hub is listening on (such as 0.0.0.0) is not the IP where
         # it can be reached by the pods (such as the service IP used for the hub!)
         # FIXME: Make this better?
-        print(args)
         to_replace = '--hub-api-url="%s"' % (self.hub.api_url)
-        print(to_replace)
         for i in range(len(args)):
             if args[i] == to_replace:
                 args[i] = '--hub-api-url="%s"' % (self.accessible_hub_api_url)
