@@ -14,6 +14,7 @@ from tornado.httpclient import AsyncHTTPClient
 from tornado.httpclient import HTTPError
 from traitlets import Unicode, List, Integer, Union, Dict
 from jupyterhub.spawner import Spawner
+from jupyterhub.traitlets import Command
 
 from kubespawner.utils import request_maker, k8s_url, Callable
 from kubespawner.objects import make_pod_spec, make_pvc_spec
@@ -82,6 +83,26 @@ class KubeSpawner(Spawner):
 
         We override this from the parent so we can set a more sane default for
         the Kubernetes setup.
+        """
+    ).tag(config=True)
+
+    cmd = Command(
+        None,
+        allow_none=True,
+        minlen=0,
+        help="""
+        The command used for starting the single-user server.
+
+        Provide either a string or a list containing the path to the startup script command. Extra arguments,
+        other than this path, should be provided via `args`.
+
+        This is usually set if you want to start the single-user server in a different python
+        environment (with virtualenv/conda) than JupyterHub itself.
+
+        Some spawners allow shell-style expansion here, allowing you to use environment variables.
+        Most, including the default, do not. Consult the documentation for your spawner to verify!
+
+        If set to None, Kubernetes will start the CMD that is specified in the Docker image being started.
         """
     ).tag(config=True)
 
@@ -456,13 +477,18 @@ class KubeSpawner(Spawner):
         else:
             singleuser_fs_gid = self.singleuser_fs_gid
 
+        if self.cmd:
+            real_cmd = self.cmd + self.get_args()
+        else:
+            real_cmd = None
+
         return make_pod_spec(
             self.pod_name,
             self.singleuser_image_spec,
             self.singleuser_image_pull_policy,
             self.singleuser_image_pull_secrets,
             self.port,
-            self.cmd + self.get_args(),
+            real_cmd,
             singleuser_uid,
             singleuser_fs_gid,
             self.get_env(),
