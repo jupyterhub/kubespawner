@@ -13,6 +13,7 @@ def make_pod_spec(
     env,
     volumes,
     volume_mounts,
+    labels,
     cpu_limit,
     cpu_guarantee,
     mem_limit,
@@ -58,6 +59,8 @@ def make_pod_spec(
         List of dictionaries mapping paths in the container and the volume(
         specified in volumes) that should be mounted on them. See the k8s
         documentaiton for more details
+      - labels:
+        Labels to add to the spawned pod.
       - cpu_limit:
         Float specifying the max number of CPU cores the user's pod is
         allowed to use.
@@ -85,6 +88,7 @@ def make_pod_spec(
         'kind': 'Pod',
         'metadata': {
             'name': name,
+            'labels': labels,
         },
         'spec': {
             'securityContext': pod_security_context,

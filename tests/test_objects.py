@@ -23,10 +23,12 @@ def test_make_simplest_pod():
         run_as_uid=None,
         fs_gid=None,
         image_pull_policy='IfNotPresent',
-        image_pull_secret=None
+        image_pull_secret=None,
+        labels={}
     ) == {
         "metadata": {
-            "name": "test"
+            "name": "test",
+            "labels": {},
         },
         "spec": {
             "securityContext": {},
@@ -60,6 +62,63 @@ def test_make_simplest_pod():
         "apiVersion": "v1"
     }
 
+def test_make_labeled_pod():
+    """
+    Test specification of the simplest possible pod specification with labels
+    """
+    assert make_pod_spec(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        env={},
+        volumes=[],
+        volume_mounts=[],
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        cpu_limit=None,
+        cpu_guarantee=None,
+        mem_limit=None,
+        mem_guarantee=None,
+        run_as_uid=None,
+        fs_gid=None,
+        image_pull_policy='IfNotPresent',
+        image_pull_secret=None,
+        labels={"test": "true"}
+    ) == {
+        "metadata": {
+            "name": "test",
+            "labels": {"test": "true"},
+        },
+        "spec": {
+            "securityContext": {},
+            "imagePullSecrets": [],
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "command": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "containerPort": 8888
+                    }],
+                    "volumeMounts": [],
+                    "resources": {
+                        "limits": {
+                            "cpu": None,
+                            "memory": None
+                        },
+                        "requests": {
+                            "cpu": None,
+                            "memory": None
+                        }
+                    }
+                }
+            ],
+            "volumes": []
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
 
 def test_make_pod_with_image_pull_secrets():
     """
@@ -80,10 +139,12 @@ def test_make_pod_with_image_pull_secrets():
         run_as_uid=None,
         fs_gid=None,
         image_pull_policy='IfNotPresent',
-        image_pull_secret='super-sekrit'
+        image_pull_secret='super-sekrit',
+        labels={}
     ) == {
         "metadata": {
-            "name": "test"
+            "name": "test",
+            "labels": {},
         },
         "spec": {
             "securityContext": {},
@@ -139,10 +200,12 @@ def test_set_pod_uid_fs_gid():
         run_as_uid=1000,
         fs_gid=1000,
         image_pull_policy='IfNotPresent',
-        image_pull_secret=None
+        image_pull_secret=None,
+        labels={}
     ) == {
         "metadata": {
-            "name": "test"
+            "name": "test",
+            "labels": {},
         },
         "spec": {
             "securityContext": {
@@ -200,9 +263,11 @@ def test_make_pod_resources_all():
         image_pull_secret=None,
         run_as_uid=None,
         fs_gid=None,
+        labels={}
     ) == {
         "metadata": {
-            "name": "test"
+            "name": "test",
+            "labels": {},
         },
         "spec": {
             "securityContext": {},
@@ -259,9 +324,11 @@ def test_make_pod_with_env():
         image_pull_secret=None,
         run_as_uid=None,
         fs_gid=None,
+        labels={},
     ) == {
         "metadata": {
-            "name": "test"
+            "name": "test",
+            "labels": {},
         },
         "spec": {
             "securityContext": {},

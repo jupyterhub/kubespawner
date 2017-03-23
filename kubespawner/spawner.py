@@ -12,7 +12,7 @@ from urllib.parse import urlparse, urlunparse
 from tornado import gen
 from tornado.httpclient import AsyncHTTPClient
 from tornado.httpclient import HTTPError
-from traitlets import Unicode, List, Integer, Union
+from traitlets import Unicode, List, Integer, Union, Dict
 from jupyterhub.spawner import Spawner
 
 from kubespawner.utils import request_maker, k8s_url, Callable
@@ -162,6 +162,21 @@ class KubeSpawner(Spawner):
         some amount of port mapping is happening.
         """
         return self.hub.server.port
+
+    singleuser_extra_labels = Dict(
+        {},
+        config=True,
+        help="""
+        Extra kubernetes labels to set on the spawned single-user pods.
+
+        The keys and values specified here would be set as labels on the spawned single-user
+        kubernetes pods. The keys and values must both be strings that match the kubernetes
+        label key / value constraints.
+
+        See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ for more
+        info on what labels are and why you might want to use them!
+        """
+    )
 
     singleuser_image_spec = Unicode(
         'jupyter/singleuser:latest',
@@ -453,6 +468,7 @@ class KubeSpawner(Spawner):
             self.get_env(),
             self._expand_all(self.volumes) + hack_volumes,
             self._expand_all(self.volume_mounts) + hack_volume_mounts,
+            self.singleuser_extra_labels,
             self.cpu_limit,
             self.cpu_guarantee,
             self.mem_limit,
