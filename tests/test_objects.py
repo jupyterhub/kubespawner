@@ -39,7 +39,7 @@ def test_make_simplest_pod():
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
-                    "command": ["jupyterhub-singleuser"],
+                    "args": ["jupyterhub-singleuser"],
                     "ports": [{
                         "containerPort": 8888
                     }],
@@ -97,7 +97,7 @@ def test_make_labeled_pod():
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
-                    "command": ["jupyterhub-singleuser"],
+                    "args": ["jupyterhub-singleuser"],
                     "ports": [{
                         "containerPort": 8888
                     }],
@@ -157,7 +157,7 @@ def test_make_pod_with_image_pull_secrets():
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
-                    "command": ["jupyterhub-singleuser"],
+                    "args": ["jupyterhub-singleuser"],
                     "ports": [{
                         "containerPort": 8888
                     }],
@@ -219,7 +219,7 @@ def test_set_pod_uid_fs_gid():
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
-                    "command": ["jupyterhub-singleuser"],
+                    "args": ["jupyterhub-singleuser"],
                     "ports": [{
                         "containerPort": 8888
                     }],
@@ -278,7 +278,7 @@ def test_make_pod_resources_all():
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
-                    "command": ["jupyterhub-singleuser"],
+                    "args": ["jupyterhub-singleuser"],
                     "ports": [{
                         "containerPort": 8888
                     }],
@@ -339,7 +339,7 @@ def test_make_pod_with_env():
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
-                    "command": ["jupyterhub-singleuser"],
+                    "args": ["jupyterhub-singleuser"],
                     "ports": [{
                         "containerPort": 8888
                     }],
