@@ -87,7 +87,7 @@ class KubeSpawner(Spawner):
     ).tag(config=True)
 
     cmd = Command(
-        None,
+        ['jupyterhub-singleuser'],
         allow_none=True,
         minlen=0,
         help="""
