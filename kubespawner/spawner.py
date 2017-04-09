@@ -87,7 +87,7 @@ class KubeSpawner(Spawner):
     ).tag(config=True)
 
     cmd = Command(
-        ['jupyterhub-singleuser'],
+        None,
         allow_none=True,
         minlen=0,
         help="""
@@ -200,12 +200,12 @@ class KubeSpawner(Spawner):
     )
 
     singleuser_image_spec = Unicode(
-        'jupyter/singleuser:latest',
+        'jupyterhub/singleuser:latest',
         config=True,
         help="""
         Docker image spec to use for spawning user's containers.
 
-        Defaults to `jupyter/singleuser:latest`
+        Defaults to `jupyterhub/singleuser:latest`
 
         Name of the container + a tag, same as would be used with
         a `docker pull` command. If tag is set to `latest`, kubernetes will
