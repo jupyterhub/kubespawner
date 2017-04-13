@@ -10,9 +10,8 @@ import string
 from urllib.parse import urlparse, urlunparse
 
 from tornado import gen
-from tornado.httpclient import AsyncHTTPClient
 from tornado.httpclient import HTTPError
-from traitlets import Unicode, List, Integer, Union, Dict
+from traitlets import Type, Unicode, List, Integer, Union, Dict
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
 
@@ -29,13 +28,17 @@ class KubeSpawner(Spawner):
         super().__init__(*args, **kwargs)
         # By now, all the traitlets have been set, so we can use them to compute
         # other attributes
-        # Use curl HTTPClient if available, else fall back to Simple one 
-        try:
-            from tornado.curl_httpclient import CurlAsyncHTTPClient
-            self.httpclient = CurlAsyncHTTPClient(max_clients=64)
-        except ImportError:
-            from tornado.simple_httpclient import SimpleAsyncHTTPClient
-            self.httpclient = SimpleAsyncHTTPClient(max_clients=64)
+        # If httpclient_class trailet is set use it
+        if self.httpclient_class:
+            self.httpclient = self.httpclient_class(max_clients=64)
+        else:
+            # No httpclient_class trailet: Use Curl HTTPClient if available, else fall back to Simple
+            try:
+                from tornado.curl_httpclient import CurlAsyncHTTPClient
+                self.httpclient = CurlAsyncHTTPClient(max_clients=64)
+            except ImportError:
+                from tornado.simple_httpclient import SimpleAsyncHTTPClient
+                self.httpclient = SimpleAsyncHTTPClient(max_clients=64)
         # FIXME: Support more than just kubeconfig
         self.request = request_maker()
         self.pod_name = self._expand_user_properties(self.pod_name_template)
@@ -427,6 +430,18 @@ class KubeSpawner(Spawner):
 
         See http://kubernetes.io/docs/user-guide/persistent-volumes/#access-modes for
         more information on how access modes work.
+        """
+    )
+
+    httpclient_class = Type(
+        None,
+        config=True,
+        allow_none=True,
+        help="""
+        Python class to use as an httpclient
+
+        It could be for example: `tornado.curl_httpclient.CurlAsyncHTTPClient` or
+        `tornado.simple_httpclient.SimpleAsyncHTTPClient`.
         """
     )
 
