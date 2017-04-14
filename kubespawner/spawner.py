@@ -108,7 +108,7 @@ class KubeSpawner(Spawner):
         """
     ).tag(config=True)
 
-    working_dir = Unicode(
+    singleuser_working_dir = Unicode(
         None,
         help="""
         The working directory were the Notebook server will be started inside the container.
@@ -513,7 +513,7 @@ class KubeSpawner(Spawner):
             env=self.get_env(),
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),
-            working_dir=self.working_dir,
+            working_dir=self.singleuser_working_dir,
             labels=self.singleuser_extra_labels,
             cpu_limit=self.cpu_limit,
             cpu_guarantee=self.cpu_guarantee,
