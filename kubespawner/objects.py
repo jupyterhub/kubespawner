@@ -15,8 +15,6 @@ from kubernetes.client.models.v1_env_var import V1EnvVar
 from kubernetes.client.models.v1_resource_requirements import V1ResourceRequirements
 from kubernetes.client.models.v1_volume import V1Volume
 from kubernetes.client.models.v1_volume_mount import V1VolumeMount
-# from kubernetes.client.models.v1_probe import V1Probe
-# from kubernetes.client.models.v1_http_get_action import V1HTTPGetAction
 
 from kubernetes.client.models.v1_persistent_volume_claim import V1PersistentVolumeClaim
 from kubernetes.client.models.v1_persistent_volume_claim_spec import V1PersistentVolumeClaimSpec
@@ -33,10 +31,9 @@ def make_pod_spec(
     run_as_uid,
     fs_gid,
     env,
-    node_selector,
+    working_dir,
     volumes,
     volume_mounts,
-    working_dir,
     labels,
     cpu_limit,
     cpu_guarantee,
@@ -75,8 +72,6 @@ def make_pod_spec(
         read / write to the volumes mounted.
       - env:
         Dictionary of environment variables.
-      - node_selector:
-        Dictionary to match nodes where to launch the Pods
       - volumes:
         List of dictionaries containing the volumes of various types this pod
         will be using. See k8s documentation about volumes on how to specify
@@ -111,12 +106,8 @@ def make_pod_spec(
 
     pod.metadata = V1ObjectMeta()
     pod.metadata.name = name
-    pod.metadata.labels = {}
-    pod.metadata.labels.update({"name": name})
-    for key, value in labels.items():
-        pod.metadata.labels.update({key: value})
+    pod.metadata.labels = labels.copy()
     
-
     pod.spec = V1PodSpec()
 
     security_context = V1PodSecurityContext()
@@ -131,9 +122,6 @@ def make_pod_spec(
         image_secret = V1LocalObjectReference()
         image_secret.name = image_pull_secret
         pod.spec.image_pull_secrets.append(image_secret)
-      
-    if node_selector:
-        pod.spec.node_selector = node_selector
 
     pod.spec.containers = []
 
@@ -157,11 +145,6 @@ def make_pod_spec(
     notebook_container.resources = V1ResourceRequirements()
     notebook_container.resources.requests = {"cpu": cpu_guarantee, "memory": mem_guarantee}
     notebook_container.resources.limits = {"cpu": cpu_limit, "memory": mem_limit}
-    # notebook_container.liveness_probe = V1Probe()
-    # notebook_container.liveness_probe.http_get = V1HTTPGetAction()
-    # notebook_container.liveness_probe.http_get.host = "localhost"
-    # notebook_container.liveness_probe.http_get.path = env["JPY_BASE_URL"]
-    # notebook_container.liveness_probe.http_get.port = port
 
     # Add a hack to ensure that no service accounts are mounted in spawned pods
     # This makes sure that we don"t accidentally give access to the whole

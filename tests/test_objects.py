@@ -15,6 +15,7 @@ def test_make_simplest_pod():
         volumes=[],
         volume_mounts=[],
         cmd=['jupyterhub-singleuser'],
+        working_dir=None,
         port=8888,
         cpu_limit=None,
         cpu_guarantee=None,
@@ -32,7 +33,6 @@ def test_make_simplest_pod():
         },
         "spec": {
             "securityContext": {},
-            "imagePullSecrets": [],
             "containers": [
                 {
                     "env": [],
@@ -41,9 +41,12 @@ def test_make_simplest_pod():
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
                     "ports": [{
+                        "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    "volumeMounts": [],
+                    'volumeMounts': [{'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
+                                      'name': 'no-api-access-please',
+                                      'readOnly': True}],
                     "resources": {
                         "limits": {
                             "cpu": None,
@@ -56,7 +59,7 @@ def test_make_simplest_pod():
                     }
                 }
             ],
-            "volumes": []
+            'volumes': [{'emptyDir': {}, 'name': 'no-api-access-please'}],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -73,6 +76,7 @@ def test_make_labeled_pod():
         volumes=[],
         volume_mounts=[],
         cmd=['jupyterhub-singleuser'],
+        working_dir=None,
         port=8888,
         cpu_limit=None,
         cpu_guarantee=None,
@@ -90,7 +94,6 @@ def test_make_labeled_pod():
         },
         "spec": {
             "securityContext": {},
-            "imagePullSecrets": [],
             "containers": [
                 {
                     "env": [],
@@ -99,9 +102,12 @@ def test_make_labeled_pod():
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
                     "ports": [{
+                        "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    "volumeMounts": [],
+                    'volumeMounts': [{'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
+                                      'name': 'no-api-access-please',
+                                      'readOnly': True}],
                     "resources": {
                         "limits": {
                             "cpu": None,
@@ -114,7 +120,7 @@ def test_make_labeled_pod():
                     }
                 }
             ],
-            "volumes": []
+            'volumes': [{'emptyDir': {}, 'name': 'no-api-access-please'}],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -131,6 +137,7 @@ def test_make_pod_with_image_pull_secrets():
         volumes=[],
         volume_mounts=[],
         cmd=['jupyterhub-singleuser'],
+        working_dir=None,
         port=8888,
         cpu_limit=None,
         cpu_guarantee=None,
@@ -159,9 +166,12 @@ def test_make_pod_with_image_pull_secrets():
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
                     "ports": [{
+                        "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    "volumeMounts": [],
+                    'volumeMounts': [{'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
+                                      'name': 'no-api-access-please',
+                                      'readOnly': True}],
                     "resources": {
                         "limits": {
                             "cpu": None,
@@ -174,7 +184,7 @@ def test_make_pod_with_image_pull_secrets():
                     }
                 }
             ],
-            "volumes": []
+            'volumes': [{'emptyDir': {}, 'name': 'no-api-access-please'}],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -192,6 +202,7 @@ def test_set_pod_uid_fs_gid():
         volumes=[],
         volume_mounts=[],
         cmd=['jupyterhub-singleuser'],
+        working_dir=None,
         port=8888,
         cpu_limit=None,
         cpu_guarantee=None,
@@ -212,7 +223,6 @@ def test_set_pod_uid_fs_gid():
                 "runAsUser": 1000,
                 "fsGroup": 1000
             },
-            "imagePullSecrets": [],
             "containers": [
                 {
                     "env": [],
@@ -221,9 +231,12 @@ def test_set_pod_uid_fs_gid():
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
                     "ports": [{
+                        "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    "volumeMounts": [],
+                    'volumeMounts': [{'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
+                                      'name': 'no-api-access-please',
+                                      'readOnly': True}],
                     "resources": {
                         "limits": {
                             "cpu": None,
@@ -236,7 +249,7 @@ def test_set_pod_uid_fs_gid():
                     }
                 }
             ],
-            "volumes": []
+            'volumes': [{'emptyDir': {}, 'name': 'no-api-access-please'}],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -256,11 +269,12 @@ def test_make_pod_resources_all():
         cpu_limit=2,
         cpu_guarantee=1,
         cmd=['jupyterhub-singleuser'],
+        working_dir=None,
         port=8888,
         mem_limit='1Gi',
         mem_guarantee='512Mi',
         image_pull_policy='IfNotPresent',
-        image_pull_secret=None,
+        image_pull_secret="myregistrykey",
         run_as_uid=None,
         fs_gid=None,
         labels={}
@@ -271,7 +285,7 @@ def test_make_pod_resources_all():
         },
         "spec": {
             "securityContext": {},
-            "imagePullSecrets": [],
+            "imagePullSecrets": [{"name": "myregistrykey"}],
             "containers": [
                 {
                     "env": [],
@@ -280,9 +294,12 @@ def test_make_pod_resources_all():
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
                     "ports": [{
+                        "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    "volumeMounts": [],
+                    'volumeMounts': [{'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
+                                      'name': 'no-api-access-please',
+                                      'readOnly': True}],
                     "resources": {
                         "limits": {
                             "cpu": 2,
@@ -295,7 +312,7 @@ def test_make_pod_resources_all():
                     }
                 }
             ],
-            "volumes": []
+            'volumes': [{'emptyDir': {}, 'name': 'no-api-access-please'}],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -315,6 +332,7 @@ def test_make_pod_with_env():
         volumes=[],
         volume_mounts=[],
         cmd=['jupyterhub-singleuser'],
+        working_dir=None,
         port=8888,
         cpu_limit=None,
         cpu_guarantee=None,
@@ -332,7 +350,6 @@ def test_make_pod_with_env():
         },
         "spec": {
             "securityContext": {},
-            "imagePullSecrets": [],
             "containers": [
                 {
                     "env": [{'name': 'TEST_KEY', 'value': 'TEST_VALUE'}],
@@ -341,9 +358,12 @@ def test_make_pod_with_env():
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
                     "ports": [{
+                        "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    "volumeMounts": [],
+                    'volumeMounts': [{'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
+                                      'name': 'no-api-access-please',
+                                      'readOnly': True}],
                     "resources": {
                         "limits": {
                             "cpu": None,
@@ -356,7 +376,7 @@ def test_make_pod_with_env():
                     }
                 }
             ],
-            "volumes": []
+            'volumes': [{'emptyDir': {}, 'name': 'no-api-access-please'}],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -371,14 +391,14 @@ def test_make_pvc_simple():
         name='test',
         storage_class='',
         access_modes=[],
-        storage=None
+        storage=None,
+        volume_match_labels={"volume": "my-pv"}
     ) == {
         'kind': 'PersistentVolumeClaim',
         'apiVersion': 'v1',
         'metadata': {
             'name': 'test',
             'annotations': {
-                'volume.beta.kubernetes.io/storage-class': ''
             }
         },
         'spec': {
@@ -387,7 +407,8 @@ def test_make_pvc_simple():
                 'requests': {
                     'storage': None
                 }
-            }
+            },
+            'selector': {'matchLabels': {'volume': 'my-pv'} }
         }
     }
 
@@ -400,7 +421,8 @@ def test_make_resources_all():
         name='test',
         storage_class='gce-standard-storage',
         access_modes=['ReadWriteOnce'],
-        storage='10Gi'
+        storage='10Gi',
+        volume_match_labels={"volume": "my-pv"}
     ) == {
         'kind': 'PersistentVolumeClaim',
         'apiVersion': 'v1',
@@ -416,6 +438,7 @@ def test_make_resources_all():
                 'requests': {
                     'storage': '10Gi'
                 }
-            }
+            },
+            'selector': {'matchLabels': {'volume': 'my-pv'} }
         }
     }

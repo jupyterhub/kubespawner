@@ -108,23 +108,11 @@ class KubeSpawner(Spawner):
         """
     ).tag(config=True)
 
-
-    node_selector = Dict(
-        help="""
-        Thes labels used to match the Nodes where Pods will be launched.
-
-        Default is None and means it will be launched in any available Node.
-        
-        For example to match the Nodes that have a label of `disktype: ssd` use:
-            `{"disktype": "ssd"}`
-        """
-    )
-
     working_dir = Unicode(
-        "/home",
+        None,
         help="""
         The working directory were the Notebook server will be started inside the container.
-        Defaults to `/home`
+        Defaults to `None` so the working directory will be the one defined in the Dockerfile.
         """
     ).tag(config=True)
 
@@ -523,7 +511,6 @@ class KubeSpawner(Spawner):
             run_as_uid=singleuser_uid,
             fs_gid=singleuser_fs_gid,
             env=self.get_env(),
-            node_selector=self.node_selector,
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),
             working_dir=self.working_dir,
