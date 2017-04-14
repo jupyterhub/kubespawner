@@ -7,7 +7,7 @@ setup(
         'jupyterhub',
         'pyyaml',
         'pycurl',
-        'kubernetes==1.0.0'
+        'kubernetes==1.*'
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
