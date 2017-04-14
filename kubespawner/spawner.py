@@ -109,7 +109,6 @@ class KubeSpawner(Spawner):
     ).tag(config=True)
 
     singleuser_working_dir = Unicode(
-        None,
         help="""
         The working directory were the Notebook server will be started inside the container.
         Defaults to `None` so the working directory will be the one defined in the Dockerfile.
