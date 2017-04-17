@@ -134,12 +134,7 @@ def make_pod_spec(
     port_.name = "notebook-port"
     port_.container_port = port
     notebook_container.ports.append(port_)
-    notebook_container.env = []
-    for key, value in env.items():
-        env_ = V1EnvVar()
-        env_.name = key
-        env_.value = value
-        notebook_container.env.append(env_)
+    notebook_container.env = [V1EnvVar(k, v) for k, v in env.items()]
     notebook_container.args = cmd
     notebook_container.image_pull_policy = image_pull_policy
     notebook_container.resources = V1ResourceRequirements()
