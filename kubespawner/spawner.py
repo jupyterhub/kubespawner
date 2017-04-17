@@ -14,6 +14,8 @@ from tornado.httpclient import HTTPError
 from traitlets import Type, Unicode, List, Integer, Union, Dict
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
+from kubernetes.client.models.v1_volume import V1Volume
+from kubernetes.client.models.v1_volume_mount import V1VolumeMount
 
 from kubespawner.utils import request_maker, k8s_url, Callable
 from kubespawner.objects import make_pod_spec, make_pvc_spec
@@ -501,6 +503,19 @@ class KubeSpawner(Spawner):
             real_cmd = self.cmd + self.get_args()
         else:
             real_cmd = None
+
+        # Add a hack to ensure that no service accounts are mounted in spawned pods
+        # This makes sure that we don"t accidentally give access to the whole
+        # kubernetes API to the users in the spawned pods.
+        # See https://github.com/kubernetes/kubernetes/issues/16779#issuecomment-157460294
+        hack_volume = V1Volume()
+        hack_volume.name =  "no-api-access-please"
+        hack_volume.empty_dir = {}
+
+        hack_volume_mount = V1VolumeMount()
+        hack_volume_mount.name = "no-api-access-please"
+        hack_volume_mount.mount_path = "/var/run/secrets/kubernetes.io/serviceaccount"
+        hack_volume_mount.read_only = True
         
         return make_pod_spec(
             name=self.pod_name,
@@ -512,8 +527,8 @@ class KubeSpawner(Spawner):
             run_as_uid=singleuser_uid,
             fs_gid=singleuser_fs_gid,
             env=self.get_env(),
-            volumes=self._expand_all(self.volumes),
-            volume_mounts=self._expand_all(self.volume_mounts),
+            volumes=self._expand_all(self.volumes) + [hack_volume],
+            volume_mounts=self._expand_all(self.volume_mounts) + [hack_volume_mount],
             working_dir=self.singleuser_working_dir,
             labels=self.singleuser_extra_labels,
             cpu_limit=self.cpu_limit,

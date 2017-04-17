@@ -13,8 +13,6 @@ from kubernetes.client.models.v1_container import V1Container
 from kubernetes.client.models.v1_container_port import V1ContainerPort
 from kubernetes.client.models.v1_env_var import V1EnvVar
 from kubernetes.client.models.v1_resource_requirements import V1ResourceRequirements
-from kubernetes.client.models.v1_volume import V1Volume
-from kubernetes.client.models.v1_volume_mount import V1VolumeMount
 
 from kubernetes.client.models.v1_persistent_volume_claim import V1PersistentVolumeClaim
 from kubernetes.client.models.v1_persistent_volume_claim_spec import V1PersistentVolumeClaimSpec
@@ -124,7 +122,6 @@ def make_pod_spec(
         pod.spec.image_pull_secrets.append(image_secret)
 
     pod.spec.containers = []
-
     notebook_container = V1Container()
     notebook_container.name = "notebook"
     notebook_container.image = image_spec
@@ -140,30 +137,10 @@ def make_pod_spec(
     notebook_container.resources = V1ResourceRequirements()
     notebook_container.resources.requests = {"cpu": cpu_guarantee, "memory": mem_guarantee}
     notebook_container.resources.limits = {"cpu": cpu_limit, "memory": mem_limit}
-
-    # Add a hack to ensure that no service accounts are mounted in spawned pods
-    # This makes sure that we don"t accidentally give access to the whole
-    # kubernetes API to the users in the spawned pods.
-    # See https://github.com/kubernetes/kubernetes/issues/16779#issuecomment-157460294
-    hack_volume = V1Volume()
-    hack_volume.name =  "no-api-access-please"
-    hack_volume.empty_dir = {}
-
-    hack_volume_mount = V1VolumeMount()
-    hack_volume_mount.name = "no-api-access-please"
-    hack_volume_mount.mount_path = "/var/run/secrets/kubernetes.io/serviceaccount"
-    hack_volume_mount.read_only = True
-
-    notebook_container.volume_mounts = [hack_volume_mount]
-    for volume_mount in volume_mounts:
-        notebook_container.volume_mounts.append(volume_mount)
-
+    notebook_container.volume_mounts = volume_mounts
     pod.spec.containers.append(notebook_container)
 
-    pod.spec.volumes = [hack_volume]
-    for volume in volumes:
-        pod.spec.volumes.append(volume)
-
+    pod.spec.volumes = volumes
     return api_client.sanitize_for_serialization(pod)
 
 
