@@ -379,8 +379,7 @@ def test_make_pvc_simple():
         name='test',
         storage_class='',
         access_modes=[],
-        storage=None,
-        volume_match_labels={"volume": "my-pv"}
+        storage=None
     ) == {
         'kind': 'PersistentVolumeClaim',
         'apiVersion': 'v1',
@@ -395,8 +394,7 @@ def test_make_pvc_simple():
                 'requests': {
                     'storage': None
                 }
-            },
-            'selector': {'matchLabels': {'volume': 'my-pv'} }
+            }
         }
     }
 
@@ -409,8 +407,7 @@ def test_make_resources_all():
         name='test',
         storage_class='gce-standard-storage',
         access_modes=['ReadWriteOnce'],
-        storage='10Gi',
-        volume_match_labels={"volume": "my-pv"}
+        storage='10Gi'
     ) == {
         'kind': 'PersistentVolumeClaim',
         'apiVersion': 'v1',
@@ -426,7 +423,6 @@ def test_make_resources_all():
                 'requests': {
                     'storage': '10Gi'
                 }
-            },
-            'selector': {'matchLabels': {'volume': 'my-pv'} }
+            }
         }
     }

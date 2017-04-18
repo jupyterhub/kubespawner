@@ -444,15 +444,6 @@ class KubeSpawner(Spawner):
         """
     )
 
-    user_storage_match_labels = Dict(
-        help="""
-        The labels used to match the PVC that will be mounted to the user.
-        
-        For example to match the PVC to an existing NFS Persistent Volume use:
-            `{"volume": "jupyter-nfs"}`
-        """
-    )
-
     httpclient_class = Type(
         None,
         config=True,
@@ -545,8 +536,7 @@ class KubeSpawner(Spawner):
             name=self.pvc_name,
             storage_class=self.user_storage_class,
             access_modes=self.user_storage_access_modes,
-            storage=self.user_storage_capacity,
-            volume_match_labels=self.user_storage_match_labels
+            storage=self.user_storage_capacity
         )
 
     @gen.coroutine

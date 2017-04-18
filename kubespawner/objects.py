@@ -16,7 +16,6 @@ from kubernetes.client.models.v1_resource_requirements import V1ResourceRequirem
 
 from kubernetes.client.models.v1_persistent_volume_claim import V1PersistentVolumeClaim
 from kubernetes.client.models.v1_persistent_volume_claim_spec import V1PersistentVolumeClaimSpec
-from kubernetes.client.models.unversioned_label_selector import UnversionedLabelSelector
 
 
 def make_pod_spec(
@@ -148,9 +147,7 @@ def make_pvc_spec(
     name,
     storage_class,
     access_modes,
-    storage,
-    volume_match_labels
-):
+    storage):
     """
     Make a k8s pvc specification for running a user notebook.
 
@@ -179,9 +176,6 @@ def make_pvc_spec(
     pvc.spec.access_modes = access_modes
     pvc.spec.resources = V1ResourceRequirements()
     pvc.spec.resources.requests = {"storage": storage}
-    if volume_match_labels:
-        pvc.spec.selector = UnversionedLabelSelector()
-        pvc.spec.selector.match_labels = volume_match_labels
     
     return api_client.sanitize_for_serialization(pvc)
 
