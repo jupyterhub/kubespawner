@@ -14,6 +14,8 @@ from tornado.httpclient import HTTPError
 from traitlets import Type, Unicode, List, Integer, Union, Dict
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
+from kubernetes.client.models.v1_volume import V1Volume
+from kubernetes.client.models.v1_volume_mount import V1VolumeMount
 
 from kubespawner.utils import request_maker, k8s_url, Callable
 from kubespawner.objects import make_pod_spec, make_pvc_spec
@@ -22,7 +24,6 @@ from kubespawner.objects import make_pod_spec, make_pvc_spec
 class KubeSpawner(Spawner):
     """
     Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
-
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -106,6 +107,15 @@ class KubeSpawner(Spawner):
         Most, including the default, do not. Consult the documentation for your spawner to verify!
 
         If set to None, Kubernetes will start the CMD that is specified in the Docker image being started.
+        """
+    ).tag(config=True)
+
+    singleuser_working_dir = Unicode(
+        None,
+        allow_none=True,
+        help="""
+        The working directory were the Notebook server will be started inside the container.
+        Defaults to `None` so the working directory will be the one defined in the Dockerfile.
         """
     ).tag(config=True)
 
@@ -322,6 +332,7 @@ class KubeSpawner(Spawner):
         for more details.
         """
     )
+
     volumes = List(
         [],
         config=True,
@@ -469,19 +480,6 @@ class KubeSpawner(Spawner):
         """
         Make a pod manifest that will spawn current user's notebook pod.
         """
-        # Add a hack to ensure that no service accounts are mounted in spawned pods
-        # This makes sure that we don't accidentally give access to the whole
-        # kubernetes API to the users in the spawned pods.
-        # See https://github.com/kubernetes/kubernetes/issues/16779#issuecomment-157460294
-        hack_volumes = [{
-            'name': 'no-api-access-please',
-            'emptyDir': {}
-        }]
-        hack_volume_mounts = [{
-            'name': 'no-api-access-please',
-            'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
-            'readOnly': True
-        }]
         if callable(self.singleuser_uid):
             singleuser_uid = yield gen.maybe_future(self.singleuser_uid(self))
         else:
@@ -497,23 +495,37 @@ class KubeSpawner(Spawner):
         else:
             real_cmd = None
 
+        # Add a hack to ensure that no service accounts are mounted in spawned pods
+        # This makes sure that we don"t accidentally give access to the whole
+        # kubernetes API to the users in the spawned pods.
+        # See https://github.com/kubernetes/kubernetes/issues/16779#issuecomment-157460294
+        hack_volume = V1Volume()
+        hack_volume.name =  "no-api-access-please"
+        hack_volume.empty_dir = {}
+
+        hack_volume_mount = V1VolumeMount()
+        hack_volume_mount.name = "no-api-access-please"
+        hack_volume_mount.mount_path = "/var/run/secrets/kubernetes.io/serviceaccount"
+        hack_volume_mount.read_only = True
+        
         return make_pod_spec(
-            self.pod_name,
-            self.singleuser_image_spec,
-            self.singleuser_image_pull_policy,
-            self.singleuser_image_pull_secrets,
-            self.port,
-            real_cmd,
-            singleuser_uid,
-            singleuser_fs_gid,
-            self.get_env(),
-            self._expand_all(self.volumes) + hack_volumes,
-            self._expand_all(self.volume_mounts) + hack_volume_mounts,
-            self.singleuser_extra_labels,
-            self.cpu_limit,
-            self.cpu_guarantee,
-            self.mem_limit,
-            self.mem_guarantee,
+            name=self.pod_name,
+            image_spec=self.singleuser_image_spec,
+            image_pull_policy=self.singleuser_image_pull_policy,
+            image_pull_secret=self.singleuser_image_pull_secrets,
+            port=self.port,
+            cmd=real_cmd,
+            run_as_uid=singleuser_uid,
+            fs_gid=singleuser_fs_gid,
+            env=self.get_env(),
+            volumes=self._expand_all(self.volumes) + [hack_volume],
+            volume_mounts=self._expand_all(self.volume_mounts) + [hack_volume_mount],
+            working_dir=self.singleuser_working_dir,
+            labels=self.singleuser_extra_labels,
+            cpu_limit=self.cpu_limit,
+            cpu_guarantee=self.cpu_guarantee,
+            mem_limit=self.mem_limit,
+            mem_guarantee=self.mem_guarantee,
         )
 
     def get_pvc_manifest(self):
@@ -521,12 +533,11 @@ class KubeSpawner(Spawner):
         Make a pvc manifest that will spawn current user's pvc.
         """
         return make_pvc_spec(
-            self.pvc_name,
-            self.user_storage_class,
-            self.user_storage_access_modes,
-            self.user_storage_capacity
+            name=self.pvc_name,
+            storage_class=self.user_storage_class,
+            access_modes=self.user_storage_access_modes,
+            storage=self.user_storage_capacity
         )
-
 
     @gen.coroutine
     def get_pod_info(self, pod_name):
@@ -633,7 +644,7 @@ class KubeSpawner(Spawner):
                     headers={'Content-Type': 'application/json'}
                 ))
             except:
-                self.log.info("Pvc " + self.pvc_name + " already exists, so did not create new pvc.")
+                self.log.info("PVC " + self.pvc_name + " already exists, so did not create new pvc.")
 
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
@@ -673,7 +684,7 @@ class KubeSpawner(Spawner):
     @gen.coroutine
     def stop(self, now=False):
         body = {
-            'kind': "DeleteOptions",
+            'kind': 'DeleteOptions',
             'apiVersion': 'v1',
             'gracePeriodSeconds': 0
         }
