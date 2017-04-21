@@ -786,6 +786,6 @@ class SQREKubeSpawner(Spawner):
         if gh_id and gh_token:
             env.update({
                 'GITHUB_ID': str(gh_id),
-                'GITHUB_ACCESS_TOKEN': gh_token,
+                'GITHUB_ACCESS_TOKEN': gh_token
             })
         return env
