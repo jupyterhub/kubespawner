@@ -1,7 +1,7 @@
 """
 Test functions used to create k8s objects
 """
-from kubespawner.objects import make_pod_spec, make_pvc_spec
+from sqrekubespawner.objects import make_pod_spec, make_pvc_spec
 
 
 def test_make_simplest_pod():
@@ -62,6 +62,7 @@ def test_make_simplest_pod():
         "apiVersion": "v1"
     }
 
+
 def test_make_labeled_pod():
     """
     Test specification of the simplest possible pod specification with labels
@@ -119,6 +120,7 @@ def test_make_labeled_pod():
         "kind": "Pod",
         "apiVersion": "v1"
     }
+
 
 def test_make_pod_with_image_pull_secrets():
     """

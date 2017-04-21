@@ -1,4 +1,10 @@
-# kubespawner (jupyterhub-kubernetes-spawner) #
+# sqrekubespawner (jupyterhub-kubernetes-spawner) #
+
+The *sqrekubespawner* is a slight variant of the standard JupyterHub 
+Kubernetes Spawner.  Its differences are the following: it uses
+GHOWLAuth, if that was used, to make the GitHub ID of the user the ID
+that is passed to the spawned container, and it acquires and passes a
+GitHub token for the use of the spawned container.
 
 The *kubespawner* (also known as JupyterHub Kubernetes Spawner) enables JupyterHub to spawn
 single-user notebook servers on a [Kubernetes](https://kubernetes.io/)

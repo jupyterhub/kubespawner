@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='jupyterhub-kubespawner',
-    version='0.5.1',
+    name='sqrekubespawner',
+    version='0.0.1',
     install_requires=[
         'jupyterhub',
         'pyyaml',
@@ -10,10 +10,10 @@ setup(
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
-    description='JupyterHub Spawner targetting Kubernetes',
-    url='http://github.com/jupyterhub/kubespawner',
-    author='Yuvi Panda',
-    author_email='yuvipanda@gmail.com',
+    description='LSST SQuaRE flavor of KubeSpawner',
+    url='http://github.com/lsst-sqre/kubespawner',
+    author='Adam Thornton',
+    author_email='athornton@lsst.org',
     license='BSD',
     packages=find_packages(),
 )
