@@ -276,7 +276,7 @@ class KubeSpawner(Spawner):
         """
     )
     
-    node_selector = Selector(
+    node_selector = LabelSelector(
         {},
         config=True,
         help="""

@@ -21,7 +21,7 @@ class Callable(TraitType):
             self.error(obj, value)
 
 
-class Selector(Dict):
+class LabelSelector(Dict):
     """
     A trait that is used to match Kuberentes labels
 
