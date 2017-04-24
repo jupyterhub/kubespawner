@@ -17,7 +17,8 @@ from jupyterhub.traitlets import Command
 from kubernetes.client.models.v1_volume import V1Volume
 from kubernetes.client.models.v1_volume_mount import V1VolumeMount
 
-from kubespawner.utils import request_maker, k8s_url, Callable
+from kubespawner.traitlets import Selector, Callable
+from kubespawner.utils import request_maker, k8s_url
 from kubespawner.objects import make_pod_spec, make_pvc_spec
 
 
@@ -272,6 +273,19 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/user-guide/images/#specifying-imagepullsecrets-on-a-pod
         has more information on when and why this might need to be set, and what it
         should be set to.
+        """
+    )
+    
+    node_selector = Selector(
+        {},
+        config=True,
+        help="""
+        The dictionary Selector labels used to match the Nodes where Pods will be launched.
+
+        Default is None and means it will be launched in any available Node.
+        
+        For example to match the Nodes that have a label of `disktype: ssd` use:
+            `{"disktype": "ssd"}`
         """
     )
 
@@ -540,6 +554,7 @@ class KubeSpawner(Spawner):
             image_pull_secret=self.singleuser_image_pull_secrets,
             port=self.port,
             cmd=real_cmd,
+            node_selector=self.node_selector,
             run_as_uid=singleuser_uid,
             fs_gid=singleuser_fs_gid,
             env=self.get_env(),
