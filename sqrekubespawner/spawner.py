@@ -1,7 +1,7 @@
 """
 JupyterHub Spawner to spawn user notebooks on a Kubernetes cluster.
 
-This module exports `KubeSpawner` class, which is the actual spawner
+This module exports the `SQREKubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
 import os
@@ -15,24 +15,26 @@ from traitlets import Type, Unicode, List, Integer, Union, Dict
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
 
-from kubespawner.utils import request_maker, k8s_url, Callable
-from kubespawner.objects import make_pod_spec, make_pvc_spec
+from sqrekubespawner.utils import request_maker, k8s_url, Callable
+from sqrekubespawner.objects import make_pod_spec, make_pvc_spec
 
 
-class KubeSpawner(Spawner):
+class SQREKubeSpawner(Spawner):
     """
-    Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
+    Implement a SQuaRE JupyterHub KubeSpawner.
 
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # By now, all the traitlets have been set, so we can use them to compute
-        # other attributes
+        # By now, all the traitlets have been set, so we can use them to
+        #  compute other attributes
         # If httpclient_class trailet is set use it
         if self.httpclient_class:
             self.httpclient = self.httpclient_class(max_clients=64)
         else:
-            # No httpclient_class trailet: Use Curl HTTPClient if available, else fall back to Simple
+            # No httpclient_class trailet: Use Curl HTTPClient if available,
+            #  else fall back to Simple
             try:
                 from tornado.curl_httpclient import CurlAsyncHTTPClient
                 self.httpclient = CurlAsyncHTTPClient(max_clients=64)
@@ -44,12 +46,14 @@ class KubeSpawner(Spawner):
         self.pod_name = self._expand_user_properties(self.pod_name_template)
         self.pvc_name = self._expand_user_properties(self.pvc_name_template)
         if self.hub_connect_ip:
-            scheme, netloc, path, params, query, fragment = urlparse(self.hub.api_url)
+            scheme, netloc, path, params, query, fragment = urlparse(
+                self.hub.api_url)
             netloc = '{ip}:{port}'.format(
                 ip=self.hub_connect_ip,
                 port=self.hub_connect_port,
             )
-            self.accessible_hub_api_url = urlunparse((scheme, netloc, path, params, query, fragment))
+            self.accessible_hub_api_url = urlunparse(
+                (scheme, netloc, path, params, query, fragment))
         else:
             self.accessible_hub_api_url = self.hub.api_url
 
@@ -81,13 +85,13 @@ class KubeSpawner(Spawner):
         return 'default'
 
     ip = Unicode('0.0.0.0',
-        help="""
+                 help="""
         The IP address (or hostname) the single-user server should listen on.
 
         We override this from the parent so we can set a more sane default for
         the Kubernetes setup.
         """
-    ).tag(config=True)
+                 ).tag(config=True)
 
     cmd = Command(
         None,
@@ -96,16 +100,20 @@ class KubeSpawner(Spawner):
         help="""
         The command used for starting the single-user server.
 
-        Provide either a string or a list containing the path to the startup script command. Extra arguments,
-        other than this path, should be provided via `args`.
+        Provide either a string or a list containing the path to the
+        startup script command. Extra arguments, ther than this path,
+        should be provided via `args`.
 
-        This is usually set if you want to start the single-user server in a different python
-        environment (with virtualenv/conda) than JupyterHub itself.
+        This is usually set if you want to start the single-user
+        server in a different python environment (with
+        virtualenv/conda) than JupyterHub itself.
 
-        Some spawners allow shell-style expansion here, allowing you to use environment variables.
-        Most, including the default, do not. Consult the documentation for your spawner to verify!
+        Some spawners allow shell-style expansion here, allowing you
+        to use environment variables.  Most, including the default, do
+        not. Consult the documentation for your spawner to verify!
 
-        If set to None, Kubernetes will start the CMD that is specified in the Docker image being started.
+        If set to None, Kubernetes will start the CMD that is
+        specified in the Docker image being started.
         """
     ).tag(config=True)
 
@@ -193,12 +201,16 @@ class KubeSpawner(Spawner):
         help="""
         Extra kubernetes labels to set on the spawned single-user pods.
 
-        The keys and values specified here would be set as labels on the spawned single-user
-        kubernetes pods. The keys and values must both be strings that match the kubernetes
-        label key / value constraints.
+        The keys and values specified here would be set as labels on
+        the spawned single-user kubernetes pods. The keys and values
+        must both be strings that match the kubernetes label key /
+        value constraints.
 
-        See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ for more
-        info on what labels are and why you might want to use them!
+        See
+        https://kubernetes.io/docs/concepts/overview/\
+         working-with-objects/labels/
+        for more info on what labels are and why you might want to use
+        them!
         """
     )
 
@@ -226,7 +238,7 @@ class KubeSpawner(Spawner):
         set this with:
 
         ```
-        c.KubeSpawner.start_timeout = 60 * 5  # Upto 5 minutes
+        c.SQREKubeSpawner.start_timeout = 60 * 5  # Up to 5 minutes
         ```
         """
     )
@@ -238,14 +250,15 @@ class KubeSpawner(Spawner):
         The image pull policy of the docker container specified in
         singleuser_image_spec.
 
-        Defaults to `IfNotPresent` which causes the Kubelet to NOT pull the image
-        specified in singleuser_image_spec if it already exists, except if the tag
-        is :latest. For more information on image pull policy, refer to
+        Defaults to `IfNotPresent` which causes the Kubelet to NOT
+        pull the image specified in singleuser_image_spec if it
+        already exists, except if the tag is :latest. For more
+        information on image pull policy, refer to
         http://kubernetes.io/docs/user-guide/images/
 
         This configuration is primarily used in development if you are
-        actively changing the singleuser_image_spec and would like to pull the image
-        whenever a user container is spawned.
+        actively changing the singleuser_image_spec and would like to
+        pull the image whenever a user container is spawned.  
         """
     )
 
@@ -253,72 +266,81 @@ class KubeSpawner(Spawner):
         None,
         allow_none=True,
         config=True,
-        help="""
-        The kubernetes secret to use for pulling images from private repository.
+        help=""" The kubernetes secret to use for pulling images from private
+        repository.
 
-        Set this to the name of a Kubernetes secret containing the docker configuration
-        required to pull the image specified in singleuser_image_spec.
+        Set this to the name of a Kubernetes secret containing the
+        docker configuration required to pull the image specified in
+        singleuser_image_spec.
 
-        https://kubernetes.io/docs/user-guide/images/#specifying-imagepullsecrets-on-a-pod
-        has more information on when and why this might need to be set, and what it
-        should be set to.
+        https://kubernetes.io/docs/user-guide/images/\
+          #specifying-imagepullsecrets-on-a-pod
+        has more information on when and why this might need to be
+        set, and what it should be set to.
         """
     )
 
     singleuser_uid = Union([
-            Integer(),
-            Callable()
-        ],
+        Integer(),
+        Callable()
+    ],
         allow_none=True,
         config=True,
         help="""
         The UID to run the single-user server containers as.
 
-        This UID should ideally map to a user that already exists in the container
-        image being used. Running as root is discouraged.
+        This UID should ideally map to a user that already exists in
+        the container image being used. Running as root is
+        discouraged.  (SQuaRE uses a startup as root which creates a user
+        and then uses sudo to change to it; this has advantages for persistent
+        storage where you really want UID mapping.)
 
-        Instead of an integer, this could also be a callable that takes as one
-        parameter the current spawner instance and returns an integer. The callable
-        will be called asynchronously if it returns a future. Note that
-        the interface of the spawner class is not deemed stable across versions,
-        so using this functionality might cause your JupyterHub or kubespawner
+        Instead of an integer, this could also be a callable that
+        takes as one parameter the current spawner instance and
+        returns an integer. The callable will be called asynchronously
+        if it returns a future. Note that the interface of the spawner
+        class is not deemed stable across versions, so using this
+        functionality might cause your JupyterHub or kubespawner
         upgrades to break.
 
-        If set to `None`, the user specified with the `USER` directive in the
-        container metadata is used.
+        If set to `None`, the user specified with the `USER` directive
+        in the container metadata is used.
         """
     )
 
     singleuser_fs_gid = Union([
-            Integer(),
-            Callable()
-        ],
+        Integer(),
+        Callable()
+    ],
         allow_none=True,
         config=True,
-        help="""
-        The GID of the group that should own any volumes that are created & mounted.
+        help="""The GID of the group that should own any volumes that are
+        created & mounted.
 
-        A special supplemental group that applies primarily to the volumes mounted
-        in the single-user server. In volumes from supported providers, the following
-        things happen:
+        A special supplemental group that applies primarily to the volumes
+        mounted in the single-user server. In volumes from supported
+        providers, the following things happen:
 
           1. The owning GID will be the this GID
-          2. The setgid bit is set (new files created in the volume will be owned by
-             this GID)
+          2. The setgid bit is set (new files created in the volume will be 
+             owned by this GID)
           3. The permission bits are OR’d with rw-rw
 
-        The single-user server will also be run with this gid as part of its supplemental
-        groups.
+        The single-user server will also be run with this gid as part of its
+        supplemental groups.
 
-        Instead of an integer, this could also be a callable that takes as one
-        parameter the current spawner instance and returns an integer. The callable will
-        be called asynchronously if it returns a future, rather than an int. Note that
-        the interface of the spawner class is not deemed stable across versions,
-        so using this functionality might cause your JupyterHub or kubespawner
-        upgrades to break.
+        Instead of an integer, this could also be a callable that
+        takes as one parameter the current spawner instance and
+        returns an integer. The callable will be called asynchronously
+        if it returns a future, rather than an int. Note that the
+        interface of the spawner class is not deemed stable across
+        versions, so using this functionality might cause your
+        JupyterHub or kubespawner upgrades to break.
 
-        You'll *have* to set this if you are using auto-provisioned volumes with most
-        cloud providers. See [fsGroup](http://kubernetes.io/docs/api-reference/v1/definitions/#_v1_podsecuritycontext)
+        You'll *have* to set this if you are using auto-provisioned volumes
+        with most cloud providers. See
+        [fsGroup](http://kubernetes.io/docs/api-reference/v1/definitions/#\
+         _v1_podsecuritycontext)
         for more details.
         """
     )
@@ -326,23 +348,25 @@ class KubeSpawner(Spawner):
         [],
         config=True,
         help="""
-        List of Kubernetes Volume specifications that will be mounted in the user pod.
+        List of Kubernetes Volume specifications that will be mounted in the
+        user pod.
 
-        This list will be directly added under `volumes` in the kubernetes pod spec,
-        so you should use the same structure. Each item in the list must have the
-        following two keys:
+        This list will be directly added under `volumes` in the kubernetes
+        pod spec, so you should use the same structure. Each item in the list
+        must have the following two keys:
           - name
-            Name that'll be later used in the `volume_mounts` config to mount this
-            volume at a specific path.
-          - <name-of-a-supported-volume-type> (such as `hostPath`, `persistentVolumeClaim`,
-            etc)
-            The key name determines the type of volume to mount, and the value should
-            be an object specifying the various options available for that kind of
-            volume.
+            Name that'll be later used in the `volume_mounts` config to
+             mount this volume at a specific path.
+          - <name-of-a-supported-volume-type> (such as `hostPath`,
+             `persistentVolumeClaim`, etc.)
+            The key name determines the type of volume to mount, and the
+            value should be an object specifying the various options available
+            for that kind of volume.
 
-        See http://kubernetes.io/docs/user-guide/volumes/ for more information on the
-        various kinds of volumes available and their options. Your kubernetes cluster
-        must already be configured to support the volume types you want to use.
+        See http://kubernetes.io/docs/user-guide/volumes/ for more
+        information on the various kinds of volumes available and
+        their options. Your kubernetes cluster must already be
+        configured to support the volume types you want to use.
 
         {username} and {userid} are expanded to the escaped, dns-label safe
         username & integer user id respectively, wherever they are used.
@@ -355,17 +379,20 @@ class KubeSpawner(Spawner):
         help="""
         List of paths on which to mount volumes in the user notebook's pod.
 
-        This list will be added to the values of the `volumeMounts` key under the user's
-        container in the kubernetes pod spec, so you should use the same structure as that.
-        Each item in the list should be a dictionary with at least these two keys:
+        This list will be added to the values of the `volumeMounts` key under 
+        the user's container in the kubernetes pod spec, so you should use the
+        same structure as that.
+
+        Each item in the list should be a dictionary with at least these two
+        keys:
           - mountPath
             The path on the container in which we want to mount the volume.
           - name
-            The name of the volume we want to mount, as specified in the `volumes`
-            config.
+            The name of the volume we want to mount, as specified in the
+            `volumes` config.
 
-        See http://kubernetes.io/docs/user-guide/volumes/ for more information on how
-        the volumeMount item works.
+        See http://kubernetes.io/docs/user-guide/volumes/ for more
+        information on how the volumeMount item works.
 
         {username} and {userid} are expanded to the escaped, dns-label safe
         username & integer user id respectively, wherever they are used.
@@ -377,21 +404,26 @@ class KubeSpawner(Spawner):
         config=True,
         allow_none=True,
         help="""
-        The ammount of storage space to request from the volume that the pvc will
-        mount to. This ammount will be the ammount of storage space the user has
-        to work with on their notebook. If left blank, the kubespawner will not
-        create a pvc for the pod.
+        The amount of storage space to request from the volume that the pvc
+        will mount to. This amount will be the amount of storage space the
+        user has to work with on their notebook. If left blank, the
+        kubespawner will not create a pvc for the pod.
 
-        This will be added to the `resources: requests: storage:` in the k8s pod spec.
+        This will be added to the `resources: requests: storage:` in the k8s
+        pod spec.
 
-        See http://kubernetes.io/docs/user-guide/persistent-volumes/#persistentvolumeclaims
-        for more information on how storage works.
+        See http://kubernetes.io/docs/user-guide/persistent-volumes/#\
+         persistentvolumeclaims for more information on how storage works.
 
-        Quantities can be represented externally as unadorned integers, or as fixed-point
-        integers with one of these SI suffices (E, P, T, G, M, K, m) or their power-of-two
-        equivalents (Ei, Pi, Ti, Gi, Mi, Ki). For example, the following represent roughly
-        'the same value: 128974848, "129e6", "129M" , "123Mi".
-        (https://github.com/kubernetes/kubernetes/blob/master/docs/design/resources.md)
+        Quantities can be represented externally as unadorned
+        integers, or as fixed-point integers with one of these SI
+        suffices (E, P, T, G, M, K, m) or their power-of-two
+        equivalents (Ei, Pi, Ti, Gi, Mi, Ki). For example, the
+        following represent roughly the same value: 128974848,
+        "129e6", "129M" , "123Mi".
+
+        (https://github.com/kubernetes/kubernetes/blob/master/docs/\
+          design/resources.md)
         """
     )
 
@@ -400,19 +432,21 @@ class KubeSpawner(Spawner):
         config=True,
         allow_none=True,
         help="""
-        The storage class that the pvc will use. If left blank, the kubespawner will not
-        create a pvc for the pod.
+        The storage class that the pvc will use. If left blank, the
+        kubespawner will not create a pvc for the pod.
 
-        This will be added to the `annotations: volume.beta.kubernetes.io/storage-class:`
-        in the pvc metadata.
+        This will be added to the `annotations:
+        volume.beta.kubernetes.io/storage-class:` in the pvc metadata.
 
-        This will determine what type of volume the pvc will request to use. If one exists
-        that matches the criteria of the StorageClass, the pvc will mount to that. Otherwise,
-        b/c it has a storage class, k8s will dynamicallly spawn a pv for the pvc to bind to
-        and a machine in the cluster for the pv to bind to.
+        This will determine what type of volume the pvc will request
+        to use. If one exists that matches the criteria of the
+        StorageClass, the pvc will mount to that. Otherwise, b/c it
+        has a storage class, k8s will dynamicallly spawn a pv for the
+        pvc to bind to and a machine in the cluster for the pv to bind
+        to.
 
-        See http://kubernetes.io/docs/user-guide/persistent-volumes/#storageclasses for
-        more information on how StorageClasses work.
+        See http://kubernetes.io/docs/user-guide/persistent-volumes/#\
+         storageclasses for more information on how StorageClasses work.
         """
     )
 
@@ -424,12 +458,14 @@ class KubeSpawner(Spawner):
 
         The access modes are:
             The access modes are:
-                ReadWriteOnce – the volume can be mounted as read-write by a single node
-                ReadOnlyMany – the volume can be mounted read-only by many nodes
-                ReadWriteMany – the volume can be mounted as read-write by many nodes
+                ReadWriteOnce: the volume can be mounted as read-write by a
+                 single node
+                ReadOnlyMany: the volume can be mounted read-only by many nodes
+                ReadWriteMany: the volume can be mounted as read-write by 
+                 many nodes
 
-        See http://kubernetes.io/docs/user-guide/persistent-volumes/#access-modes for
-        more information on how access modes work.
+        See http://kubernetes.io/docs/user-guide/persistent-volumes/#\
+         access-modes for more information on how access modes work.
         """
     )
 
@@ -440,17 +476,25 @@ class KubeSpawner(Spawner):
         help="""
         Python class to use as an httpclient
 
-        It could be for example: `tornado.curl_httpclient.CurlAsyncHTTPClient` or
-        `tornado.simple_httpclient.SimpleAsyncHTTPClient`.
+        It could be for example: `tornado.curl_httpclient.CurlAsyncHTTPClient`
+        or `tornado.simple_httpclient.SimpleAsyncHTTPClient`.
         """
     )
 
     def _expand_user_properties(self, template):
         # Make sure username matches the restrictions for DNS labels
         safe_chars = set(string.ascii_lowercase + string.digits)
-        safe_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
+        safe_username = ''.join(
+            [s if s in safe_chars else '-' for s in self.user.name.lower()])
+        # SQRE changes
+        userid = self.user.id
+        try:
+            userid = self.user.authenticator.auth_context["uid"]
+        except (NameError, AttributeError) as err:
+            self.log.info("User did not have a UID in auth context: ",
+                          str(err))
         return template.format(
-            userid=self.user.id,
+            userid=userid,
             username=safe_username
         )
 
@@ -472,7 +516,8 @@ class KubeSpawner(Spawner):
         # Add a hack to ensure that no service accounts are mounted in spawned pods
         # This makes sure that we don't accidentally give access to the whole
         # kubernetes API to the users in the spawned pods.
-        # See https://github.com/kubernetes/kubernetes/issues/16779#issuecomment-157460294
+        # See
+        # https://github.com/kubernetes/kubernetes/issues/16779#issuecomment-157460294
         hack_volumes = [{
             'name': 'no-api-access-please',
             'emptyDir': {}
@@ -526,7 +571,6 @@ class KubeSpawner(Spawner):
             self.user_storage_access_modes,
             self.user_storage_capacity
         )
-
 
     @gen.coroutine
     def get_pod_info(self, pod_name):
@@ -633,7 +677,8 @@ class KubeSpawner(Spawner):
                     headers={'Content-Type': 'application/json'}
                 ))
             except:
-                self.log.info("Pvc " + self.pvc_name + " already exists, so did not create new pvc.")
+                self.log.info("Pvc " + self.pvc_name +
+                              " already exists, so did not create new pvc.")
 
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
@@ -653,12 +698,15 @@ class KubeSpawner(Spawner):
             except HTTPError as e:
                 if e.code != 409:
                     # We only want to handle 409 conflict errors
-                    self.log.exception("Failed for %s", json.dumps(pod_manifest))
+                    self.log.exception(
+                        "Failed for %s", json.dumps(pod_manifest))
                     raise
-                self.log.info('Found existing pod %s, attempting to kill', self.pod_name)
+                self.log.info(
+                    'Found existing pod %s, attempting to kill', self.pod_name)
                 yield self.stop(True)
 
-                self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
+                self.log.info(
+                    'Killed pod %s, will try starting singleuser pod again', self.pod_name)
         else:
             raise Exception(
                 'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
@@ -701,7 +749,7 @@ class KubeSpawner(Spawner):
         return []
 
     def get_args(self):
-        args = super(KubeSpawner, self).get_args()
+        args = super(SQREKubeSpawner, self).get_args()
 
         # HACK: we wanna replace --hub-api-url=self.hub.api_url with
         # self.accessible_hub_api_url. This is required in situations where
@@ -717,8 +765,11 @@ class KubeSpawner(Spawner):
 
     def get_env(self):
         # HACK: This is deprecated, and should be removed soon.
-        # We set these to be compatible with DockerSpawner and earlie KubeSpawner
-        env = super(KubeSpawner, self).get_env()
+        # We set these to be compatible with DockerSpawner and earlier
+        # KubeSpawner
+        #
+        # SQRE: we also use it to stuff a GitHub Access Token in to the env.
+        env = super(SQREKubeSpawner, self).get_env()
         env.update({
             'JPY_USER': self.user.name,
             'JPY_COOKIE_NAME': self.user.server.cookie_name,
@@ -726,4 +777,15 @@ class KubeSpawner(Spawner):
             'JPY_HUB_PREFIX': self.hub.server.base_url,
             'JPY_HUB_API_URL': self.accessible_hub_api_url
         })
+        try:
+            gh_id = self.user.authenticator.auth_context["uid"]
+            gh_token = self.user.authenticator.auth_context["access_token"]
+        except (AttributeError, NameError) as err:
+            self.log.info("Could not attach GH ID and access token: %s",
+                          str(err))
+        if gh_id and gh_token:
+            env.update({
+                'GITHUB_ID': str(gh_id),
+                'GITHUB_ACCESS_TOKEN': gh_token
+            })
         return env
