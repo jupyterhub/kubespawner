@@ -17,7 +17,7 @@ from jupyterhub.traitlets import Command
 from kubernetes.client.models.v1_volume import V1Volume
 from kubernetes.client.models.v1_volume_mount import V1VolumeMount
 
-from kubespawner.traitlets import Selector, Callable
+from kubespawner.traitlets import LabelSelector, Callable
 from kubespawner.utils import request_maker, k8s_url
 from kubespawner.objects import make_pod_spec, make_pvc_spec
 
