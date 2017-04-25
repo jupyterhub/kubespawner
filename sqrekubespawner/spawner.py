@@ -258,7 +258,7 @@ class SQREKubeSpawner(Spawner):
 
         This configuration is primarily used in development if you are
         actively changing the singleuser_image_spec and would like to
-        pull the image whenever a user container is spawned.  
+        pull the image whenever a user container is spawned.
         """
     )
 
@@ -274,7 +274,7 @@ class SQREKubeSpawner(Spawner):
         singleuser_image_spec.
 
         https://kubernetes.io/docs/user-guide/images/\
-          #specifying-imagepullsecrets-on-a-pod
+          # specifying-imagepullsecrets-on-a-pod
         has more information on when and why this might need to be
         set, and what it should be set to.
         """
@@ -461,7 +461,7 @@ class SQREKubeSpawner(Spawner):
                 ReadWriteOnce: the volume can be mounted as read-write by a
                  single node
                 ReadOnlyMany: the volume can be mounted read-only by many nodes
-                ReadWriteMany: the volume can be mounted as read-write by 
+                ReadWriteMany: the volume can be mounted as read-write by
                  many nodes
 
         See http://kubernetes.io/docs/user-guide/persistent-volumes/#\
@@ -490,9 +490,9 @@ class SQREKubeSpawner(Spawner):
         userid = self.user.id
         try:
             userid = self.user.authenticator.auth_context["uid"]
-        except (NameError, AttributeError) as err:
-            self.log.info("User did not have a UID in auth context: ",
-                          str(err))
+        except (KeyError, NameError, AttributeError) as err:
+            self.log.info("User %s did not have a UID in auth context: %s"
+                          % (userid, str(err)))
         return template.format(
             userid=userid,
             username=safe_username
@@ -785,15 +785,13 @@ class SQREKubeSpawner(Spawner):
             gh_id = self.user.authenticator.auth_context["uid"]
             gh_token = self.user.authenticator.auth_context["access_token"]
             gh_name = self.user.authenticator.auth_context["name"]
-            gh_email = self.user.authenticator.auth_context["email"]
         except (AttributeError, NameError) as err:
             self.log.info("Could not attach GH ID and access token: %s",
                           str(err))
-        if gh_id and gh_token and gh_name and gh_email:
+        if gh_id and gh_token and gh_name:
             env.update({
                 'GITHUB_ID': str(gh_id),
                 'GITHUB_NAME': gh_name,
-                'GITHUB_EMAIL': gh_email,
                 # This next thing seems a little dodgy.
                 'GITHUB_ACCESS_TOKEN': gh_token
             })
@@ -807,4 +805,19 @@ class SQREKubeSpawner(Spawner):
                         env.update({
                             'GITHUB_ORGANIZATIONS': orglstr
                         })
+            if "email" in self.user.authenticator.auth_context:
+                gh_email = self.user.authenticator.auth_context["email"]
+                if gh_email:
+                    env.update({
+                        'GITHUB_EMAIL': gh_email
+                    })
+        acc_tok = None
+        if "GITHUB_ACCESS_TOKEN" in env:
+            acc_tok = env['GITHUB_ACCESS_TOKEN']
+            env['GITHUB_ACCESS_TOKEN'] = "[secret]"
+        self.log.info("Spawned environment: %s" % json.dumps(env,
+                                                             sort_keys=True,
+                                                             indent=4))
+        if acc_tok:
+            env['GITHUB_ACCESS_TOKEN'] = acc_tok
         return env
