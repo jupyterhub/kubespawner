@@ -322,9 +322,9 @@ class SQREKubeSpawner(Spawner):
         providers, the following things happen:
 
           1. The owning GID will be the this GID
-          2. The setgid bit is set (new files created in the volume will be 
+          2. The setgid bit is set (new files created in the volume will be
              owned by this GID)
-          3. The permission bits are OR’d with rw-rw
+          3. The permission bits are OR'd with rw-rw
 
         The single-user server will also be run with this gid as part of its
         supplemental groups.
@@ -379,7 +379,7 @@ class SQREKubeSpawner(Spawner):
         help="""
         List of paths on which to mount volumes in the user notebook's pod.
 
-        This list will be added to the values of the `volumeMounts` key under 
+        This list will be added to the values of the `volumeMounts` key under
         the user's container in the kubernetes pod spec, so you should use the
         same structure as that.
 
@@ -542,7 +542,7 @@ class SQREKubeSpawner(Spawner):
         else:
             real_cmd = None
 
-        return make_pod_spec(
+        return make_pod_spec(  # NoQA
             self.pod_name,
             self.singleuser_image_spec,
             self.singleuser_image_pull_policy,
@@ -589,7 +589,7 @@ class SQREKubeSpawner(Spawner):
             ))
         except HTTPError as e:
             if e.code == 404:
-                return None
+                return None  # NoQA
             raise
         data = response.body.decode('utf-8')
         return json.loads(data)
@@ -611,7 +611,7 @@ class SQREKubeSpawner(Spawner):
             ))
         except HTTPError as e:
             if e.code == 404:
-                return None
+                return None  # NoQA
             raise
         data = response.body.decode('utf-8')
         return json.loads(data)
@@ -662,8 +662,8 @@ class SQREKubeSpawner(Spawner):
         """
         data = yield self.get_pod_info(self.pod_name)
         if data is not None and self.is_pod_running(data):
-            return None
-        return 1
+            return None  # NoQA
+        return 1  # NoQA
 
     @gen.coroutine
     def start(self):
@@ -716,7 +716,7 @@ class SQREKubeSpawner(Spawner):
             if data is not None and self.is_pod_running(data):
                 break
             yield gen.sleep(1)
-        return (data['status']['podIP'], self.port)
+        return (data['status']['podIP'], self.port)  # NoQA
 
     @gen.coroutine
     def stop(self, now=False):
@@ -768,7 +768,8 @@ class SQREKubeSpawner(Spawner):
         # We set these to be compatible with DockerSpawner and earlier
         # KubeSpawner
         #
-        # SQRE: we also use it to stuff a GitHub Access Token in to the env.
+        # SQRE: we also use it to stuff a whole bunch of GitHub data into
+        #  the environment.
         env = super(SQREKubeSpawner, self).get_env()
         env.update({
             'JPY_USER': self.user.name,
@@ -777,15 +778,33 @@ class SQREKubeSpawner(Spawner):
             'JPY_HUB_PREFIX': self.hub.server.base_url,
             'JPY_HUB_API_URL': self.accessible_hub_api_url
         })
+        # If we happen to be using GHOWLAuth...we can get a lot more
+        #  info for creating a user with appropriate access on the remote
+        #  end.
         try:
             gh_id = self.user.authenticator.auth_context["uid"]
             gh_token = self.user.authenticator.auth_context["access_token"]
+            gh_name = self.user.authenticator.auth_context["name"]
+            gh_email = self.user.authenticator.auth_context["email"]
         except (AttributeError, NameError) as err:
             self.log.info("Could not attach GH ID and access token: %s",
                           str(err))
-        if gh_id and gh_token:
+        if gh_id and gh_token and gh_name and gh_email:
             env.update({
                 'GITHUB_ID': str(gh_id),
+                'GITHUB_NAME': gh_name,
+                'GITHUB_EMAIL': gh_email,
+                # This next thing seems a little dodgy.
                 'GITHUB_ACCESS_TOKEN': gh_token
             })
+            # We know authenticator has auth_context.
+            if "orgmap" in self.user.authenticator.auth_context:
+                gh_org = self.user.authenticator.auth_context["orgmap"]
+                if gh_org:
+                    orglist = [item[0] + ":" + str(item[1]) for item in gh_org]
+                    if orglist:
+                        orglstr = ','.join(orglist)
+                        env.update({
+                            'GITHUB_ORGANIZATIONS': orglstr
+                        })
         return env
