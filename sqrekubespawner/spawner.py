@@ -784,20 +784,19 @@ class SQREKubeSpawner(Spawner):
         try:
             gh_id = self.user.authenticator.auth_context["uid"]
             gh_token = self.user.authenticator.auth_context["access_token"]
-            gh_name = self.user.authenticator.auth_context["name"]
-        except (AttributeError, NameError) as err:
+        except (KeyError, AttributeError, NameError) as err:
             self.log.info("Could not attach GH ID and access token: %s",
                           str(err))
-        if gh_id and gh_token and gh_name:
+        if gh_id and gh_token:
             env.update({
                 'GITHUB_ID': str(gh_id),
-                'GITHUB_NAME': gh_name,
                 # This next thing seems a little dodgy.
                 'GITHUB_ACCESS_TOKEN': gh_token
             })
             # We know authenticator has auth_context.
-            if "orgmap" in self.user.authenticator.auth_context:
-                gh_org = self.user.authenticator.auth_context["orgmap"]
+            authc = self.user.authenticator.auth_context
+            if "orgmap" in authc:
+                gh_org = authc["orgmap"]
                 if gh_org:
                     orglist = [item[0] + ":" + str(item[1]) for item in gh_org]
                     if orglist:
@@ -805,12 +804,20 @@ class SQREKubeSpawner(Spawner):
                         env.update({
                             'GITHUB_ORGANIZATIONS': orglstr
                         })
-            if "email" in self.user.authenticator.auth_context:
-                gh_email = self.user.authenticator.auth_context["email"]
+            if "email" in authc:
+                gh_email = authc["email"]
                 if gh_email:
                     env.update({
                         'GITHUB_EMAIL': gh_email
                     })
+            gh_name = ""
+            if "name" in authc:
+                gh_name = authc["name"]
+            if not gh_name:
+                gh_name = self.user.name
+            env.update({
+                'GITHUB_NAME': gh_name
+            })
         acc_tok = None
         if "GITHUB_ACCESS_TOKEN" in env:
             acc_tok = env['GITHUB_ACCESS_TOKEN']
