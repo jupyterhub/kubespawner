@@ -484,15 +484,16 @@ class SQREKubeSpawner(Spawner):
     def _expand_user_properties(self, template):
         # Make sure username matches the restrictions for DNS labels
         safe_chars = set(string.ascii_lowercase + string.digits)
+        username = self.user.name
         safe_username = ''.join(
             [s if s in safe_chars else '-' for s in self.user.name.lower()])
         # SQRE changes
         userid = self.user.id
         try:
-            userid = self.user.authenticator.auth_context["uid"]
+            userid = self.user.authenticator.auth_context[username]["uid"]
         except (KeyError, NameError, AttributeError) as err:
-            self.log.info("User %s did not have a UID in auth context: %s"
-                          % (userid, str(err)))
+            self.log.info("User %s/%s did not have a UID in auth context: %s"
+                          % (userid, username, str(err)))
         return template.format(
             userid=userid,
             username=safe_username
@@ -782,21 +783,23 @@ class SQREKubeSpawner(Spawner):
         #  info for creating a user with appropriate access on the remote
         #  end.
         try:
-            gh_id = self.user.authenticator.auth_context["uid"]
-            gh_token = self.user.authenticator.auth_context["access_token"]
+            auc = self.user.authenticator.auth_context[self.user.name]
+            gh_id = auc["uid"]
+            gh_token = auc["access_token"]
         except (KeyError, AttributeError, NameError) as err:
-            self.log.info("Could not attach GH ID and access token: %s",
-                          str(err))
+            self.log.error("Could not attach GH ID and access token: %s",
+                           str(err))
+            # We should force reauthentication here.
+            raise
         if gh_id and gh_token:
             env.update({
                 'GITHUB_ID': str(gh_id),
                 # This next thing seems a little dodgy.
                 'GITHUB_ACCESS_TOKEN': gh_token
             })
-            # We know authenticator has auth_context.
-            authc = self.user.authenticator.auth_context
-            if "orgmap" in authc:
-                gh_org = authc["orgmap"]
+            # We know we have an auth_context.
+            if "orgmap" in auc:
+                gh_org = auc["orgmap"]
                 if gh_org:
                     orglist = [item[0] + ":" + str(item[1]) for item in gh_org]
                     if orglist:
@@ -804,15 +807,15 @@ class SQREKubeSpawner(Spawner):
                         env.update({
                             'GITHUB_ORGANIZATIONS': orglstr
                         })
-            if "email" in authc:
-                gh_email = authc["email"]
+            if "email" in auc:
+                gh_email = auc["email"]
                 if gh_email:
                     env.update({
                         'GITHUB_EMAIL': gh_email
                     })
             gh_name = ""
-            if "name" in authc:
-                gh_name = authc["name"]
+            if "name" in auc:
+                gh_name = auc["name"]
             if not gh_name:
                 gh_name = self.user.name
             env.update({
