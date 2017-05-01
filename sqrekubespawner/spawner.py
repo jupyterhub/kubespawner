@@ -783,9 +783,10 @@ class SQREKubeSpawner(Spawner):
         #  info for creating a user with appropriate access on the remote
         #  end.
         try:
-            auc = self.user.authenticator.auth_context[self.user.name]
-            gh_id = auc["uid"]
-            gh_token = auc["access_token"]
+            # self.user.name has already been canonicalized
+            acu = self.user.authenticator.auth_context[self.user.name]
+            gh_id = acu["uid"]
+            gh_token = acu["access_token"]
         except (KeyError, AttributeError, NameError) as err:
             self.log.error("Could not attach GH ID and access token: %s",
                            str(err))
@@ -798,8 +799,8 @@ class SQREKubeSpawner(Spawner):
                 'GITHUB_ACCESS_TOKEN': gh_token
             })
             # We know we have an auth_context.
-            if "orgmap" in auc:
-                gh_org = auc["orgmap"]
+            if "orgmap" in acu:
+                gh_org = acu["orgmap"]
                 if gh_org:
                     orglist = [item[0] + ":" + str(item[1]) for item in gh_org]
                     if orglist:
@@ -807,15 +808,15 @@ class SQREKubeSpawner(Spawner):
                         env.update({
                             'GITHUB_ORGANIZATIONS': orglstr
                         })
-            if "email" in auc:
-                gh_email = auc["email"]
+            if "email" in acu:
+                gh_email = acu["email"]
                 if gh_email:
                     env.update({
                         'GITHUB_EMAIL': gh_email
                     })
             gh_name = ""
-            if "name" in auc:
-                gh_name = auc["name"]
+            if "name" in acu:
+                gh_name = acu["name"]
             if not gh_name:
                 gh_name = self.user.name
             env.update({
