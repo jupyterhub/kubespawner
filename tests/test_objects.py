@@ -46,14 +46,8 @@ def test_make_simplest_pod():
                     }],
                     'volumeMounts': [],
                     "resources": {
-                        "limits": {
-                            "cpu": None,
-                            "memory": None
-                        },
-                        "requests": {
-                            "cpu": None,
-                            "memory": None
-                        }
+                        "limits": {},
+                        "requests": {}
                     }
                 }
             ],
@@ -105,14 +99,8 @@ def test_make_labeled_pod():
                     }],
                     'volumeMounts': [],
                     "resources": {
-                        "limits": {
-                            "cpu": None,
-                            "memory": None
-                        },
-                        "requests": {
-                            "cpu": None,
-                            "memory": None
-                        }
+                        "limits": {},
+                        "requests": {}
                     }
                 }
             ],
@@ -167,14 +155,8 @@ def test_make_pod_with_image_pull_secrets():
                     }],
                     'volumeMounts': [],
                     "resources": {
-                        "limits": {
-                            "cpu": None,
-                            "memory": None
-                        },
-                        "requests": {
-                            "cpu": None,
-                            "memory": None
-                        }
+                        "limits": {},
+                        "requests": {}
                     }
                 }
             ],
@@ -230,14 +212,8 @@ def test_set_pod_uid_fs_gid():
                     }],
                     'volumeMounts': [],
                     "resources": {
-                        "limits": {
-                            "cpu": None,
-                            "memory": None
-                        },
-                        "requests": {
-                            "cpu": None,
-                            "memory": None
-                        }
+                        "limits": {},
+                        "requests": {}
                     }
                 }
             ],
@@ -354,12 +330,8 @@ def test_make_pod_with_env():
                     'volumeMounts': [],
                     "resources": {
                         "limits": {
-                            "cpu": None,
-                            "memory": None
                         },
                         "requests": {
-                            "cpu": None,
-                            "memory": None
                         }
                     }
                 }
