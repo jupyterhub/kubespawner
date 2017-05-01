@@ -104,7 +104,7 @@ def make_pod_spec(
     pod.metadata = V1ObjectMeta()
     pod.metadata.name = name
     pod.metadata.labels = labels.copy()
-    
+
     pod.spec = V1PodSpec()
 
     security_context = V1PodSecurityContext()
@@ -134,8 +134,19 @@ def make_pod_spec(
     notebook_container.args = cmd
     notebook_container.image_pull_policy = image_pull_policy
     notebook_container.resources = V1ResourceRequirements()
-    notebook_container.resources.requests = {"cpu": cpu_guarantee, "memory": mem_guarantee}
-    notebook_container.resources.limits = {"cpu": cpu_limit, "memory": mem_limit}
+
+    notebook_container.resources.requests = {}
+
+    if cpu_guarantee:
+        notebook_container.resources.requests['cpu'] = cpu_guarantee
+    if mem_guarantee:
+        notebook_container.resources.requests['memory'] = mem_guarantee
+
+    notebook_container.resources.limits = {}
+    if cpu_limit:
+        notebook_container.resources.limits['cpu'] = cpu_limit
+    if mem_limit:
+        notebook_container.resources.limits['memory'] = mem_limit
     notebook_container.volume_mounts = volume_mounts
     pod.spec.containers.append(notebook_container)
 
