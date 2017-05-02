@@ -11,7 +11,7 @@ from urllib.parse import urlparse, urlunparse
 
 from tornado import gen
 from tornado.httpclient import HTTPError
-from traitlets import Type, Unicode, List, Integer, Union, Dict
+from traitlets import Type, Unicode, List, Integer, Union, Dict, Bool
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
 
@@ -481,6 +481,14 @@ class SQREKubeSpawner(Spawner):
         """
     )
 
+    privileged = Bool(
+        False,
+        config=True,
+        help="""
+        Whether user pod should run with privilege
+        """
+    )
+
     def _expand_user_properties(self, template):
         # Make sure username matches the restrictions for DNS labels
         safe_chars = set(string.ascii_lowercase + string.digits)
@@ -560,6 +568,7 @@ class SQREKubeSpawner(Spawner):
             self.cpu_guarantee,
             self.mem_limit,
             self.mem_guarantee,
+            self.privileged
         )
 
     def get_pvc_manifest(self):
