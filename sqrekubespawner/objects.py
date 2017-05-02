@@ -19,8 +19,7 @@ def make_pod_spec(
     cpu_limit,
     cpu_guarantee,
     mem_limit,
-    mem_guarantee,
-    privileged
+    mem_guarantee
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -77,18 +76,12 @@ def make_pod_spec(
         String specifying the max amount of RAM the user's pod is guaranteed
         to have access to. String ins loat/int since common suffixes
         are allowed
-      - privileged:
-        Boolean specifying whether the container should run with privilege.
-        Sadly necessary to mount NFS volumes if you can't hardcode the
-        server address.
     """
     pod_security_context = {}
     if run_as_uid is not None:
         pod_security_context['runAsUser'] = int(run_as_uid)
     if fs_gid is not None:
         pod_security_context['fsGroup'] = int(fs_gid)
-    if privileged:
-        pod_security_context['privileged'] = True
     image_secret = []
     if image_pull_secret is not None:
         image_secret = [{"name": image_pull_secret}]
