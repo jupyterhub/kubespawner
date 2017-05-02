@@ -559,7 +559,7 @@ class SQREKubeSpawner(Spawner):
             self.cpu_limit,
             self.cpu_guarantee,
             self.mem_limit,
-            self.mem_guarantee,
+            self.mem_guarantee
         )
 
     def get_pvc_manifest(self):
