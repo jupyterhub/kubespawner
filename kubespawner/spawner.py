@@ -444,6 +444,31 @@ class KubeSpawner(Spawner):
         """
     )
 
+    singleuser_lifecycle_hooks = Dict(
+        {},
+        config=True,
+        help="""
+        Kubernetes lifecycle hooks to set on the spawned single-user pods.
+
+        The keys is name of hooks and there are only two hooks, postStart and preStop.
+        The values are handler of hook which executes by Kubernetes management system when hook is called.
+
+        Below are a sample copied from Kubernetes doc 
+        https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/
+
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh", "-c", "echo Hello from the postStart handler > /usr/share/message"]
+          preStop:
+            exec:
+              command: ["/usr/sbin/nginx","-s","quit"]
+
+        See https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/ for more
+        info on what lifecycle hooks are and why you might want to use them!
+        """
+    )
+
     httpclient_class = Type(
         None,
         config=True,
@@ -526,6 +551,7 @@ class KubeSpawner(Spawner):
             cpu_guarantee=self.cpu_guarantee,
             mem_limit=self.mem_limit,
             mem_guarantee=self.mem_guarantee,
+            lifecycle_hooks=self.singleuser_lifecycle_hooks,
         )
 
     def get_pvc_manifest(self):
