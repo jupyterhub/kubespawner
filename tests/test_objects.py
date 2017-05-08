@@ -25,13 +25,15 @@ def test_make_simplest_pod():
         fs_gid=None,
         image_pull_policy='IfNotPresent',
         image_pull_secret=None,
-        labels={}
+        labels={},
+        node_selector={}
     ) == {
         "metadata": {
             "name": "test",
             "labels": {},
         },
         "spec": {
+            "nodeSelector": {},
             "securityContext": {},
             "containers": [
                 {
@@ -78,13 +80,15 @@ def test_make_labeled_pod():
         fs_gid=None,
         image_pull_policy='IfNotPresent',
         image_pull_secret=None,
-        labels={"test": "true"}
+        labels={"test": "true"},
+        node_selector={}
     ) == {
         "metadata": {
             "name": "test",
             "labels": {"test": "true"},
         },
         "spec": {
+            "nodeSelector": {},
             "securityContext": {},
             "containers": [
                 {
@@ -131,13 +135,15 @@ def test_make_pod_with_image_pull_secrets():
         fs_gid=None,
         image_pull_policy='IfNotPresent',
         image_pull_secret='super-sekrit',
-        labels={}
+        labels={},
+        node_selector={}
     ) == {
         "metadata": {
             "name": "test",
             "labels": {},
         },
         "spec": {
+            "nodeSelector": {},
             "securityContext": {},
             "imagePullSecrets": [
                 {'name': 'super-sekrit'}
@@ -188,13 +194,15 @@ def test_set_pod_uid_fs_gid():
         fs_gid=1000,
         image_pull_policy='IfNotPresent',
         image_pull_secret=None,
-        labels={}
+        labels={},
+        node_selector={}
     ) == {
         "metadata": {
             "name": "test",
             "labels": {},
         },
         "spec": {
+            "nodeSelector": {},
             "securityContext": {
                 "runAsUser": 1000,
                 "fsGroup": 1000
@@ -245,13 +253,15 @@ def test_make_pod_resources_all():
         image_pull_secret="myregistrykey",
         run_as_uid=None,
         fs_gid=None,
-        labels={}
+        labels={},
+        node_selector={}
     ) == {
         "metadata": {
             "name": "test",
             "labels": {},
         },
         "spec": {
+            "nodeSelector": {},
             "securityContext": {},
             "imagePullSecrets": [{"name": "myregistrykey"}],
             "containers": [
@@ -309,12 +319,14 @@ def test_make_pod_with_env():
         run_as_uid=None,
         fs_gid=None,
         labels={},
+        node_selector={},
     ) == {
         "metadata": {
             "name": "test",
             "labels": {},
         },
         "spec": {
+            "nodeSelector": {},
             "securityContext": {},
             "containers": [
                 {

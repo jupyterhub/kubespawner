@@ -36,6 +36,7 @@ def make_pod_spec(
     cpu_guarantee,
     mem_limit,
     mem_guarantee,
+    node_selector,
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -94,6 +95,8 @@ def make_pod_spec(
         String specifying the max amount of RAM the user's pod is guaranteed
         to have access to. String ins loat/int since common suffixes
         are allowed
+      - node_selector:
+        For the pod to be eligible to run on a node
     """
     api_client = ApiClient()
 
@@ -113,6 +116,8 @@ def make_pod_spec(
     if run_as_uid is not None:
         security_context.run_as_user = int(run_as_uid)
     pod.spec.security_context = security_context
+
+    pod.spec.node_selector = node_selector.copy()
 
     if image_pull_secret is not None:
         pod.spec.image_pull_secrets = []
