@@ -456,6 +456,20 @@ class KubeSpawner(Spawner):
         """
     )
 
+    node_selector = Dict(
+        {},
+        config=True,
+        help="""
+        nodeSelector is the simplest form of constraint. nodeSelector is a field of PodSpec.
+        It specifies a map of key-value pairs. For the pod to be eligible to run on a node,
+        the node must have each of the indicated key-value pairs as labels (it can have additional labels as well).
+        The most common usage is one key-value pair.
+
+        See https://kubernetes.io/docs/concepts/configuration/assign-pod-node/ for more info.
+        """
+    )
+
+
     def _expand_user_properties(self, template):
         # Make sure username matches the restrictions for DNS labels
         safe_chars = set(string.ascii_lowercase + string.digits)
@@ -526,6 +540,7 @@ class KubeSpawner(Spawner):
             cpu_guarantee=self.cpu_guarantee,
             mem_limit=self.mem_limit,
             mem_guarantee=self.mem_guarantee,
+            node_selector=self.node_selector,
         )
 
     def get_pvc_manifest(self):
