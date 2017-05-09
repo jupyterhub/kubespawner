@@ -25,7 +25,8 @@ def test_make_simplest_pod():
         fs_gid=None,
         image_pull_policy='IfNotPresent',
         image_pull_secret=None,
-        labels={}
+        labels={},
+        lifecycle_hooks=None,
     ) == {
         "metadata": {
             "name": "test",
@@ -78,7 +79,8 @@ def test_make_labeled_pod():
         fs_gid=None,
         image_pull_policy='IfNotPresent',
         image_pull_secret=None,
-        labels={"test": "true"}
+        labels={"test": "true"},
+        lifecycle_hooks=None,
     ) == {
         "metadata": {
             "name": "test",
@@ -131,7 +133,8 @@ def test_make_pod_with_image_pull_secrets():
         fs_gid=None,
         image_pull_policy='IfNotPresent',
         image_pull_secret='super-sekrit',
-        labels={}
+        labels={},
+        lifecycle_hooks=None,
     ) == {
         "metadata": {
             "name": "test",
@@ -188,7 +191,8 @@ def test_set_pod_uid_fs_gid():
         fs_gid=1000,
         image_pull_policy='IfNotPresent',
         image_pull_secret=None,
-        labels={}
+        labels={},
+        lifecycle_hooks=None,
     ) == {
         "metadata": {
             "name": "test",
@@ -245,7 +249,8 @@ def test_make_pod_resources_all():
         image_pull_secret="myregistrykey",
         run_as_uid=None,
         fs_gid=None,
-        labels={}
+        labels={},
+        lifecycle_hooks=None,
     ) == {
         "metadata": {
             "name": "test",
@@ -309,6 +314,7 @@ def test_make_pod_with_env():
         run_as_uid=None,
         fs_gid=None,
         labels={},
+        lifecycle_hooks=None,
     ) == {
         "metadata": {
             "name": "test",
@@ -332,6 +338,75 @@ def test_make_pod_with_env():
                         "limits": {
                         },
                         "requests": {
+                        }
+                    }
+                }
+            ],
+            'volumes': [],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+def test_make_pod_with_lifecycle():
+    """
+    Test specification of a pod with lifecycle
+    """
+    assert make_pod_spec(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        env={},
+        volumes=[],
+        volume_mounts=[],
+        cmd=['jupyterhub-singleuser'],
+        working_dir=None,
+        port=8888,
+        cpu_limit=None,
+        cpu_guarantee=None,
+        mem_limit=None,
+        mem_guarantee=None,
+        image_pull_policy='IfNotPresent',
+        image_pull_secret=None,
+        run_as_uid=None,
+        fs_gid=None,
+        labels={},
+        lifecycle_hooks={
+            'preStop': {
+                'exec': {
+                    'command': ['/bin/sh', 'test']
+                }
+            }
+        },
+    ) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+        },
+        "spec": {
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {
+                        },
+                        "requests": {
+                        }
+                    },
+                    "lifecycle": {
+                        "preStop": {
+                            "exec": {
+                                "command": ["/bin/sh", "test"]
+                            }
                         }
                     }
                 }

@@ -36,6 +36,7 @@ def make_pod_spec(
     cpu_guarantee,
     mem_limit,
     mem_guarantee,
+    lifecycle_hooks,
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -94,6 +95,8 @@ def make_pod_spec(
         String specifying the max amount of RAM the user's pod is guaranteed
         to have access to. String ins loat/int since common suffixes
         are allowed
+      - lifecycle_hooks:
+        Dictionary of lifecycle hooks
     """
     api_client = ApiClient()
 
@@ -133,6 +136,7 @@ def make_pod_spec(
     notebook_container.env = [V1EnvVar(k, v) for k, v in env.items()]
     notebook_container.args = cmd
     notebook_container.image_pull_policy = image_pull_policy
+    notebook_container.lifecycle = lifecycle_hooks
     notebook_container.resources = V1ResourceRequirements()
 
     notebook_container.resources.requests = {}
