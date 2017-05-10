@@ -118,7 +118,7 @@ class SQREKubeSpawner(Spawner):
     ).tag(config=True)
 
     pod_name_template = Unicode(
-        'jupyter-{username}-{userid}',
+        'jupyterlab-{username}-{userid}',
         config=True,
         help="""
         Template to use to form the name of user's pods.
@@ -543,9 +543,26 @@ class SQREKubeSpawner(Spawner):
         else:
             real_cmd = None
 
+        pod_name = self.pod_name
+        image_spec = self.singleuser_image_spec
+        if self.user_options:
+            if self.user_options.get('lsst_stack'):
+                image_spec = self.user_options['lsst_stack']
+                self.singleuser_image_spec = image_spec
+                self.log.info("Replacing image spec from options form: %s" %
+                              image_spec)
+                s_ind = image_spec.find('/')
+                c_ind = image_spec.find(':')
+                if s_ind != -1 and c_ind != 1:
+                    image_name = image_spec[(s_ind + 1):c_ind]
+                    pn_template = image_name + "-{username}-{userid}"
+                    pod_name = self._expand_user_properties(pn_template)
+                    self.pod_name = pod_name
+                    self.log.info("Replacing pod name from options form: %s" %
+                                  pod_name)
         return make_pod_spec(  # NoQA
-            self.pod_name,
-            self.singleuser_image_spec,
+            pod_name,
+            image_spec,
             self.singleuser_image_pull_policy,
             self.singleuser_image_pull_secrets,
             self.port,
@@ -832,3 +849,9 @@ class SQREKubeSpawner(Spawner):
         if acc_tok:
             env['GITHUB_ACCESS_TOKEN'] = acc_tok
         return env
+
+    def options_from_form(self, formdata=None):
+        options = {}
+        if formdata:
+            options['lsst_stack'] = formdata['lsst_stack'][0]
+        return options
