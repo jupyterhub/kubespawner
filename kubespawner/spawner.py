@@ -469,6 +469,33 @@ class KubeSpawner(Spawner):
         """
     )
 
+    singleuser_init_containers = List(
+        None,
+        config=True,
+        help="""
+        List of initialization containers belonging to the pod.
+
+        This list will be directly added under `initContainers` in the kubernetes pod spec,
+        so you should use the same structure. Each item in the list is container configuration
+        which follows spec at https://kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
+         
+        One usage is disabling access to metadata service from single-user notebook server with configuration below:
+        initContainers:
+        - name: init-iptables
+          image: <image with iptables installed>
+          command: ["iptables", "-A", "OUTPUT", "-p", "tcp", "--dport", "80", "-d", "169.254.169.254", "-j", "DROP"]
+          securityContext:
+            capabilities:
+              add:
+              - NET_ADMIN         
+
+        See https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ for more
+        info on what init containers are and why you might want to use them!
+        
+        To user this feature, Kubernetes version must greater than 1.6.
+        """
+    )
+
     httpclient_class = Type(
         None,
         config=True,
@@ -552,6 +579,7 @@ class KubeSpawner(Spawner):
             mem_limit=self.mem_limit,
             mem_guarantee=self.mem_guarantee,
             lifecycle_hooks=self.singleuser_lifecycle_hooks,
+            init_containers=self.singleuser_init_containers,
         )
 
     def get_pvc_manifest(self):

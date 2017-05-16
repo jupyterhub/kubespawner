@@ -37,6 +37,7 @@ def make_pod_spec(
     mem_limit,
     mem_guarantee,
     lifecycle_hooks,
+    init_containers,
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -97,6 +98,8 @@ def make_pod_spec(
         are allowed
       - lifecycle_hooks:
         Dictionary of lifecycle hooks
+      - init_containers:
+        List of initialization containers belonging to the pod.
     """
     api_client = ApiClient()
 
@@ -154,6 +157,7 @@ def make_pod_spec(
     notebook_container.volume_mounts = volume_mounts
     pod.spec.containers.append(notebook_container)
 
+    pod.spec.init_containers = init_containers
     pod.spec.volumes = volumes
     return api_client.sanitize_for_serialization(pod)
 
