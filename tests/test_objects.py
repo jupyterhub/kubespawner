@@ -28,6 +28,7 @@ def test_make_simplest_pod():
         image_pull_secret=None,
         labels={},
         lifecycle_hooks=None,
+        init_containers=None,
     ) == {
         "metadata": {
             "name": "test",
@@ -83,6 +84,7 @@ def test_make_labeled_pod():
         image_pull_secret=None,
         labels={"test": "true"},
         lifecycle_hooks=None,
+        init_containers=None,
     ) == {
         "metadata": {
             "name": "test",
@@ -138,6 +140,7 @@ def test_make_pod_with_image_pull_secrets():
         image_pull_secret='super-sekrit',
         labels={},
         lifecycle_hooks=None,
+        init_containers=None,
     ) == {
         "metadata": {
             "name": "test",
@@ -197,6 +200,7 @@ def test_set_pod_uid_fs_gid():
         image_pull_secret=None,
         labels={},
         lifecycle_hooks=None,
+        init_containers=None,
     ) == {
         "metadata": {
             "name": "test",
@@ -256,6 +260,7 @@ def test_make_pod_resources_all():
         fs_gid=None,
         labels={},
         lifecycle_hooks=None,
+        init_containers=None,
     ) == {
         "metadata": {
             "name": "test",
@@ -322,6 +327,7 @@ def test_make_pod_with_env():
         fs_gid=None,
         labels={},
         lifecycle_hooks=None,
+        init_containers=None,
     ) == {
         "metadata": {
             "name": "test",
@@ -385,6 +391,7 @@ def test_make_pod_with_lifecycle():
                 }
             }
         },
+        init_containers=None,
     ) == {
         "metadata": {
             "name": "test",
@@ -417,6 +424,88 @@ def test_make_pod_with_lifecycle():
                             }
                         }
                     }
+                }
+            ],
+            'volumes': [],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
+def test_make_pod_with_init_containers():
+    """
+    Test specification of a pod with initContainers
+    """
+    assert make_pod_spec(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        env={},
+        volumes=[],
+        volume_mounts=[],
+        cmd=['jupyterhub-singleuser'],
+        working_dir=None,
+        port=8888,
+        cpu_limit=None,
+        cpu_guarantee=None,
+        mem_limit=None,
+        mem_guarantee=None,
+        image_pull_policy='IfNotPresent',
+        image_pull_secret=None,
+        run_as_uid=None,
+        fs_gid=None,
+        labels={},
+        lifecycle_hooks=None,
+        init_containers=[
+            {
+                'name': 'init-myservice',
+                'image': 'busybox',
+                'command': ['sh', '-c', 'until nslookup myservice; do echo waiting for myservice; sleep 2; done;']
+            },
+            {
+                'name': 'init-mydb',
+                'image': 'busybox',
+                'command': ['sh', '-c', 'until nslookup mydb; do echo waiting for mydb; sleep 2; done;']
+            }
+        ],
+    ) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+        },
+        "spec": {
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {
+                        },
+                        "requests": {
+                        }
+                    },
+                }
+            ],
+            "initContainers": [
+                {
+                    "name": "init-myservice",
+                    "image": "busybox",
+                    "command": ["sh", "-c",
+                                "until nslookup myservice; do echo waiting for myservice; sleep 2; done;"]
+                },
+                {
+                    "name": "init-mydb",
+                    "image": "busybox",
+                    "command": ["sh", "-c", "until nslookup mydb; do echo waiting for mydb; sleep 2; done;"]
                 }
             ],
             'volumes': [],
