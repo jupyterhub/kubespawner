@@ -25,6 +25,7 @@ def make_pod_spec(
     image_pull_secret,
     port,
     cmd,
+    node_selector,
     run_as_uid,
     fs_gid,
     env,
@@ -60,6 +61,8 @@ def make_pod_spec(
         Port the notebook server is going to be listening on
       - cmd:
         The command used to execute the singleuser server.
+      - node_selector:
+        Dictionary Selector to match nodes where to launch the Pods
       - run_as_uid:
         The UID used to run single-user pods. The default is to run as the user
         specified in the Dockerfile, if this is set to None.
@@ -122,7 +125,10 @@ def make_pod_spec(
         image_secret = V1LocalObjectReference()
         image_secret.name = image_pull_secret
         pod.spec.image_pull_secrets.append(image_secret)
-
+    
+    if node_selector:
+        pod.spec.node_selector = node_selector
+    
     pod.spec.containers = []
     notebook_container = V1Container()
     notebook_container.name = "notebook"
@@ -162,7 +168,8 @@ def make_pvc_spec(
     name,
     storage_class,
     access_modes,
-    storage):
+    storage,
+    ):
     """
     Make a k8s pvc specification for running a user notebook.
 
