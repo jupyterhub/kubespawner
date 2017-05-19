@@ -377,6 +377,7 @@ def test_make_pod_with_lifecycle():
         run_as_uid=None,
         fs_gid=None,
         labels={},
+        node_selector={},
         lifecycle_hooks={
             'preStop': {
                 'exec': {
