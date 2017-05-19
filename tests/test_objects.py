@@ -456,6 +456,7 @@ def test_make_pod_with_init_containers():
         fs_gid=None,
         labels={},
         lifecycle_hooks=None,
+        node_selector={},
         init_containers=[
             {
                 'name': 'init-myservice',
