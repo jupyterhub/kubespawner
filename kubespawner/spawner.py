@@ -11,7 +11,7 @@ from urllib.parse import urlparse, urlunparse
 
 from tornado import gen
 from tornado.httpclient import HTTPError
-from traitlets import Type, Unicode, List, Integer, Union, Dict
+from traitlets import Type, Unicode, List, Integer, Union, Dict, Bool
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
 from kubernetes.client.models.v1_volume import V1Volume
@@ -132,6 +132,17 @@ class KubeSpawner(Spawner):
         This must be unique within the namespace the pods are being spawned
         in, so if you are running multiple jupyterhubs spawning in the
         same namespace, consider setting this to be something more unique.
+        """
+    )
+
+    user_storage_pvc_ensure = Bool(
+        False,
+        config=True,
+        help="""
+        Ensure that a PVC exists for each user before spawning.
+
+        Set to true to create a PVC named with `pvc_name_template` if it does
+        not exist for the user when their pod is spawning.
         """
     )
 
@@ -703,7 +714,7 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def start(self):
-        if self.user_storage_class is not None and self.user_storage_capacity is not None:
+        if self.user_storage_pvc_ensure:
             pvc_manifest = self.get_pvc_manifest()
             try:
                 yield self.httpclient.fetch(self.request(
