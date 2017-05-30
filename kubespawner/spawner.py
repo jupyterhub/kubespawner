@@ -22,9 +22,9 @@ from kubespawner.utils import request_maker, k8s_url
 from kubespawner.objects import make_pod_spec, make_pvc_spec
 
 
-class KubeSpawner(Spawner):
+class KubeBaseSpawner(Spawner):
     """
-    Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
+    Implementation base of a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -108,15 +108,6 @@ class KubeSpawner(Spawner):
         Most, including the default, do not. Consult the documentation for your spawner to verify!
 
         If set to None, Kubernetes will start the CMD that is specified in the Docker image being started.
-        """
-    ).tag(config=True)
-
-    singleuser_working_dir = Unicode(
-        None,
-        allow_none=True,
-        help="""
-        The working directory were the Notebook server will be started inside the container.
-        Defaults to `None` so the working directory will be the one defined in the Dockerfile.
         """
     ).tag(config=True)
 
@@ -208,6 +199,257 @@ class KubeSpawner(Spawner):
         some amount of port mapping is happening.
         """
         return self.hub.server.port
+
+    httpclient_class = Type(
+        None,
+        config=True,
+        allow_none=True,
+        help="""
+        Python class to use as an httpclient
+
+        It could be for example: `tornado.curl_httpclient.CurlAsyncHTTPClient` or
+        `tornado.simple_httpclient.SimpleAsyncHTTPClient`.
+        """
+    )
+
+    def _expand_user_properties(self, template):
+        # Make sure username matches the restrictions for DNS labels
+        safe_chars = set(string.ascii_lowercase + string.digits)
+        safe_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
+        return template.format(
+            userid=self.user.id,
+            username=safe_username
+        )
+
+    def _expand_all(self, src):
+        if isinstance(src, list):
+            return [self._expand_all(i) for i in src]
+        elif isinstance(src, dict):
+            return {k: self._expand_all(v) for k, v in src.items()}
+        elif isinstance(src, str):
+            return self._expand_user_properties(src)
+        else:
+            return src
+
+    def get_pvc_manifest(self):
+        raise NotImplementedError()
+
+    def get_pod_manifest(self):
+        raise NotImplementedError()
+
+    @gen.coroutine
+    def get_pvc_info(self, pvc_name):
+        """
+        Fetch info about a specific pvc with the given pvc name in current namespace
+
+        Return `None` if pvc with given name does not exist in current namespace
+        """
+        try:
+            response = yield self.httpclient.fetch(self.request(
+                k8s_url(
+                    self.namespace,
+                    'persistentvolumeclaims',
+                    pvc_name,
+                )
+            ))
+        except HTTPError as e:
+            if e.code == 404:
+                return None
+            raise
+        data = response.body.decode('utf-8')
+        return json.loads(data)
+
+    @gen.coroutine
+    def get_pod_info(self, pod_name):
+        """
+        Fetch info about a specific pod with the given pod name in current namespace
+
+        Return `None` if pod with given name does not exist in current namespace
+        """
+        try:
+            response = yield self.httpclient.fetch(self.request(
+                k8s_url(
+                    self.namespace,
+                    'pods',
+                    pod_name,
+                )
+            ))
+        except HTTPError as e:
+            if e.code == 404:
+                return None
+            raise
+        data = response.body.decode('utf-8')
+        return json.loads(data)
+
+    def is_pod_running(self, pod):
+        """
+        Check if the given pod is running
+
+        pod must be a dictionary representing a Pod kubernetes API object.
+        """
+        return pod['status']['phase'] == 'Running'
+
+    def get_state(self):
+        """
+        Save state required to reinstate this user's pod from scratch
+
+        We save the pod_name, even though we could easily compute it,
+        because JupyterHub requires you save *some* state! Otherwise
+        it assumes your server is dead. This works around that.
+
+        It's also useful for cases when the pod_template changes between
+        restarts - this keeps the old pods around.
+        """
+        state = super().get_state()
+        state['pod_name'] = self.pod_name
+        return state
+
+    def load_state(self, state):
+        """
+        Load state from storage required to reinstate this user's pod
+
+        Since this runs after __init__, this will override the generated pod_name
+        if there's one we have saved in state. These are the same in most cases,
+        but if the pod_template has changed in between restarts, it will no longer
+        be the case. This allows us to continue serving from the old pods with
+        the old names.
+        """
+        if 'pod_name' in state:
+            self.pod_name = state['pod_name']
+
+    @gen.coroutine
+    def poll(self):
+        """
+        Check if the pod is still running.
+
+        Returns None if it is, and 1 if it isn't. These are the return values
+        JupyterHub expects.
+        """
+        data = yield self.get_pod_info(self.pod_name)
+        if data is not None and self.is_pod_running(data):
+            return None
+        return 1
+
+    @gen.coroutine
+    def start(self):
+        if self.user_storage_pvc_ensure:
+            pvc_manifest = self.get_pvc_manifest()
+            try:
+                yield self.httpclient.fetch(self.request(
+                    url=k8s_url(self.namespace, 'persistentvolumeclaims'),
+                    body=json.dumps(pvc_manifest),
+                    method='POST',
+                    headers={'Content-Type': 'application/json'}
+                ))
+            except:
+                self.log.info("PVC " + self.pvc_name + " already exists, so did not create new pvc.")
+
+        # If we run into a 409 Conflict error, it means a pod with the
+        # same name already exists. We stop it, wait for it to stop, and
+        # try again. We try 4 times, and if it still fails we give up.
+        # FIXME: Have better / cleaner retry logic!
+        retry_times = 4
+        pod_manifest = yield self.get_pod_manifest()
+        for i in range(retry_times):
+            try:
+                yield self.httpclient.fetch(self.request(
+                    url=k8s_url(self.namespace, 'pods'),
+                    body=json.dumps(pod_manifest),
+                    method='POST',
+                    headers={'Content-Type': 'application/json'}
+                ))
+                break
+            except HTTPError as e:
+                if e.code != 409:
+                    # We only want to handle 409 conflict errors
+                    self.log.exception("Failed for %s", json.dumps(pod_manifest))
+                    raise
+                self.log.info('Found existing pod %s, attempting to kill', self.pod_name)
+                yield self.stop(True)
+
+                self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
+        else:
+            raise Exception(
+                'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
+
+        while True:
+            data = yield self.get_pod_info(self.pod_name)
+            if data is not None and self.is_pod_running(data):
+                break
+            yield gen.sleep(1)
+        return (data['status']['podIP'], self.port)
+
+    @gen.coroutine
+    def stop(self, now=False):
+        body = {
+            'kind': 'DeleteOptions',
+            'apiVersion': 'v1',
+        }
+        if now:
+            # Don't give it any time to gracefully stop
+            body['gracePeriodSeconds'] = 0
+        yield self.httpclient.fetch(
+            self.request(
+                url=k8s_url(self.namespace, 'pods', self.pod_name),
+                method='DELETE',
+                body=json.dumps(body),
+                headers={'Content-Type': 'application/json'},
+                # Tornado's client thinks DELETE requests shouldn't have a body
+                # which is a bogus restriction
+                allow_nonstandard_methods=True,
+            )
+        )
+        while True:
+            data = yield self.get_pod_info(self.pod_name)
+            if data is None:
+                break
+            yield gen.sleep(1)
+
+    def _env_keep_default(self):
+        return []
+
+    def get_args(self):
+        args = super().get_args()
+
+        # HACK: we wanna replace --hub-api-url=self.hub.api_url with
+        # self.accessible_hub_api_url. This is required in situations where
+        # the IP the hub is listening on (such as 0.0.0.0) is not the IP where
+        # it can be reached by the pods (such as the service IP used for the hub!)
+        # FIXME: Make this better?
+        to_replace = '--hub-api-url="%s"' % (self.hub.api_url)
+        for i in range(len(args)):
+            if args[i] == to_replace:
+                args[i] = '--hub-api-url="%s"' % (self.accessible_hub_api_url)
+                break
+        return args
+
+    def get_env(self):
+        # HACK: This is deprecated, and should be removed soon.
+        # We set these to be compatible with DockerSpawner and earlie KubeSpawner
+        env = super().get_env()
+        env.update({
+            'JPY_USER': self.user.name,
+            'JPY_COOKIE_NAME': self.user.server.cookie_name,
+            'JPY_BASE_URL': self.user.server.base_url,
+            'JPY_HUB_PREFIX': self.hub.server.base_url,
+            'JPY_HUB_API_URL': self.accessible_hub_api_url
+        })
+        return env
+
+
+class KubeSpawner(KubeBaseSpawner):
+    """
+    Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster via configuration.
+    """
+
+    singleuser_working_dir = Unicode(
+        None,
+        allow_none=True,
+        help="""
+        The working directory were the Notebook server will be started inside the container.
+        Defaults to `None` so the working directory will be the one defined in the Dockerfile.
+        """
+    ).tag(config=True)
 
     singleuser_extra_labels = Dict(
         {},
@@ -503,7 +745,7 @@ class KubeSpawner(Spawner):
         This list will be directly added under `initContainers` in the kubernetes pod spec,
         so you should use the same structure. Each item in the list is container configuration
         which follows spec at https://kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
-         
+
         One usage is disabling access to metadata service from single-user notebook server with configuration below:
         initContainers:
         - name: init-iptables
@@ -516,41 +758,10 @@ class KubeSpawner(Spawner):
 
         See https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ for more
         info on what init containers are and why you might want to use them!
-        
+
         To user this feature, Kubernetes version must greater than 1.6.
         """
     )
-
-    httpclient_class = Type(
-        None,
-        config=True,
-        allow_none=True,
-        help="""
-        Python class to use as an httpclient
-
-        It could be for example: `tornado.curl_httpclient.CurlAsyncHTTPClient` or
-        `tornado.simple_httpclient.SimpleAsyncHTTPClient`.
-        """
-    )
-
-    def _expand_user_properties(self, template):
-        # Make sure username matches the restrictions for DNS labels
-        safe_chars = set(string.ascii_lowercase + string.digits)
-        safe_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
-        return template.format(
-            userid=self.user.id,
-            username=safe_username
-        )
-
-    def _expand_all(self, src):
-        if isinstance(src, list):
-            return [self._expand_all(i) for i in src]
-        elif isinstance(src, dict):
-            return {k: self._expand_all(v) for k, v in src.items()}
-        elif isinstance(src, str):
-            return self._expand_user_properties(src)
-        else:
-            return src
 
     @gen.coroutine
     def get_pod_manifest(self):
@@ -619,201 +830,58 @@ class KubeSpawner(Spawner):
             storage=self.user_storage_capacity
         )
 
-    @gen.coroutine
-    def get_pod_info(self, pod_name):
-        """
-        Fetch info about a specific pod with the given pod name in current namespace
 
-        Return `None` if pod with given name does not exist in current namespace
-        """
-        try:
-            response = yield self.httpclient.fetch(self.request(
-                k8s_url(
-                    self.namespace,
-                    'pods',
-                    pod_name,
-                )
-            ))
-        except HTTPError as e:
-            if e.code == 404:
-                return None
-            raise
-        data = response.body.decode('utf-8')
-        return json.loads(data)
+class KubeTemplateSpawner(KubeBaseSpawner):
+    """
+    Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster via template.
+    """
 
-    @gen.coroutine
-    def get_pvc_info(self, pvc_name):
-        """
-        Fetch info about a specific pvc with the given pvc name in current namespace
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        Return `None` if pvc with given name does not exist in current namespace
-        """
-        try:
-            response = yield self.httpclient.fetch(self.request(
-                k8s_url(
-                    self.namespace,
-                    'persistentvolumeclaims',
-                    pvc_name,
-                )
-            ))
-        except HTTPError as e:
-            if e.code == 404:
-                return None
-            raise
-        data = response.body.decode('utf-8')
-        return json.loads(data)
+        assert not self.user_storage_pvc_ensure or self.user_storage_template, \
+            "user_storage_template is required when user_storage_pvc_ensure is true"
+        assert self.singleuser_template, "singleuser_template is required"
 
-    def is_pod_running(self, pod):
-        """
-        Check if the given pod is running
+    singleuser_template = Dict(
+        None,
+        config=True,
+        help="""
+        Template of single-user notebook pod in format of Kubernetes declarative configuration.
 
-        pod must be a dictionary representing a Pod kubernetes API object.
-        """
-        return pod['status']['phase'] == 'Running'
+        See https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/ for more info on pod.
 
-    def get_state(self):
+        See https://kubernetes.io/docs/tutorials/object-management-kubectl/declarative-object-management-configuration/ 
+        for more info on what is declarative configuration!
         """
-        Save state required to reinstate this user's pod from scratch
+    )
 
-        We save the pod_name, even though we could easily compute it,
-        because JupyterHub requires you save *some* state! Otherwise
-        it assumes your server is dead. This works around that.
+    user_storage_template = Dict(
+        None,
+        config=True,
+        help="""
+    Template of user persistence volume in format of Kubernetes declarative configuration.
+    
+    See https://kubernetes.io/docs/concepts/storage/persistent-volumes/ for more info on persistence volume.
 
-        It's also useful for cases when the pod_template changes between
-        restarts - this keeps the old pods around.
-        """
-        state = super().get_state()
-        state['pod_name'] = self.pod_name
-        return state
-
-    def load_state(self, state):
-        """
-        Load state from storage required to reinstate this user's pod
-
-        Since this runs after __init__, this will override the generated pod_name
-        if there's one we have saved in state. These are the same in most cases,
-        but if the pod_template has changed in between restarts, it will no longer
-        be the case. This allows us to continue serving from the old pods with
-        the old names.
-        """
-        if 'pod_name' in state:
-            self.pod_name = state['pod_name']
+    See https://kubernetes.io/docs/tutorials/object-management-kubectl/declarative-object-management-configuration/ 
+    for more info on what is declarative configuration!
+    """
+    )
 
     @gen.coroutine
-    def poll(self):
-        """
-        Check if the pod is still running.
+    def get_pod_manifest(self):
+        self.singleuser_template.setdefault("metadata", {})["name"] = self.pod_name
+        for container in self.singleuser_template["spec"]["containers"]:
+            if self.cmd:
+                container.command = self.cmd
+            container.setdefault("args", []).extend(self.get_args())
 
-        Returns None if it is, and 1 if it isn't. These are the return values
-        JupyterHub expects.
-        """
-        data = yield self.get_pod_info(self.pod_name)
-        if data is not None and self.is_pod_running(data):
-            return None
-        return 1
+            for k, v in self.get_env().items():
+                container.setdefault("env", []).append({"name": k, "value": v})
 
-    @gen.coroutine
-    def start(self):
-        if self.user_storage_pvc_ensure:
-            pvc_manifest = self.get_pvc_manifest()
-            try:
-                yield self.httpclient.fetch(self.request(
-                    url=k8s_url(self.namespace, 'persistentvolumeclaims'),
-                    body=json.dumps(pvc_manifest),
-                    method='POST',
-                    headers={'Content-Type': 'application/json'}
-                ))
-            except:
-                self.log.info("PVC " + self.pvc_name + " already exists, so did not create new pvc.")
+        return self.singleuser_template
 
-        # If we run into a 409 Conflict error, it means a pod with the
-        # same name already exists. We stop it, wait for it to stop, and
-        # try again. We try 4 times, and if it still fails we give up.
-        # FIXME: Have better / cleaner retry logic!
-        retry_times = 4
-        pod_manifest = yield self.get_pod_manifest()
-        for i in range(retry_times):
-            try:
-                yield self.httpclient.fetch(self.request(
-                    url=k8s_url(self.namespace, 'pods'),
-                    body=json.dumps(pod_manifest),
-                    method='POST',
-                    headers={'Content-Type': 'application/json'}
-                ))
-                break
-            except HTTPError as e:
-                if e.code != 409:
-                    # We only want to handle 409 conflict errors
-                    self.log.exception("Failed for %s", json.dumps(pod_manifest))
-                    raise
-                self.log.info('Found existing pod %s, attempting to kill', self.pod_name)
-                yield self.stop(True)
-
-                self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
-        else:
-            raise Exception(
-                'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
-
-        while True:
-            data = yield self.get_pod_info(self.pod_name)
-            if data is not None and self.is_pod_running(data):
-                break
-            yield gen.sleep(1)
-        return (data['status']['podIP'], self.port)
-
-    @gen.coroutine
-    def stop(self, now=False):
-        body = {
-            'kind': 'DeleteOptions',
-            'apiVersion': 'v1',
-        }
-        if now:
-            # Don't give it any time to gracefully stop
-            body['gracePeriodSeconds'] = 0
-        yield self.httpclient.fetch(
-            self.request(
-                url=k8s_url(self.namespace, 'pods', self.pod_name),
-                method='DELETE',
-                body=json.dumps(body),
-                headers={'Content-Type': 'application/json'},
-                # Tornado's client thinks DELETE requests shouldn't have a body
-                # which is a bogus restriction
-                allow_nonstandard_methods=True,
-            )
-        )
-        while True:
-            data = yield self.get_pod_info(self.pod_name)
-            if data is None:
-                break
-            yield gen.sleep(1)
-
-    def _env_keep_default(self):
-        return []
-
-    def get_args(self):
-        args = super(KubeSpawner, self).get_args()
-
-        # HACK: we wanna replace --hub-api-url=self.hub.api_url with
-        # self.accessible_hub_api_url. This is required in situations where
-        # the IP the hub is listening on (such as 0.0.0.0) is not the IP where
-        # it can be reached by the pods (such as the service IP used for the hub!)
-        # FIXME: Make this better?
-        to_replace = '--hub-api-url="%s"' % (self.hub.api_url)
-        for i in range(len(args)):
-            if args[i] == to_replace:
-                args[i] = '--hub-api-url="%s"' % (self.accessible_hub_api_url)
-                break
-        return args
-
-    def get_env(self):
-        # HACK: This is deprecated, and should be removed soon.
-        # We set these to be compatible with DockerSpawner and earlie KubeSpawner
-        env = super(KubeSpawner, self).get_env()
-        env.update({
-            'JPY_USER': self.user.name,
-            'JPY_COOKIE_NAME': self.user.server.cookie_name,
-            'JPY_BASE_URL': self.user.server.base_url,
-            'JPY_HUB_PREFIX': self.hub.server.base_url,
-            'JPY_HUB_API_URL': self.accessible_hub_api_url
-        })
-        return env
+    def get_pvc_manifest(self):
+        self.user_storage_template.setdefault("metadata", {})["name"] = self.pvc_name
+        return self.user_storage_template
