@@ -766,8 +766,10 @@ class KubeSpawner(Spawner):
         body = {
             'kind': 'DeleteOptions',
             'apiVersion': 'v1',
-            'gracePeriodSeconds': 0
         }
+        if now:
+            # Don't give it any time to gracefully stop
+            body['gracePeriodSeconds'] = 0
         yield self.httpclient.fetch(
             self.request(
                 url=k8s_url(self.namespace, 'pods', self.pod_name),
@@ -779,14 +781,11 @@ class KubeSpawner(Spawner):
                 allow_nonstandard_methods=True,
             )
         )
-        if not now:
-            # If now is true, just return immediately, do not wait for
-            # shut down to complete
-            while True:
-                data = yield self.get_pod_info(self.pod_name)
-                if data is None:
-                    break
-                yield gen.sleep(1)
+        while True:
+            data = yield self.get_pod_info(self.pod_name)
+            if data is None:
+                break
+            yield gen.sleep(1)
 
     def _env_keep_default(self):
         return []
