@@ -16,6 +16,7 @@ from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
 from kubernetes.client.models.v1_volume import V1Volume
 from kubernetes.client.models.v1_volume_mount import V1VolumeMount
+import escapism
 
 from kubespawner.traitlets import Callable
 from kubespawner.utils import request_maker, k8s_url
@@ -121,7 +122,7 @@ class KubeSpawner(Spawner):
     ).tag(config=True)
 
     pod_name_template = Unicode(
-        'jupyter-{username}-{userid}',
+        'jupyter-{username}',
         config=True,
         help="""
         Template to use to form the name of user's pods.
@@ -147,7 +148,7 @@ class KubeSpawner(Spawner):
     )
 
     pvc_name_template = Unicode(
-        'claim-{username}-{userid}',
+        'claim-{username}',
         config=True,
         help="""
         Template to use to form the name of user's pvc.
@@ -536,10 +537,12 @@ class KubeSpawner(Spawner):
     def _expand_user_properties(self, template):
         # Make sure username matches the restrictions for DNS labels
         safe_chars = set(string.ascii_lowercase + string.digits)
-        safe_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
+        legacy_escaped_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
+        safe_username = escapism.escape(self.user.name, safe=safe_chars, escape_char='-').lower()
         return template.format(
             userid=self.user.id,
-            username=safe_username
+            username=safe_username,
+            legacy_escape_username=legacy_escaped_username
         )
 
     def _expand_all(self, src):
