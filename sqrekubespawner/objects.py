@@ -2,6 +2,21 @@
 Helper methods for generating k8s API objects.
 """
 
+from kubernetes.client import ApiClient
+from kubernetes.client.models.v1_pod import V1Pod
+from kubernetes.client.models.v1_pod_spec import V1PodSpec
+from kubernetes.client.models.v1_object_meta import V1ObjectMeta
+from kubernetes.client.models.v1_pod_security_context import V1PodSecurityContext
+from kubernetes.client.models.v1_local_object_reference import V1LocalObjectReference
+
+from kubernetes.client.models.v1_container import V1Container
+from kubernetes.client.models.v1_container_port import V1ContainerPort
+from kubernetes.client.models.v1_env_var import V1EnvVar
+from kubernetes.client.models.v1_resource_requirements import V1ResourceRequirements
+
+from kubernetes.client.models.v1_persistent_volume_claim import V1PersistentVolumeClaim
+from kubernetes.client.models.v1_persistent_volume_claim_spec import V1PersistentVolumeClaimSpec
+
 
 def make_pod_spec(
     name,
@@ -13,13 +28,15 @@ def make_pod_spec(
     run_as_uid,
     fs_gid,
     env,
+    working_dir,
     volumes,
     volume_mounts,
     labels,
     cpu_limit,
     cpu_guarantee,
     mem_limit,
-    mem_guarantee
+    mem_guarantee,
+    lifecycle_hooks,
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -61,12 +78,14 @@ def make_pod_spec(
         List of dictionaries mapping paths in the container and the volume(
         specified in volumes) that should be mounted on them. See the k8s
         documentaiton for more details
+      - working_dir:
+        String specifying the working directory for the notebook container
       - labels:
         Labels to add to the spawned pod.
       - cpu_limit:
         Float specifying the max number of CPU cores the user's pod is
         allowed to use.
-      - cpu_guarentee:
+      - cpu_guarantee:
         Float specifying the max number of CPU cores the user's pod is
         guaranteed to have access to, by the scheduler.
       - mem_limit:
@@ -74,67 +93,80 @@ def make_pod_spec(
         to use. String instead of float/int since common suffixes are allowed
       - mem_guarantee:
         String specifying the max amount of RAM the user's pod is guaranteed
-        to have access to. String ins loat/int since common suffixes
+        to have access to. String instead of float/int since common suffixes
         are allowed
+      - lifecycle_hooks:
+        Dictionary of lifecycle hooks
     """
-    pod_security_context = {}
-    if run_as_uid is not None:
-        pod_security_context['runAsUser'] = int(run_as_uid)
+    api_client = ApiClient()
+
+    pod = V1Pod()
+    pod.kind = "Pod"
+    pod.api_version = "v1"
+
+    pod.metadata = V1ObjectMeta()
+    pod.metadata.name = name
+    pod.metadata.labels = labels.copy()
+
+    pod.spec = V1PodSpec()
+
+    security_context = V1PodSecurityContext()
     if fs_gid is not None:
-        pod_security_context['fsGroup'] = int(fs_gid)
-    image_secret = []
+        security_context.fs_group = int(fs_gid)
+    if run_as_uid is not None:
+        security_context.run_as_user = int(run_as_uid)
+    pod.spec.security_context = security_context
+
     if image_pull_secret is not None:
-        image_secret = [{"name": image_pull_secret}]
-    return {
-        'apiVersion': 'v1',
-        'kind': 'Pod',
-        'metadata': {
-            'name': name,
-            'labels': labels,
-        },
-        'spec': {
-            'securityContext': pod_security_context,
-            "imagePullSecrets": image_secret,
-            'containers': [
-                {
-                    'name': 'notebook',
-                    'image': image_spec,
-                    'args': cmd,
-                    'imagePullPolicy': image_pull_policy,
-                    'ports': [{
-                        'containerPort': port,
-                    }],
-                    'resources': {
-                        'requests': {
-                            # If these are None, it's ok. the k8s API
-                            # seems to interpret that as 'no limit',
-                            # which is what we want.
-                            'memory': mem_guarantee,
-                            'cpu': cpu_guarantee,
-                        },
-                        'limits': {
-                            'memory': mem_limit,
-                            'cpu': cpu_limit,
-                        }
-                    },
-                    'env': [
-                        {'name': k, 'value': v}
-                        for k, v in env.items()
-                    ],
-                    'volumeMounts': volume_mounts
-                }
-            ],
-            'volumes': volumes
-        }
-    }
+        pod.spec.image_pull_secrets = []
+        image_secret = V1LocalObjectReference()
+        image_secret.name = image_pull_secret
+        pod.spec.image_pull_secrets.append(image_secret)
+
+    pod.spec.containers = []
+    notebook_container = V1Container()
+    notebook_container.name = "notebook"
+    notebook_container.image = image_spec
+    notebook_container.working_dir = working_dir
+    notebook_container.ports = []
+    port_ = V1ContainerPort()
+    port_.name = "notebook-port"
+    port_.container_port = port
+    notebook_container.ports.append(port_)
+    notebook_container.env = [V1EnvVar(k, v) for k, v in env.items()]
+    notebook_container.args = cmd
+    notebook_container.image_pull_policy = image_pull_policy
+    notebook_container.lifecycle = lifecycle_hooks
+    notebook_container.resources = V1ResourceRequirements()
+
+    notebook_container.resources.requests = {}
+
+    if cpu_guarantee:
+        notebook_container.resources.requests['cpu'] = cpu_guarantee
+    if mem_guarantee:
+        notebook_container.resources.requests['memory'] = mem_guarantee
+
+    notebook_container.resources.limits = {}
+    if cpu_limit:
+        notebook_container.resources.limits['cpu'] = cpu_limit
+        if not cpu_guarantee:
+            notebook_container.resources.requests['cpu'] = 0.0
+    if mem_limit:
+        notebook_container.resources.limits['memory'] = mem_limit
+        if not mem_guarantee:
+            notebook_container.resources.requests['memory'] = 0
+    notebook_container.volume_mounts = volume_mounts
+    pod.spec.containers.append(notebook_container)
+
+    pod.spec.volumes = volumes
+    return api_client.sanitize_for_serialization(pod)
 
 
 def make_pvc_spec(
-    name,
-    storage_class,
-    access_modes,
-    storage
-):
+        name,
+        storage_class,
+        access_modes,
+        storage):
     """
     Make a k8s pvc specification for running a user notebook.
 
@@ -149,21 +181,20 @@ def make_pvc_spec(
       - storage
       The ammount of storage needed for the pvc
     """
-    return {
-        'kind': 'PersistentVolumeClaim',
-        'apiVersion': 'v1',
-        'metadata': {
-            'name': name,
-            'annotations': {
-                'volume.beta.kubernetes.io/storage-class': storage_class
-            }
-        },
-        'spec': {
-            'accessModes': access_modes,
-            'resources': {
-                'requests': {
-                    'storage': storage
-                }
-            }
-        }
-    }
+    api_client = ApiClient()
+
+    pvc = V1PersistentVolumeClaim()
+    pvc.kind = "PersistentVolumeClaim"
+    pvc.api_version = "v1"
+    pvc.metadata = V1ObjectMeta()
+    pvc.metadata.name = name
+    pvc.metadata.annotations = {}
+    if storage_class:
+        pvc.metadata.annotations.update(
+            {"volume.beta.kubernetes.io/storage-class": storage_class})
+    pvc.spec = V1PersistentVolumeClaimSpec()
+    pvc.spec.access_modes = access_modes
+    pvc.spec.resources = V1ResourceRequirements()
+    pvc.spec.resources.requests = {"storage": storage}
+
+    return api_client.sanitize_for_serialization(pvc)

@@ -14,6 +14,8 @@ from tornado.httpclient import HTTPError
 from traitlets import Type, Unicode, List, Integer, Union, Dict
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
+from kubernetes.client.models.v1_volume import V1Volume
+from kubernetes.client.models.v1_volume_mount import V1VolumeMount
 
 from sqrekubespawner.utils import request_maker, k8s_url, Callable
 from sqrekubespawner.objects import make_pod_spec, make_pvc_spec
@@ -22,7 +24,6 @@ from sqrekubespawner.objects import make_pod_spec, make_pvc_spec
 class SQREKubeSpawner(Spawner):
     """
     Implement a SQuaRE JupyterHub KubeSpawner.
-
     """
 
     def __init__(self, *args, **kwargs):
@@ -54,6 +55,8 @@ class SQREKubeSpawner(Spawner):
             )
             self.accessible_hub_api_url = urlunparse(
                 (scheme, netloc, path, params, query, fragment))
+            self.log.info("Accessible Hub API URL=%r" %
+                          self.accessible_hub_api_url)
         else:
             self.accessible_hub_api_url = self.hub.api_url
 
@@ -114,6 +117,15 @@ class SQREKubeSpawner(Spawner):
 
         If set to None, Kubernetes will start the CMD that is
         specified in the Docker image being started.
+        """
+    ).tag(config=True)
+
+    singleuser_working_dir = Unicode(
+        None,
+        allow_none=True,
+        help="""
+        The working directory were the Notebook server will be started inside the container.
+        Defaults to `None` so the working directory will be the one defined in the Dockerfile.
         """
     ).tag(config=True)
 
@@ -344,6 +356,7 @@ class SQREKubeSpawner(Spawner):
         for more details.
         """
     )
+
     volumes = List(
         [],
         config=True,
@@ -469,6 +482,32 @@ class SQREKubeSpawner(Spawner):
         """
     )
 
+    singleuser_lifecycle_hooks = Dict(
+        {},
+        config=True,
+        help="""
+        Kubernetes lifecycle hooks to set on the spawned single-user pods.
+
+        The keys is name of hooks and there are only two hooks, postStart and preStop.
+        The values are handler of hook which executes by Kubernetes management system when hook is called.
+
+        Below are a sample copied from Kubernetes doc
+        https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/
+
+        lifecycle:
+          postStart:
+            exec:
+              command: [
+                  "/bin/sh", "-c", "echo Hello from the postStart handler > /usr/share/message"]
+          preStop:
+            exec:
+              command: ["/usr/sbin/nginx","-s","quit"]
+
+        See https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/ for more
+        info on what lifecycle hooks are and why you might want to use them!
+        """
+    )
+
     httpclient_class = Type(
         None,
         config=True,
@@ -490,10 +529,14 @@ class SQREKubeSpawner(Spawner):
         # SQRE changes
         userid = self.user.id
         try:
-            userid = self.user.authenticator.auth_context[username]["uid"]
+            aucon = self.user.authenticator.auth_context
+            auc = aucon[username]
+            userid = auc["uid"]
         except (KeyError, NameError, AttributeError) as err:
             self.log.info("User %s/%s did not have a UID in auth context: %s"
                           % (userid, username, str(err)))
+            # Force reauth instead....
+            raise
         return template.format(
             userid=userid,
             username=safe_username
@@ -519,15 +562,14 @@ class SQREKubeSpawner(Spawner):
         # kubernetes API to the users in the spawned pods.
         # See
         # https://github.com/kubernetes/kubernetes/issues/16779#issuecomment-157460294
-        hack_volumes = [{
-            'name': 'no-api-access-please',
-            'emptyDir': {}
-        }]
-        hack_volume_mounts = [{
-            'name': 'no-api-access-please',
-            'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount',
-            'readOnly': True
-        }]
+        hack_volume = V1Volume()
+        hack_volume.name = "no-api-access-please"
+        hack_volume.empty_dir = {}
+
+        hack_volume_mount = V1VolumeMount()
+        hack_volume_mount.name = "no-api-access-please"
+        hack_volume_mount.mount_path = "/var/run/secrets/kubernetes.io/serviceaccount"
+        hack_volume_mount.read_only = True
         if callable(self.singleuser_uid):
             singleuser_uid = yield gen.maybe_future(self.singleuser_uid(self))
         else:
@@ -560,23 +602,30 @@ class SQREKubeSpawner(Spawner):
                     self.pod_name = pod_name
                     self.log.info("Replacing pod name from options form: %s" %
                                   pod_name)
+        self.log.info("CPU Limit/Guarantee: %r/%r" % (self.cpu_limit,
+                                                      self.cpu_guarantee))
+        self.log.info("Mem Limit/Guarantee: %r/%r" % (self.mem_limit,
+                                                      self.mem_guarantee))
         return make_pod_spec(  # NoQA
-            pod_name,
-            image_spec,
-            self.singleuser_image_pull_policy,
-            self.singleuser_image_pull_secrets,
-            self.port,
-            real_cmd,
-            singleuser_uid,
-            singleuser_fs_gid,
-            self.get_env(),
-            self._expand_all(self.volumes) + hack_volumes,
-            self._expand_all(self.volume_mounts) + hack_volume_mounts,
-            self.singleuser_extra_labels,
-            self.cpu_limit,
-            self.cpu_guarantee,
-            self.mem_limit,
-            self.mem_guarantee
+            name=pod_name,
+            image_spec=image_spec,
+            image_pull_policy=self.singleuser_image_pull_policy,
+            image_pull_secret=self.singleuser_image_pull_secrets,
+            port=self.port,
+            cmd=real_cmd,
+            run_as_uid=singleuser_uid,
+            fs_gid=singleuser_fs_gid,
+            env=self.get_env(),
+            volumes=self._expand_all(self.volumes) + [hack_volume],
+            volume_mounts=self._expand_all(self.volume_mounts) + [
+                hack_volume_mount],
+            working_dir=self.singleuser_working_dir,
+            labels=self.singleuser_extra_labels,
+            cpu_limit=self.cpu_limit,
+            cpu_guarantee=self.cpu_guarantee,
+            mem_limit=self.mem_limit,
+            mem_guarantee=self.mem_guarantee,
+            lifecycle_hooks=self.singleuser_lifecycle_hooks,
         )
 
     def get_pvc_manifest(self):
@@ -584,10 +633,10 @@ class SQREKubeSpawner(Spawner):
         Make a pvc manifest that will spawn current user's pvc.
         """
         return make_pvc_spec(
-            self.pvc_name,
-            self.user_storage_class,
-            self.user_storage_access_modes,
-            self.user_storage_capacity
+            name=self.pvc_name,
+            storage_class=self.user_storage_class,
+            access_modes=self.user_storage_access_modes,
+            storage=self.user_storage_capacity
         )
 
     @gen.coroutine
@@ -655,6 +704,7 @@ class SQREKubeSpawner(Spawner):
         """
         state = super().get_state()
         state['pod_name'] = self.pod_name
+        state['auth_context'] = self.user.authenticator.auth_context
         return state
 
     def load_state(self, state):
@@ -669,6 +719,8 @@ class SQREKubeSpawner(Spawner):
         """
         if 'pod_name' in state:
             self.pod_name = state['pod_name']
+        if 'auth_context' in state:
+            self.user.authenticator.auth_context = state['auth_context']
 
     @gen.coroutine
     def poll(self):
@@ -695,39 +747,29 @@ class SQREKubeSpawner(Spawner):
                     headers={'Content-Type': 'application/json'}
                 ))
             except:
-                self.log.info("Pvc " + self.pvc_name +
+                self.log.info("PVC " + self.pvc_name +
                               " already exists, so did not create new pvc.")
-
         # If we run into a 409 Conflict error, it means a pod with the
-        # same name already exists. We stop it, wait for it to stop, and
-        # try again. We try 4 times, and if it still fails we give up.
-        # FIXME: Have better / cleaner retry logic!
-        retry_times = 4
+        # same name already exists. We want to use it, I guess?
+        # This is to allow running user containers to persist past Hub
+        #  restarts (in conjunction with persisting DB data).
         pod_manifest = yield self.get_pod_manifest()
-        for i in range(retry_times):
-            try:
-                yield self.httpclient.fetch(self.request(
-                    url=k8s_url(self.namespace, 'pods'),
-                    body=json.dumps(pod_manifest),
-                    method='POST',
-                    headers={'Content-Type': 'application/json'}
-                ))
-                break
-            except HTTPError as e:
-                if e.code != 409:
-                    # We only want to handle 409 conflict errors
-                    self.log.exception(
-                        "Failed for %s", json.dumps(pod_manifest))
-                    raise
-                self.log.info(
-                    'Found existing pod %s, attempting to kill', self.pod_name)
-                yield self.stop(True)
-
-                self.log.info(
-                    'Killed pod %s, will try starting singleuser pod again', self.pod_name)
-        else:
-            raise Exception(
-                'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
+        try:
+            yield self.httpclient.fetch(self.request(
+                url=k8s_url(self.namespace, 'pods'),
+                body=json.dumps(pod_manifest),
+                method='POST',
+                headers={'Content-Type': 'application/json'}
+            ))
+        except HTTPError as e:
+            if e.code != 409:
+                # We only want to handle 409 conflict errors
+                self.log.exception(
+                    "Failed for %s", json.dumps(pod_manifest))
+                raise
+            self.log.info(
+                'Found existing pod %s, attempting to use it',
+                self.pod_name)
 
         while True:
             data = yield self.get_pod_info(self.pod_name)
@@ -739,7 +781,7 @@ class SQREKubeSpawner(Spawner):
     @gen.coroutine
     def stop(self, now=False):
         body = {
-            'kind': "DeleteOptions",
+            'kind': 'DeleteOptions',
             'apiVersion': 'v1',
             'gracePeriodSeconds': 0
         }
@@ -799,8 +841,8 @@ class SQREKubeSpawner(Spawner):
         # If we happen to be using GHOWLAuth...we can get a lot more
         #  info for creating a user with appropriate access on the remote
         #  end.
+        # self.user.name has already been canonicalized
         try:
-            # self.user.name has already been canonicalized
             acu = self.user.authenticator.auth_context[self.user.name]
             gh_id = acu["uid"]
             gh_token = acu["access_token"]
@@ -808,7 +850,6 @@ class SQREKubeSpawner(Spawner):
             self.log.error("Could not attach GH ID and access token: %s",
                            str(err))
             # We should force reauthentication here.
-            raise
         if gh_id and gh_token:
             env.update({
                 'GITHUB_ID': str(gh_id),
