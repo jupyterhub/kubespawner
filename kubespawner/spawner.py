@@ -236,6 +236,9 @@ class KubeSpawner(Spawner):
 
         See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ for more
         info on what labels are and why you might want to use them!
+
+        {username} and {userid} are expanded to the escaped, dns-label safe
+        username & integer user id respectively, wherever they are used.
         """
     )
 
@@ -590,6 +593,17 @@ class KubeSpawner(Spawner):
         hack_volume_mount.mount_path = "/var/run/secrets/kubernetes.io/serviceaccount"
         hack_volume_mount.read_only = True
 
+        # Default set of labels, picked up from
+        # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
+        labels = {
+            'heritage': 'jupyterhub',
+            'component': 'singleuser-server',
+            'app': 'jupyterhub',
+            'hub.jupyter.org/username': escapism.escape(self.user.name)
+        }
+
+        labels.update(self._expand_all(self.singleuser_extra_labels))
+
         return make_pod(
             name=self.pod_name,
             image_spec=self.singleuser_image_spec,
@@ -604,7 +618,7 @@ class KubeSpawner(Spawner):
             volumes=self._expand_all(self.volumes) + [hack_volume],
             volume_mounts=self._expand_all(self.volume_mounts) + [hack_volume_mount],
             working_dir=self.singleuser_working_dir,
-            labels=self.singleuser_extra_labels,
+            labels=labels,
             cpu_limit=self.cpu_limit,
             cpu_guarantee=self.cpu_guarantee,
             mem_limit=self.mem_limit,
