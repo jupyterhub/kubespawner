@@ -8,19 +8,24 @@ import os
 import json
 import string
 from urllib.parse import urlparse, urlunparse
+from concurrent.futures import ThreadPoolExecutor
+import multiprocessing
+
 
 from tornado import gen
-from tornado.httpclient import HTTPError
+from tornado.concurrent import run_on_executor
 from traitlets import Type, Unicode, List, Integer, Union, Dict, Bool
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
 from kubernetes.client.models.v1_volume import V1Volume
 from kubernetes.client.models.v1_volume_mount import V1VolumeMount
+from kubernetes.client.rest import ApiException
+from kubernetes import client, config, watch
 import escapism
 
 from kubespawner.traitlets import Callable
 from kubespawner.utils import request_maker, k8s_url
-from kubespawner.objects import make_pod_spec, make_pvc_spec
+from kubespawner.objects import make_pod, make_pvc
 
 
 class KubeSpawner(Spawner):
@@ -31,19 +36,14 @@ class KubeSpawner(Spawner):
         super().__init__(*args, **kwargs)
         # By now, all the traitlets have been set, so we can use them to compute
         # other attributes
-        # If httpclient_class trailet is set use it
-        if self.httpclient_class:
-            self.httpclient = self.httpclient_class(max_clients=64)
-        else:
-            # No httpclient_class trailet: Use Curl HTTPClient if available, else fall back to Simple
-            try:
-                from tornado.curl_httpclient import CurlAsyncHTTPClient
-                self.httpclient = CurlAsyncHTTPClient(max_clients=64)
-            except ImportError:
-                from tornado.simple_httpclient import SimpleAsyncHTTPClient
-                self.httpclient = SimpleAsyncHTTPClient(max_clients=64)
-        # FIXME: Support more than just kubeconfig
-        self.request = request_maker()
+        self.executor = ThreadPoolExecutor(max_workers=self.k8s_api_threadpool_workers)
+
+        try:
+            config.load_incluster_config()
+        except config.ConfigException:
+            config.load_kube_config()
+        self.api = client.CoreV1Api()
+
         self.pod_name = self._expand_user_properties(self.pod_name_template)
         self.pvc_name = self._expand_user_properties(self.pvc_name_template)
         if self.hub_connect_ip:
@@ -59,6 +59,20 @@ class KubeSpawner(Spawner):
         if self.port == 0:
             # Our default port is 8888
             self.port = 8888
+
+    k8s_api_threadpool_workers = Integer(
+        # Set this explicitly, since this is the default in Python 3.5+
+        # but not in 3.4
+        5 * multiprocessing.cpu_count(),
+        config=True,
+        help="""
+        Number of threads in thread pool used to talk to the k8s API.
+
+        Increase this if you are dealing with a very large number of users.
+
+        Defaults to '5 * cpu_cores', which is the default for ThreadPoolExecutor.
+        """
+    )
 
     namespace = Unicode(
         config=True,
@@ -222,6 +236,9 @@ class KubeSpawner(Spawner):
 
         See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ for more
         info on what labels are and why you might want to use them!
+
+        {username} and {userid} are expanded to the escaped, dns-label safe
+        username & integer user id respectively, wherever they are used.
         """
     )
 
@@ -522,18 +539,6 @@ class KubeSpawner(Spawner):
         """
     )
 
-    httpclient_class = Type(
-        None,
-        config=True,
-        allow_none=True,
-        help="""
-        Python class to use as an httpclient
-
-        It could be for example: `tornado.curl_httpclient.CurlAsyncHTTPClient` or
-        `tornado.simple_httpclient.SimpleAsyncHTTPClient`.
-        """
-    )
-
     def _expand_user_properties(self, template):
         # Make sure username matches the restrictions for DNS labels
         safe_chars = set(string.ascii_lowercase + string.digits)
@@ -588,7 +593,18 @@ class KubeSpawner(Spawner):
         hack_volume_mount.mount_path = "/var/run/secrets/kubernetes.io/serviceaccount"
         hack_volume_mount.read_only = True
 
-        return make_pod_spec(
+        # Default set of labels, picked up from
+        # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
+        labels = {
+            'heritage': 'jupyterhub',
+            'component': 'singleuser-server',
+            'app': 'jupyterhub',
+            'hub.jupyter.org/username': escapism.escape(self.user.name)
+        }
+
+        labels.update(self._expand_all(self.singleuser_extra_labels))
+
+        return make_pod(
             name=self.pod_name,
             image_spec=self.singleuser_image_spec,
             image_pull_policy=self.singleuser_image_pull_policy,
@@ -602,7 +618,7 @@ class KubeSpawner(Spawner):
             volumes=self._expand_all(self.volumes) + [hack_volume],
             volume_mounts=self._expand_all(self.volume_mounts) + [hack_volume_mount],
             working_dir=self.singleuser_working_dir,
-            labels=self.singleuser_extra_labels,
+            labels=labels,
             cpu_limit=self.cpu_limit,
             cpu_guarantee=self.cpu_guarantee,
             mem_limit=self.mem_limit,
@@ -615,7 +631,7 @@ class KubeSpawner(Spawner):
         """
         Make a pvc manifest that will spawn current user's pvc.
         """
-        return make_pvc_spec(
+        return make_pvc(
             name=self.pvc_name,
             storage_class=self.user_storage_class,
             access_modes=self.user_storage_access_modes,
@@ -630,41 +646,16 @@ class KubeSpawner(Spawner):
         Return `None` if pod with given name does not exist in current namespace
         """
         try:
-            response = yield self.httpclient.fetch(self.request(
-                k8s_url(
-                    self.namespace,
-                    'pods',
-                    pod_name,
-                )
-            ))
-        except HTTPError as e:
-            if e.code == 404:
+            pod = yield self.asynchronize(
+                self.api.read_namespaced_pod,
+                name=self.pod_name,
+                namespace=self.namespace,
+            )
+        except ApiException as e:
+            if e.status == 404:
                 return None
             raise
-        data = response.body.decode('utf-8')
-        return json.loads(data)
-
-    @gen.coroutine
-    def get_pvc_info(self, pvc_name):
-        """
-        Fetch info about a specific pvc with the given pvc name in current namespace
-
-        Return `None` if pvc with given name does not exist in current namespace
-        """
-        try:
-            response = yield self.httpclient.fetch(self.request(
-                k8s_url(
-                    self.namespace,
-                    'persistentvolumeclaims',
-                    pvc_name,
-                )
-            ))
-        except HTTPError as e:
-            if e.code == 404:
-                return None
-            raise
-        data = response.body.decode('utf-8')
-        return json.loads(data)
+        return pod
 
     def is_pod_running(self, pod):
         """
@@ -672,7 +663,9 @@ class KubeSpawner(Spawner):
 
         pod must be a dictionary representing a Pod kubernetes API object.
         """
-        return pod['status']['phase'] == 'Running'
+        # FIXME: Validate if this is really the best way
+        is_running = pod.status.phase == 'Running' and (pod.status.pod_ip is not None)
+        return is_running
 
     def get_state(self):
         """
@@ -715,37 +708,42 @@ class KubeSpawner(Spawner):
             return None
         return 1
 
+    @run_on_executor
+    def asynchronize(self, method, *args, **kwargs):
+        return method(*args, **kwargs)
+
     @gen.coroutine
     def start(self):
         if self.user_storage_pvc_ensure:
-            pvc_manifest = self.get_pvc_manifest()
+            pvc = self.get_pvc_manifest()
             try:
-                yield self.httpclient.fetch(self.request(
-                    url=k8s_url(self.namespace, 'persistentvolumeclaims'),
-                    body=json.dumps(pvc_manifest),
-                    method='POST',
-                    headers={'Content-Type': 'application/json'}
-                ))
-            except:
-                self.log.info("PVC " + self.pvc_name + " already exists, so did not create new pvc.")
+                yield self.asynchronize(
+                    self.api.create_namespaced_persistent_volume_claim,
+                    namespace=self.namespace,
+                    body=pvc
+                )
+            except ApiException as e:
+                if e.status == 409:
+                    self.log.info("PVC " + self.pvc_name + " already exists, so did not create new pvc.")
+                else:
+                    raise
 
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
         # try again. We try 4 times, and if it still fails we give up.
         # FIXME: Have better / cleaner retry logic!
         retry_times = 4
-        pod_manifest = yield self.get_pod_manifest()
+        pod = yield self.get_pod_manifest()
         for i in range(retry_times):
             try:
-                yield self.httpclient.fetch(self.request(
-                    url=k8s_url(self.namespace, 'pods'),
-                    body=json.dumps(pod_manifest),
-                    method='POST',
-                    headers={'Content-Type': 'application/json'}
-                ))
+                yield self.asynchronize(
+                    self.api.create_namespaced_pod,
+                    self.namespace,
+                    pod
+                )
                 break
-            except HTTPError as e:
-                if e.code != 409:
+            except ApiException as e:
+                if e.status != 409:
                     # We only want to handle 409 conflict errors
                     self.log.exception("Failed for %s", json.dumps(pod_manifest))
                     raise
@@ -758,31 +756,30 @@ class KubeSpawner(Spawner):
                 'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
 
         while True:
-            data = yield self.get_pod_info(self.pod_name)
-            if data is not None and self.is_pod_running(data):
+            pod = yield self.get_pod_info(self.pod_name)
+            if pod is not None and self.is_pod_running(pod):
                 break
             yield gen.sleep(1)
-        return (data['status']['podIP'], self.port)
+        return (pod.status.pod_ip, self.port)
 
     @gen.coroutine
     def stop(self, now=False):
-        body = {
-            'kind': 'DeleteOptions',
-            'apiVersion': 'v1',
-        }
+        delete_options = client.V1DeleteOptions()
+
         if now:
-            # Don't give it any time to gracefully stop
-            body['gracePeriodSeconds'] = 0
-        yield self.httpclient.fetch(
-            self.request(
-                url=k8s_url(self.namespace, 'pods', self.pod_name),
-                method='DELETE',
-                body=json.dumps(body),
-                headers={'Content-Type': 'application/json'},
-                # Tornado's client thinks DELETE requests shouldn't have a body
-                # which is a bogus restriction
-                allow_nonstandard_methods=True,
-            )
+            grace_seconds = 0
+        else:
+            # Give it some time, but not the default (which is 30s!)
+            # FIXME: Move this into pod creation maybe?
+            grace_seconds = 1
+
+        delete_options.grace_period_seconds = grace_seconds
+        yield self.asynchronize(
+            self.api.delete_namespaced_pod,
+            name=self.pod_name,
+            namespace=self.namespace,
+            body=delete_options,
+            grace_period_seconds=grace_seconds
         )
         while True:
             data = yield self.get_pod_info(self.pod_name)

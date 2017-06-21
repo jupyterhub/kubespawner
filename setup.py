@@ -6,7 +6,6 @@ setup(
     install_requires=[
         'jupyterhub',
         'pyyaml',
-        'pycurl',
         'kubernetes==2.*',
         'escapism',
     ],
