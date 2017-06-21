@@ -1,14 +1,17 @@
 """
 Test functions used to create k8s objects
 """
-from kubespawner.objects import make_pod_spec, make_pvc_spec
+from kubespawner.objects import make_pod, make_pvc
+from kubernetes.client import ApiClient
 
+
+api_client = ApiClient()
 
 def test_make_simplest_pod():
     """
     Test specification of the simplest possible pod specification
     """
-    assert make_pod_spec(
+    assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
         env={},
@@ -29,7 +32,7 @@ def test_make_simplest_pod():
         labels={},
         lifecycle_hooks=None,
         init_containers=None,
-    ) == {
+    )) == {
         "metadata": {
             "name": "test",
             "labels": {},
@@ -64,7 +67,7 @@ def test_make_labeled_pod():
     """
     Test specification of the simplest possible pod specification with labels
     """
-    assert make_pod_spec(
+    assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
         env={},
@@ -85,7 +88,7 @@ def test_make_labeled_pod():
         labels={"test": "true"},
         lifecycle_hooks=None,
         init_containers=None,
-    ) == {
+    )) == {
         "metadata": {
             "name": "test",
             "labels": {"test": "true"},
@@ -120,7 +123,7 @@ def test_make_pod_with_image_pull_secrets():
     """
     Test specification of the simplest possible pod specification
     """
-    assert make_pod_spec(
+    assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
         env={},
@@ -141,7 +144,7 @@ def test_make_pod_with_image_pull_secrets():
         labels={},
         lifecycle_hooks=None,
         init_containers=None,
-    ) == {
+    )) == {
         "metadata": {
             "name": "test",
             "labels": {},
@@ -180,7 +183,7 @@ def test_set_pod_uid_fs_gid():
     """
     Test specification of the simplest possible pod specification
     """
-    assert make_pod_spec(
+    assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
         env={},
@@ -201,7 +204,7 @@ def test_set_pod_uid_fs_gid():
         labels={},
         lifecycle_hooks=None,
         init_containers=None,
-    ) == {
+    )) == {
         "metadata": {
             "name": "test",
             "labels": {},
@@ -240,7 +243,7 @@ def test_make_pod_resources_all():
     """
     Test specifying all possible resource limits & guarantees
     """
-    assert make_pod_spec(
+    assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
         env={},
@@ -261,7 +264,7 @@ def test_make_pod_resources_all():
         labels={},
         lifecycle_hooks=None,
         init_containers=None,
-    ) == {
+    )) == {
         "metadata": {
             "name": "test",
             "labels": {},
@@ -305,7 +308,7 @@ def test_make_pod_with_env():
     """
     Test specification of a pod with custom environment variables
     """
-    assert make_pod_spec(
+    assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
         env={
@@ -328,7 +331,7 @@ def test_make_pod_with_env():
         labels={},
         lifecycle_hooks=None,
         init_containers=None,
-    ) == {
+    )) == {
         "metadata": {
             "name": "test",
             "labels": {},
@@ -365,7 +368,7 @@ def test_make_pod_with_lifecycle():
     """
     Test specification of a pod with lifecycle
     """
-    assert make_pod_spec(
+    assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
         env={},
@@ -392,7 +395,7 @@ def test_make_pod_with_lifecycle():
             }
         },
         init_containers=None,
-    ) == {
+    )) == {
         "metadata": {
             "name": "test",
             "labels": {},
@@ -437,7 +440,7 @@ def test_make_pod_with_init_containers():
     """
     Test specification of a pod with initContainers
     """
-    assert make_pod_spec(
+    assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
         env={},
@@ -469,7 +472,7 @@ def test_make_pod_with_init_containers():
                 'command': ['sh', '-c', 'until nslookup mydb; do echo waiting for mydb; sleep 2; done;']
             }
         ],
-    ) == {
+    )) == {
         "metadata": {
             "name": "test",
             "labels": {},
@@ -520,12 +523,12 @@ def test_make_pvc_simple():
     """
     Test specification of the simplest possible pvc specification
     """
-    assert make_pvc_spec(
+    assert api_client.sanitize_for_serialization(make_pvc(
         name='test',
         storage_class='',
         access_modes=[],
         storage=None
-    ) == {
+    )) == {
         'kind': 'PersistentVolumeClaim',
         'apiVersion': 'v1',
         'metadata': {
@@ -548,12 +551,12 @@ def test_make_resources_all():
     """
     Test specifying all possible resource limits & guarantees
     """
-    assert make_pvc_spec(
+    assert api_client.sanitize_for_serialization(make_pvc(
         name='test',
         storage_class='gce-standard-storage',
         access_modes=['ReadWriteOnce'],
         storage='10Gi'
-    ) == {
+    )) == {
         'kind': 'PersistentVolumeClaim',
         'apiVersion': 'v1',
         'metadata': {

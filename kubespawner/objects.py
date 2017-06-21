@@ -2,7 +2,6 @@
 Helper methods for generating k8s API objects.
 """
 
-from kubernetes.client import ApiClient
 from kubernetes.client.models.v1_pod import V1Pod
 from kubernetes.client.models.v1_pod_spec import V1PodSpec
 from kubernetes.client.models.v1_object_meta import V1ObjectMeta
@@ -18,7 +17,7 @@ from kubernetes.client.models.v1_persistent_volume_claim import V1PersistentVolu
 from kubernetes.client.models.v1_persistent_volume_claim_spec import V1PersistentVolumeClaimSpec
 
 
-def make_pod_spec(
+def make_pod(
     name,
     image_spec,
     image_pull_policy,
@@ -104,7 +103,6 @@ def make_pod_spec(
       - init_containers:
         List of initialization containers belonging to the pod.
     """
-    api_client = ApiClient()
 
     pod = V1Pod()
     pod.kind = "Pod"
@@ -128,10 +126,10 @@ def make_pod_spec(
         image_secret = V1LocalObjectReference()
         image_secret.name = image_pull_secret
         pod.spec.image_pull_secrets.append(image_secret)
-    
+
     if node_selector:
         pod.spec.node_selector = node_selector
-    
+
     pod.spec.containers = []
     notebook_container = V1Container()
     notebook_container.name = "notebook"
@@ -165,10 +163,10 @@ def make_pod_spec(
 
     pod.spec.init_containers = init_containers
     pod.spec.volumes = volumes
-    return api_client.sanitize_for_serialization(pod)
+    return pod
 
 
-def make_pvc_spec(
+def make_pvc(
     name,
     storage_class,
     access_modes,
@@ -188,8 +186,6 @@ def make_pvc_spec(
       - storage
       The ammount of storage needed for the pvc
     """
-    api_client = ApiClient()
-
     pvc = V1PersistentVolumeClaim()
     pvc.kind = "PersistentVolumeClaim"
     pvc.api_version = "v1"
@@ -202,6 +198,6 @@ def make_pvc_spec(
     pvc.spec.access_modes = access_modes
     pvc.spec.resources = V1ResourceRequirements()
     pvc.spec.resources.requests = {"storage": storage}
-    
-    return api_client.sanitize_for_serialization(pvc)
+
+    return pvc
 

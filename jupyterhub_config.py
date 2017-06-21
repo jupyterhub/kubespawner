@@ -21,3 +21,5 @@ c.KubeSpawner.hub_connect_ip = os.environ['HUB_CONNECT_IP']
 
 # Do not use any authentication at all - any username / password will work.
 c.JupyterHub.authenticator_class = 'dummyauthenticator.DummyAuthenticator'
+
+c.KubeSpawner.user_storage_pvc_ensure = True
