@@ -103,10 +103,3 @@ host machine.
    The `jupyterhub_config.py` file that ships in this repo will read that environment variable to figure out what IP the pods should connect to the JupyterHub on. Replace `vboxnet4` with whatever interface name you used in step 4 of the previous section.
 
 This will give you a running JupyterHub that spawns nodes inside the minikube VM! It'll be setup with [DummyAuthenticator](http://github.com/yuvipanda/jupyterhub-dummy-authenticator), so any user + password combo will allow you to log in. You can make changes to the spawner and restart jupyterhub, and rapidly iterate :)
-
-Note for MacOS/OS X: There is some known issues with Curl on MacOS (https://github.com/curl/curl/issues/283) so you might need to set the HttpClient in the `jupyterhub_config.py` like this:
-
-```python
-from tornado.simple_httpclient import SimpleAsyncHTTPClient
-c.KubeSpawner.httpclient_class = SimpleAsyncHTTPClient
-```
