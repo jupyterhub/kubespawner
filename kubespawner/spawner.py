@@ -449,6 +449,24 @@ class KubeSpawner(Spawner):
         """
     )
 
+    user_storage_extra_labels = Dict(
+        {},
+        config=True,
+        help="""
+        Extra kubernetes labels to set on the user PVCs.
+
+        The keys and values specified here would be set as labels on the PVCs
+        created by kubespawner for the user. Note that these are only set
+        when the PVC is created, not later when they are updated.
+
+        See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ for more
+        info on what labels are and why you might want to use them!
+
+        {username} and {userid} are expanded to the escaped, dns-label safe
+        username & integer user id respectively, wherever they are used.
+        """
+    )
+
     user_storage_class = Unicode(
         None,
         config=True,
@@ -631,11 +649,21 @@ class KubeSpawner(Spawner):
         """
         Make a pvc manifest that will spawn current user's pvc.
         """
+        # Default set of labels, picked up from
+        # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
+        labels = {
+            'heritage': 'jupyterhub',
+            'app': 'jupyterhub',
+            'hub.jupyter.org/username': escapism.escape(self.user.name)
+        }
+
+        labels.update(self._expand_all(self.user_storage_extra_labels))
         return make_pvc(
             name=self.pvc_name,
             storage_class=self.user_storage_class,
             access_modes=self.user_storage_access_modes,
-            storage=self.user_storage_capacity
+            storage=self.user_storage_capacity,
+            labels=labels
         )
 
     @gen.coroutine

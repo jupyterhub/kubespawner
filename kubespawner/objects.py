@@ -171,6 +171,7 @@ def make_pvc(
     storage_class,
     access_modes,
     storage,
+    labels
     ):
     """
     Make a k8s pvc specification for running a user notebook.
@@ -194,6 +195,8 @@ def make_pvc(
     pvc.metadata.annotations = {}
     if storage_class:
         pvc.metadata.annotations.update({"volume.beta.kubernetes.io/storage-class": storage_class})
+    pvc.metadata.labels = {}
+    pvc.metadata.labels.update(labels)
     pvc.spec = V1PersistentVolumeClaimSpec()
     pvc.spec.access_modes = access_modes
     pvc.spec.resources = V1ResourceRequirements()
