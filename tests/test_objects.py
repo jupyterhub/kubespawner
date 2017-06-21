@@ -527,14 +527,16 @@ def test_make_pvc_simple():
         name='test',
         storage_class='',
         access_modes=[],
-        storage=None
+        storage=None,
+        labels={}
     )) == {
         'kind': 'PersistentVolumeClaim',
         'apiVersion': 'v1',
         'metadata': {
             'name': 'test',
             'annotations': {
-            }
+            },
+            'labels': {}
         },
         'spec': {
             'accessModes': [],
@@ -555,7 +557,8 @@ def test_make_resources_all():
         name='test',
         storage_class='gce-standard-storage',
         access_modes=['ReadWriteOnce'],
-        storage='10Gi'
+        storage='10Gi',
+        labels={'key': 'value'}
     )) == {
         'kind': 'PersistentVolumeClaim',
         'apiVersion': 'v1',
@@ -563,6 +566,9 @@ def test_make_resources_all():
             'name': 'test',
             'annotations': {
                 'volume.beta.kubernetes.io/storage-class': 'gce-standard-storage'
+            },
+            'labels': {
+                'key': 'value'
             }
         },
         'spec': {
