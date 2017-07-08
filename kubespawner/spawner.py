@@ -773,7 +773,7 @@ class KubeSpawner(Spawner):
             except ApiException as e:
                 if e.status != 409:
                     # We only want to handle 409 conflict errors
-                    self.log.exception("Failed for %s", json.dumps(pod_manifest))
+                    self.log.exception("Failed for %s", pod.to_str())
                     raise
                 self.log.info('Found existing pod %s, attempting to kill', self.pod_name)
                 yield self.stop(True)
