@@ -166,6 +166,15 @@ class PodReflector(SingletonConfigurable):
         self.watch_thread.daemon = True
         self.watch_thread.start()
 
+class SingletonExecutor(SingletonConfigurable, ThreadPoolExecutor):
+    """
+    Simple wrapper to ThreadPoolExecutor that is also a singleton.
+
+    We want one ThreadPool that is used by all the spawners, rather
+    than one ThreadPool per spawner!
+    """
+    pass
+
 class KubeSpawner(Spawner):
     """
     Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
@@ -174,7 +183,7 @@ class KubeSpawner(Spawner):
         super().__init__(*args, **kwargs)
         # By now, all the traitlets have been set, so we can use them to compute
         # other attributes
-        self.executor = ThreadPoolExecutor(max_workers=self.k8s_api_threadpool_workers)
+        self.executor = SingletonExecutor.instance(max_workers=self.k8s_api_threadpool_workers)
 
         # FIXME: Is this a memory leak? Will there be other side effects?
         self.pod_reflector = PodReflector.instance(parent=self, namespace=self.namespace)
