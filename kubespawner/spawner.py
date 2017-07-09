@@ -6,7 +6,9 @@ implementation that should be used by JupyterHub.
 """
 import os
 import json
+import time
 import string
+import threading
 from urllib.parse import urlparse, urlunparse
 from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
@@ -14,7 +16,8 @@ import multiprocessing
 
 from tornado import gen
 from tornado.concurrent import run_on_executor
-from traitlets import Type, Unicode, List, Integer, Union, Dict, Bool
+from traitlets.config import SingletonConfigurable
+from traitlets import Type, Unicode, List, Integer, Union, Dict, Bool, Any
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
 from kubernetes.client.models.v1_volume import V1Volume
@@ -27,6 +30,141 @@ from kubespawner.traitlets import Callable
 from kubespawner.utils import request_maker, k8s_url
 from kubespawner.objects import make_pod, make_pvc
 
+class PodReflector(SingletonConfigurable):
+    """
+    Local up-to-date copy of a set of kubernetes pods
+    """
+    labels = Dict(
+        {
+            'heritage': 'jupyterhub',
+            'component': 'singleuser-server',
+        },
+        config=True,
+        help="""
+        Labels to reflect onto local cache
+        """
+    )
+
+    namespace = Unicode(
+        None,
+        allow_none=True,
+        help="""
+        Namespace to watch for resources in
+        """
+    )
+
+    pods = Dict(
+        {},
+        help="""
+        Dictionary of pod names to Pod objects.
+
+        This can be directly accessed from multiple threads.
+        """
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Load kubernetes config here, since this is a Singleton and
+        # so this __init__ will be run way before anything else gets run.
+        try:
+            config.load_incluster_config()
+        except config.ConfigException:
+            config.load_kube_config()
+        self.api = client.CoreV1Api()
+
+        # FIXME: Protect against malicious labels?
+        self.label_selector = ','.join(['{}={}'.format(k, v) for k, v in self.labels.items()])
+
+        self.start()
+
+    def _list_and_update(self):
+        """
+        Update current list of pods by doing a full fetch of pod information.
+
+        Overwrites all current pod info.
+        """
+        initial_pods = self.api.list_namespaced_pod(
+            self.namespace,
+            label_selector=self.label_selector
+        )
+        # This is an atomic operation on the dictionary!
+        self.pods = {p.metadata.name: p for p in initial_pods.items}
+
+    def _watch_and_update(self):
+        """
+        Keeps the current list of pods up-to-date
+
+        This method is to be run not on the main thread!
+
+        We first fetch the list of current pods, and store that. Then we
+        register to be notified of changes to those pods, and keep our
+        local store up-to-date based on these notifications.
+
+        We also perform exponential backoff, giving up after we hit 32s
+        wait time. This should protect against network connections dropping
+        and intermittent unavailability of the api-server. Every time we
+        recover from an exception we also do a full fetch, to pick up
+        changes that might've been missed in the time we were not doing
+        a watch.
+
+        Note that we're playing a bit with fire here, by updating a dictionary
+        in this thread while it is probably being read in another thread
+        without using locks! However, dictionary access itself is atomic,
+        and as long as we don't try to mutate them (do a 'fetch / modify /
+        update' cycle on them), we should be ok!
+        """
+        cur_delay = 0.1
+        while True:
+            self.log.info("watching for pods with label selector %s in namespace %s", self.label_selector, self.namespace)
+            try:
+                self._list_and_update()
+                w = watch.Watch()
+                for ev in w.stream(
+                        self.api.list_namespaced_pod,
+                        self.namespace,
+                        label_selector=self.label_selector
+                ):
+                    cur_delay = 0.1
+                    pod = ev['object']
+                    if ev['type'] == 'DELETED':
+                        try:
+                            # This is an atomic operation on the dictionary!
+                            del self.pods[pod.metadata.name]
+                        except KeyError:
+                            # Race, somehow another thread deleted this?
+                            pass
+                    else:
+                        # This is an atomic operation on the dictionary!
+                        self.pods[pod.metadata.name] = pod
+            except:
+                cur_delay = cur_delay * 2
+                self.log.exception("Error when watching pods, retrying in %ss", cur_delay)
+                time.sleep(cur_delay)
+                if cur_delay > 30:
+                    self.log.fatal('Unable to connect to APIServer')
+                    sys.exit(1)
+                continue
+            finally:
+                w.stop()
+
+    def start(self):
+        """
+        Start the reflection process!
+
+        We'll do a blocking read of all pods first, so that we don't
+        race with any operations that are checking the state of the pod
+        store - such as polls. This should be called only once at the
+        start of program initialization (when the singleton is being created),
+        and not afterwards!
+        """
+        if hasattr(self, 'watch_thread'):
+            raise ValueError('Thread watching for pods is already running')
+
+        self._list_and_update()
+        self.watch_thread = threading.Thread(target=self._watch_and_update)
+        # If the watch_thread is only thread left alive, exit app
+        self.watch_thread.daemon = True
+        self.watch_thread.start()
 
 class KubeSpawner(Spawner):
     """
@@ -38,10 +176,9 @@ class KubeSpawner(Spawner):
         # other attributes
         self.executor = ThreadPoolExecutor(max_workers=self.k8s_api_threadpool_workers)
 
-        try:
-            config.load_incluster_config()
-        except config.ConfigException:
-            config.load_kube_config()
+        # FIXME: Is this a memory leak? Will there be other side effects?
+        self.pod_reflector = PodReflector.instance(parent=self, namespace=self.namespace)
+
         self.api = client.CoreV1Api()
 
         self.pod_name = self._expand_user_properties(self.pod_name_template)
@@ -666,25 +803,6 @@ class KubeSpawner(Spawner):
             labels=labels
         )
 
-    @gen.coroutine
-    def get_pod_info(self, pod_name):
-        """
-        Fetch info about a specific pod with the given pod name in current namespace
-
-        Return `None` if pod with given name does not exist in current namespace
-        """
-        try:
-            pod = yield self.asynchronize(
-                self.api.read_namespaced_pod,
-                name=self.pod_name,
-                namespace=self.namespace,
-            )
-        except ApiException as e:
-            if e.status == 404:
-                return None
-            raise
-        return pod
-
     def is_pod_running(self, pod):
         """
         Check if the given pod is running
@@ -692,7 +810,10 @@ class KubeSpawner(Spawner):
         pod must be a dictionary representing a Pod kubernetes API object.
         """
         # FIXME: Validate if this is really the best way
-        is_running = pod.status.phase == 'Running' and (pod.status.pod_ip is not None)
+        is_running = pod.status.phase == 'Running' and \
+                     pod.status.pod_ip is not None and \
+                     pod.metadata.deletion_timestamp is None and \
+                     all([cs.ready for cs in pod.status.container_statuses])
         return is_running
 
     def get_state(self):
@@ -731,9 +852,10 @@ class KubeSpawner(Spawner):
         Returns None if it is, and 1 if it isn't. These are the return values
         JupyterHub expects.
         """
-        data = yield self.get_pod_info(self.pod_name)
+        data = self.pod_reflector.pods.get(self.pod_name, None)
         if data is not None and self.is_pod_running(data):
             return None
+
         return 1
 
     @run_on_executor
@@ -784,7 +906,7 @@ class KubeSpawner(Spawner):
                 'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
 
         while True:
-            pod = yield self.get_pod_info(self.pod_name)
+            pod = self.pod_reflector.pods.get(self.pod_name, None)
             if pod is not None and self.is_pod_running(pod):
                 break
             yield gen.sleep(1)
@@ -810,7 +932,7 @@ class KubeSpawner(Spawner):
             grace_period_seconds=grace_seconds
         )
         while True:
-            data = yield self.get_pod_info(self.pod_name)
+            data = self.pod_reflector.pods.get(self.pod_name, None)
             if data is None:
                 break
             yield gen.sleep(1)
