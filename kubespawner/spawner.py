@@ -128,12 +128,8 @@ class PodReflector(SingletonConfigurable):
                     cur_delay = 0.1
                     pod = ev['object']
                     if ev['type'] == 'DELETED':
-                        try:
-                            # This is an atomic operation on the dictionary!
-                            del self.pods[pod.metadata.name]
-                        except KeyError:
-                            # Race, somehow another thread deleted this?
-                            pass
+                        # This is an atomic delete operation on the dictionary!
+                        self.pods.pop(pod.metadata.name, None)
                     else:
                         # This is an atomic operation on the dictionary!
                         self.pods[pod.metadata.name] = pod
@@ -142,8 +138,7 @@ class PodReflector(SingletonConfigurable):
                 self.log.exception("Error when watching pods, retrying in %ss", cur_delay)
                 time.sleep(cur_delay)
                 if cur_delay > 30:
-                    self.log.fatal('Unable to connect to APIServer')
-                    sys.exit(1)
+                    raise
                 continue
             finally:
                 w.stop()
@@ -186,7 +181,8 @@ class KubeSpawner(Spawner):
         # other attributes
         self.executor = SingletonExecutor.instance(max_workers=self.k8s_api_threadpool_workers)
 
-        # FIXME: Is this a memory leak? Will there be other side effects?
+        # This will start watching in __init__, so it'll start the first
+        # time any spawner object is created. Not ideal but works!
         self.pod_reflector = PodReflector.instance(parent=self, namespace=self.namespace)
 
         self.api = client.CoreV1Api()
