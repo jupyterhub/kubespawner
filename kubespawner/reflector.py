@@ -44,13 +44,24 @@ class NamespacedResourceReflector(SingletonConfigurable):
         None,
         allow_none=True,
         help="""
-        Name of function (on a core v1 object) that is to be called to list resources.
+        Name of function (on apigroup respresented by `api_group_name`) that is to be called to list resources.
 
         This will be passed a namespace & a label selector. You most likely want something
         of the form list_namespaced_<resource> - for example, `list_namespaced_pod` will
         give you a PodReflector.
 
         This must be set by a subclass.
+        """
+    )
+
+    api_group_name = Unicode(
+        'CoreV1Api',
+        allow_none=False,
+        help="""
+        Name of class that represents the apigroup on which `list_method_name` is to be found.
+
+        Defaults to CoreV1Api, which has everything in the 'core' API group. If you want to watch Ingresses,
+        for example, you would have to use ExtensionsV1beta1Api
         """
     )
 
@@ -64,7 +75,7 @@ class NamespacedResourceReflector(SingletonConfigurable):
             config.load_incluster_config()
         except config.ConfigException:
             config.load_kube_config()
-        self.api = client.CoreV1Api()
+        self.api = getattr(client, self.api_group_name)()
 
         # FIXME: Protect against malicious labels?
         self.label_selector = ','.join(['{}={}'.format(k, v) for k, v in self.labels.items()])
@@ -162,14 +173,3 @@ class NamespacedResourceReflector(SingletonConfigurable):
         self.watch_thread.start()
 
 
-class PodReflector(NamespacedResourceReflector):
-    labels = {
-        'heritage': 'jupyterhub',
-        'component': 'singleuser-server',
-    }
-
-    list_method_name = 'list_namespaced_pod'
-
-    @property
-    def pods(self):
-        return self.resources

@@ -3,8 +3,10 @@ Misc. general utility functions, not tied to Kubespawner directly
 """
 import os
 import yaml
+from concurrent.futures import ThreadPoolExecutor
 
 from tornado.httpclient import HTTPRequest
+from traitlets.config import SingletonConfigurable
 
 
 def request_maker():
@@ -130,3 +132,13 @@ def k8s_url(namespace, kind, name=None):
     if name is not None:
         url_parts.append(name)
     return '/' + '/'.join(url_parts)
+
+
+class SingletonExecutor(SingletonConfigurable, ThreadPoolExecutor):
+    """
+    Simple wrapper to ThreadPoolExecutor that is also a singleton.
+
+    We want one ThreadPool that is used by all the spawners, rather
+    than one ThreadPool per spawner!
+    """
+    pass
