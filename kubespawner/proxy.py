@@ -82,22 +82,60 @@ class KubeIngressProxy(Proxy):
             data
         )
 
-        yield self.asynchronize(
-            self.core_api.create_namespaced_endpoints,
-            namespace=self.namespace,
-            body=endpoint
-        )
+        @gen.coroutine
+        def create_if_required(create_func, delete_func, body, kind, pass_body_to_delete=True, attempt=0):
+            try:
+                yield self.asynchronize(
+                    create_func,
+                    namespace=self.namespace,
+                    body=body
+                )
+                self.log.debug('Created %s/%s', kind, safe_name)
+            except client.rest.ApiException as e:
+                if e.status == 409 and attempt ==0:
+                    # This object already exists, we should delete it and try again
+                    self.log.warn("Trying to create %s/%s, it already exists. Deleting & recreating", kind, safe_name)
+                    delete_options = client.V1DeleteOptions(grace_period_seconds=0)
+                    try:
+                        kwargs = {
+                            'name': safe_name,
+                            'namespace': self.namespace
+                        }
+                        if pass_body_to_delete:
+                            kwargs['body'] = delete_options
+                        yield self.asynchronize(
+                            delete_func,
+                            **kwargs
+                        )
+                        create_if_required(create_func, delete_func, body, kind, attempt+1)
+                    except client.rest.ApiException as e:
+                        if e.status == 404:
+                            self.log.warn("Could not delete %s/%s, it has already been deleted?", kind, safe_name)
+                        else:
+                            raise
+                else:
+                    raise
 
-        yield self.asynchronize(
-            self.core_api.create_namespaced_service,
-            namespace=self.namespace,
-            body=service
-        )
-
-        yield self.asynchronize(
+        yield create_if_required(
             self.extension_api.create_namespaced_ingress,
-            namespace=self.namespace,
-            body=ingress
+            self.extension_api.delete_namespaced_ingress,
+            body=ingress,
+            kind='ingress',
+        )
+
+        yield create_if_required(
+            self.core_api.create_namespaced_service,
+            self.core_api.delete_namespaced_service,
+            body=service,
+            kind='service',
+            pass_body_to_delete=False
+        )
+
+        yield create_if_required(
+            self.core_api.create_namespaced_endpoints,
+            self.core_api.delete_namespaced_endpoints,
+            body=endpoint,
+            kind='endpoint',
         )
 
 
@@ -109,42 +147,44 @@ class KubeIngressProxy(Proxy):
         safe_chars = set(string.ascii_lowercase + string.digits)
         safe_name = 'jupyter-' + escapism.escape(routespec, safe=safe_chars, escape_char='-').lower() + '-route'
 
-        delete_options = client.V1DeleteOptions()
+        delete_options = client.V1DeleteOptions(grace_period_seconds=0)
 
-        try:
-            yield self.asynchronize(
-                self.core_api.delete_namespaced_endpoints,
-                name=safe_name,
-                namespace=self.namespace,
-                body=delete_options
-            )
-        except client.rest.ApiException as e:
-            if e.status != 404:
-                raise
-            self.log.warn("Could not delete endpoints %s: does not exist", safe_name)
+        delete_endpoints = self.asynchronize(
+            self.core_api.delete_namespaced_endpoints,
+            name=safe_name,
+            namespace=self.namespace,
+            body=delete_options,
+            grace_period_seconds=0
+        )
 
-        try:
-            yield self.asynchronize(
-                self.core_api.delete_namespaced_service,
-                name=safe_name,
-                namespace=self.namespace,
-            )
-        except client.rest.ApiException as e:
-            if e.status != 404:
-                raise
-            self.log.warn("Could not delete service %s: does not exist", safe_name)
+        delete_service = self.asynchronize(
+            self.core_api.delete_namespaced_service,
+            name=safe_name,
+            namespace=self.namespace,
+        )
 
-        try:
-            yield self.asynchronize(
+        delete_ingress = self.asynchronize(
                 self.extension_api.delete_namespaced_ingress,
                 name=safe_name,
                 namespace=self.namespace,
-                body=delete_options
+                body=delete_options,
+                grace_period_seconds=0
             )
-        except client.rest.ApiException as e:
-            if e.status != 404:
-                raise
-            self.log.warn("Could not delete ingress %s: does not exist", safe_name)
+
+        # This seems like cleanest way to parallelize all three of these while
+        # also making sure we only ignore the exception when it's a 404
+        def delete_if_exists(kind, future):
+            try:
+                yield future
+            except client.rest.ApiException as e:
+                if e.status != 404:
+                    raise
+                self.log.warn("Could not delete %s %s: does not exist", kind, safe_name)
+
+        delete_if_exists('endpoint', delete_endpoints)
+        delete_if_exists('service', delete_service)
+        delete_if_exists('ingress', delete_ingress)
+
 
     @gen.coroutine
     def get_all_routes(self):
