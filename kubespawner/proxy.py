@@ -85,14 +85,14 @@ class KubeIngressProxy(Proxy):
         @gen.coroutine
         def create_if_required(create_func, delete_func, body, kind, pass_body_to_delete=True, attempt=0):
             try:
-                yield self.asynchronize(
+                resp = yield self.asynchronize(
                     create_func,
                     namespace=self.namespace,
                     body=body
                 )
-                self.log.debug('Created %s/%s', kind, safe_name)
+                self.log.info('Created %s/%s', kind, safe_name)
             except client.rest.ApiException as e:
-                if e.status == 409 and attempt ==0:
+                if e.status == 409 and attempt == 0:
                     # This object already exists, we should delete it and try again
                     self.log.warn("Trying to create %s/%s, it already exists. Deleting & recreating", kind, safe_name)
                     delete_options = client.V1DeleteOptions(grace_period_seconds=0)
@@ -116,13 +116,8 @@ class KubeIngressProxy(Proxy):
                 else:
                     raise
 
-        yield create_if_required(
-            self.extension_api.create_namespaced_ingress,
-            self.extension_api.delete_namespaced_ingress,
-            body=ingress,
-            kind='ingress',
-        )
-
+        # This is the correct ordering, since if you delete a service you also delete the endpoints associated with it,
+        # because of cascading deletes!
         yield create_if_required(
             self.core_api.create_namespaced_service,
             self.core_api.delete_namespaced_service,
@@ -138,6 +133,12 @@ class KubeIngressProxy(Proxy):
             kind='endpoint',
         )
 
+        yield create_if_required(
+            self.extension_api.create_namespaced_ingress,
+            self.extension_api.delete_namespaced_ingress,
+            body=ingress,
+            kind='ingress',
+        )
 
     @gen.coroutine
     def delete_route(self, routespec):
