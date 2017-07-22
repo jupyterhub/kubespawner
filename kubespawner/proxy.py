@@ -28,6 +28,31 @@ class IngressReflector(NamespacedResourceReflector):
     def ingresses(self):
         return self.resources
 
+class ServiceReflector(NamespacedResourceReflector):
+    labels = {
+        'heritage': 'jupyterhub',
+        'component': 'singleuser-server',
+        'hub.jupyter.org/proxy-route': 'true'
+    }
+
+    list_method_name = 'list_namespaced_service'
+
+    @property
+    def services(self):
+        return self.resources
+
+class EndpointsReflector(NamespacedResourceReflector):
+    labels = {
+        'heritage': 'jupyterhub',
+        'component': 'singleuser-server',
+        'hub.jupyter.org/proxy-route': 'true'
+    }
+
+    list_method_name = 'list_namespaced_endpoints'
+
+    @property
+    def endpoints(self):
+        return self.resources
 
 class KubeIngressProxy(Proxy):
     namespace = Unicode(
@@ -57,9 +82,11 @@ class KubeIngressProxy(Proxy):
         super().__init__(*args, **kwargs)
 
         # other attributes
-        self.executor = ThreadPoolExecutor(max_workers=8)
+        self.executor = ThreadPoolExecutor(max_workers=24)
 
         self.ingress_reflector = IngressReflector(parent=self, namespace=self.namespace)
+        self.service_reflector = ServiceReflector(parent=self, namespace=self.namespace)
+        self.endpoint_reflector = EndpointsReflector(parent=self, namespace=self.namespace)
 
         self.core_api = client.CoreV1Api()
         self.extension_api = client.ExtensionsV1beta1Api()
@@ -116,29 +143,42 @@ class KubeIngressProxy(Proxy):
                 else:
                     raise
 
-        # This is the correct ordering, since if you delete a service you also delete the endpoints associated with it,
-        # because of cascading deletes!
-        yield create_if_required(
-            self.core_api.create_namespaced_service,
-            self.core_api.delete_namespaced_service,
-            body=service,
-            kind='service',
-            pass_body_to_delete=False
-        )
-
         yield create_if_required(
             self.core_api.create_namespaced_endpoints,
             self.core_api.delete_namespaced_endpoints,
             body=endpoint,
-            kind='endpoint',
+            kind='endpoints'
         )
+
+        while safe_name not in self.endpoint_reflector.endpoints:
+            self.log.info('waiting for endpoints %s to show up!', safe_name)
+            yield gen.sleep(1)
+
+        yield create_if_required(
+            self.core_api.create_namespaced_service,
+            self.core_api.delete_namespaced_service,
+            body=service,
+            pass_body_to_delete=False,
+            kind='service'
+        )
+
+        while safe_name not in self.service_reflector.services:
+            self.log.info('waiting for services %s to show up!', safe_name)
+            yield gen.sleep(1)
+
 
         yield create_if_required(
             self.extension_api.create_namespaced_ingress,
             self.extension_api.delete_namespaced_ingress,
             body=ingress,
-            kind='ingress',
+            kind='ingress'
         )
+        while safe_name not in self.ingress_reflector.ingresses:
+            self.log.info('waiting for ingress %s to show up!', safe_name)
+            yield gen.sleep(1)
+
+        self.log.info("Created ingress %s", safe_name)
+
 
     @gen.coroutine
     def delete_route(self, routespec):
@@ -150,12 +190,10 @@ class KubeIngressProxy(Proxy):
 
         delete_options = client.V1DeleteOptions(grace_period_seconds=0)
 
-        delete_endpoints = self.asynchronize(
+        delete_endpoint = self.asynchronize(
             self.core_api.delete_namespaced_endpoints,
             name=safe_name,
             namespace=self.namespace,
-            body=delete_options,
-            grace_period_seconds=0
         )
 
         delete_service = self.asynchronize(
@@ -170,7 +208,7 @@ class KubeIngressProxy(Proxy):
                 namespace=self.namespace,
                 body=delete_options,
                 grace_period_seconds=0
-            )
+        )
 
         # This seems like cleanest way to parallelize all three of these while
         # also making sure we only ignore the exception when it's a 404
@@ -182,7 +220,8 @@ class KubeIngressProxy(Proxy):
                     raise
                 self.log.warn("Could not delete %s %s: does not exist", kind, safe_name)
 
-        delete_if_exists('endpoint', delete_endpoints)
+
+        delete_if_exists('endpoint', delete_endpoint)
         delete_if_exists('service', delete_service)
         delete_if_exists('ingress', delete_ingress)
 
