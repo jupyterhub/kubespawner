@@ -5,9 +5,11 @@ import json
 from kubernetes import client
 
 from jupyterhub.proxy import Proxy
+from jupyterhub.utils import DT_MIN, DT_MAX, DT_SCALE
 
 from kubespawner.objects import make_ingress
 from kubespawner.reflector import NamespacedResourceReflector
+from kubespawner.utils import exponential_backoff
 from concurrent.futures import ThreadPoolExecutor
 from traitlets import Unicode
 from tornado import gen
@@ -150,9 +152,10 @@ class KubeIngressProxy(Proxy):
             kind='endpoints'
         )
 
-        while safe_name not in self.endpoint_reflector.endpoints:
-            self.log.info('waiting for endpoints %s to show up!', safe_name)
-            yield gen.sleep(1)
+        yield exponential_backoff(
+            lambda: safe_name in self.endpoint_reflector.endpoints,
+            'Could not find endpoints/%s after creating it' % safe_name
+        )
 
         yield create_if_required(
             self.core_api.create_namespaced_service,
@@ -162,10 +165,10 @@ class KubeIngressProxy(Proxy):
             kind='service'
         )
 
-        while safe_name not in self.service_reflector.services:
-            self.log.info('waiting for services %s to show up!', safe_name)
-            yield gen.sleep(1)
-
+        yield exponential_backoff(
+            lambda: safe_name in self.service_reflector.services,
+            'Could not find service/%s after creating it' % safe_name
+        )
 
         yield create_if_required(
             self.extension_api.create_namespaced_ingress,
@@ -173,12 +176,11 @@ class KubeIngressProxy(Proxy):
             body=ingress,
             kind='ingress'
         )
-        while safe_name not in self.ingress_reflector.ingresses:
-            self.log.info('waiting for ingress %s to show up!', safe_name)
-            yield gen.sleep(1)
 
-        self.log.info("Created ingress %s", safe_name)
-
+        yield exponential_backoff(
+            lambda: safe_name in self.ingress_reflector.ingresses,
+            'Could not find ingress/%s after creating it' % safe_name
+        )
 
     @gen.coroutine
     def delete_route(self, routespec):
