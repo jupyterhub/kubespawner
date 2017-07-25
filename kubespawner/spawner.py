@@ -26,7 +26,7 @@ from kubernetes import client
 import escapism
 
 from kubespawner.traitlets import Callable
-from kubespawner.utils import SingletonExecutor
+from kubespawner.utils import SingletonExecutor, exponential_backoff
 from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import NamespacedResourceReflector
 
@@ -733,7 +733,8 @@ class KubeSpawner(Spawner):
         pod must be a dictionary representing a Pod kubernetes API object.
         """
         # FIXME: Validate if this is really the best way
-        is_running = pod.status.phase == 'Running' and \
+        is_running = pod is not None and \
+                     pod.status.phase == 'Running' and \
                      pod.status.pod_ip is not None and \
                      pod.metadata.deletion_timestamp is None and \
                      all([cs.ready for cs in pod.status.container_statuses])
@@ -828,11 +829,16 @@ class KubeSpawner(Spawner):
             raise Exception(
                 'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
 
-        while True:
-            pod = self.pod_reflector.pods.get(self.pod_name, None)
-            if pod is not None and self.is_pod_running(pod):
-                break
-            yield gen.sleep(1)
+        # Note: The self.start_timeout here is kinda superfluous, since
+        # there is already a timeout on how long start can run for in
+        # jupyterhub itself.
+        yield exponential_backoff(
+            lambda: self.is_pod_running(self.pod_reflector.pods.get(self.pod_name, None)),
+            'pod/%s did not start in %s seconds!' % (self.pod_name, self.start_timeout),
+            timeout=self.start_timeout
+        )
+
+        pod = self.pod_reflector.pods[self.pod_name]
         return (pod.status.pod_ip, self.port)
 
     @gen.coroutine
