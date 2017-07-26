@@ -18,7 +18,16 @@ class SingletonExecutor(SingletonConfigurable, ThreadPoolExecutor):
     pass
 
 @gen.coroutine
-def exponential_backoff(func, fail_message, timeout=10, *args, **kwargs):
+def exponential_backoff(pass_func, fail_message, timeout=10, *args, **kwargs):
+    """
+    Exponentially backoff until pass_func is true.
+
+    This function will wait with exponential backoff + random jitter for as
+    many iterations as needed, with maximum timeout timeout. If pass_func is
+    still returning false at the end of timeout, a TimeoutError will be raised.
+
+    *args and **kwargs are passed to pass_func.
+    """
     loop = ioloop.IOLoop.current()
     start_tic = loop.time()
     dt = DT_MIN
@@ -26,7 +35,7 @@ def exponential_backoff(func, fail_message, timeout=10, *args, **kwargs):
         if (loop.time() - start_tic) > timeout:
             # We time out!
             break
-        if func(*args, **kwargs):
+        if pass_func(*args, **kwargs):
             return
         else:
             yield gen.sleep(dt)
