@@ -20,13 +20,14 @@ from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
 from traitlets import Type, Unicode, List, Integer, Union, Dict, Bool, Any
 from jupyterhub.spawner import Spawner
+from jupyterhub.utils import exponential_backoff
 from jupyterhub.traitlets import Command
 from kubernetes.client.rest import ApiException
 from kubernetes import client
 import escapism
 
 from kubespawner.traitlets import Callable
-from kubespawner.utils import SingletonExecutor, exponential_backoff
+from kubespawner.utils import SingletonExecutor
 from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import NamespacedResourceReflector
 

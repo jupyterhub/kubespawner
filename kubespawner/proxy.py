@@ -5,11 +5,10 @@ import json
 from kubernetes import client
 
 from jupyterhub.proxy import Proxy
-from jupyterhub.utils import DT_MIN, DT_MAX, DT_SCALE
+from jupyterhub.utils import exponential_backoff
 
 from kubespawner.objects import make_ingress
 from kubespawner.reflector import NamespacedResourceReflector
-from kubespawner.utils import exponential_backoff
 from concurrent.futures import ThreadPoolExecutor
 from traitlets import Unicode
 from tornado import gen
