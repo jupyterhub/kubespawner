@@ -6,7 +6,11 @@ Kubespawner
 .. toctree::
    :maxdepth: 2
 
-
+   objects
+   reflector
+   spawner
+   traitlets
+   utils
 
 
 Indices and tables
