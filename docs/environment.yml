@@ -8,5 +8,4 @@ dependencies:
 - sphinx_rtd_theme
 - pip:
   - jupyterhub-kubespawner
-  - jupyter_alabaster_theme
-  - recommonmark==0.4.0
+  - git+https://github.com/jupyterhub/kubespawner
