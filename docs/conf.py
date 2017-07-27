@@ -47,7 +47,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'Kubespawner'
+project = 'kubespawner'
 copyright = '2017, Project Jupyter'
 author = 'Project Jupyter'
 
