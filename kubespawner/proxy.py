@@ -8,6 +8,7 @@ from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
 
 from kubespawner.objects import make_ingress
+from kubespawner.utils import generate_hashed_slug
 from kubespawner.reflector import NamespacedResourceReflector
 from concurrent.futures import ThreadPoolExecutor
 from traitlets import Unicode
@@ -96,13 +97,19 @@ class KubeIngressProxy(Proxy):
     def asynchronize(self, method, *args, **kwargs):
         return method(*args, **kwargs)
 
+    def safe_name_for_routespec(self, routespec):
+        safe_chars = set(string.ascii_lowercase + string.digits)
+        safe_name = generate_hashed_slug(
+            'jupyter-' + escapism.escape(routespec, safe=safe_chars, escape_char='-') + '-route'
+        )
+        return safe_name
+
     @gen.coroutine
     def add_route(self, routespec, target, data):
         # Create a route with the name being escaped routespec
         # Use full routespec in label
         # 'data' is JSON encoded and put in an annotation - we don't need to query for it
-        safe_chars = set(string.ascii_lowercase + string.digits)
-        safe_name = 'jupyter-' + escapism.escape(routespec, safe=safe_chars, escape_char='-').lower() + '-route'
+        safe_name = self.safe_name_for_routespec(routespec)
         endpoint, service, ingress = make_ingress(
             safe_name,
             routespec,
@@ -176,18 +183,12 @@ class KubeIngressProxy(Proxy):
             kind='ingress'
         )
 
-        yield exponential_backoff(
-            lambda: safe_name in self.ingress_reflector.ingresses,
-            'Could not find ingress/%s after creating it' % safe_name
-        )
-
     @gen.coroutine
     def delete_route(self, routespec):
         # We just ensure that these objects are deleted.
         # This means if some of them are already deleted, we just let it
         # be.
-        safe_chars = set(string.ascii_lowercase + string.digits)
-        safe_name = 'jupyter-' + escapism.escape(routespec, safe=safe_chars, escape_char='-').lower() + '-route'
+        safe_name = self.safe_name_for_routespec(routespec)
 
         delete_options = client.V1DeleteOptions(grace_period_seconds=0)
 
