@@ -3,6 +3,7 @@ Misc. general utility functions, not tied to Kubespawner directly
 """
 from concurrent.futures import ThreadPoolExecutor
 import random
+import hashlib
 
 from tornado import gen, ioloop
 from traitlets.config import SingletonConfigurable
@@ -17,7 +18,7 @@ class SingletonExecutor(SingletonConfigurable, ThreadPoolExecutor):
     pass
 
 
-def generate_hashed_slug(self, slug, limit=63, hash_length=6):
+def generate_hashed_slug(slug, limit=63, hash_length=6):
     """
     Generate a unique name that's within a certain length limit
 
@@ -33,9 +34,9 @@ def generate_hashed_slug(self, slug, limit=63, hash_length=6):
     # If not, we pick the first limit - hash_length chars from slug & hash the rest.
     # This means that any name over (limit - hash_length) chars will always be length long.
 
-    build_slug_hash = hashlib.sha256(build_slug.encode('utf-8')).hexdigest()
+    slug_hash = hashlib.sha256(slug.encode('utf-8')).hexdigest()
 
     return '{prefix}-{hash}'.format(
         prefix=slug[:limit - hash_length - 1],
-        hash=build_slug_hash[:hash_length],
+        hash=slug_hash[:hash_length],
     ).lower()

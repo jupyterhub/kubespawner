@@ -109,7 +109,7 @@ class KubeIngressProxy(Proxy):
         # Create a route with the name being escaped routespec
         # Use full routespec in label
         # 'data' is JSON encoded and put in an annotation - we don't need to query for it
-        safe_name = self.safe_name_for_routespec(routespec)
+        safe_name = self.safe_name_for_routespec(routespec).lower()
         endpoint, service, ingress = make_ingress(
             safe_name,
             routespec,
@@ -188,7 +188,7 @@ class KubeIngressProxy(Proxy):
         # We just ensure that these objects are deleted.
         # This means if some of them are already deleted, we just let it
         # be.
-        safe_name = self.safe_name_for_routespec(routespec)
+        safe_name = self.safe_name_for_routespec(routespec).lower()
 
         delete_options = client.V1DeleteOptions(grace_period_seconds=0)
 
