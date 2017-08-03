@@ -72,6 +72,8 @@ def make_pod(
         volume types that support this (such as GCE). This should be a group that
         the uid the process is running as should be a member of, so that it can
         read / write to the volumes mounted.
+      - run_privileged:
+        Whether the container should be run in privileged mode.
       - env:
         Dictionary of environment variables.
       - volumes:
@@ -120,8 +122,6 @@ def make_pod(
         security_context.fs_group = int(fs_gid)
     if run_as_uid is not None:
         security_context.run_as_user = int(run_as_uid)
-    if run_privileged:
-        security_context.privileged = True
     pod.spec.security_context = security_context
 
     if image_pull_secret is not None:
@@ -148,6 +148,11 @@ def make_pod(
     notebook_container.image_pull_policy = image_pull_policy
     notebook_container.lifecycle = lifecycle_hooks
     notebook_container.resources = V1ResourceRequirements()
+    
+    if run_privileged:
+        container_security_context = V1SecurityContext()
+        container_security_context.privileged = True
+        notebook_container.security_context = container_security_context
 
     notebook_container.resources.requests = {}
 
