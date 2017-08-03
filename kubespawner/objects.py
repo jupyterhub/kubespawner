@@ -9,7 +9,7 @@ from kubernetes.client.models.v1_pod_security_context import V1PodSecurityContex
 from kubernetes.client.models.v1_local_object_reference import V1LocalObjectReference
 
 from kubernetes.client.models.v1_container import V1Container
-from kubernetes.client.models.v1_container_security_context import V1ContainerSecurityContext
+from kubernetes.client.models.v1_security_context import V1SecurityContext
 from kubernetes.client.models.v1_container_port import V1ContainerPort
 from kubernetes.client.models.v1_env_var import V1EnvVar
 from kubernetes.client.models.v1_resource_requirements import V1ResourceRequirements
