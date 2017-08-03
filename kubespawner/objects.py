@@ -27,6 +27,7 @@ def make_pod(
     node_selector,
     run_as_uid,
     fs_gid,
+    run_privileged,
     env,
     working_dir,
     volumes,
@@ -119,6 +120,8 @@ def make_pod(
         security_context.fs_group = int(fs_gid)
     if run_as_uid is not None:
         security_context.run_as_user = int(run_as_uid)
+    if run_privileged:
+        security_context.privileged = True
     pod.spec.security_context = security_context
 
     if image_pull_secret is not None:
