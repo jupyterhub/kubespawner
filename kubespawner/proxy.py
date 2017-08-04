@@ -118,7 +118,7 @@ class KubeIngressProxy(Proxy):
         )
 
         @gen.coroutine
-        def create_if_required(create_func, delete_func, body, kind, pass_body_to_delete=True, attempt=0):
+        def ensure_object(create_func, patch_func, body, kind):
             try:
                 resp = yield self.asynchronize(
                     create_func,
@@ -127,33 +127,21 @@ class KubeIngressProxy(Proxy):
                 )
                 self.log.info('Created %s/%s', kind, safe_name)
             except client.rest.ApiException as e:
-                if e.status == 409 and attempt == 0:
+                if e.status == 409:
                     # This object already exists, we should delete it and try again
-                    self.log.warn("Trying to create %s/%s, it already exists. Deleting & recreating", kind, safe_name)
-                    delete_options = client.V1DeleteOptions(grace_period_seconds=0)
-                    try:
-                        kwargs = {
-                            'name': safe_name,
-                            'namespace': self.namespace
-                        }
-                        if pass_body_to_delete:
-                            kwargs['body'] = delete_options
-                        yield self.asynchronize(
-                            delete_func,
-                            **kwargs
-                        )
-                        create_if_required(create_func, delete_func, body, kind, attempt+1)
-                    except client.rest.ApiException as e:
-                        if e.status == 404:
-                            self.log.warn("Could not delete %s/%s, it has already been deleted?", kind, safe_name)
-                        else:
-                            raise
+                    self.log.warn("Trying to patch %s/%s, it already exists", kind, safe_name)
+                    resp = yield self.asynchronize(
+                        patch_func,
+                        namespace=self.namespace,
+                        body=body,
+                        name=body.metadata.name
+                    )
                 else:
                     raise
 
-        yield create_if_required(
+        yield ensure_object(
             self.core_api.create_namespaced_endpoints,
-            self.core_api.delete_namespaced_endpoints,
+            self.core_api.patch_namespaced_endpoints,
             body=endpoint,
             kind='endpoints'
         )
@@ -163,11 +151,10 @@ class KubeIngressProxy(Proxy):
             'Could not find endpoints/%s after creating it' % safe_name
         )
 
-        yield create_if_required(
+        yield ensure_object(
             self.core_api.create_namespaced_service,
-            self.core_api.delete_namespaced_service,
+            self.core_api.patch_namespaced_service,
             body=service,
-            pass_body_to_delete=False,
             kind='service'
         )
 
@@ -176,9 +163,9 @@ class KubeIngressProxy(Proxy):
             'Could not find service/%s after creating it' % safe_name
         )
 
-        yield create_if_required(
+        yield ensure_object(
             self.extension_api.create_namespaced_ingress,
-            self.extension_api.delete_namespaced_ingress,
+            self.extension_api.patch_namespaced_ingress,
             body=ingress,
             kind='ingress'
         )
