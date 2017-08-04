@@ -9,3 +9,4 @@ dependencies:
 - pip:
   - jupyterhub-kubespawner
   - git+https://github.com/jupyterhub/kubespawner
+  - recommonmark==0.4.0
