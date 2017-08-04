@@ -6,6 +6,7 @@ Kubespawner
 .. toctree::
    :maxdepth: 2
 
+   overview.md
    objects
    reflector
    spawner

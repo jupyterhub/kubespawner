@@ -59,6 +59,7 @@ project = 'kubespawner'
 copyright = '2017, Project Jupyter'
 author = 'Project Jupyter'
 
+
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
