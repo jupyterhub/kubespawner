@@ -1,5 +1,19 @@
 language: python
+sudo: false
 python:
-  - "3.4"
+  - nightly
+  - 3.6
+  - 3.5
+  - 3.4
+
+# install dependencies
+install:
+  - pip install -U pip
+  - pip install --pre -r dev-requirements.txt .
+
 # command to run tests
-script: python setup.py test
+script:
+  - python setup.py test
+
+matrix:
+  fast_finish: true
