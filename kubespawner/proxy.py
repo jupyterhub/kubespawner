@@ -183,6 +183,11 @@ class KubeIngressProxy(Proxy):
             kind='ingress'
         )
 
+        yield exponential_backoff(
+            lambda: safe_name in self.ingress_reflector.ingresses,
+            'Could not find ingress/%s after creating it' % safe_name
+        )
+
     @gen.coroutine
     def delete_route(self, routespec):
         # We just ensure that these objects are deleted.
