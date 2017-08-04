@@ -4,6 +4,8 @@
 
 .. automodule:: kubespawner.spawner
 
+.. autoclass:: SingletonExecutor
+
 .. autoclass:: KubeSpawner
 
     .. automethod:: __init__
