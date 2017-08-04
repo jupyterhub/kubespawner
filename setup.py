@@ -5,7 +5,7 @@ setup(
     version='0.5.1',
     install_requires=[
         'jupyterhub',
-        'pyyaml',
+        'pyYAML',
         'kubernetes==2.*',
         'escapism',
         'jupyter',
