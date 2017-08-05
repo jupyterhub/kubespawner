@@ -6,6 +6,7 @@ dependencies:
 - python=3.5
 - sphinx>=1.4, !=1.5.4
 - sphinx_rtd_theme
+- traitlets>=4.1
 - pip:
   - jupyterhub-kubespawner
   - git+https://github.com/jupyterhub/kubespawner

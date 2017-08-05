@@ -4,9 +4,13 @@
 
 .. automodule:: kubespawner.spawner
 
-.. autoclass:: SingletonExecutor
+.. currentmodule:: kubespawner.spawner
 
-.. autoclass:: KubeSpawner
+.. autoconfigurable:: SingletonExecutor
+    :members:
+
+.. autoconfigurable:: KubeSpawner
+    :members:
 
     .. automethod:: __init__
 
@@ -17,4 +21,3 @@
     .. automethod:: get_pod_manifest
 
     .. automethod:: get_pvc_manifest
-
