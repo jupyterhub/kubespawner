@@ -1,0 +1,7 @@
+jupyterhub
+pyYAML
+kubernetes==2.*
+escapism
+jupyter
+pytest
+pytest-runner
