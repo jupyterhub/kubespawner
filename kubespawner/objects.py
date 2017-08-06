@@ -181,11 +181,12 @@ def make_pvc(
         Name of persistent volume claim. Must be unique within the namespace the object is
         going to be created in. Must be a valid DNS label.
       - storage_class
-      String of the name of the k8s Storage Class to use.
+        String of the name of the k8s Storage Class to use.
       - access_modes:
-      A list of specifying what access mode the pod should have towards the pvc
+        A list of specifying what access mode the pod should have towards the pvc
       - storage
-      The ammount of storage needed for the pvc
+        The ammount of storage needed for the pvc
+
     """
     pvc = V1PersistentVolumeClaim()
     pvc.kind = "PersistentVolumeClaim"
@@ -203,4 +204,3 @@ def make_pvc(
     pvc.spec.resources.requests = {"storage": storage}
 
     return pvc
-
