@@ -2,22 +2,22 @@
    Spawners
 ==============
 
+
+Module: :mod:`kubespawner.spawner`
+----------------------------------
+
 .. automodule:: kubespawner.spawner
 
 .. currentmodule:: kubespawner.spawner
 
+:class:`SingletonExecutor`
+--------------------------
+
 .. autoconfigurable:: SingletonExecutor
     :members:
 
+:class:`KubeSpawner`
+--------------------
+
 .. autoconfigurable:: KubeSpawner
     :members:
-
-    .. automethod:: __init__
-
-    .. autoattribute:: k8s_api_threadpool_workers
-
-    .. autoattribute:: namespace
-
-    .. automethod:: get_pod_manifest
-
-    .. automethod:: get_pvc_manifest

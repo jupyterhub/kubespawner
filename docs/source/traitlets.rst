@@ -2,8 +2,15 @@
 Traitlets
 =========
 
+Module: :mod:`kubespawner.traitlets`
+------------------------------------
+
 .. automodule:: kubespawner.traitlets
 
-.. autoclass:: Callable
+.. currentmodule:: kubespawner.traitlets
 
-    .. automethod:: validate
+:class:`Callable`
+-----------------
+
+.. autoclass:: Callable
+    :members:

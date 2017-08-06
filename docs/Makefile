@@ -6,7 +6,7 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 SPHINXPROJ    = Kubespawner
 SOURCEDIR     = ./source
-BUILDDIR      = _build
+BUILDDIR      = ./source/_build
 
 # Put it first so that "make" without argument is like "make help".
 help:
