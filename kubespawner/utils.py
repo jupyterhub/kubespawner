@@ -115,8 +115,10 @@ def k8s_url(namespace, kind, name=None):
 
     Only supports the subset of URLs that we need to generate for use
     in kubespawner. This currently covers:
-      - All resources of a specific kind in a namespace
-      - A resource with a specific name of a specific kind
+
+        - All resources of a specific kind in a namespace
+        - A resource with a specific name of a specific kind
+
     """
     url_parts = [
         'api',
