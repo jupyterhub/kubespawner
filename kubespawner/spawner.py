@@ -399,6 +399,7 @@ class KubeSpawner(Spawner):
         This list will be directly added under `volumes` in the kubernetes pod spec,
         so you should use the same structure. Each item in the list must have the
         following two keys:
+
           - name
             Name that'll be later used in the `volume_mounts` config to mount this
             volume at a specific path.
@@ -426,6 +427,7 @@ class KubeSpawner(Spawner):
         This list will be added to the values of the `volumeMounts` key under the user's
         container in the kubernetes pod spec, so you should use the same structure as that.
         Each item in the list should be a dictionary with at least these two keys:
+
           - mountPath
             The path on the container in which we want to mount the volume.
           - name
@@ -528,7 +530,7 @@ class KubeSpawner(Spawner):
         The keys is name of hooks and there are only two hooks, postStart and preStop.
         The values are handler of hook which executes by Kubernetes management system when hook is called.
 
-        Below are a sample copied from Kubernetes doc 
+        Below are a sample copied from Kubernetes doc
         https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/
 
         lifecycle:
@@ -553,20 +555,21 @@ class KubeSpawner(Spawner):
         This list will be directly added under `initContainers` in the kubernetes pod spec,
         so you should use the same structure. Each item in the list is container configuration
         which follows spec at https://kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
-         
+
         One usage is disabling access to metadata service from single-user notebook server with configuration below:
-        initContainers:
-        - name: init-iptables
-          image: <image with iptables installed>
-          command: ["iptables", "-A", "OUTPUT", "-p", "tcp", "--dport", "80", "-d", "169.254.169.254", "-j", "DROP"]
-          securityContext:
-            capabilities:
-              add:
-              - NET_ADMIN         
+        initContainers::
+
+            - name: init-iptables
+              image: <image with iptables installed>
+              command: ["iptables", "-A", "OUTPUT", "-p", "tcp", "--dport", "80", "-d", "169.254.169.254", "-j", "DROP"]
+              securityContext:
+                capabilities:
+                  add:
+                  - NET_ADMIN
 
         See https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ for more
         info on what init containers are and why you might want to use them!
-        
+
         To user this feature, Kubernetes version must greater than 1.6.
         """
     )

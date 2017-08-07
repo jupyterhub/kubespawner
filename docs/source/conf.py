@@ -23,8 +23,12 @@ import sys
 # For conversion from markdown to html
 import recommonmark.parser
 
-sys.path.insert(0, os.path.abspath('..'))
-
+# set paths
+from os.path import dirname
+docs = dirname(dirname(__file__))
+root = dirname(docs)
+sys.path.insert(0, root)
+sys.path.insert(0, os.path.join(docs, 'sphinxext'))
 
 # -- General configuration ------------------------------------------------
 
@@ -35,11 +39,17 @@ sys.path.insert(0, os.path.abspath('..'))
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc',
-    'sphinx.ext.intersphinx']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.intersphinx',
+    'autodoc_traits',
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
+
+# Set the default role so we can use `foo` instead of ``foo``
+default_role = 'literal'
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
