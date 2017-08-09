@@ -291,7 +291,7 @@ def test_run_privileged_container():
                         "requests": {}
                     },
                     "securityContext": {
-                        "privileged": true,
+                        "privileged": True,
                     },
                     "volumeMounts": []
                 }
