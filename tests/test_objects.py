@@ -238,6 +238,65 @@ def test_set_pod_uid_fs_gid():
         "apiVersion": "v1"
     }
 
+def test_run_privileged_container():
+    """
+    Test specification of the container to run as privileged
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        env={},
+        volumes=[],
+        volume_mounts=[],
+        cmd=['jupyterhub-singleuser'],
+        working_dir=None,
+        port=8888,
+        cpu_limit=None,
+        cpu_guarantee=None,
+        mem_limit=None,
+        mem_guarantee=None,
+        node_selector=None,
+        run_as_uid=None,
+        fs_gid=None,
+        run_privileged=True,
+        image_pull_policy='IfNotPresent',
+        image_pull_secret=None,
+        labels={},
+        lifecycle_hooks=None,
+        init_containers=None,
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+        },
+        "spec": {
+            "securityContext": {},
+            "containers": [
+                {                    
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],                    
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    },
+                    "securityContext": {
+                        "privileged": true,
+                    },
+                    "volumeMounts": []
+                }
+            ],
+            'volumes': [],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
 
 def test_make_pod_resources_all():
     """
