@@ -4,6 +4,8 @@ The *kubespawner* (also known as JupyterHub Kubernetes Spawner) enables JupyterH
 single-user notebook servers on a [Kubernetes](https://kubernetes.io/)
 cluster.
 
+You can read a list of all the spawner options [available on ReadTheDocs](http://jupyterhub-kubespawner.readthedocs.io/en/latest/spawner.html#module-kubespawner.spawner).
+
 ## Features ##
 
 Kubernetes is an open-source system for automating deployment, scaling, and
