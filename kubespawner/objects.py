@@ -9,6 +9,7 @@ from kubernetes.client.models.v1_pod_security_context import V1PodSecurityContex
 from kubernetes.client.models.v1_local_object_reference import V1LocalObjectReference
 
 from kubernetes.client.models.v1_container import V1Container
+from kubernetes.client.models.v1_security_context import V1SecurityContext
 from kubernetes.client.models.v1_container_port import V1ContainerPort
 from kubernetes.client.models.v1_env_var import V1EnvVar
 from kubernetes.client.models.v1_resource_requirements import V1ResourceRequirements
@@ -27,6 +28,7 @@ def make_pod(
     node_selector,
     run_as_uid,
     fs_gid,
+    run_privileged,
     env,
     working_dir,
     volumes,
@@ -71,6 +73,8 @@ def make_pod(
         volume types that support this (such as GCE). This should be a group that
         the uid the process is running as should be a member of, so that it can
         read / write to the volumes mounted.
+      - run_privileged:
+        Whether the container should be run in privileged mode.
       - env:
         Dictionary of environment variables.
       - volumes:
@@ -145,6 +149,11 @@ def make_pod(
     notebook_container.image_pull_policy = image_pull_policy
     notebook_container.lifecycle = lifecycle_hooks
     notebook_container.resources = V1ResourceRequirements()
+    
+    if run_privileged:
+        container_security_context = V1SecurityContext()
+        container_security_context.privileged = True
+        notebook_container.security_context = container_security_context
 
     notebook_container.resources.requests = {}
 

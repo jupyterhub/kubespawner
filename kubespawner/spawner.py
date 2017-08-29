@@ -389,6 +389,14 @@ class KubeSpawner(Spawner):
         for more details.
         """
     )
+    
+    singleuser_privileged = Bool(
+        False,
+        config=True,
+        help="""
+        Whether to run the pod with a privileged security context.
+        """
+    )
 
     volumes = List(
         [],
@@ -649,6 +657,7 @@ class KubeSpawner(Spawner):
             node_selector=self.singleuser_node_selector,
             run_as_uid=singleuser_uid,
             fs_gid=singleuser_fs_gid,
+            run_privileged=self.singleuser_privileged,
             env=self.get_env(),
             volumes=self._expand_all(self.volumes) + [hack_volume],
             volume_mounts=self._expand_all(self.volume_mounts) + [hack_volume_mount],
