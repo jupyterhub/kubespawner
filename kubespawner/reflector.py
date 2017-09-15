@@ -93,13 +93,16 @@ class PodReflector(SingletonConfigurable):
         while True:
             self.log.info("watching for pods with label selector %s in namespace %s", self.label_selector, self.namespace)
             try:
-                self._list_and_update()
+                # hook up stream before initial list_and_update,
+                # so we don't miss any events before the event stream is connected
                 w = watch.Watch()
-                for ev in w.stream(
+                event_stream = w.stream(
                         self.api.list_namespaced_pod,
                         self.namespace,
-                        label_selector=self.label_selector
-                ):
+                        label_selector=self.label_selector,
+                )
+                self._list_and_update()
+                for ev in event_stream:
                     cur_delay = 0.1
                     pod = ev['object']
                     if ev['type'] == 'DELETED':
