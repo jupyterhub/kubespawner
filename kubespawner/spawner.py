@@ -586,9 +586,9 @@ class KubeSpawner(Spawner):
         # Make sure username and servername match the restrictions for DNS labels
         safe_chars = set(string.ascii_lowercase + string.digits)
         # Set servername based on whether named-server initialised
-        name = getattr(self, name, '')
-        if name:
-            servername = '-' + name
+        temp_name = getattr(self, name, '')
+        if temp_name:
+            servername = '-' + temp_name
         else:
             servername = ''
 
