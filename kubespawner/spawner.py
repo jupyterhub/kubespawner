@@ -150,7 +150,7 @@ class KubeSpawner(Spawner):
     ).tag(config=True)
 
     pod_name_template = Unicode(
-        'jupyter-{username}' + '-{servername}' if servername is not None,
+        'jupyter-{username}' + '-{servername}' if getattr(self, 'name', None) is not None,
         config=True,
         help="""
         Template to use to form the name of user's pods.
@@ -176,7 +176,7 @@ class KubeSpawner(Spawner):
     )
 
     pvc_name_template = Unicode(
-        'claim-{username}' + '-{servername}' if servername is not None,
+        'claim-{username}' + '-{servername}' if getattr(self, 'name', None) is not None,
         config=True,
         help="""
         Template to use to form the name of user's pvc.
