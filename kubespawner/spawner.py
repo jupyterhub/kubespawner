@@ -150,7 +150,7 @@ class KubeSpawner(Spawner):
     ).tag(config=True)
 
     pod_name_template = Unicode(
-        'jupyter-{username}' + '-{servername}' if getattr(self, 'name', None) is not None,
+        'jupyter-{username}{servername}',
         config=True,
         help="""
         Template to use to form the name of user's pods.
@@ -176,7 +176,7 @@ class KubeSpawner(Spawner):
     )
 
     pvc_name_template = Unicode(
-        'claim-{username}' + '-{servername}' if getattr(self, 'name', None) is not None,
+        'claim-{username}{servername}',
         config=True,
         help="""
         Template to use to form the name of user's pvc.
@@ -585,28 +585,21 @@ class KubeSpawner(Spawner):
     def _expand_user_properties(self, template):
         # Make sure username and servername match the restrictions for DNS labels
         safe_chars = set(string.ascii_lowercase + string.digits)
-        # Test if a named-server exists
-        if getattr(self, 'name', None) is None:
-            legacy_escaped_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
-            safe_username = escapism.escape(self.user.name, safe=safe_chars, escape_char='-').lower()
-            return template.format(
-                userid=self.user.id,
-                username=safe_username,
-                legacy_escape_username=legacy_escaped_username
-                )
-        # If a named-server exists, then extend the properties    
+        # Set servername based on whether named-server initialised
+        name = getattr(self, name, '')
+        if name:
+            servername = '-' + name
         else:
-            legacy_escaped_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
-            safe_username = escapism.escape(self.user.name, safe=safe_chars, escape_char='-').lower()
-            legacy_escaped_servername = ''.join([s if s in safe_chars else '-' for s in self.name.lower()])
-            safe_servername = escapism.escape(self.name, safe=safe_chars, escape_char='-').lower()
-            return template.format(
-                userid=self.user.id,
-                username=safe_username,
-                legacy_escape_username=legacy_escaped_username,
-                servername=safe_servername,
-                legacy_escape_servername=legacy_escaped_servername
-                )
+            servername = ''
+
+        legacy_escaped_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
+        safe_username = escapism.escape(self.user.name, safe=safe_chars, escape_char='-').lower()
+        return template.format(
+            userid=self.user.id,
+            username=safe_username,
+            legacy_escape_username=legacy_escaped_username,
+            servername=servername
+            )
 
     def _expand_all(self, src):
         if isinstance(src, list):
