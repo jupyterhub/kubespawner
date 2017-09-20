@@ -588,18 +588,14 @@ class KubeSpawner(Spawner):
         # Set servername based on whether named-server initialised
         temp_name = getattr(self, 'name', '')
         if temp_name:
-            servername = '-' + temp_name
+            server_name = '-' + temp_name
         else:
-            servername = ''
+            server_name = ''
 
         legacy_escaped_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
         safe_username = escapism.escape(self.user.name, safe=safe_chars, escape_char='-').lower()
-        return template.format(
-            userid=self.user.id,
-            username=safe_username,
-            legacy_escape_username=legacy_escaped_username,
-            servername=servername
-            )
+        d = {'username': safe_username, 'servername': server_name}
+        return self.pod_name_template.format(**d)
 
     def _expand_all(self, src):
         if isinstance(src, list):
@@ -610,18 +606,6 @@ class KubeSpawner(Spawner):
             return self._expand_user_properties(src)
         else:
             return src
-
-    # def determine_servername(self):
-    #     """
-    #     Determine if server being spawned is of type 'default' or 'named-server'.
-    #     From an API perspective, calling POST '/users/:user/server' results in a default server.
-    #     Calling POST '/users/:user/servers/:server_name' results in a named-server
-    #     In the case of the latter, the servername should get integrated into pod and pvc names to ensure uniqueness.
-    #     """
-    #     if getattr(self, 'name', None) is None:
-    #         return getattr(self, 'user.name')
-    #     else:
-    #         return getattr(self, 'name')
 
     @gen.coroutine
     def get_pod_manifest(self):
