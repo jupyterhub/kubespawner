@@ -33,6 +33,7 @@ def test_make_simplest_pod():
         labels={},
         lifecycle_hooks=None,
         init_containers=None,
+        service_account=None
     )) == {
         "metadata": {
             "name": "test",
@@ -51,14 +52,14 @@ def test_make_simplest_pod():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
-            'volumes': [],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -90,6 +91,7 @@ def test_make_labeled_pod():
         labels={"test": "true"},
         lifecycle_hooks=None,
         init_containers=None,
+        service_account=None
     )) == {
         "metadata": {
             "name": "test",
@@ -108,14 +110,14 @@ def test_make_labeled_pod():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
-            'volumes': [],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -147,6 +149,7 @@ def test_make_pod_with_image_pull_secrets():
         labels={},
         lifecycle_hooks=None,
         init_containers=None,
+        service_account=None
     )) == {
         "metadata": {
             "name": "test",
@@ -168,14 +171,14 @@ def test_make_pod_with_image_pull_secrets():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
-            'volumes': [],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -208,6 +211,7 @@ def test_set_pod_uid_fs_gid():
         labels={},
         lifecycle_hooks=None,
         init_containers=None,
+        service_account=None
     )) == {
         "metadata": {
             "name": "test",
@@ -229,14 +233,14 @@ def test_set_pod_uid_fs_gid():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
-            'volumes': [],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -268,6 +272,7 @@ def test_run_privileged_container():
         labels={},
         lifecycle_hooks=None,
         init_containers=None,
+        service_account=None
     )) == {
         "metadata": {
             "name": "test",
@@ -293,10 +298,10 @@ def test_run_privileged_container():
                     "securityContext": {
                         "privileged": True,
                     },
-                    "volumeMounts": []
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
                 }
             ],
-            'volumes': [],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -328,6 +333,7 @@ def test_make_pod_resources_all():
         labels={},
         lifecycle_hooks=None,
         init_containers=None,
+        service_account=None
     )) == {
         "metadata": {
             "name": "test",
@@ -348,7 +354,7 @@ def test_make_pod_resources_all():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
                     "resources": {
                         "limits": {
                             "cpu": 2,
@@ -361,7 +367,7 @@ def test_make_pod_resources_all():
                     }
                 }
             ],
-            'volumes': [],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -396,6 +402,7 @@ def test_make_pod_with_env():
         labels={},
         lifecycle_hooks=None,
         init_containers=None,
+        service_account=None
     )) == {
         "metadata": {
             "name": "test",
@@ -414,7 +421,7 @@ def test_make_pod_with_env():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
                     "resources": {
                         "limits": {
                         },
@@ -423,7 +430,7 @@ def test_make_pod_with_env():
                     }
                 }
             ],
-            'volumes': [],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -461,6 +468,7 @@ def test_make_pod_with_lifecycle():
             }
         },
         init_containers=None,
+        service_account=None
     )) == {
         "metadata": {
             "name": "test",
@@ -479,7 +487,7 @@ def test_make_pod_with_lifecycle():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
                     "resources": {
                         "limits": {
                         },
@@ -495,7 +503,7 @@ def test_make_pod_with_lifecycle():
                     }
                 }
             ],
-            'volumes': [],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -539,6 +547,7 @@ def test_make_pod_with_init_containers():
                 'command': ['sh', '-c', 'until nslookup mydb; do echo waiting for mydb; sleep 2; done;']
             }
         ],
+        service_account=None
     )) == {
         "metadata": {
             "name": "test",
@@ -557,7 +566,7 @@ def test_make_pod_with_init_containers():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
                     "resources": {
                         "limits": {
                         },
@@ -579,7 +588,7 @@ def test_make_pod_with_init_containers():
                     "command": ["sh", "-c", "until nslookup mydb; do echo waiting for mydb; sleep 2; done;"]
                 }
             ],
-            'volumes': [],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
         },
         "kind": "Pod",
         "apiVersion": "v1"

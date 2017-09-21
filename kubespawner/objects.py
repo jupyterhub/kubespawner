@@ -7,6 +7,8 @@ from kubernetes.client.models.v1_pod_spec import V1PodSpec
 from kubernetes.client.models.v1_object_meta import V1ObjectMeta
 from kubernetes.client.models.v1_pod_security_context import V1PodSecurityContext
 from kubernetes.client.models.v1_local_object_reference import V1LocalObjectReference
+from kubernetes.client.models.v1_volume import V1Volume
+from kubernetes.client.models.v1_volume_mount import V1VolumeMount
 
 from kubernetes.client.models.v1_container import V1Container
 from kubernetes.client.models.v1_security_context import V1SecurityContext
@@ -40,6 +42,7 @@ def make_pod(
     mem_guarantee,
     lifecycle_hooks,
     init_containers,
+    service_account,
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -106,6 +109,8 @@ def make_pod(
         Dictionary of lifecycle hooks
       - init_containers:
         List of initialization containers belonging to the pod.
+      - service_account:
+        Service account to mount on the pod. None disables mounting
     """
 
     pod = V1Pod()
@@ -150,6 +155,28 @@ def make_pod(
     notebook_container.lifecycle = lifecycle_hooks
     notebook_container.resources = V1ResourceRequirements()
     
+    if service_account is None:
+        # Add a hack to ensure that no service accounts are mounted in spawned pods
+        # This makes sure that we don"t accidentally give access to the whole
+        # kubernetes API to the users in the spawned pods.
+        # Note: We don't simply use `automountServiceAccountToken` here since we wanna be compatible
+        # with older kubernetes versions too for now.
+        hack_volume = V1Volume()
+        hack_volume.name =  "no-api-access-please"
+        hack_volume.empty_dir = {}
+        hack_volumes = [hack_volume]
+
+        hack_volume_mount = V1VolumeMount()
+        hack_volume_mount.name = "no-api-access-please"
+        hack_volume_mount.mount_path = "/var/run/secrets/kubernetes.io/serviceaccount"
+        hack_volume_mount.read_only = True
+        hack_volume_mounts = [hack_volume_mount]
+    else:
+        hack_volumes = []
+        hack_volume_mounts = []
+
+        pod.service_account_name = service_account
+
     if run_privileged:
         container_security_context = V1SecurityContext()
         container_security_context.privileged = True
@@ -167,11 +194,11 @@ def make_pod(
         notebook_container.resources.limits['cpu'] = cpu_limit
     if mem_limit:
         notebook_container.resources.limits['memory'] = mem_limit
-    notebook_container.volume_mounts = volume_mounts
+    notebook_container.volume_mounts = volume_mounts + hack_volume_mounts
     pod.spec.containers.append(notebook_container)
 
     pod.spec.init_containers = init_containers
-    pod.spec.volumes = volumes
+    pod.spec.volumes = volumes + hack_volumes
     return pod
 
 
