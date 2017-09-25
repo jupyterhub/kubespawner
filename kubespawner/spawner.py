@@ -653,6 +653,11 @@ class KubeSpawner(Spawner):
             'hub.jupyter.org/username': escapism.escape(self.user.name)
         }
 
+        # check if a named-server servername has been set and if so, extend pod labels.
+        temp_servername = getattr(self, 'name', None)
+        if temp_servername:
+            labels['hub.jupyter.org/servername']=temp_servername
+
         labels.update(self._expand_all(self.singleuser_extra_labels))
 
         return make_pod(
@@ -690,6 +695,11 @@ class KubeSpawner(Spawner):
             'app': 'jupyterhub',
             'hub.jupyter.org/username': escapism.escape(self.user.name)
         }
+
+        # check if a named-server servername has been set and if so, extend pvc labels.
+        temp_servername = getattr(self, 'name', None)
+        if temp_servername:
+            labels['hub.jupyter.org/servername']=temp_servername
 
         labels.update(self._expand_all(self.user_storage_extra_labels))
         return make_pvc(
