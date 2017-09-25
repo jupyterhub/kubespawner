@@ -594,8 +594,12 @@ class KubeSpawner(Spawner):
 
         legacy_escaped_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
         safe_username = escapism.escape(self.user.name, safe=safe_chars, escape_char='-').lower()
-        d = {'username': safe_username, 'servername': server_name}
-        return self.pod_name_template.format(**d)
+        return template.format(
+            userid=self.user.id,
+            username=safe_username,
+            legacy_escape_username=legacy_escaped_username,
+            servername=server_name
+            )
 
     def _expand_all(self, src):
         if isinstance(src, list):
