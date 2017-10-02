@@ -65,6 +65,8 @@ class PodReflector(SingletonConfigurable):
         )
         # This is an atomic operation on the dictionary!
         self.pods = {p.metadata.name: p for p in initial_pods.items}
+        # return the resource version so we can hook up a watch
+        return initial_pods.metadata.resource_version
 
     def _watch_and_update(self):
         """
@@ -92,13 +94,14 @@ class PodReflector(SingletonConfigurable):
         cur_delay = 0.1
         while True:
             self.log.info("watching for pods with label selector %s in namespace %s", self.label_selector, self.namespace)
+            w = watch.Watch()
             try:
-                self._list_and_update()
-                w = watch.Watch()
+                resource_version = self._list_and_update()
                 for ev in w.stream(
                         self.api.list_namespaced_pod,
                         self.namespace,
-                        label_selector=self.label_selector
+                        label_selector=self.label_selector,
+                        resource_version=resource_version,
                 ):
                     cur_delay = 0.1
                     pod = ev['object']
