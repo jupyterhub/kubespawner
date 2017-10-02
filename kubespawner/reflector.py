@@ -94,9 +94,9 @@ class PodReflector(SingletonConfigurable):
         cur_delay = 0.1
         while True:
             self.log.info("watching for pods with label selector %s in namespace %s", self.label_selector, self.namespace)
+            w = watch.Watch()
             try:
                 resource_version = self._list_and_update()
-                w = watch.Watch()
                 for ev in w.stream(
                         self.api.list_namespaced_pod,
                         self.namespace,
