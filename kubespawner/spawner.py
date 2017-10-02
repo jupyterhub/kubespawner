@@ -16,6 +16,7 @@ import multiprocessing
 
 
 from tornado import gen
+from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
 from traitlets.config import SingletonConfigurable
 from traitlets import Type, Unicode, List, Integer, Union, Dict, Bool, Any
@@ -50,9 +51,15 @@ class KubeSpawner(Spawner):
         # other attributes
         self.executor = SingletonExecutor.instance(max_workers=self.k8s_api_threadpool_workers)
 
+        main_loop = IOLoop.current()
+        def on_reflector_failure():
+            self.log.critical("Pod reflector failed, halting Hub.")
+            main_loop.stop()
+
         # This will start watching in __init__, so it'll start the first
         # time any spawner object is created. Not ideal but works!
-        self.pod_reflector = PodReflector.instance(parent=self, namespace=self.namespace)
+        self.pod_reflector = PodReflector.instance(parent=self, namespace=self.namespace,
+            on_failure=on_reflector_failure)
 
         self.api = client.CoreV1Api()
 

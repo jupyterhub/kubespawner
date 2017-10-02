@@ -2,9 +2,9 @@ import time
 import threading
 
 from traitlets.config import SingletonConfigurable
-from traitlets import Dict, Unicode
+from traitlets import Any, Dict, Unicode
 from kubernetes import client, config, watch
-
+from tornado.ioloop import IOLoop
 
 class PodReflector(SingletonConfigurable):
     """
@@ -37,6 +37,8 @@ class PodReflector(SingletonConfigurable):
         This can be directly accessed from multiple threads.
         """
     )
+
+    on_failure = Any(help="""Function to be called when the reflector gives up.""")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -111,12 +113,15 @@ class PodReflector(SingletonConfigurable):
                     else:
                         # This is an atomic operation on the dictionary!
                         self.pods[pod.metadata.name] = pod
-            except:
+            except Exception:
                 cur_delay = cur_delay * 2
+                if cur_delay > 30:
+                    self.log.exception("Watching pods never recovered, giving up")
+                    if self.on_failure:
+                        self.on_failure()
+                    return
                 self.log.exception("Error when watching pods, retrying in %ss", cur_delay)
                 time.sleep(cur_delay)
-                if cur_delay > 30:
-                    raise
                 continue
             finally:
                 w.stop()
