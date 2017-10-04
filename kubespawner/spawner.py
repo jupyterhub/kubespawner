@@ -861,16 +861,3 @@ class KubeSpawner(Spawner):
                 args[i] = '--hub-api-url="%s"' % (self.accessible_hub_api_url)
                 break
         return args
-
-    def get_env(self):
-        # HACK: This is deprecated, and should be removed soon.
-        # We set these to be compatible with DockerSpawner and earlie KubeSpawner
-        env = super(KubeSpawner, self).get_env()
-        env.update({
-            'JPY_USER': self.user.name,
-            'JPY_COOKIE_NAME': self.server.cookie_name,
-            'JPY_BASE_URL': self.server.base_url,
-            'JPY_HUB_PREFIX': self.hub.server.base_url,
-            'JPY_HUB_API_URL': self.accessible_hub_api_url
-        })
-        return env
