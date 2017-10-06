@@ -11,7 +11,7 @@ from kubernetes.client.models import \
     V1ObjectMeta, \
     V1LocalObjectReference, \
     V1Volume, V1VolumeMount, \
-    V1Container, V1ContainerPort, V1EnvVar, V1ResourceRequirements, \
+    V1Container, V1ContainerPort, V1SecurityContext, V1EnvVar, V1ResourceRequirements, \
     V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec, \
     V1Endpoints, V1EndpointSubset, V1EndpointAddress, V1EndpointPort, \
     V1Service, V1ServiceSpec, V1ServicePort, \
