@@ -83,8 +83,10 @@ class KubeIngressProxy(Proxy):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # other attributes
-        self.executor = ThreadPoolExecutor(max_workers=24)
+        # We want 3x concurrent spawn limit as our threadpool. This means that if
+        # concurrent_spawn_limit servers start instantly, we can add all 3 objects
+        # required to add proxy routing for them instantly as well.
+        self.executor = ThreadPoolExecutor(max_workers=self.app.concurrent_spawn_limit * 3)
 
         self.ingress_reflector = IngressReflector(parent=self, namespace=self.namespace)
         self.service_reflector = ServiceReflector(parent=self, namespace=self.namespace)
