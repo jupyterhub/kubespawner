@@ -130,7 +130,7 @@ class KubeIngressProxy(Proxy):
                 self.log.info('Created %s/%s', kind, safe_name)
             except client.rest.ApiException as e:
                 if e.status == 409:
-                    # This object already exists, we should delete it and try again
+                    # This object already exists, we should patch it to make it be what we want
                     self.log.warn("Trying to patch %s/%s, it already exists", kind, safe_name)
                     resp = yield self.asynchronize(
                         patch_func,
