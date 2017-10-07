@@ -224,7 +224,10 @@ class KubeIngressProxy(Proxy):
 
     @gen.coroutine
     def get_all_routes(self):
-        # FIXME: Is this threadsafe?
+        # copy everything, because iterating over this directly is not threadsafe
+        # FIXME: is this performance intensive? It could be! Measure?
+        # FIXME: Validate that this shallow copy *is* thread safe
+        ingress_copy = dict(self.ingress_reflector.ingresses)
         routes = {
             i.metadata.annotations['hub.jupyter.org/proxy-routespec']:
             {
@@ -232,7 +235,7 @@ class KubeIngressProxy(Proxy):
                 'target': i.metadata.annotations['hub.jupyter.org/proxy-target'],
                 'data': json.loads(i.metadata.annotations['hub.jupyter.org/proxy-data'])
             }
-            for i in self.ingress_reflector.ingresses.values()
+            for i in ingress_copy.values()
         }
 
         return routes
