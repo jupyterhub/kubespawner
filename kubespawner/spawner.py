@@ -173,7 +173,7 @@ class KubeSpawner(Spawner):
     )
 
     pod_name_template = Unicode(
-        'jupyter-{username}',
+        'jupyter-{username}{servername}',
         config=True,
         help="""
         Template to use to form the name of user's pods.
@@ -199,7 +199,7 @@ class KubeSpawner(Spawner):
     )
 
     pvc_name_template = Unicode(
-        'claim-{username}',
+        'claim-{username}{servername}',
         config=True,
         help="""
         Template to use to form the name of user's pvc.
@@ -606,15 +606,23 @@ class KubeSpawner(Spawner):
     )
 
     def _expand_user_properties(self, template):
-        # Make sure username matches the restrictions for DNS labels
+        # Make sure username and servername match the restrictions for DNS labels
         safe_chars = set(string.ascii_lowercase + string.digits)
+
+        # Set servername based on whether named-server initialised
+        if self.name:
+            servername = '-{}'.format(self.name)
+        else:
+            servername = ''
+
         legacy_escaped_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
         safe_username = escapism.escape(self.user.name, safe=safe_chars, escape_char='-').lower()
         return template.format(
             userid=self.user.id,
             username=safe_username,
-            legacy_escape_username=legacy_escaped_username
-        )
+            legacy_escape_username=legacy_escaped_username,
+            servername=servername
+            )
 
     def _expand_all(self, src):
         if isinstance(src, list):
@@ -655,6 +663,10 @@ class KubeSpawner(Spawner):
             'hub.jupyter.org/username': escapism.escape(self.user.name)
         }
 
+        if self.name:
+            # FIXME: Make sure this is dns safe?
+            labels['hub.jupyter.org/servername'] = self.name
+
         labels.update(self._expand_all(self.singleuser_extra_labels))
 
         return make_pod(
@@ -693,6 +705,11 @@ class KubeSpawner(Spawner):
             'app': 'jupyterhub',
             'hub.jupyter.org/username': escapism.escape(self.user.name)
         }
+
+        # check if a named-server servername has been set and if so, extend pvc labels.
+        if self.name:
+            # FIXME: make sure this is DNS safe?
+            labels['hub.jupyter.org/servername'] = self.name
 
         labels.update(self._expand_all(self.user_storage_extra_labels))
         return make_pvc(
@@ -854,16 +871,3 @@ class KubeSpawner(Spawner):
                 args[i] = '--hub-api-url="%s"' % (self.accessible_hub_api_url)
                 break
         return args
-
-    def get_env(self):
-        # HACK: This is deprecated, and should be removed soon.
-        # We set these to be compatible with DockerSpawner and earlie KubeSpawner
-        env = super(KubeSpawner, self).get_env()
-        env.update({
-            'JPY_USER': self.user.name,
-            'JPY_COOKIE_NAME': self.user.server.cookie_name,
-            'JPY_BASE_URL': self.user.server.base_url,
-            'JPY_HUB_PREFIX': self.hub.server.base_url,
-            'JPY_HUB_API_URL': self.accessible_hub_api_url
-        })
-        return env
