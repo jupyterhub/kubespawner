@@ -608,12 +608,12 @@ class KubeSpawner(Spawner):
     def _expand_user_properties(self, template):
         # Make sure username and servername match the restrictions for DNS labels
         safe_chars = set(string.ascii_lowercase + string.digits)
+
         # Set servername based on whether named-server initialised
-        temp_name = getattr(self, 'name', '')
-        if temp_name:
-            server_name = '-' + temp_name
+        if self.name:
+            servername = '-{}'.format(self.name)
         else:
-            server_name = ''
+            servername = ''
 
         legacy_escaped_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
         safe_username = escapism.escape(self.user.name, safe=safe_chars, escape_char='-').lower()
@@ -621,7 +621,7 @@ class KubeSpawner(Spawner):
             userid=self.user.id,
             username=safe_username,
             legacy_escape_username=legacy_escaped_username,
-            servername=server_name
+            servername=servername
             )
 
     def _expand_all(self, src):
@@ -663,10 +663,9 @@ class KubeSpawner(Spawner):
             'hub.jupyter.org/username': escapism.escape(self.user.name)
         }
 
-        # check if a named-server servername has been set and if so, extend pod labels.
-        temp_servername = getattr(self, 'name', None)
-        if temp_servername:
-            labels['hub.jupyter.org/servername']=temp_servername
+        if self.name:
+            # FIXME: Make sure this is dns safe?
+            labels['hub.jupyter.org/servername'] = self.name
 
         labels.update(self._expand_all(self.singleuser_extra_labels))
 
@@ -708,9 +707,9 @@ class KubeSpawner(Spawner):
         }
 
         # check if a named-server servername has been set and if so, extend pvc labels.
-        temp_servername = getattr(self, 'name', None)
-        if temp_servername:
-            labels['hub.jupyter.org/servername']=temp_servername
+        if self.name:
+            # FIXME: make sure this is DNS safe?
+            labels['hub.jupyter.org/servername'] = self.name
 
         labels.update(self._expand_all(self.user_storage_extra_labels))
         return make_pvc(
