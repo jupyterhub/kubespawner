@@ -2,9 +2,9 @@ import time
 import threading
 
 from traitlets.config import SingletonConfigurable
-from traitlets import Dict, Unicode
+from traitlets import Any, Dict, Unicode
 from kubernetes import client, config, watch
-
+from tornado.ioloop import IOLoop
 
 class PodReflector(SingletonConfigurable):
     """
@@ -38,6 +38,8 @@ class PodReflector(SingletonConfigurable):
         """
     )
 
+    on_failure = Any(help="""Function to be called when the reflector gives up.""")
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Load kubernetes config here, since this is a Singleton and
@@ -65,6 +67,8 @@ class PodReflector(SingletonConfigurable):
         )
         # This is an atomic operation on the dictionary!
         self.pods = {p.metadata.name: p for p in initial_pods.items}
+        # return the resource version so we can hook up a watch
+        return initial_pods.metadata.resource_version
 
     def _watch_and_update(self):
         """
@@ -92,13 +96,14 @@ class PodReflector(SingletonConfigurable):
         cur_delay = 0.1
         while True:
             self.log.info("watching for pods with label selector %s in namespace %s", self.label_selector, self.namespace)
+            w = watch.Watch()
             try:
-                self._list_and_update()
-                w = watch.Watch()
+                resource_version = self._list_and_update()
                 for ev in w.stream(
                         self.api.list_namespaced_pod,
                         self.namespace,
-                        label_selector=self.label_selector
+                        label_selector=self.label_selector,
+                        resource_version=resource_version,
                 ):
                     cur_delay = 0.1
                     pod = ev['object']
@@ -108,12 +113,15 @@ class PodReflector(SingletonConfigurable):
                     else:
                         # This is an atomic operation on the dictionary!
                         self.pods[pod.metadata.name] = pod
-            except:
+            except Exception:
                 cur_delay = cur_delay * 2
+                if cur_delay > 30:
+                    self.log.exception("Watching pods never recovered, giving up")
+                    if self.on_failure:
+                        self.on_failure()
+                    return
                 self.log.exception("Error when watching pods, retrying in %ss", cur_delay)
                 time.sleep(cur_delay)
-                if cur_delay > 30:
-                    raise
                 continue
             finally:
                 w.stop()

@@ -16,13 +16,12 @@ import multiprocessing
 
 
 from tornado import gen
+from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
 from traitlets.config import SingletonConfigurable
 from traitlets import Type, Unicode, List, Integer, Union, Dict, Bool, Any
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
-from kubernetes.client.models.v1_volume import V1Volume
-from kubernetes.client.models.v1_volume_mount import V1VolumeMount
 from kubernetes.client.rest import ApiException
 from kubernetes import client
 import escapism
@@ -52,9 +51,15 @@ class KubeSpawner(Spawner):
         # other attributes
         self.executor = SingletonExecutor.instance(max_workers=self.k8s_api_threadpool_workers)
 
+        main_loop = IOLoop.current()
+        def on_reflector_failure():
+            self.log.critical("Pod reflector failed, halting Hub.")
+            main_loop.stop()
+
         # This will start watching in __init__, so it'll start the first
         # time any spawner object is created. Not ideal but works!
-        self.pod_reflector = PodReflector.instance(parent=self, namespace=self.namespace)
+        self.pod_reflector = PodReflector.instance(parent=self, namespace=self.namespace,
+            on_failure=on_reflector_failure)
 
         self.api = client.CoreV1Api()
 
@@ -148,6 +153,24 @@ class KubeSpawner(Spawner):
         Defaults to `None` so the working directory will be the one defined in the Dockerfile.
         """
     ).tag(config=True)
+
+    singleuser_service_account = Unicode(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        The service account to be mounted in the spawned user pod.
+
+        When set to None (the default), no service account is mounted, and the default service account
+        is explicitly disabled.
+
+        This serviceaccount must already exist in the namespace the user pod is being spawned in.
+
+        WARNING: Be careful with this configuration! Make sure the service account being mounted
+        has the minimal permissions needed, and nothing more. When misconfigured, this can easily
+        give arbitrary users root over your entire cluster.
+        """
+    )
 
     pod_name_template = Unicode(
         'jupyter-{username}{servername}',
@@ -631,19 +654,6 @@ class KubeSpawner(Spawner):
         else:
             real_cmd = None
 
-        # Add a hack to ensure that no service accounts are mounted in spawned pods
-        # This makes sure that we don"t accidentally give access to the whole
-        # kubernetes API to the users in the spawned pods.
-        # See https://github.com/kubernetes/kubernetes/issues/16779#issuecomment-157460294
-        hack_volume = V1Volume()
-        hack_volume.name =  "no-api-access-please"
-        hack_volume.empty_dir = {}
-
-        hack_volume_mount = V1VolumeMount()
-        hack_volume_mount.name = "no-api-access-please"
-        hack_volume_mount.mount_path = "/var/run/secrets/kubernetes.io/serviceaccount"
-        hack_volume_mount.read_only = True
-
         # Default set of labels, picked up from
         # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
         labels = {
@@ -672,8 +682,8 @@ class KubeSpawner(Spawner):
             fs_gid=singleuser_fs_gid,
             run_privileged=self.singleuser_privileged,
             env=self.get_env(),
-            volumes=self._expand_all(self.volumes) + [hack_volume],
-            volume_mounts=self._expand_all(self.volume_mounts) + [hack_volume_mount],
+            volumes=self._expand_all(self.volumes),
+            volume_mounts=self._expand_all(self.volume_mounts),
             working_dir=self.singleuser_working_dir,
             labels=labels,
             cpu_limit=self.cpu_limit,
@@ -682,6 +692,7 @@ class KubeSpawner(Spawner):
             mem_guarantee=self.mem_guarantee,
             lifecycle_hooks=self.singleuser_lifecycle_hooks,
             init_containers=self.singleuser_init_containers,
+            service_account=self.singleuser_service_account
         )
 
     def get_pvc_manifest(self):
