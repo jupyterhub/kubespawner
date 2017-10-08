@@ -13,7 +13,7 @@ import sys
 from urllib.parse import urlparse, urlunparse
 import json
 import multiprocessing
-
+from concurrent.futures import ThreadPoolExecutor
 
 from tornado import gen
 from tornado.ioloop import IOLoop
@@ -27,12 +27,9 @@ from kubernetes import client
 import escapism
 
 from kubespawner.traitlets import Callable
-from kubespawner.utils import SingletonExecutor
 from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import NamespacedResourceReflector
 
-class _SpawnerSingletonExecutor(SingletonExecutor):
-    pass
 
 class PodReflector(NamespacedResourceReflector):
     labels = {
@@ -50,13 +47,19 @@ class KubeSpawner(Spawner):
     """
     Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
     """
+
+    # We want to have one threadpool executor that is shared across all spawner objects
+    # This is initialized by the first spawner that is created
+    executor = None
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # By now, all the traitlets have been set, so we can use them to compute
         # other attributes
-        # FIXME: Can't actually use the .instance here and in IngressReflector, traitlets will throw
-        # an error. Switch this to being just an ol' school Singleton
-        self.executor = _SpawnerSingletonExecutor.instance(max_workers=self.k8s_api_threadpool_workers)
+        if self.__class__.executor is None:
+            self.__class__.exeuctor = ThreadPoolExecutor(
+                max_workers=self.k8s_api_threadpool_workers
+            )
+        self.executor = self.__class__.executor
 
         main_loop = IOLoop.current()
         def on_reflector_failure():
