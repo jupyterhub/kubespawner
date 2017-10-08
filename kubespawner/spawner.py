@@ -68,8 +68,10 @@ class KubeSpawner(Spawner):
 
         # This will start watching in __init__, so it'll start the first
         # time any spawner object is created. Not ideal but works!
-        self.pod_reflector = PodReflector.instance(parent=self, namespace=self.namespace,
-            on_failure=on_reflector_failure)
+        self.pod_reflector = PodReflector(
+            parent=self, namespace=self.namespace,
+            on_failure=on_reflector_failure
+        )
 
         self.api = client.CoreV1Api()
 

@@ -1,19 +1,16 @@
 import time
 import threading
 
-from traitlets.config import SingletonConfigurable
+from traitlets.config import LoggingConfigurable
 from traitlets import Any, Dict, Unicode
 from kubernetes import client, config, watch
 from tornado.ioloop import IOLoop
 
-class NamespacedResourceReflector(SingletonConfigurable):
+class NamespacedResourceReflector(LoggingConfigurable):
     """
     Local up-to-date copy of a set of kubernetes resources.
 
     Must be subclassed once per kind of resource that needs watching.
-
-    Note: This design assumes you only want to watch resources in one
-    namespace per application (since this is a singleton)
     """
     labels = Dict(
         {},
