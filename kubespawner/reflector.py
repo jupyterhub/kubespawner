@@ -37,6 +37,15 @@ class NamespacedResourceReflector(LoggingConfigurable):
         """
     )
 
+    kind = Unicode(
+        'resource',
+        help="""
+        Human readable name for kind of object we're watching for.
+
+        Used for diagnostic messages.
+        """
+    )
+
     list_method_name = Unicode(
         None,
         allow_none=True,
@@ -119,7 +128,7 @@ class NamespacedResourceReflector(LoggingConfigurable):
         """
         cur_delay = 0.1
         while True:
-            self.log.info("watching for resources with label selector %s in namespace %s", self.label_selector, self.namespace)
+            self.log.info("watching for %s with label selector %s in namespace %s", self.kind, self.label_selector, self.namespace)
             w = watch.Watch()
             try:
                 resource_version = self._list_and_update()

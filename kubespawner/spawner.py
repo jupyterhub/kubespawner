@@ -32,6 +32,8 @@ from kubespawner.reflector import NamespacedResourceReflector
 
 
 class PodReflector(NamespacedResourceReflector):
+    kind = 'pods'
+
     labels = {
         'heritage': 'jupyterhub',
         'component': 'singleuser-server',

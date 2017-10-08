@@ -17,6 +17,7 @@ from tornado.concurrent import run_on_executor
 
 
 class IngressReflector(NamespacedResourceReflector):
+    kind = 'ingresses'
     labels = {
         'heritage': 'jupyterhub',
         'component': 'singleuser-server',
@@ -31,6 +32,7 @@ class IngressReflector(NamespacedResourceReflector):
         return self.resources
 
 class ServiceReflector(NamespacedResourceReflector):
+    kind = 'services'
     labels = {
         'heritage': 'jupyterhub',
         'component': 'singleuser-server',
@@ -44,6 +46,7 @@ class ServiceReflector(NamespacedResourceReflector):
         return self.resources
 
 class EndpointsReflector(NamespacedResourceReflector):
+    kind = 'endpoints'
     labels = {
         'heritage': 'jupyterhub',
         'component': 'singleuser-server',
