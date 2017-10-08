@@ -53,6 +53,10 @@ class KubeSpawner(Spawner):
     # We want to have one threadpool executor that is shared across all spawner objects
     # This is initialized by the first spawner that is created
     executor = None
+
+    # We also want only one pod reflector per application
+    pod_reflector = None
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # By now, all the traitlets have been set, so we can use them to compute
@@ -70,10 +74,12 @@ class KubeSpawner(Spawner):
 
         # This will start watching in __init__, so it'll start the first
         # time any spawner object is created. Not ideal but works!
-        self.pod_reflector = PodReflector(
-            parent=self, namespace=self.namespace,
-            on_failure=on_reflector_failure
-        )
+        if self.__class__.pod_reflector is None:
+            self.__class__.pod_reflector = PodReflector(
+                parent=self, namespace=self.namespace,
+                on_failure=on_reflector_failure
+            )
+        self.pod_reflector = self.__class__.pod_reflector
 
         self.api = client.CoreV1Api()
 
