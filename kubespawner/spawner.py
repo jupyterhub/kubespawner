@@ -62,7 +62,7 @@ class KubeSpawner(Spawner):
         # By now, all the traitlets have been set, so we can use them to compute
         # other attributes
         if self.__class__.executor is None:
-            self.__class__.exeuctor = ThreadPoolExecutor(
+            self.__class__.executor = ThreadPoolExecutor(
                 max_workers=self.k8s_api_threadpool_workers
             )
         self.executor = self.__class__.executor
