@@ -2,9 +2,11 @@ import time
 import threading
 
 from traitlets.config import LoggingConfigurable
-from traitlets import Any, Dict, Unicode
+from traitlets import Any, Dict, Unicode, Int
 from kubernetes import client, config, watch
-from tornado.ioloop import IOLoop
+# This is kinda implementation specific, but we need to know it
+from urllib3.exceptions import ReadTimeoutError
+
 
 class NamespacedResourceReflector(LoggingConfigurable):
     """
@@ -69,6 +71,26 @@ class NamespacedResourceReflector(LoggingConfigurable):
         """
     )
 
+    request_timeout = Int(
+        0,
+        config=True,
+        help="""
+        Network timeout for kubernetes watch.
+
+        Trigger watch reconnect when no traffic has been received for this time.
+        """
+    )
+
+    timeout_seconds = Int(
+        0,
+        config=True,
+        help="""
+        Timeout for kubernetes watch.
+
+        Trigger watch reconnect when no watch event has been received.
+        """
+    )
+
     on_failure = Any(help="""Function to be called when the reflector gives up.""")
 
     def __init__(self, *args, **kwargs):
@@ -125,25 +147,42 @@ class NamespacedResourceReflector(LoggingConfigurable):
         update' cycle on them), we should be ok!
         """
         cur_delay = 0.1
+        watch_args = {
+            'namespace': self.namespace,
+            'label_selector': self.label_selector,
+        }
+        if self.request_timeout:
+            watch_args['_request_timeout'] = self.request_timeout
+        if self.timeout_seconds:
+            # This might not ever be triggered as with resource_version set,
+            # we awmays get the last event sent again.
+            watch_args['timeout_seconds'] = self.timeout_seconds
         while True:
             self.log.info("watching for %s with label selector %s in namespace %s", self.kind, self.label_selector, self.namespace)
             w = watch.Watch()
             try:
-                resource_version = self._list_and_update()
+                # in case of timeout_seconds, the w.stream just exits (no exception thrown)
+                # -> we stop the watcher and start a new one
                 for ev in w.stream(
                         getattr(self.api, self.list_method_name),
-                        self.namespace,
-                        label_selector=self.label_selector,
-                        resource_version=resource_version,
+                        **watch_args
                 ):
                     cur_delay = 0.1
                     resource = ev['object']
+                    if watch_args.get('resource_version') != resource.metadata.resource_version:
+                        watch_args['resource_version'] = resource.metadata.resource_version
+                        self.log.info('Watch Event: {} - {}'.format(ev['type'], resource.metadata.name))
                     if ev['type'] == 'DELETED':
                         # This is an atomic delete operation on the dictionary!
                         self.resources.pop(resource.metadata.name, None)
                     else:
                         # This is an atomic operation on the dictionary!
                         self.resources[resource.metadata.name] = resource
+                self.log.debug('Watch Stream timeout')
+            except ReadTimeoutError:
+                # we expect this to happen, so that watch get's restarted and won't hang
+                self.log.debug('Watch Stream network timeout')
+                continue
             except Exception:
                 cur_delay = cur_delay * 2
                 if cur_delay > 30:
@@ -170,7 +209,6 @@ class NamespacedResourceReflector(LoggingConfigurable):
         if hasattr(self, 'watch_thread'):
             raise ValueError('Thread watching for resources is already running')
 
-        self._list_and_update()
         self.watch_thread = threading.Thread(target=self._watch_and_update)
         # If the watch_thread is only thread left alive, exit app
         self.watch_thread.daemon = True
