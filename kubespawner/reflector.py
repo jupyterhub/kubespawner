@@ -47,8 +47,7 @@ class NamespacedResourceReflector(LoggingConfigurable):
     )
 
     list_method_name = Unicode(
-        None,
-        allow_none=True,
+        "",
         help="""
         Name of function (on apigroup respresented by `api_group_name`) that is to be called to list resources.
 
@@ -62,7 +61,6 @@ class NamespacedResourceReflector(LoggingConfigurable):
 
     api_group_name = Unicode(
         'CoreV1Api',
-        allow_none=False,
         help="""
         Name of class that represents the apigroup on which `list_method_name` is to be found.
 
