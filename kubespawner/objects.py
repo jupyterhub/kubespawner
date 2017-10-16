@@ -6,18 +6,19 @@ from urllib.parse import urlparse
 import escapism
 import string
 
-from kubernetes.client.models import \
-    V1Pod, V1PodSpec, V1PodSecurityContext, \
-    V1ObjectMeta, \
-    V1LocalObjectReference, \
-    V1Volume, V1VolumeMount, \
-    V1Container, V1ContainerPort, V1SecurityContext, V1EnvVar, V1ResourceRequirements, \
-    V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec, \
-    V1Endpoints, V1EndpointSubset, V1EndpointAddress, V1EndpointPort, \
-    V1Service, V1ServiceSpec, V1ServicePort, \
-    V1beta1Ingress, V1beta1IngressSpec, V1beta1IngressRule, \
-    V1beta1HTTPIngressRuleValue, V1beta1HTTPIngressPath, \
+from kubernetes.client.models import (
+    V1Pod, V1PodSpec, V1PodSecurityContext,
+    V1ObjectMeta,
+    V1LocalObjectReference,
+    V1Volume, V1VolumeMount,
+    V1Container, V1ContainerPort, V1SecurityContext, V1EnvVar, V1ResourceRequirements,
+    V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec,
+    V1Endpoints, V1EndpointSubset, V1EndpointAddress, V1EndpointPort,
+    V1Service, V1ServiceSpec, V1ServicePort,
+    V1beta1Ingress, V1beta1IngressSpec, V1beta1IngressRule,
+    V1beta1HTTPIngressRuleValue, V1beta1HTTPIngressPath,
     V1beta1IngressBackend
+)
 
 def make_pod(
     name,

@@ -747,11 +747,13 @@ class KubeSpawner(Spawner):
         pod must be a dictionary representing a Pod kubernetes API object.
         """
         # FIXME: Validate if this is really the best way
-        is_running = pod is not None and \
-                     pod.status.phase == 'Running' and \
-                     pod.status.pod_ip is not None and \
-                     pod.metadata.deletion_timestamp is None and \
-                     all([cs.ready for cs in pod.status.container_statuses])
+        is_running = (
+            pod is not None and
+            pod.status.phase == 'Running' and
+            pod.status.pod_ip is not None and
+            pod.metadata.deletion_timestamp is None and
+            all([cs.ready for cs in pod.status.container_statuses])
+        )
         return is_running
 
     def get_state(self):
