@@ -210,7 +210,7 @@ class KubeIngressProxy(Proxy):
         )
 
         # This seems like cleanest way to parallelize all three of these while
-        # also making sure we only ignore the exception when it's a 404
+        # also making sure we only ignore the exception when it's a 404.
         def delete_if_exists(kind, future):
             try:
                 yield future
@@ -220,6 +220,11 @@ class KubeIngressProxy(Proxy):
                 self.log.warn("Could not delete %s %s: does not exist", kind, safe_name)
 
 
+        # The order matters for endpoint & service - deleting the service deletes
+        # the endpoint in the background. This can be racy however, so we do so
+        # explicitly ourselves as well. In the future, we can probably try a
+        # foreground cascading deletion (https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/#foreground-cascading-deletion)
+        # instead, but for now this works well enough.
         delete_if_exists('endpoint', delete_endpoint)
         delete_if_exists('service', delete_service)
         delete_if_exists('ingress', delete_ingress)
@@ -232,13 +237,13 @@ class KubeIngressProxy(Proxy):
         # FIXME: Validate that this shallow copy *is* thread safe
         ingress_copy = dict(self.ingress_reflector.ingresses)
         routes = {
-            i.metadata.annotations['hub.jupyter.org/proxy-routespec']:
+            ingress.metadata.annotations['hub.jupyter.org/proxy-routespec']:
             {
-                'routespec': i.metadata.annotations['hub.jupyter.org/proxy-routespec'],
-                'target': i.metadata.annotations['hub.jupyter.org/proxy-target'],
+                'routespec': ingress.metadata.annotations['hub.jupyter.org/proxy-routespec'],
+                'target': ingress.metadata.annotations['hub.jupyter.org/proxy-target'],
                 'data': json.loads(i.metadata.annotations['hub.jupyter.org/proxy-data'])
             }
-            for i in ingress_copy.values()
+            for ingress in ingress_copy.values()
         }
 
         return routes
