@@ -8,7 +8,7 @@ from tornado.ioloop import IOLoop
 
 class NamespacedResourceReflector(LoggingConfigurable):
     """
-    Local up-to-date copy of a set of kubernetes resources.
+    Base class for keeping a local up-to-date copy of a set of kubernetes resources.
 
     Must be subclassed once per kind of resource that needs watching.
     """
