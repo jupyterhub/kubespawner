@@ -242,7 +242,7 @@ class KubeIngressProxy(Proxy):
             {
                 'routespec': ingress.metadata.annotations['hub.jupyter.org/proxy-routespec'],
                 'target': ingress.metadata.annotations['hub.jupyter.org/proxy-target'],
-                'data': json.loads(i.metadata.annotations['hub.jupyter.org/proxy-data'])
+                'data': json.loads(ingress.metadata.annotations['hub.jupyter.org/proxy-data'])
             }
             for ingress in ingress_copy.values()
         }
