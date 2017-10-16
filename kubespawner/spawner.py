@@ -65,7 +65,6 @@ class KubeSpawner(Spawner):
             self.__class__.executor = ThreadPoolExecutor(
                 max_workers=self.k8s_api_threadpool_workers
             )
-        self.executor = self.__class__.executor
 
         main_loop = IOLoop.current()
         def on_reflector_failure():
@@ -79,7 +78,6 @@ class KubeSpawner(Spawner):
                 parent=self, namespace=self.namespace,
                 on_failure=on_reflector_failure
             )
-        self.pod_reflector = self.__class__.pod_reflector
 
         self.api = client.CoreV1Api()
 
