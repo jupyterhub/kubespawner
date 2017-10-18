@@ -585,7 +585,7 @@ class KubeSpawner(Spawner):
 
         This list will be directly added under `initContainers` in the kubernetes pod spec,
         so you should use the same structure. Each item in the list is container configuration
-        which follows spec at https://kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
+        which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
 
         One usage is disabling access to metadata service from single-user notebook server with configuration below:
         initContainers::
@@ -602,6 +602,50 @@ class KubeSpawner(Spawner):
         info on what init containers are and why you might want to use them!
 
         To user this feature, Kubernetes version must greater than 1.6.
+        """
+    )
+
+    singleuser_extra_container_config = Dict(
+        None,
+        config=True,
+        help="""
+        Extra configuration (e.g. envFrom) for notebook container which is not covered by other attributes.
+        
+        This dict will be directly merge into `container` of notebook server,
+        so you should use the same structure. Each item in the dict is field of container configuration
+        which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
+        
+        The key cloud be either camelcase word (used by Kubernetes yaml, e.g. envFrom) 
+        or underscore-separated word (used by kubernetes python client, e.g. env_from).
+        """
+    )
+
+    singleuser_extra_pod_config = Dict(
+        None,
+        config=True,
+        help="""
+        Extra configuration (e.g. tolerations) for the pod which is not covered by other attributes.
+        
+        This dict will be directly merge into pod,so you should use the same structure. 
+        Each item in the dict is field of pod configuration
+        which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#podspec-v1-core.
+
+        The key cloud be either camelcase word (used by Kubernetes yaml, e.g. dnsPolicy) 
+        or underscore-separated word (used by kubernetes python client, e.g. dns_policy).
+        """
+    )
+
+    singleuser_extra_containers = List(
+        None,
+        config=True,
+        help="""
+        List of containers belonging to the pod which besides to the container generated for notebook server.
+
+        This list will be directly appended under `containers` in the kubernetes pod spec,
+        so you should use the same structure. Each item in the list is container configuration
+        which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
+
+        One usage is setting crontab in a container to clean sensitive data.
         """
     )
 
@@ -691,7 +735,10 @@ class KubeSpawner(Spawner):
             mem_guarantee=self.mem_guarantee,
             lifecycle_hooks=self.singleuser_lifecycle_hooks,
             init_containers=self.singleuser_init_containers,
-            service_account=self.singleuser_service_account
+            service_account=self.singleuser_service_account,
+            extra_container_config=self.singleuser_extra_container_config,
+            extra_pod_config=self.singleuser_extra_pod_config,
+            extra_containes=self.singleuser_extra_containers
         )
 
     def get_pvc_manifest(self):
