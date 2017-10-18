@@ -671,11 +671,11 @@ class KubeSpawner(Spawner):
 
         return make_pod(
             name=self.pod_name,
+            cmd=real_cmd,
+            port=self.port,
             image_spec=self.singleuser_image_spec,
             image_pull_policy=self.singleuser_image_pull_policy,
             image_pull_secret=self.singleuser_image_pull_secrets,
-            port=self.port,
-            cmd=real_cmd,
             node_selector=self.singleuser_node_selector,
             run_as_uid=singleuser_uid,
             fs_gid=singleuser_fs_gid,
