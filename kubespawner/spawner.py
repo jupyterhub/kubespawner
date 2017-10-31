@@ -615,7 +615,16 @@ class KubeSpawner(Spawner):
         so you should use the same structure. Each item in the dict is field of container configuration
         which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
         
-        The key cloud be either camelcase word (used by Kubernetes yaml, e.g. envFrom) 
+        One usage is set envFrom on notebook container with configuration below:       
+        envFrom: [
+            {
+                configMapRef: {
+                    name: special-config
+                }
+            }
+        ]
+
+        The key could be either camelcase word (used by Kubernetes yaml, e.g. envFrom) 
         or underscore-separated word (used by kubernetes python client, e.g. env_from).
         """
     )
@@ -630,7 +639,10 @@ class KubeSpawner(Spawner):
         Each item in the dict is field of pod configuration
         which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#podspec-v1-core.
 
-        The key cloud be either camelcase word (used by Kubernetes yaml, e.g. dnsPolicy) 
+        One usage is set dnsPolicy with configuration below:     
+        dnsPolicy: ClusterFirstWithHostNet  
+
+        The key could be either camelcase word (used by Kubernetes yaml, e.g. dnsPolicy) 
         or underscore-separated word (used by kubernetes python client, e.g. dns_policy).
         """
     )
@@ -645,7 +657,14 @@ class KubeSpawner(Spawner):
         so you should use the same structure. Each item in the list is container configuration
         which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
 
-        One usage is setting crontab in a container to clean sensitive data.
+        One usage is setting crontab in a container to clean sensitive data with configuration below:
+        [
+            {
+                'name': 'crontab',
+                'image': 'supercronic',
+                'command': ['/usr/local/bin/supercronic', '/etc/crontab']
+            }
+        ]
         """
     )
 
