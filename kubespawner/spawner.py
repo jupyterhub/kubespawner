@@ -79,6 +79,11 @@ class KubeSpawner(Spawner):
             # Our default port is 8888
             self.port = 8888
 
+        self.options_form = """
+            <label for="docker_image">Bob</label>
+            <input name="docker_image" placeholder="jupyterhub/k8s-singleuser-sample:v0.4"></input>
+            """
+
     k8s_api_threadpool_workers = Integer(
         # Set this explicitly, since this is the default in Python 3.5+
         # but not in 3.4
@@ -145,22 +150,10 @@ class KubeSpawner(Spawner):
         """
     ).tag(config=True)
 
-    def options_form(self):
-        return """
-            <label for="docker_image">Bob</label>
-            <input name="docker_image" placeholder="jupyterhub/k8s-singleuser-sample:v0.4"></input>
-            """
-
     def options_from_form(self, form_data):
         return {
             'user_selected_image': form_data['docker_image'][0]
         }
-
-    def _options_form_default(self):
-        return """
-            <label for="docker_image">Bob</label>
-            <input name="docker_image" placeholder="jupyterhub/k8s-singleuser-sample:v0.4"></input>
-            """
 
     singleuser_working_dir = Unicode(
         None,
