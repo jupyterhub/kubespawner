@@ -145,6 +145,17 @@ class KubeSpawner(Spawner):
         """
     ).tag(config=True)
 
+    def options_form(self):
+        return """
+            <label for="docker_image">Bob</label>
+            <input name="docker_image" placeholder="jupyterhub/k8s-singleuser-sample:v0.4"></input>
+            """
+
+    def options_from_form(self, form_data):
+        return {
+            'user_selected_image': form_data['docker_image'][0]
+        }
+
     singleuser_working_dir = Unicode(
         None,
         allow_none=True,
@@ -667,8 +678,12 @@ class KubeSpawner(Spawner):
             # FIXME: Make sure this is dns safe?
             labels['hub.jupyter.org/servername'] = self.name
 
+        image_name = self.user_options.get('user_selected_image', self.singleuser_image_spec)
+
         print('-------------------------------')
-        print(self.singleuser_image_spec)
+        print(image_name)
+        print('--------------')
+        print(self.user_options)
         print('===============================')
 
         labels.update(self._expand_all(self.singleuser_extra_labels))
@@ -677,7 +692,7 @@ class KubeSpawner(Spawner):
             name=self.pod_name,
             cmd=real_cmd,
             port=self.port,
-            image_spec=self.singleuser_image_spec,
+            image_spec=image_name,
             image_pull_policy=self.singleuser_image_pull_policy,
             image_pull_secret=self.singleuser_image_pull_secrets,
             node_selector=self.singleuser_node_selector,
