@@ -156,6 +156,12 @@ class KubeSpawner(Spawner):
             'user_selected_image': form_data['docker_image'][0]
         }
 
+    def _options_form_default(self):
+        return """
+            <label for="docker_image">Bob</label>
+            <input name="docker_image" placeholder="jupyterhub/k8s-singleuser-sample:v0.4"></input>
+            """
+
     singleuser_working_dir = Unicode(
         None,
         allow_none=True,
