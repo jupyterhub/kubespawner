@@ -667,6 +667,10 @@ class KubeSpawner(Spawner):
             # FIXME: Make sure this is dns safe?
             labels['hub.jupyter.org/servername'] = self.name
 
+        print('-------------------------------')
+        print(self.singleuser_image_spec)
+        print('===============================')
+
         labels.update(self._expand_all(self.singleuser_extra_labels))
 
         return make_pod(
