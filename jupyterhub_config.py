@@ -27,5 +27,3 @@ c.JupyterHub.authenticator_class = 'dummyauthenticator.DummyAuthenticator'
 c.KubeSpawner.user_storage_pvc_ensure = True
 
 c.JupyterHub.allow_named_servers = True
-
-c.KubeSpawner._jupyterhub_version = '0.8.1.dev'

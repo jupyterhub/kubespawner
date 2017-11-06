@@ -84,6 +84,8 @@ class KubeSpawner(Spawner):
             <input name="docker_image" placeholder="jupyterhub/k8s-singleuser-sample:v0.4"></input>
             """
 
+        self._jupyterhub_version = '0.8.1.dev'
+
     k8s_api_threadpool_workers = Integer(
         # Set this explicitly, since this is the default in Python 3.5+
         # but not in 3.4
