@@ -80,13 +80,17 @@ class KubeSpawner(Spawner):
             self.port = 8888
 
         self.options_form = """
-            <label for="docker_image">Bob</label>
+            <label for="docker_image">Image</label>
             <select name="docker_image">
               <option value="jupyter/scipy-notebook:latest">jupyter/scipy-notebook:latest</option>
               <option value="jupyter/tensorflow-notebook:latest">jupyter/tensorflow-notebook:latest</option>
               <option value="jupyter/r-notebook:latest">jupyter/r-notebook:latest</option>
             </select>
-            """
+            <label for="requested_cpu">CPU Requested</label>
+            <textarea name="requested_cpu">{cpu}</textarea>
+            <label for="requested_memory">Memory Requested</label>
+            <textarea name="requested_memory">{memory}</textarea>
+            """.format(cpu=self.cpu_guarantee, memory=self.mem_guarantee)
 
     k8s_api_threadpool_workers = Integer(
         # Set this explicitly, since this is the default in Python 3.5+
@@ -682,6 +686,8 @@ class KubeSpawner(Spawner):
             labels['hub.jupyter.org/servername'] = self.name
 
         image_name = self.user_options.get('user_selected_image', self.singleuser_image_spec)
+        requested_cpu = self.user_options.get('requested_cpu', self.cpu_guarantee)
+        requested_memory = self.user_options.get('requested_memory', self.mem_guarantee)
 
         labels.update(self._expand_all(self.singleuser_extra_labels))
 
@@ -702,9 +708,9 @@ class KubeSpawner(Spawner):
             working_dir=self.singleuser_working_dir,
             labels=labels,
             cpu_limit=self.cpu_limit,
-            cpu_guarantee=self.cpu_guarantee,
+            cpu_guarantee=requested_cpu,
             mem_limit=self.mem_limit,
-            mem_guarantee=self.mem_guarantee,
+            mem_guarantee=requested_memory,
             lifecycle_hooks=self.singleuser_lifecycle_hooks,
             init_containers=self.singleuser_init_containers,
             service_account=self.singleuser_service_account
