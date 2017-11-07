@@ -160,7 +160,9 @@ class KubeSpawner(Spawner):
 
     def options_from_form(self, form_data):
         return {
-            'user_selected_image': form_data['docker_image'][0]
+            'user_selected_image': form_data['docker_image'][0],
+            'requested_cpu': float(form_data['requested_cpu'][0]),
+            'requested_memory': int(form_data['requested_memory'][0]),
         }
 
     singleuser_working_dir = Unicode(
