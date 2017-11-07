@@ -81,10 +81,12 @@ class KubeSpawner(Spawner):
 
         self.options_form = """
             <label for="docker_image">Bob</label>
-            <input name="docker_image" placeholder="jupyterhub/k8s-singleuser-sample:v0.4"></input>
+            <select name="docker_image">
+              <option value="jupyter/scipy-notebook:latest">jupyter/scipy-notebook:latest</option>
+              <option value="jupyter/tensorflow-notebook:latest">jupyter/tensorflow-notebook:latest</option>
+              <option value="jupyter/r-notebook:latest">jupyter/r-notebook:latest</option>
+            </select>
             """
-
-        self._jupyterhub_version = '0.8.1.dev'
 
     k8s_api_threadpool_workers = Integer(
         # Set this explicitly, since this is the default in Python 3.5+
@@ -680,12 +682,6 @@ class KubeSpawner(Spawner):
             labels['hub.jupyter.org/servername'] = self.name
 
         image_name = self.user_options.get('user_selected_image', self.singleuser_image_spec)
-
-        print('-------------------------------')
-        print(image_name)
-        print('--------------')
-        print(self.user_options)
-        print('===============================')
 
         labels.update(self._expand_all(self.singleuser_extra_labels))
 
