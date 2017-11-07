@@ -79,6 +79,19 @@ class KubeSpawner(Spawner):
             # Our default port is 8888
             self.port = 8888
 
+        self.options_form = """
+            <label for="docker_image">Image</label>
+            <select name="docker_image">
+              <option value="jupyter/scipy-notebook:latest">jupyter/scipy-notebook:latest</option>
+              <option value="jupyter/tensorflow-notebook:latest">jupyter/tensorflow-notebook:latest</option>
+              <option value="jupyter/r-notebook:latest">jupyter/r-notebook:latest</option>
+            </select>
+            <label for="requested_cpu">CPU Requested</label>
+            <textarea name="requested_cpu">{cpu}</textarea>
+            <label for="requested_memory">Memory Requested</label>
+            <textarea name="requested_memory">{memory}</textarea>
+            """.format(cpu=self.cpu_guarantee, memory=self.mem_guarantee)
+
     k8s_api_threadpool_workers = Integer(
         # Set this explicitly, since this is the default in Python 3.5+
         # but not in 3.4
@@ -144,6 +157,13 @@ class KubeSpawner(Spawner):
         If set to None, Kubernetes will start the CMD that is specified in the Docker image being started.
         """
     ).tag(config=True)
+
+    def options_from_form(self, form_data):
+        return {
+            'user_selected_image': form_data['docker_image'][0],
+            'requested_cpu': float(form_data['requested_cpu'][0]),
+            'requested_memory': int(form_data['requested_memory'][0]),
+        }
 
     singleuser_working_dir = Unicode(
         None,
@@ -667,13 +687,17 @@ class KubeSpawner(Spawner):
             # FIXME: Make sure this is dns safe?
             labels['hub.jupyter.org/servername'] = self.name
 
+        image_name = self.user_options.get('user_selected_image', self.singleuser_image_spec)
+        requested_cpu = self.user_options.get('requested_cpu', self.cpu_guarantee)
+        requested_memory = self.user_options.get('requested_memory', self.mem_guarantee)
+
         labels.update(self._expand_all(self.singleuser_extra_labels))
 
         return make_pod(
             name=self.pod_name,
             cmd=real_cmd,
             port=self.port,
-            image_spec=self.singleuser_image_spec,
+            image_spec=image_name,
             image_pull_policy=self.singleuser_image_pull_policy,
             image_pull_secret=self.singleuser_image_pull_secrets,
             node_selector=self.singleuser_node_selector,
@@ -686,9 +710,9 @@ class KubeSpawner(Spawner):
             working_dir=self.singleuser_working_dir,
             labels=labels,
             cpu_limit=self.cpu_limit,
-            cpu_guarantee=self.cpu_guarantee,
+            cpu_guarantee=requested_cpu,
             mem_limit=self.mem_limit,
-            mem_guarantee=self.mem_guarantee,
+            mem_guarantee=requested_memory,
             lifecycle_hooks=self.singleuser_lifecycle_hooks,
             init_containers=self.singleuser_init_containers,
             service_account=self.singleuser_service_account
