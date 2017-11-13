@@ -169,7 +169,10 @@ class NamespacedResourceReflector(LoggingConfigurable):
                 ):
                     cur_delay = 0.1
                     resource = ev['object']
-                    if watch_args.get('resource_version') != resource.metadata.resource_version:
+                    if not resource.metadata.resource_version:
+                        # reset resources_version if we don't have one
+                        del watch_args['resource_version']
+                    else if watch_args.get('resource_version') != resource.metadata.resource_version:
                         watch_args['resource_version'] = resource.metadata.resource_version
                         self.log.info('Watch Event: {} - {}'.format(ev['type'], resource.metadata.name))
                     if ev['type'] == 'DELETED':
