@@ -42,7 +42,10 @@ def make_pod(
     mem_guarantee=None,
     lifecycle_hooks=None,
     init_containers=None,
-    service_account=None
+    service_account=None,
+    extra_container_config=None,
+    extra_pod_config=None,
+    extra_containers=None
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -111,6 +114,12 @@ def make_pod(
         List of initialization containers belonging to the pod.
       - service_account:
         Service account to mount on the pod. None disables mounting
+      - extra_container_config:
+        Extra configuration (e.g. envFrom) for notebook container which is not covered by parameters above.
+      - extra_pod_config:
+        Extra configuration (e.g. tolerations) for pod which is not covered by parameters above.
+      - extra_containers:
+        Extra containers besides notebook container. Used for some housekeeping jobs (e.g. crontab).
     """
 
     pod = V1Pod()
@@ -197,9 +206,29 @@ def make_pod(
     notebook_container.volume_mounts = volume_mounts + hack_volume_mounts
     pod.spec.containers.append(notebook_container)
 
+    if extra_container_config:
+        for key, value in extra_container_config.items():
+            setattr(notebook_container, _map_attribute(notebook_container.attribute_map, key), value)
+    if extra_pod_config:
+        for key, value in extra_pod_config.items():
+            setattr(pod.spec, _map_attribute(pod.spec.attribute_map, key), value)
+    if extra_containers:
+        pod.spec.containers.extend(extra_containers)
+
     pod.spec.init_containers = init_containers
     pod.spec.volumes = volumes + hack_volumes
     return pod
+
+
+def _map_attribute(attribute_map, attribute):
+    if attribute in attribute_map:
+        return attribute
+
+    for key, value in attribute_map.items():
+        if value == attribute:
+            return key
+    else:
+        raise ValueError('Attribute must be one of {}'.format(attribute_map.values()))
 
 
 def make_pvc(
