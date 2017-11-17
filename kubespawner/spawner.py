@@ -634,6 +634,30 @@ class KubeSpawner(Spawner):
         else:
             return src
 
+    def _build_common_labels(self, extra_labels):
+        # Default set of labels, picked up from
+        # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
+        labels = {
+            'heritage': 'jupyterhub',
+            'app': 'jupyterhub',
+            'hub.jupyter.org/username': escapism.escape(self.user.name)
+        }
+
+        if self.name:
+            # FIXME: Make sure this is dns safe?
+            labels['hub.jupyter.org/servername'] = self.name
+
+        return labels.update(extra_labels)
+
+    def _build_pod_labels(self, extra_labels):
+        labels = {
+            'component': 'singleuser-server'
+        }
+        labels.update(extra_labels)
+        # Make sure pod_reflector.labels in final label list
+        labels.update(self.pod_reflector.labels)
+        return self._build_common_labels(labels)
+
     @gen.coroutine
     def get_pod_manifest(self):
         """
@@ -654,20 +678,7 @@ class KubeSpawner(Spawner):
         else:
             real_cmd = None
 
-        # Default set of labels, picked up from
-        # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
-        labels = {
-            'heritage': 'jupyterhub',
-            'component': 'singleuser-server',
-            'app': 'jupyterhub',
-            'hub.jupyter.org/username': escapism.escape(self.user.name)
-        }
-
-        if self.name:
-            # FIXME: Make sure this is dns safe?
-            labels['hub.jupyter.org/servername'] = self.name
-
-        labels.update(self._expand_all(self.singleuser_extra_labels))
+        labels = self._build_pod_labels(self._expand_all(self.singleuser_extra_labels))
 
         return make_pod(
             name=self.pod_name,
@@ -698,20 +709,8 @@ class KubeSpawner(Spawner):
         """
         Make a pvc manifest that will spawn current user's pvc.
         """
-        # Default set of labels, picked up from
-        # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
-        labels = {
-            'heritage': 'jupyterhub',
-            'app': 'jupyterhub',
-            'hub.jupyter.org/username': escapism.escape(self.user.name)
-        }
+        labels = self._build_common_labels(self._expand_all(self.user_storage_extra_labels))
 
-        # check if a named-server servername has been set and if so, extend pvc labels.
-        if self.name:
-            # FIXME: make sure this is DNS safe?
-            labels['hub.jupyter.org/servername'] = self.name
-
-        labels.update(self._expand_all(self.user_storage_extra_labels))
         return make_pvc(
             name=self.pvc_name,
             storage_class=self.user_storage_class,
