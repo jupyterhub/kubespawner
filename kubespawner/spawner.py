@@ -835,7 +835,7 @@ class KubeSpawner(Spawner):
         JupyterHub expects.
         """
         data = self.pod_reflector.pods.get(self.pod_name, None)
-        if data is not None and self.is_pod_running(data):
+        if data is not None:
             return None
 
         return 1
