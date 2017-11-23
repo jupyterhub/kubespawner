@@ -610,12 +610,12 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         Extra configuration (e.g. envFrom) for notebook container which is not covered by other attributes.
-        
+
         This dict will be directly merge into `container` of notebook server,
         so you should use the same structure. Each item in the dict is field of container configuration
         which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
-        
-        One usage is set envFrom on notebook container with configuration below:       
+
+        One usage is set envFrom on notebook container with configuration below:
         envFrom: [
             {
                 configMapRef: {
@@ -624,7 +624,7 @@ class KubeSpawner(Spawner):
             }
         ]
 
-        The key could be either camelcase word (used by Kubernetes yaml, e.g. envFrom) 
+        The key could be either camelcase word (used by Kubernetes yaml, e.g. envFrom)
         or underscore-separated word (used by kubernetes python client, e.g. env_from).
         """
     )
@@ -634,15 +634,15 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         Extra configuration (e.g. tolerations) for the pod which is not covered by other attributes.
-        
-        This dict will be directly merge into pod,so you should use the same structure. 
+
+        This dict will be directly merge into pod,so you should use the same structure.
         Each item in the dict is field of pod configuration
         which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#podspec-v1-core.
 
-        One usage is set dnsPolicy with configuration below:     
-        dnsPolicy: ClusterFirstWithHostNet  
+        One usage is set dnsPolicy with configuration below:
+        dnsPolicy: ClusterFirstWithHostNet
 
-        The key could be either camelcase word (used by Kubernetes yaml, e.g. dnsPolicy) 
+        The key could be either camelcase word (used by Kubernetes yaml, e.g. dnsPolicy)
         or underscore-separated word (used by kubernetes python client, e.g. dns_policy).
         """
     )
@@ -768,7 +768,7 @@ class KubeSpawner(Spawner):
             service_account=self.singleuser_service_account,
             extra_container_config=self.singleuser_extra_container_config,
             extra_pod_config=self.singleuser_extra_pod_config,
-            extra_containes=self.singleuser_extra_containers
+            extra_containers=self.singleuser_extra_containers
         )
 
     def get_pvc_manifest(self):
