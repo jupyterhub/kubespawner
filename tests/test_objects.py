@@ -631,6 +631,121 @@ def test_make_pod_with_extra_containers():
         "apiVersion": "v1"
     }
 
+def test_make_pod_with_extra_containers():
+    """
+    Test specification of a pod with initContainers
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        extra_containers=[
+            {
+                'name': 'crontab',
+                'image': 'supercronic',
+                'command': ['/usr/local/bin/supercronic', '/etc/crontab']
+            }
+        ]
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+        },
+        "spec": {
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    "resources": {
+                        "limits": {
+                        },
+                        "requests": {
+                        }
+                    },
+                },
+                {
+                    'name': 'crontab',
+                    'image': 'supercronic',
+                    'command': ['/usr/local/bin/supercronic', '/etc/crontab']
+                }
+            ],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
+def test_make_pod_with_extra_resources():
+    """
+    Test specification of extra resources (like GPUs)
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cpu_limit=2,
+        cpu_guarantee=1,
+        extra_resource_limits={"nvidia.com/gpu": "5", "k8s.io/new-resource": "1"},
+        extra_resource_guarantees={"nvidia.com/gpu": "3"},
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        mem_limit='1Gi',
+        mem_guarantee='512Mi',
+        image_pull_policy='IfNotPresent',
+        image_pull_secret="myregistrykey",
+        node_selector={"disk": "ssd"}
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+        },
+        "spec": {
+            "securityContext": {},
+            "imagePullSecrets": [{"name": "myregistrykey"}],
+            "nodeSelector": {"disk": "ssd"},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    "resources": {
+                        "limits": {
+                            "cpu": 2,
+                            "memory": '1Gi',
+                            "nvidia.com/gpu": "5",
+                            "k8s.io/new-resource": "1"
+                        },
+                        "requests": {
+                            "cpu": 1,
+                            "memory": '512Mi',
+                            "nvidia.com/gpu": "3"
+                        }
+                    }
+                }
+            ],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
 
 def test_make_pvc_simple():
     """

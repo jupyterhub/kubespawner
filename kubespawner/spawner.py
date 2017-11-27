@@ -668,7 +668,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    arbitrary_resource_guarantee = Dict(
+    extra_resource_guarantees = Dict(
         {},
         config=True,
         help="""
@@ -679,7 +679,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    arbitrary_resource_limits = Dict(
+    extra_resource_limits = Dict(
         {},
         config=True,
         help="""
@@ -785,8 +785,8 @@ class KubeSpawner(Spawner):
             cpu_guarantee=self.cpu_guarantee,
             mem_limit=self.mem_limit,
             mem_guarantee=self.mem_guarantee,
-            arbitrary_resource_limits=self.get_arbitrary_resource_limits,
-            arbitrary_resource_guarantee=self.arbitrary_resource_guarantee,
+            extra_resource_limits=self.extra_resource_limits,
+            extra_resource_guarantees=self.extra_resource_guarantees,
             lifecycle_hooks=self.singleuser_lifecycle_hooks,
             init_containers=self.singleuser_init_containers,
             service_account=self.singleuser_service_account,
