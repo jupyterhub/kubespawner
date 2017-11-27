@@ -709,8 +709,8 @@ class KubeSpawner(Spawner):
         if self.name:
             # FIXME: Make sure this is dns safe?
             labels['hub.jupyter.org/servername'] = self.name
-
-        return labels.update(extra_labels)
+        labels.update(extra_labels)
+        return labels
 
     def _build_pod_labels(self, extra_labels):
         labels = {
