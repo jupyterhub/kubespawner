@@ -668,6 +668,28 @@ class KubeSpawner(Spawner):
         """
     )
 
+    arbitrary_resource_guarantee = Dict(
+        {},
+        config=True,
+        help="""
+        The dictionary used to request arbitrary resources.
+        Default is None and means no additional resources are requested.
+        For example, to request 3 Nvidia GPUs
+            `{"nvidia.com/gpu": "3"}`
+        """
+    )
+
+    arbitrary_resource_limits = Dict(
+        {},
+        config=True,
+        help="""
+        The dictionary used to limit arbitrary resources.
+        Default is None and means no additional resources are limited.
+        For example, to add a limit of 3 Nvidia GPUs
+            `{"nvidia.com/gpu": "3"}`
+        """
+    )
+
     def _expand_user_properties(self, template):
         # Make sure username and servername match the restrictions for DNS labels
         safe_chars = set(string.ascii_lowercase + string.digits)
@@ -763,6 +785,8 @@ class KubeSpawner(Spawner):
             cpu_guarantee=self.cpu_guarantee,
             mem_limit=self.mem_limit,
             mem_guarantee=self.mem_guarantee,
+            arbitrary_resource_limits=self.get_arbitrary_resource_limits,
+            arbitrary_resource_guarantee=self.arbitrary_resource_guarantee,
             lifecycle_hooks=self.singleuser_lifecycle_hooks,
             init_containers=self.singleuser_init_containers,
             service_account=self.singleuser_service_account,

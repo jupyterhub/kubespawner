@@ -40,6 +40,8 @@ def make_pod(
     cpu_guarantee=None,
     mem_limit=None,
     mem_guarantee=None,
+    arbitrary_resource_limits=None,
+    arbitrary_resource_guarantee=None,
     lifecycle_hooks=None,
     init_containers=None,
     service_account=None,
@@ -197,12 +199,19 @@ def make_pod(
         notebook_container.resources.requests['cpu'] = cpu_guarantee
     if mem_guarantee:
         notebook_container.resources.requests['memory'] = mem_guarantee
+    if arbitrary_resource_guarantee:
+        for k in arbitrary_resource_guarantee:
+            notebook_container.resources.requests[k] = arbitrary_resource_guarantee[k]
 
     notebook_container.resources.limits = {}
     if cpu_limit:
         notebook_container.resources.limits['cpu'] = cpu_limit
     if mem_limit:
         notebook_container.resources.limits['memory'] = mem_limit
+    if arbitrary_resource_limits:
+        for k in arbitrary_resource_limits:
+            notebook_container.resources.limits[k] = arbitrary_resource_limits[k]
+
     notebook_container.volume_mounts = volume_mounts + hack_volume_mounts
     pod.spec.containers.append(notebook_container)
 
