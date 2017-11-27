@@ -631,62 +631,6 @@ def test_make_pod_with_extra_containers():
         "apiVersion": "v1"
     }
 
-def test_make_pod_with_extra_containers():
-    """
-    Test specification of a pod with initContainers
-    """
-    assert api_client.sanitize_for_serialization(make_pod(
-        name='test',
-        image_spec='jupyter/singleuser:latest',
-        cmd=['jupyterhub-singleuser'],
-        port=8888,
-        image_pull_policy='IfNotPresent',
-        extra_containers=[
-            {
-                'name': 'crontab',
-                'image': 'supercronic',
-                'command': ['/usr/local/bin/supercronic', '/etc/crontab']
-            }
-        ]
-    )) == {
-        "metadata": {
-            "name": "test",
-            "labels": {},
-        },
-        "spec": {
-            "securityContext": {},
-            "containers": [
-                {
-                    "env": [],
-                    "name": "notebook",
-                    "image": "jupyter/singleuser:latest",
-                    "imagePullPolicy": "IfNotPresent",
-                    "args": ["jupyterhub-singleuser"],
-                    "ports": [{
-                        "name": "notebook-port",
-                        "containerPort": 8888
-                    }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
-                    "resources": {
-                        "limits": {
-                        },
-                        "requests": {
-                        }
-                    },
-                },
-                {
-                    'name': 'crontab',
-                    'image': 'supercronic',
-                    'command': ['/usr/local/bin/supercronic', '/etc/crontab']
-                }
-            ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
-        },
-        "kind": "Pod",
-        "apiVersion": "v1"
-    }
-
-
 def test_make_pod_with_extra_resources():
     """
     Test specification of extra resources (like GPUs)
