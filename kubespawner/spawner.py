@@ -279,6 +279,23 @@ class KubeSpawner(Spawner):
         """
     )
 
+    singleuser_extra_annotations = Dict(
+        {},
+        config=True,
+        help="""
+        Extra kubernetes annotations to set on the spawned single-user pods.
+
+        The keys and values specified here are added as annotations on the spawned single-user
+        kubernetes pods. The keys and values must both be strings.
+
+        See https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/ for more
+        info on what annotations are and why you might want to use them!
+
+        {username} and {userid} are expanded to the escaped, dns-label safe
+        username & integer user id respectively, wherever they are used.
+        """
+    )
+
     singleuser_image_spec = Unicode(
         'jupyterhub/singleuser:latest',
         config=True,
@@ -742,6 +759,7 @@ class KubeSpawner(Spawner):
             real_cmd = None
 
         labels = self._build_pod_labels(self._expand_all(self.singleuser_extra_labels))
+        annotations = self._expand_all(self.singleuser_extra_annotations)
 
         return make_pod(
             name=self.pod_name,
@@ -759,6 +777,7 @@ class KubeSpawner(Spawner):
             volume_mounts=self._expand_all(self.volume_mounts),
             working_dir=self.singleuser_working_dir,
             labels=labels,
+            annotations=annotations,
             cpu_limit=self.cpu_limit,
             cpu_guarantee=self.cpu_guarantee,
             mem_limit=self.mem_limit,

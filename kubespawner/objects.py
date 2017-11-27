@@ -36,6 +36,7 @@ def make_pod(
     volumes=[],
     volume_mounts=[],
     labels={},
+    annotations={},
     cpu_limit=None,
     cpu_guarantee=None,
     mem_limit=None,
@@ -95,6 +96,8 @@ def make_pod(
         String specifying the working directory for the notebook container
       - labels:
         Labels to add to the spawned pod.
+      - annotations:
+        Annotations to add to the spawned pod.
       - cpu_limit:
         Float specifying the max number of CPU cores the user's pod is
         allowed to use.
@@ -129,6 +132,8 @@ def make_pod(
     pod.metadata = V1ObjectMeta()
     pod.metadata.name = name
     pod.metadata.labels = labels.copy()
+    if annotations:
+        pod.metadata.annotations = annotations.copy()
 
     pod.spec = V1PodSpec()
 
