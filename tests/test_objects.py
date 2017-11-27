@@ -90,6 +90,49 @@ def test_make_labeled_pod():
         "apiVersion": "v1"
     }
 
+def test_make_annotated_pod():
+    """
+    Test specification of the simplest possible pod specification with annotations
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        annotations={"test": "true"}
+    )) == {
+        "metadata": {
+            "name": "test",
+            "annotations": {"test": "true"},
+            "labels": {},
+        },
+        "spec": {
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
 def test_make_pod_with_image_pull_secrets():
     """
     Test specification of the simplest possible pod specification
