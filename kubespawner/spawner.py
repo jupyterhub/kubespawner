@@ -932,7 +932,7 @@ class KubeSpawner(Spawner):
         retry_times = 4
         pod = yield self.get_pod_manifest()
         if self.augment_pod:
-            pod = self.augment_pod(self, pod)
+            pod = yield gen.maybe_future(self.augment_pod(self, pod))
         for i in range(retry_times):
             try:
                 yield self.asynchronize(
