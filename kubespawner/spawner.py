@@ -19,7 +19,7 @@ from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
 from traitlets.config import SingletonConfigurable
-from traitlets import Type, Unicode, List, Integer, Union, Dict, Bool, Any
+from traitlets import Type, Unicode, List, Integer, Union, Dict, Bool, Any, Callable
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
 from kubernetes.client.rest import ApiException
@@ -435,6 +435,28 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         Whether to run the pod with a privileged security context.
+        """
+    )
+
+    augment_pod = Callable(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        Callable to augment the Pod object before launching.
+
+        Expects a callable that takes two parameters:
+
+           1. The spawner object that is doing the spawning
+           2. The Pod object that is to be launched
+
+        You should modify the Pod object and return it.
+
+        This can be a coroutine if necessary. When set to none, no augmenting is done.
+
+        This is very useful if you want to modify the pod being launched programattically.
+        Note that the spawner object can change between versions of KubeSpawner and JupyterHub,
+        so be careful relying on this!
         """
     )
 
@@ -909,6 +931,8 @@ class KubeSpawner(Spawner):
         # FIXME: Have better / cleaner retry logic!
         retry_times = 4
         pod = yield self.get_pod_manifest()
+        if self.augment_pod:
+            pod = self.augment_pod(self, pod)
         for i in range(retry_times):
             try:
                 yield self.asynchronize(
