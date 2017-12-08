@@ -438,7 +438,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    augment_pod = Callable(
+    modify_pod_hook = Callable(
         None,
         allow_none=True,
         config=True,
@@ -931,8 +931,8 @@ class KubeSpawner(Spawner):
         # FIXME: Have better / cleaner retry logic!
         retry_times = 4
         pod = yield self.get_pod_manifest()
-        if self.augment_pod:
-            pod = yield gen.maybe_future(self.augment_pod(self, pod))
+        if self.modify_pod_hook:
+            pod = yield gen.maybe_future(self.modify_pod_hook(self, pod))
         for i in range(retry_times):
             try:
                 yield self.asynchronize(
