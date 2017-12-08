@@ -19,7 +19,7 @@ from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
 from traitlets.config import SingletonConfigurable
-from traitlets import Type, Unicode, List, Integer, Union, Dict, Bool, Any, Callable
+from traitlets import Type, Unicode, List, Integer, Union, Dict, Bool, Any
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
 from kubernetes.client.rest import ApiException
@@ -27,7 +27,7 @@ from kubernetes import client
 import escapism
 
 from kubespawner.traitlets import Callable
-from kubespawner.utils import request_maker, k8s_url
+from kubespawner.utils import request_maker, k8s_url, Callable
 from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import PodReflector
 
