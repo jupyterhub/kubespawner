@@ -454,7 +454,7 @@ class KubeSpawner(Spawner):
 
         This can be a coroutine if necessary. When set to none, no augmenting is done.
 
-        This is very useful if you want to modify the pod being launched programattically.
+        This is very useful if you want to modify the pod being launched dynamically.
         Note that the spawner object can change between versions of KubeSpawner and JupyterHub,
         so be careful relying on this!
         """
