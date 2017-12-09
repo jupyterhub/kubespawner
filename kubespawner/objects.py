@@ -191,7 +191,7 @@ def make_pod(
         hack_volumes = []
         hack_volume_mounts = []
 
-        pod.service_account_name = service_account
+        pod.spec.service_account_name = service_account
 
     if run_privileged:
         container_security_context = V1SecurityContext()
