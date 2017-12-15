@@ -27,7 +27,7 @@ from kubernetes import client
 import escapism
 
 from kubespawner.traitlets import Callable
-from kubespawner.utils import request_maker, k8s_url
+from kubespawner.utils import request_maker, k8s_url, Callable
 from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import PodReflector
 
@@ -435,6 +435,28 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         Whether to run the pod with a privileged security context.
+        """
+    )
+
+    modify_pod_hook = Callable(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        Callable to augment the Pod object before launching.
+
+        Expects a callable that takes two parameters:
+
+           1. The spawner object that is doing the spawning
+           2. The Pod object that is to be launched
+
+        You should modify the Pod object and return it.
+
+        This can be a coroutine if necessary. When set to none, no augmenting is done.
+
+        This is very useful if you want to modify the pod being launched dynamically.
+        Note that the spawner object can change between versions of KubeSpawner and JupyterHub,
+        so be careful relying on this!
         """
     )
 
@@ -909,6 +931,8 @@ class KubeSpawner(Spawner):
         # FIXME: Have better / cleaner retry logic!
         retry_times = 4
         pod = yield self.get_pod_manifest()
+        if self.modify_pod_hook:
+            pod = yield gen.maybe_future(self.modify_pod_hook(self, pod))
         for i in range(retry_times):
             try:
                 yield self.asynchronize(
