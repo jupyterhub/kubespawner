@@ -566,7 +566,7 @@ class KubeSpawner(Spawner):
 
         This will determine what type of volume the pvc will request to use. If one exists
         that matches the criteria of the StorageClass, the pvc will mount to that. Otherwise,
-        b/c it has a storage class, k8s will dynamicallly spawn a pv for the pvc to bind to
+        b/c it has a storage class, k8s will dynamically spawn a pv for the pvc to bind to
         and a machine in the cluster for the pv to bind to.
 
         See http://kubernetes.io/docs/user-guide/persistent-volumes/#storageclasses for
