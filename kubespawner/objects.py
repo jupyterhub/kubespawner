@@ -1,24 +1,24 @@
 """
 Helper methods for generating k8s API objects.
 """
+import json
+from urllib.parse import urlparse
+import escapism
+import string
 
-from kubernetes.client.models.v1_pod import V1Pod
-from kubernetes.client.models.v1_pod_spec import V1PodSpec
-from kubernetes.client.models.v1_object_meta import V1ObjectMeta
-from kubernetes.client.models.v1_pod_security_context import V1PodSecurityContext
-from kubernetes.client.models.v1_local_object_reference import V1LocalObjectReference
-from kubernetes.client.models.v1_volume import V1Volume
-from kubernetes.client.models.v1_volume_mount import V1VolumeMount
-
-from kubernetes.client.models.v1_container import V1Container
-from kubernetes.client.models.v1_security_context import V1SecurityContext
-from kubernetes.client.models.v1_container_port import V1ContainerPort
-from kubernetes.client.models.v1_env_var import V1EnvVar
-from kubernetes.client.models.v1_resource_requirements import V1ResourceRequirements
-
-from kubernetes.client.models.v1_persistent_volume_claim import V1PersistentVolumeClaim
-from kubernetes.client.models.v1_persistent_volume_claim_spec import V1PersistentVolumeClaimSpec
-
+from kubernetes.client.models import (
+    V1Pod, V1PodSpec, V1PodSecurityContext,
+    V1ObjectMeta,
+    V1LocalObjectReference,
+    V1Volume, V1VolumeMount,
+    V1Container, V1ContainerPort, V1SecurityContext, V1EnvVar, V1ResourceRequirements,
+    V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec,
+    V1Endpoints, V1EndpointSubset, V1EndpointAddress, V1EndpointPort,
+    V1Service, V1ServiceSpec, V1ServicePort,
+    V1beta1Ingress, V1beta1IngressSpec, V1beta1IngressRule,
+    V1beta1HTTPIngressRuleValue, V1beta1HTTPIngressPath,
+    V1beta1IngressBackend
+)
 
 def make_pod(
     name,
@@ -283,3 +283,82 @@ def make_pvc(
     pvc.spec.resources.requests = {"storage": storage}
 
     return pvc
+
+def make_ingress(
+        name,
+        routespec,
+        target,
+        data
+):
+    """
+    Returns an ingress, service, endpoint object that'll work for this service
+    """
+    meta = V1ObjectMeta(
+        name=name,
+        annotations={
+            'hub.jupyter.org/proxy-data': json.dumps(data),
+            'hub.jupyter.org/proxy-routespec': routespec,
+            'hub.jupyter.org/proxy-target': target
+        },
+        labels={
+            'heritage': 'jupyterhub',
+            'component': 'singleuser-server',
+            'hub.jupyter.org/proxy-route': 'true'
+        }
+    )
+
+    if routespec.startswith('/'):
+        host = None
+        path = routespec
+    else:
+        host, path = routespec.split('/', 1)
+
+    target_parts = urlparse(target)
+
+    target_ip = target_parts.hostname
+    target_port = target_parts.port
+
+    # Make endpoint object
+    endpoint = V1Endpoints(
+        kind='Endpoints',
+        metadata=meta,
+        subsets=[
+            V1EndpointSubset(
+                addresses=[V1EndpointAddress(ip=target_ip)],
+                ports=[V1EndpointPort(port=target_port)]
+            )
+        ]
+    )
+
+    # Make service object
+    service = V1Service(
+        kind='Service',
+        metadata=meta,
+        spec=V1ServiceSpec(
+            ports=[V1ServicePort(port=target_port, target_port=target_port)]
+        )
+    )
+
+    # Make Ingress object
+    ingress = V1beta1Ingress(
+        kind='Ingress',
+        metadata=meta,
+        spec=V1beta1IngressSpec(
+            rules=[V1beta1IngressRule(
+                host=host,
+                http=V1beta1HTTPIngressRuleValue(
+                    paths=[
+                        V1beta1HTTPIngressPath(
+                            path=path,
+                            backend=V1beta1IngressBackend(
+                                service_name=name,
+                                service_port=target_port
+                            )
+                        )
+                    ]
+                )
+            )]
+        )
+    )
+
+    return endpoint, service, ingress

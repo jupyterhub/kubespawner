@@ -11,45 +11,61 @@ import string
 import threading
 import sys
 from urllib.parse import urlparse, urlunparse
-from concurrent.futures import ThreadPoolExecutor
+import json
 import multiprocessing
-
+from concurrent.futures import ThreadPoolExecutor
 
 from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
-from traitlets.config import SingletonConfigurable
 from traitlets import Type, Unicode, List, Integer, Union, Dict, Bool, Any
 from jupyterhub.spawner import Spawner
+from jupyterhub.utils import exponential_backoff
 from jupyterhub.traitlets import Command
 from kubernetes.client.rest import ApiException
 from kubernetes import client
 import escapism
 
 from kubespawner.traitlets import Callable
-from kubespawner.utils import request_maker, k8s_url, Callable
+from kubespawner.utils import Callable
 from kubespawner.objects import make_pod, make_pvc
-from kubespawner.reflector import PodReflector
+from kubespawner.reflector import NamespacedResourceReflector
 
 
-class SingletonExecutor(SingletonConfigurable, ThreadPoolExecutor):
-    """
-    Simple wrapper to ThreadPoolExecutor that is also a singleton.
+class PodReflector(NamespacedResourceReflector):
+    kind = 'pods'
 
-    We want one ThreadPool that is used by all the spawners, rather
-    than one ThreadPool per spawner!
-    """
-    pass
+    labels = {
+        'heritage': 'jupyterhub',
+        'component': 'singleuser-server',
+    }
+
+    list_method_name = 'list_namespaced_pod'
+
+    @property
+    def pods(self):
+        return self.resources
 
 class KubeSpawner(Spawner):
     """
     Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
     """
+
+    # We want to have one threadpool executor that is shared across all spawner objects
+    # This is initialized by the first spawner that is created
+    executor = None
+
+    # We also want only one pod reflector per application
+    pod_reflector = None
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # By now, all the traitlets have been set, so we can use them to compute
         # other attributes
-        self.executor = SingletonExecutor.instance(max_workers=self.k8s_api_threadpool_workers)
+        if self.__class__.executor is None:
+            self.__class__.executor = ThreadPoolExecutor(
+                max_workers=self.k8s_api_threadpool_workers
+            )
 
         main_loop = IOLoop.current()
         def on_reflector_failure():
@@ -58,8 +74,11 @@ class KubeSpawner(Spawner):
 
         # This will start watching in __init__, so it'll start the first
         # time any spawner object is created. Not ideal but works!
-        self.pod_reflector = PodReflector.instance(parent=self, namespace=self.namespace,
-            on_failure=on_reflector_failure)
+        if self.__class__.pod_reflector is None:
+            self.__class__.pod_reflector = PodReflector(
+                parent=self, namespace=self.namespace,
+                on_failure=on_reflector_failure
+            )
 
         self.api = client.CoreV1Api()
 
@@ -429,7 +448,7 @@ class KubeSpawner(Spawner):
         for more details.
         """
     )
-    
+
     singleuser_privileged = Bool(
         False,
         config=True,
@@ -857,10 +876,13 @@ class KubeSpawner(Spawner):
         pod must be a dictionary representing a Pod kubernetes API object.
         """
         # FIXME: Validate if this is really the best way
-        is_running = pod.status.phase == 'Running' and \
-                     pod.status.pod_ip is not None and \
-                     pod.metadata.deletion_timestamp is None and \
-                     all([cs.ready for cs in pod.status.container_statuses])
+        is_running = (
+            pod is not None and
+            pod.status.phase == 'Running' and
+            pod.status.pod_ip is not None and
+            pod.metadata.deletion_timestamp is None and
+            all([cs.ready for cs in pod.status.container_statuses])
+        )
         return is_running
 
     def get_state(self):
@@ -954,11 +976,16 @@ class KubeSpawner(Spawner):
             raise Exception(
                 'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
 
-        while True:
-            pod = self.pod_reflector.pods.get(self.pod_name, None)
-            if pod is not None and self.is_pod_running(pod):
-                break
-            yield gen.sleep(1)
+        # Note: The self.start_timeout here is kinda superfluous, since
+        # there is already a timeout on how long start can run for in
+        # jupyterhub itself.
+        yield exponential_backoff(
+            lambda: self.is_pod_running(self.pod_reflector.pods.get(self.pod_name, None)),
+            'pod/%s did not start in %s seconds!' % (self.pod_name, self.start_timeout),
+            timeout=self.start_timeout
+        )
+
+        pod = self.pod_reflector.pods[self.pod_name]
         return (pod.status.pod_ip, self.port)
 
     @gen.coroutine
