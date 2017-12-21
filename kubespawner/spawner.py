@@ -27,6 +27,7 @@ from kubernetes import client
 import escapism
 
 from kubespawner.traitlets import Callable
+from kubespawner.utils import Callable
 from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import NamespacedResourceReflector
 
@@ -297,6 +298,23 @@ class KubeSpawner(Spawner):
         """
     )
 
+    singleuser_extra_annotations = Dict(
+        {},
+        config=True,
+        help="""
+        Extra kubernetes annotations to set on the spawned single-user pods.
+
+        The keys and values specified here are added as annotations on the spawned single-user
+        kubernetes pods. The keys and values must both be strings.
+
+        See https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/ for more
+        info on what annotations are and why you might want to use them!
+
+        {username} and {userid} are expanded to the escaped, dns-label safe
+        username & integer user id respectively, wherever they are used.
+        """
+    )
+
     singleuser_image_spec = Unicode(
         'jupyterhub/singleuser:latest',
         config=True,
@@ -430,12 +448,34 @@ class KubeSpawner(Spawner):
         for more details.
         """
     )
-    
+
     singleuser_privileged = Bool(
         False,
         config=True,
         help="""
         Whether to run the pod with a privileged security context.
+        """
+    )
+
+    modify_pod_hook = Callable(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        Callable to augment the Pod object before launching.
+
+        Expects a callable that takes two parameters:
+
+           1. The spawner object that is doing the spawning
+           2. The Pod object that is to be launched
+
+        You should modify the Pod object and return it.
+
+        This can be a coroutine if necessary. When set to none, no augmenting is done.
+
+        This is very useful if you want to modify the pod being launched dynamically.
+        Note that the spawner object can change between versions of KubeSpawner and JupyterHub,
+        so be careful relying on this!
         """
     )
 
@@ -545,7 +585,7 @@ class KubeSpawner(Spawner):
 
         This will determine what type of volume the pvc will request to use. If one exists
         that matches the criteria of the StorageClass, the pvc will mount to that. Otherwise,
-        b/c it has a storage class, k8s will dynamicallly spawn a pv for the pvc to bind to
+        b/c it has a storage class, k8s will dynamically spawn a pv for the pvc to bind to
         and a machine in the cluster for the pv to bind to.
 
         See http://kubernetes.io/docs/user-guide/persistent-volumes/#storageclasses for
@@ -603,7 +643,7 @@ class KubeSpawner(Spawner):
 
         This list will be directly added under `initContainers` in the kubernetes pod spec,
         so you should use the same structure. Each item in the list is container configuration
-        which follows spec at https://kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
+        which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
 
         One usage is disabling access to metadata service from single-user notebook server with configuration below:
         initContainers::
@@ -620,6 +660,91 @@ class KubeSpawner(Spawner):
         info on what init containers are and why you might want to use them!
 
         To user this feature, Kubernetes version must greater than 1.6.
+        """
+    )
+
+    singleuser_extra_container_config = Dict(
+        None,
+        config=True,
+        help="""
+        Extra configuration (e.g. envFrom) for notebook container which is not covered by other attributes.
+
+        This dict will be directly merge into `container` of notebook server,
+        so you should use the same structure. Each item in the dict is field of container configuration
+        which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
+
+        One usage is set envFrom on notebook container with configuration below:
+        envFrom: [
+            {
+                configMapRef: {
+                    name: special-config
+                }
+            }
+        ]
+
+        The key could be either camelcase word (used by Kubernetes yaml, e.g. envFrom)
+        or underscore-separated word (used by kubernetes python client, e.g. env_from).
+        """
+    )
+
+    singleuser_extra_pod_config = Dict(
+        None,
+        config=True,
+        help="""
+        Extra configuration (e.g. tolerations) for the pod which is not covered by other attributes.
+
+        This dict will be directly merge into pod,so you should use the same structure.
+        Each item in the dict is field of pod configuration
+        which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#podspec-v1-core.
+
+        One usage is set dnsPolicy with configuration below:
+        dnsPolicy: ClusterFirstWithHostNet
+
+        The key could be either camelcase word (used by Kubernetes yaml, e.g. dnsPolicy)
+        or underscore-separated word (used by kubernetes python client, e.g. dns_policy).
+        """
+    )
+
+    singleuser_extra_containers = List(
+        None,
+        config=True,
+        help="""
+        List of containers belonging to the pod which besides to the container generated for notebook server.
+
+        This list will be directly appended under `containers` in the kubernetes pod spec,
+        so you should use the same structure. Each item in the list is container configuration
+        which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
+
+        One usage is setting crontab in a container to clean sensitive data with configuration below:
+        [
+            {
+                'name': 'crontab',
+                'image': 'supercronic',
+                'command': ['/usr/local/bin/supercronic', '/etc/crontab']
+            }
+        ]
+        """
+    )
+
+    extra_resource_guarantees = Dict(
+        {},
+        config=True,
+        help="""
+        The dictionary used to request arbitrary resources.
+        Default is None and means no additional resources are requested.
+        For example, to request 3 Nvidia GPUs
+            `{"nvidia.com/gpu": "3"}`
+        """
+    )
+
+    extra_resource_limits = Dict(
+        {},
+        config=True,
+        help="""
+        The dictionary used to limit arbitrary resources.
+        Default is None and means no additional resources are limited.
+        For example, to add a limit of 3 Nvidia GPUs
+            `{"nvidia.com/gpu": "3"}`
         """
     )
 
@@ -652,6 +777,30 @@ class KubeSpawner(Spawner):
         else:
             return src
 
+    def _build_common_labels(self, extra_labels):
+        # Default set of labels, picked up from
+        # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
+        labels = {
+            'heritage': 'jupyterhub',
+            'app': 'jupyterhub',
+            'hub.jupyter.org/username': escapism.escape(self.user.name)
+        }
+
+        if self.name:
+            # FIXME: Make sure this is dns safe?
+            labels['hub.jupyter.org/servername'] = self.name
+        labels.update(extra_labels)
+        return labels
+
+    def _build_pod_labels(self, extra_labels):
+        labels = {
+            'component': 'singleuser-server'
+        }
+        labels.update(extra_labels)
+        # Make sure pod_reflector.labels in final label list
+        labels.update(self.pod_reflector.labels)
+        return self._build_common_labels(labels)
+
     @gen.coroutine
     def get_pod_manifest(self):
         """
@@ -672,28 +821,16 @@ class KubeSpawner(Spawner):
         else:
             real_cmd = None
 
-        # Default set of labels, picked up from
-        # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
-        labels = {
-            'heritage': 'jupyterhub',
-            'component': 'singleuser-server',
-            'app': 'jupyterhub',
-            'hub.jupyter.org/username': escapism.escape(self.user.name)
-        }
-
-        if self.name:
-            # FIXME: Make sure this is dns safe?
-            labels['hub.jupyter.org/servername'] = self.name
-
-        labels.update(self._expand_all(self.singleuser_extra_labels))
+        labels = self._build_pod_labels(self._expand_all(self.singleuser_extra_labels))
+        annotations = self._expand_all(self.singleuser_extra_annotations)
 
         return make_pod(
             name=self.pod_name,
+            cmd=real_cmd,
+            port=self.port,
             image_spec=self.singleuser_image_spec,
             image_pull_policy=self.singleuser_image_pull_policy,
             image_pull_secret=self.singleuser_image_pull_secrets,
-            port=self.port,
-            cmd=real_cmd,
             node_selector=self.singleuser_node_selector,
             run_as_uid=singleuser_uid,
             fs_gid=singleuser_fs_gid,
@@ -703,33 +840,27 @@ class KubeSpawner(Spawner):
             volume_mounts=self._expand_all(self.volume_mounts),
             working_dir=self.singleuser_working_dir,
             labels=labels,
+            annotations=annotations,
             cpu_limit=self.cpu_limit,
             cpu_guarantee=self.cpu_guarantee,
             mem_limit=self.mem_limit,
             mem_guarantee=self.mem_guarantee,
+            extra_resource_limits=self.extra_resource_limits,
+            extra_resource_guarantees=self.extra_resource_guarantees,
             lifecycle_hooks=self.singleuser_lifecycle_hooks,
             init_containers=self.singleuser_init_containers,
-            service_account=self.singleuser_service_account
+            service_account=self.singleuser_service_account,
+            extra_container_config=self.singleuser_extra_container_config,
+            extra_pod_config=self.singleuser_extra_pod_config,
+            extra_containers=self.singleuser_extra_containers
         )
 
     def get_pvc_manifest(self):
         """
         Make a pvc manifest that will spawn current user's pvc.
         """
-        # Default set of labels, picked up from
-        # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
-        labels = {
-            'heritage': 'jupyterhub',
-            'app': 'jupyterhub',
-            'hub.jupyter.org/username': escapism.escape(self.user.name)
-        }
+        labels = self._build_common_labels(self._expand_all(self.user_storage_extra_labels))
 
-        # check if a named-server servername has been set and if so, extend pvc labels.
-        if self.name:
-            # FIXME: make sure this is DNS safe?
-            labels['hub.jupyter.org/servername'] = self.name
-
-        labels.update(self._expand_all(self.user_storage_extra_labels))
         return make_pvc(
             name=self.pvc_name,
             storage_class=self.user_storage_class,
@@ -791,7 +922,7 @@ class KubeSpawner(Spawner):
         JupyterHub expects.
         """
         data = self.pod_reflector.pods.get(self.pod_name, None)
-        if data is not None and self.is_pod_running(data):
+        if data is not None:
             return None
 
         return 1
@@ -822,6 +953,8 @@ class KubeSpawner(Spawner):
         # FIXME: Have better / cleaner retry logic!
         retry_times = 4
         pod = yield self.get_pod_manifest()
+        if self.modify_pod_hook:
+            pod = yield gen.maybe_future(self.modify_pod_hook(self, pod))
         for i in range(retry_times):
             try:
                 yield self.asynchronize(

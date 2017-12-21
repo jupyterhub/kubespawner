@@ -22,27 +22,33 @@ from kubernetes.client.models import (
 
 def make_pod(
     name,
+    cmd,
+    port,
     image_spec,
     image_pull_policy,
-    image_pull_secret,
-    port,
-    cmd,
-    node_selector,
-    run_as_uid,
-    fs_gid,
-    run_privileged,
-    env,
-    working_dir,
-    volumes,
-    volume_mounts,
-    labels,
-    cpu_limit,
-    cpu_guarantee,
-    mem_limit,
-    mem_guarantee,
-    lifecycle_hooks,
-    init_containers,
-    service_account,
+    image_pull_secret=None,
+    node_selector=None,
+    run_as_uid=None,
+    fs_gid=None,
+    run_privileged=False,
+    env={},
+    working_dir=None,
+    volumes=[],
+    volume_mounts=[],
+    labels={},
+    annotations={},
+    cpu_limit=None,
+    cpu_guarantee=None,
+    mem_limit=None,
+    mem_guarantee=None,
+    extra_resource_limits=None,
+    extra_resource_guarantees=None,
+    lifecycle_hooks=None,
+    init_containers=None,
+    service_account=None,
+    extra_container_config=None,
+    extra_pod_config=None,
+    extra_containers=None
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -92,6 +98,8 @@ def make_pod(
         String specifying the working directory for the notebook container
       - labels:
         Labels to add to the spawned pod.
+      - annotations:
+        Annotations to add to the spawned pod.
       - cpu_limit:
         Float specifying the max number of CPU cores the user's pod is
         allowed to use.
@@ -111,6 +119,12 @@ def make_pod(
         List of initialization containers belonging to the pod.
       - service_account:
         Service account to mount on the pod. None disables mounting
+      - extra_container_config:
+        Extra configuration (e.g. envFrom) for notebook container which is not covered by parameters above.
+      - extra_pod_config:
+        Extra configuration (e.g. tolerations) for pod which is not covered by parameters above.
+      - extra_containers:
+        Extra containers besides notebook container. Used for some housekeeping jobs (e.g. crontab).
     """
 
     pod = V1Pod()
@@ -120,6 +134,8 @@ def make_pod(
     pod.metadata = V1ObjectMeta()
     pod.metadata.name = name
     pod.metadata.labels = labels.copy()
+    if annotations:
+        pod.metadata.annotations = annotations.copy()
 
     pod.spec = V1PodSpec()
 
@@ -175,7 +191,7 @@ def make_pod(
         hack_volumes = []
         hack_volume_mounts = []
 
-        pod.service_account_name = service_account
+        pod.spec.service_account_name = service_account
 
     if run_privileged:
         container_security_context = V1SecurityContext()
@@ -188,18 +204,45 @@ def make_pod(
         notebook_container.resources.requests['cpu'] = cpu_guarantee
     if mem_guarantee:
         notebook_container.resources.requests['memory'] = mem_guarantee
+    if extra_resource_guarantees:
+        for k in extra_resource_guarantees:
+            notebook_container.resources.requests[k] = extra_resource_guarantees[k]
 
     notebook_container.resources.limits = {}
     if cpu_limit:
         notebook_container.resources.limits['cpu'] = cpu_limit
     if mem_limit:
         notebook_container.resources.limits['memory'] = mem_limit
+    if extra_resource_limits:
+        for k in extra_resource_limits:
+            notebook_container.resources.limits[k] = extra_resource_limits[k]
+
     notebook_container.volume_mounts = volume_mounts + hack_volume_mounts
     pod.spec.containers.append(notebook_container)
+
+    if extra_container_config:
+        for key, value in extra_container_config.items():
+            setattr(notebook_container, _map_attribute(notebook_container.attribute_map, key), value)
+    if extra_pod_config:
+        for key, value in extra_pod_config.items():
+            setattr(pod.spec, _map_attribute(pod.spec.attribute_map, key), value)
+    if extra_containers:
+        pod.spec.containers.extend(extra_containers)
 
     pod.spec.init_containers = init_containers
     pod.spec.volumes = volumes + hack_volumes
     return pod
+
+
+def _map_attribute(attribute_map, attribute):
+    if attribute in attribute_map:
+        return attribute
+
+    for key, value in attribute_map.items():
+        if value == attribute:
+            return key
+    else:
+        raise ValueError('Attribute must be one of {}'.format(attribute_map.values()))
 
 
 def make_pvc(

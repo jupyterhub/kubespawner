@@ -14,26 +14,9 @@ def test_make_simplest_pod():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
-        env={},
-        volumes=[],
-        volume_mounts=[],
         cmd=['jupyterhub-singleuser'],
-        working_dir=None,
         port=8888,
-        cpu_limit=None,
-        cpu_guarantee=None,
-        mem_limit=None,
-        mem_guarantee=None,
-        node_selector=None,
-        run_as_uid=None,
-        fs_gid=None,
-        run_privileged=False,
-        image_pull_policy='IfNotPresent',
-        image_pull_secret=None,
-        labels={},
-        lifecycle_hooks=None,
-        init_containers=None,
-        service_account=None
+        image_pull_policy='IfNotPresent'
     )) == {
         "metadata": {
             "name": "test",
@@ -72,30 +55,57 @@ def test_make_labeled_pod():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
-        env={},
-        volumes=[],
-        volume_mounts=[],
         cmd=['jupyterhub-singleuser'],
-        working_dir=None,
         port=8888,
-        cpu_limit=None,
-        cpu_guarantee=None,
-        mem_limit=None,
-        mem_guarantee=None,
-        node_selector=None,
-        run_as_uid=None,
-        fs_gid=None,
-        run_privileged=False,
         image_pull_policy='IfNotPresent',
-        image_pull_secret=None,
-        labels={"test": "true"},
-        lifecycle_hooks=None,
-        init_containers=None,
-        service_account=None
+        labels={"test": "true"}
     )) == {
         "metadata": {
             "name": "test",
             "labels": {"test": "true"},
+        },
+        "spec": {
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+def test_make_annotated_pod():
+    """
+    Test specification of the simplest possible pod specification with annotations
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        annotations={"test": "true"}
+    )) == {
+        "metadata": {
+            "name": "test",
+            "annotations": {"test": "true"},
+            "labels": {},
         },
         "spec": {
             "securityContext": {},
@@ -130,26 +140,10 @@ def test_make_pod_with_image_pull_secrets():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
-        env={},
-        volumes=[],
-        volume_mounts=[],
         cmd=['jupyterhub-singleuser'],
-        working_dir=None,
         port=8888,
-        cpu_limit=None,
-        cpu_guarantee=None,
-        mem_limit=None,
-        mem_guarantee=None,
-        node_selector=None,
-        run_as_uid=None,
-        fs_gid=None,
-        run_privileged=False,
         image_pull_policy='IfNotPresent',
-        image_pull_secret='super-sekrit',
-        labels={},
-        lifecycle_hooks=None,
-        init_containers=None,
-        service_account=None
+        image_pull_secret='super-sekrit'
     )) == {
         "metadata": {
             "name": "test",
@@ -192,26 +186,11 @@ def test_set_pod_uid_fs_gid():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
-        env={},
-        volumes=[],
-        volume_mounts=[],
         cmd=['jupyterhub-singleuser'],
-        working_dir=None,
         port=8888,
-        cpu_limit=None,
-        cpu_guarantee=None,
-        mem_limit=None,
-        mem_guarantee=None,
-        node_selector=None,
         run_as_uid=1000,
         fs_gid=1000,
-        run_privileged=False,
-        image_pull_policy='IfNotPresent',
-        image_pull_secret=None,
-        labels={},
-        lifecycle_hooks=None,
-        init_containers=None,
-        service_account=None
+        image_pull_policy='IfNotPresent'
     )) == {
         "metadata": {
             "name": "test",
@@ -253,26 +232,10 @@ def test_run_privileged_container():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
-        env={},
-        volumes=[],
-        volume_mounts=[],
         cmd=['jupyterhub-singleuser'],
-        working_dir=None,
         port=8888,
-        cpu_limit=None,
-        cpu_guarantee=None,
-        mem_limit=None,
-        mem_guarantee=None,
-        node_selector=None,
-        run_as_uid=None,
-        fs_gid=None,
         run_privileged=True,
-        image_pull_policy='IfNotPresent',
-        image_pull_secret=None,
-        labels={},
-        lifecycle_hooks=None,
-        init_containers=None,
-        service_account=None
+        image_pull_policy='IfNotPresent'
     )) == {
         "metadata": {
             "name": "test",
@@ -314,26 +277,15 @@ def test_make_pod_resources_all():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
-        env={},
-        volumes=[],
-        volume_mounts=[],
         cpu_limit=2,
         cpu_guarantee=1,
         cmd=['jupyterhub-singleuser'],
-        working_dir=None,
         port=8888,
         mem_limit='1Gi',
         mem_guarantee='512Mi',
         image_pull_policy='IfNotPresent',
         image_pull_secret="myregistrykey",
-        node_selector={"disk": "ssd"},
-        run_as_uid=None,
-        fs_gid=None,
-        run_privileged=False,
-        labels={},
-        lifecycle_hooks=None,
-        init_containers=None,
-        service_account=None
+        node_selector={"disk": "ssd"}
     )) == {
         "metadata": {
             "name": "test",
@@ -384,25 +336,9 @@ def test_make_pod_with_env():
         env={
             'TEST_KEY': 'TEST_VALUE'
         },
-        volumes=[],
-        volume_mounts=[],
         cmd=['jupyterhub-singleuser'],
-        working_dir=None,
         port=8888,
-        cpu_limit=None,
-        cpu_guarantee=None,
-        mem_limit=None,
-        mem_guarantee=None,
-        image_pull_policy='IfNotPresent',
-        image_pull_secret=None,
-        node_selector=None,
-        run_as_uid=None,
-        fs_gid=None,
-        run_privileged=False,
-        labels={},
-        lifecycle_hooks=None,
-        init_containers=None,
-        service_account=None
+        image_pull_policy='IfNotPresent'
     )) == {
         "metadata": {
             "name": "test",
@@ -443,32 +379,16 @@ def test_make_pod_with_lifecycle():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
-        env={},
-        volumes=[],
-        volume_mounts=[],
         cmd=['jupyterhub-singleuser'],
-        working_dir=None,
         port=8888,
-        cpu_limit=None,
-        cpu_guarantee=None,
-        mem_limit=None,
-        mem_guarantee=None,
         image_pull_policy='IfNotPresent',
-        image_pull_secret=None,
-        run_as_uid=None,
-        fs_gid=None,
-        run_privileged=False,
-        labels={},
-        node_selector={},
         lifecycle_hooks={
             'preStop': {
                 'exec': {
                     'command': ['/bin/sh', 'test']
                 }
             }
-        },
-        init_containers=None,
-        service_account=None
+        }
     )) == {
         "metadata": {
             "name": "test",
@@ -517,24 +437,9 @@ def test_make_pod_with_init_containers():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image_spec='jupyter/singleuser:latest',
-        env={},
-        volumes=[],
-        volume_mounts=[],
         cmd=['jupyterhub-singleuser'],
-        working_dir=None,
         port=8888,
-        cpu_limit=None,
-        cpu_guarantee=None,
-        mem_limit=None,
-        mem_guarantee=None,
         image_pull_policy='IfNotPresent',
-        image_pull_secret=None,
-        run_as_uid=None,
-        fs_gid=None,
-        run_privileged=False,
-        labels={},
-        lifecycle_hooks=None,
-        node_selector={},
         init_containers=[
             {
                 'name': 'init-myservice',
@@ -546,8 +451,7 @@ def test_make_pod_with_init_containers():
                 'image': 'busybox',
                 'command': ['sh', '-c', 'until nslookup mydb; do echo waiting for mydb; sleep 2; done;']
             }
-        ],
-        service_account=None
+        ]
     )) == {
         "metadata": {
             "name": "test",
@@ -594,6 +498,241 @@ def test_make_pod_with_init_containers():
         "apiVersion": "v1"
     }
 
+
+def test_make_pod_with_extra_container_config():
+    """
+    Test specification of a pod with initContainers
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        extra_container_config={
+            'envFrom': [
+                {
+                    'configMapRef': {
+                        'name': 'special-config'
+                    }
+                }
+            ]
+        }
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+        },
+        "spec": {
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    "resources": {
+                        "limits": {
+                        },
+                        "requests": {
+                        }
+                    },
+                    'envFrom': [
+                        {
+                            'configMapRef': {
+                                'name': 'special-config'
+                            }
+                        }
+                    ]
+                }
+            ],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
+def test_make_pod_with_extra_pod_config():
+    """
+    Test specification of a pod with initContainers
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        extra_pod_config={
+            'tolerations': [
+                {
+                    'key': 'dedicated',
+                    'operator': 'Equal',
+                    'value': 'notebook'
+                }
+            ]
+        }
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+        },
+        "spec": {
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    "resources": {
+                        "limits": {
+                        },
+                        "requests": {
+                        }
+                    }
+                }
+            ],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'tolerations': [
+                {
+                    'key': 'dedicated',
+                    'operator': 'Equal',
+                    'value': 'notebook'
+                }
+            ]
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
+def test_make_pod_with_extra_containers():
+    """
+    Test specification of a pod with initContainers
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        extra_containers=[
+            {
+                'name': 'crontab',
+                'image': 'supercronic',
+                'command': ['/usr/local/bin/supercronic', '/etc/crontab']
+            }
+        ]
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+        },
+        "spec": {
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    "resources": {
+                        "limits": {
+                        },
+                        "requests": {
+                        }
+                    },
+                },
+                {
+                    'name': 'crontab',
+                    'image': 'supercronic',
+                    'command': ['/usr/local/bin/supercronic', '/etc/crontab']
+                }
+            ],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+def test_make_pod_with_extra_resources():
+    """
+    Test specification of extra resources (like GPUs)
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cpu_limit=2,
+        cpu_guarantee=1,
+        extra_resource_limits={"nvidia.com/gpu": "5", "k8s.io/new-resource": "1"},
+        extra_resource_guarantees={"nvidia.com/gpu": "3"},
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        mem_limit='1Gi',
+        mem_guarantee='512Mi',
+        image_pull_policy='IfNotPresent',
+        image_pull_secret="myregistrykey",
+        node_selector={"disk": "ssd"}
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+        },
+        "spec": {
+            "securityContext": {},
+            "imagePullSecrets": [{"name": "myregistrykey"}],
+            "nodeSelector": {"disk": "ssd"},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    "resources": {
+                        "limits": {
+                            "cpu": 2,
+                            "memory": '1Gi',
+                            "nvidia.com/gpu": "5",
+                            "k8s.io/new-resource": "1"
+                        },
+                        "requests": {
+                            "cpu": 1,
+                            "memory": '512Mi',
+                            "nvidia.com/gpu": "3"
+                        }
+                    }
+                }
+            ],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
 
 def test_make_pvc_simple():
     """
@@ -655,4 +794,48 @@ def test_make_resources_all():
                 }
             }
         }
+    }
+
+    
+def test_make_pod_with_service_account():
+    """
+    Test specification of the simplest possible pod specification with non-default service account
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        service_account='test'
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+        },
+        "spec": {
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            'volumes': [],
+            'serviceAccountName': 'test'
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
     }
