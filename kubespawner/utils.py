@@ -4,6 +4,8 @@ Misc. general utility functions, not tied to Kubespawner directly
 import random
 import hashlib
 
+from traitlets import TraitType
+
 def generate_hashed_slug(slug, limit=63, hash_length=6):
     """
     Generate a unique name that's within a certain length limit
@@ -27,3 +29,19 @@ def generate_hashed_slug(slug, limit=63, hash_length=6):
         prefix=slug[:limit - hash_length - 1],
         hash=slug_hash[:hash_length],
     ).lower()
+
+
+class Callable(TraitType):
+    """A trait which is callable.
+    Notes
+    -----
+    Classes are callable, as are instances
+    with a __call__() method."""
+
+    info_text = 'a callable'
+
+    def validate(self, obj, value):
+        if callable(value):
+            return value
+        else:
+            self.error(obj, value)
