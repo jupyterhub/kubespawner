@@ -24,7 +24,7 @@ import escapism
 
 from .clients import shared_client
 from kubespawner.traitlets import Callable
-from kubespawner.utils import Callable
+from kubespawner.utils import Callable, ensure_object
 from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import NamespacedResourceReflector
 
@@ -983,19 +983,16 @@ class KubeSpawner(Spawner):
     @gen.coroutine
     def start(self):
         if self.user_storage_pvc_ensure:
-            pvc = self.get_pvc_manifest()
-            try:
-                yield self.asynchronize(
-                    self.api.create_namespaced_persistent_volume_claim,
-                    namespace=self.namespace,
-                    body=pvc
-                )
-            except ApiException as e:
-                if e.status == 409:
-                    self.log.info("PVC " + self.pvc_name + " already exists, so did not create new pvc.")
-                else:
-                    raise
+            yield ensure_object(
+                self.asynchronize,
+                self.api.create_namespaced_persistent_volume_claim,
+                self.api.patch_namespaced_persistent_volume_claim,
+                self.get_pvc_manifest(),
+                ifexists='ignore',
+                namespace=self.namespace
+            )
 
+        yield self.pre_start_pod()
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
         # try again. We try 4 times, and if it still fails we give up.

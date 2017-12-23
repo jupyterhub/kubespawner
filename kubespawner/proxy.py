@@ -9,7 +9,7 @@ from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
 
 from kubespawner.objects import make_ingress
-from kubespawner.utils import generate_hashed_slug
+from kubespawner.utils import generate_hashed_slug, ensure_object
 from kubespawner.reflector import NamespacedResourceReflector
 from .clients import shared_client
 from traitlets import Unicode
@@ -124,33 +124,11 @@ class KubeIngressProxy(Proxy):
             data
         )
 
-        @gen.coroutine
-        def ensure_object(create_func, patch_func, body, kind):
-            try:
-                resp = yield self.asynchronize(
-                    create_func,
-                    namespace=self.namespace,
-                    body=body
-                )
-                self.log.info('Created %s/%s', kind, safe_name)
-            except client.rest.ApiException as e:
-                if e.status == 409:
-                    # This object already exists, we should patch it to make it be what we want
-                    self.log.warn("Trying to patch %s/%s, it already exists", kind, safe_name)
-                    resp = yield self.asynchronize(
-                        patch_func,
-                        namespace=self.namespace,
-                        body=body,
-                        name=body.metadata.name
-                    )
-                else:
-                    raise
-
         yield ensure_object(
+            self.asynchronize,
             self.core_api.create_namespaced_endpoints,
             self.core_api.patch_namespaced_endpoints,
             body=endpoint,
-            kind='endpoints'
         )
 
         yield exponential_backoff(
@@ -159,10 +137,10 @@ class KubeIngressProxy(Proxy):
         )
 
         yield ensure_object(
+            self.asynchronize,
             self.core_api.create_namespaced_service,
             self.core_api.patch_namespaced_service,
             body=service,
-            kind='service'
         )
 
         yield exponential_backoff(
@@ -171,10 +149,10 @@ class KubeIngressProxy(Proxy):
         )
 
         yield ensure_object(
+            self.asynchronize,
             self.extension_api.create_namespaced_ingress,
             self.extension_api.patch_namespaced_ingress,
             body=ingress,
-            kind='ingress'
         )
 
         yield exponential_backoff(
