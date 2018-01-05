@@ -24,7 +24,7 @@ import escapism
 
 from .clients import shared_client
 from kubespawner.traitlets import Callable
-from kubespawner.utils import Callable, ensure_object
+from kubespawner.utils import Callable, ensure_object, k8s_api_method
 from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import NamespacedResourceReflector
 
@@ -499,6 +499,35 @@ class KubeSpawner(Spawner):
         This is very useful if you want to modify the pod being launched dynamically.
         Note that the spawner object can change between versions of KubeSpawner and JupyterHub,
         so be careful relying on this!
+        """
+    )
+
+    extra_objects_hook = Callable(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        Callable to create extra objects before launching the Pod.
+
+        Expects a callable that takes one parameters:
+
+          1. The spawner object that is doing the spawning
+
+        It should return a iterable of dictionaries with the following keys:
+
+          1. object - The Kubernetes object to create, instantiated from the kubernetes client library
+          2. kind - The `kind` of `object`. For example, 'Pod', 'Deployment', 'Namespace', etc
+          3. api_version: The `apiVersion` of object to be created.
+          4. namespaced (bool): True (default) if the object is namespaced (like pods), false otherwise
+          5. ifexists: Action to take if object already exists. Possible options are: ignore, patch (default) & error.
+
+
+        These will be created in order.
+
+        This can be a coroutine if necessary. When set to none, no extra objects are created.
+
+        You can use objects created here in the pod definition, either with modify_pod_hook or
+        by just setting spawner properties.
         """
     )
 
@@ -981,6 +1010,36 @@ class KubeSpawner(Spawner):
         return method(*args, **kwargs)
 
     @gen.coroutine
+    def _create_extra_objects(self):
+        """
+        Run extra_objects_hook & create objects if necessary
+        """
+        if not self.extra_objects_hook:
+            return
+
+        objects = yield gen.maybe_future(self.extra_objects_hook(self))
+
+        for obj in objects:
+            yield ensure_object(
+                self.asynchronize,
+                k8s_api_method(
+                    obj['kind'],
+                    obj['api_version'],
+                    'create',
+                    obj.get('namespaced', True)
+                ),
+                k8s_api_method(
+                    obj['kind'],
+                    obj['api_version'],
+                    'patch',
+                    obj.get('namespaced', True)
+                ),
+                obj['object'],
+                ifexists=obj.get('if_exists', 'patch'),
+                namespace=obj.get('namespace', self.namespace) if obj.get('namespaced', True) else None
+            )
+
+    @gen.coroutine
     def start(self):
         if self.user_storage_pvc_ensure:
             yield ensure_object(
@@ -992,7 +1051,7 @@ class KubeSpawner(Spawner):
                 namespace=self.namespace
             )
 
-        yield self.pre_start_pod()
+        yield self._create_extra_objects()
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
         # try again. We try 4 times, and if it still fails we give up.

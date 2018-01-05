@@ -27,3 +27,18 @@ c.JupyterHub.authenticator_class = 'dummyauthenticator.DummyAuthenticator'
 c.KubeSpawner.user_storage_pvc_ensure = True
 
 c.JupyterHub.allow_named_servers = True
+
+def extra_objects_hook(spawner):
+    ns = client.V1Namespace(
+        metadata=client.V1ObjectMeta(name=spawner.user.name)
+    )
+    return [
+        {
+            'kind': 'Namespace',
+            'api_version': 'v1',
+            'namespaced': False,
+            'object': ns
+        }
+    ]
+
+c.KubeSpawner.extra_objects_hook = extra_objects_hook

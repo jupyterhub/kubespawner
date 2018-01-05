@@ -2,6 +2,7 @@
 Misc. general utility functions, not tied to Kubespawner directly
 """
 import random
+import re
 import hashlib
 
 from tornado import gen
@@ -93,3 +94,36 @@ def ensure_object(
                 raise
         else:
             raise
+def first_upper(s):
+    """
+    Upper case only first character of s and return it
+    """
+    if len(s) == 0:
+        return s
+
+    return s[0].upper() + s[1:]
+
+def k8s_api_method(kind, apiversion, method, namespaced=True):
+    """
+    Return bound method that can perform method action on objects of kind in apiversion
+
+    kind should be the same CamelCased string used in `kind` in the Kubernetes object.
+    apiversion should be the same string set in `apiVersion` in the Kubernetes object.
+    method should be 'create', 'delete', 'list' or 'patch'.
+
+    Set namespaced=False for objects that are not in a namespace (like ClusterRoles or
+    Nodes)
+    """
+    if apiversion == 'v1':
+        class_name = 'CoreV1Api'
+    else:
+        parts = apiversion.replace('k8s.io', '').split('/')
+        parts = [''.join([first_upper(p) for p in part.split('.')]) for part in parts]
+        class_name = ''.join([first_upper(p) for p in parts]) + 'Api'
+
+    method_name = method
+    if namespaced:
+        method_name += '_namespaced'
+    method_name += re.sub(r'([A-Z])+', r'_\1', kind).lower()
+
+    return getattr(getattr(client, class_name)(), method_name)
