@@ -27,7 +27,6 @@ from kubernetes import client
 import escapism
 
 from kubespawner.traitlets import Callable
-from kubespawner.utils import Callable
 from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import NamespacedResourceReflector
 

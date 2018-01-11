@@ -1,7 +1,7 @@
 """
 Traitlets that are used in Kubespawner
 """
-from traitlets import TraitType, TraitError, Dict
+from traitlets import TraitType
 
 
 class Callable(TraitType):
@@ -16,6 +16,6 @@ class Callable(TraitType):
 
     def validate(self, obj, value):
         if callable(value):
-           return value
+            return value
         else:
             self.error(obj, value)
