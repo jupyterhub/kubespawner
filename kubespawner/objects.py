@@ -170,7 +170,7 @@ def make_pod(
     notebook_container.image_pull_policy = image_pull_policy
     notebook_container.lifecycle = lifecycle_hooks
     notebook_container.resources = V1ResourceRequirements()
-    
+
     if service_account is None:
         # Add a hack to ensure that no service accounts are mounted in spawned pods
         # This makes sure that we don"t accidentally give access to the whole
@@ -187,6 +187,9 @@ def make_pod(
         hack_volume_mount.mount_path = "/var/run/secrets/kubernetes.io/serviceaccount"
         hack_volume_mount.read_only = True
         hack_volume_mounts = [hack_volume_mount]
+
+        # Non-hacky way of not mounting service accounts
+        pod.spec.automount_service_account_token = False
     else:
         hack_volumes = []
         hack_volume_mounts = []
