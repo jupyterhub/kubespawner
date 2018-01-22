@@ -8,8 +8,8 @@ from kubernetes import client
 from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
 
-from kubespawner.objects import make_ingress
-from kubespawner.utils import generate_hashed_slug, ensure_object
+from kubespawner.objects import make_ingress, EnsureObject
+from kubespawner.utils import generate_hashed_slug
 from kubespawner.reflector import NamespacedResourceReflector
 from .clients import shared_client
 from traitlets import Unicode
@@ -124,6 +124,14 @@ class KubeIngressProxy(Proxy):
             data
         )
 
+        yield self.asynchronize(
+            EnsureObject(
+                api_version='v1',
+                kind='Endpoints',
+                body=endpoint,
+                namespace=self.namespace
+            ).ensure()
+        )
         yield ensure_object(
             self.asynchronize,
             self.core_api.create_namespaced_endpoints,

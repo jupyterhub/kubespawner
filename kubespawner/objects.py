@@ -2,10 +2,12 @@
 Helper methods for generating k8s API objects.
 """
 import json
+import re
 from urllib.parse import urlparse
 import escapism
 import string
 
+from kubernetes import client
 from kubernetes.client.models import (
     V1Pod, V1PodSpec, V1PodSecurityContext,
     V1ObjectMeta,
@@ -377,3 +379,49 @@ def make_ingress(
     )
 
     return endpoint, service, ingress
+
+
+def ensure_k8s_obj(obj, if_exists='patch'):
+    def _first_upper(s):
+        """
+        Upper case only first character of s and return it
+        """
+        if len(s) == 0:
+            return s
+
+        return s[0].upper() + s[1:]
+
+    def _api_method(method):
+        if obj.api_version == 'v1':
+            class_name = 'CoreV1Api'
+        else:
+            parts = obj.api_version.replace('k8s.io', '').split('/')
+            parts = [''.join([_first_upper(p) for p in part.split('.')]) for part in parts]
+            class_name = ''.join([_first_upper(p) for p in parts]) + 'Api'
+
+        method_name = method
+        if obj.metadata.namespace:
+            method_name += '_namespaced'
+        method_name += re.sub(r'([A-Z])+', r'_\1', obj.kind).lower()
+
+        return getattr(getattr(client, class_name)(), method_name)
+
+    try:
+        create_kwargs = {'body': obj}
+        if obj.metadata.namespace:
+            create_kwargs['namespace'] = obj.metadata.namespace
+        return _api_method('create')(**create_kwargs)
+    except client.rest.ApiException as e:
+        if e.status == 409:
+            if if_exists == 'patch':
+                # This object already exists, we should patch it to make it be what we want
+                patch_kwargs = {'body': obj, 'name': obj.metadata.name}
+                if obj.metadata.namespace:
+                    patch_kwargs['namespace'] = obj.metadata.namespace
+                return _api_method('patch')(**patch_kwargs)
+            elif if_exists == 'ignore':
+                pass
+            else:
+                raise
+        else:
+            raise

@@ -24,8 +24,8 @@ import escapism
 
 from .clients import shared_client
 from kubespawner.traitlets import Callable
-from kubespawner.utils import Callable, ensure_object, k8s_api_method
-from kubespawner.objects import make_pod, make_pvc
+from kubespawner.utils import Callable
+from kubespawner.objects import make_pod, make_pvc, EnsureObject
 from kubespawner.reflector import NamespacedResourceReflector
 
 
@@ -48,7 +48,7 @@ class KubeSpawner(Spawner):
     Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
     """
 
-    # We want to have one threadpool executor that is shared across all spawner objects
+    # We want to havhttps://meltdownattack.com/e one threadpool executor that is shared across all spawner objects
     # This is initialized by the first spawner that is created
     executor = None
 
@@ -519,7 +519,8 @@ class KubeSpawner(Spawner):
           2. kind - The `kind` of `object`. For example, 'Pod', 'Deployment', 'Namespace', etc
           3. api_version: The `apiVersion` of object to be created.
           4. namespaced (bool): True (default) if the object is namespaced (like pods), false otherwise
-          5. ifexists: Action to take if object already exists. Possible options are: ignore, patch (default) & error.
+          5. if_exists: Action to take if object already exists. Possible options are: ignore, patch (default) & error.
+          6. owned_by_pod: True (default) if object is owned by spawned pod & should be cleaned up when pod exits
 
 
         These will be created in order.
@@ -745,7 +746,7 @@ class KubeSpawner(Spawner):
     )
 
     singleuser_extra_pod_config = Dict(
-        None,
+        {},
         config=True,
         help="""
         Extra configuration (e.g. tolerations) for the pod which is not covered by other attributes.
@@ -764,7 +765,7 @@ class KubeSpawner(Spawner):
     )
 
     singleuser_extra_containers = List(
-        None,
+        [],
         config=True,
         help="""
         List of containers belonging to the pod which besides to the container generated for notebook server.
@@ -1013,14 +1014,17 @@ class KubeSpawner(Spawner):
     def _create_extra_objects(self):
         """
         Run extra_objects_hook & create objects if necessary
+
+        # FIXME: What to do with objects already created when we encounter an error?
         """
         if not self.extra_objects_hook:
             return
 
         objects = yield gen.maybe_future(self.extra_objects_hook(self))
 
+        dependent_objects = []
         for obj in objects:
-            yield ensure_object(
+            created_obj = yield ensure_object(
                 self.asynchronize,
                 k8s_api_method(
                     obj['kind'],
@@ -1039,17 +1043,20 @@ class KubeSpawner(Spawner):
                 namespace=obj.get('namespace', self.namespace) if obj.get('namespaced', True) else None
             )
 
+            if obj.get('owned_by_pod', True):
+                dependent_objects.append(created_obj)
+
+
     @gen.coroutine
     def start(self):
         if self.user_storage_pvc_ensure:
-            yield ensure_object(
-                self.asynchronize,
-                self.api.create_namespaced_persistent_volume_claim,
-                self.api.patch_namespaced_persistent_volume_claim,
-                self.get_pvc_manifest(),
-                ifexists='ignore',
+            yield self.asynchronize(EnsureObject(
+                api_version='v1',
+                kind='PersistentVolumeClaim',
+                object=self.get_pvc_manifest(),
+                if_exists='ignore',
                 namespace=self.namespace
-            )
+            ).ensure)
 
         yield self._create_extra_objects()
         # If we run into a 409 Conflict error, it means a pod with the
