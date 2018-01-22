@@ -801,6 +801,7 @@ def test_make_resources_all():
             }
         },
         'spec': {
+            'storageClassName': 'gce-standard-storage',
             'accessModes': ['ReadWriteOnce'],
             'resources': {
                 'requests': {

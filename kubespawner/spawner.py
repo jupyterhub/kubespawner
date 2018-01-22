@@ -783,12 +783,8 @@ class KubeSpawner(Spawner):
         labels = {
             'heritage': 'jupyterhub',
             'app': 'jupyterhub',
-            'hub.jupyter.org/username': escapism.escape(self.user.name)
         }
 
-        if self.name:
-            # FIXME: Make sure this is dns safe?
-            labels['hub.jupyter.org/servername'] = self.name
         labels.update(extra_labels)
         return labels
 
@@ -800,6 +796,17 @@ class KubeSpawner(Spawner):
         # Make sure pod_reflector.labels in final label list
         labels.update(self.pod_reflector.labels)
         return self._build_common_labels(labels)
+
+    def _build_common_annotations(self, extra_annotations):
+        # Annotations don't need to be escaped
+        annotations = {
+            'hub.jupyter.org/username': self.user.name
+        }
+        if self.name:
+            annotations['hub.jupyter.org/servername'] = self.name
+
+        annotations.update(extra_annotations)
+        return annotations
 
     @gen.coroutine
     def get_pod_manifest(self):
@@ -822,7 +829,7 @@ class KubeSpawner(Spawner):
             real_cmd = None
 
         labels = self._build_pod_labels(self._expand_all(self.singleuser_extra_labels))
-        annotations = self._expand_all(self.singleuser_extra_annotations)
+        annotations = self._build_common_annotations(self._expand_all(self.singleuser_extra_annotations))
 
         return make_pod(
             name=self.pod_name,
@@ -861,12 +868,15 @@ class KubeSpawner(Spawner):
         """
         labels = self._build_common_labels(self._expand_all(self.user_storage_extra_labels))
 
+        annotations = self._build_common_annotations({})
+
         return make_pvc(
             name=self.pvc_name,
             storage_class=self.user_storage_class,
             access_modes=self.user_storage_access_modes,
             storage=self.user_storage_capacity,
-            labels=labels
+            labels=labels,
+            annotations=annotations
         )
 
     def is_pod_running(self, pod):
