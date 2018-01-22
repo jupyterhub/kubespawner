@@ -137,7 +137,7 @@ def make_pod(
     if annotations:
         pod.metadata.annotations = annotations.copy()
 
-    pod.spec = V1PodSpec()
+    pod.spec = V1PodSpec(containers=[])
 
     security_context = V1PodSecurityContext()
     if fs_gid is not None:
@@ -155,7 +155,6 @@ def make_pod(
     if node_selector:
         pod.spec.node_selector = node_selector
 
-    pod.spec.containers = []
     notebook_container = V1Container()
     notebook_container.name = "notebook"
     notebook_container.image = image_spec
