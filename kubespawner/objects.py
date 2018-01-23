@@ -131,13 +131,13 @@ def make_pod(
     pod.kind = "Pod"
     pod.api_version = "v1"
 
-    pod.metadata = V1ObjectMeta()
-    pod.metadata.name = name
-    pod.metadata.labels = labels.copy()
-    if annotations:
-        pod.metadata.annotations = annotations.copy()
+    pod.metadata = V1ObjectMeta(
+        name=name,
+        labels=labels.copy(),
+        annotations=annotations.copy()
+    )
 
-    pod.spec = V1PodSpec()
+    pod.spec = V1PodSpec(containers=[])
 
     security_context = V1PodSecurityContext()
     if fs_gid is not None:
@@ -155,21 +155,17 @@ def make_pod(
     if node_selector:
         pod.spec.node_selector = node_selector
 
-    pod.spec.containers = []
-    notebook_container = V1Container()
-    notebook_container.name = "notebook"
-    notebook_container.image = image_spec
-    notebook_container.working_dir = working_dir
-    notebook_container.ports = []
-    port_ = V1ContainerPort()
-    port_.name = "notebook-port"
-    port_.container_port = port
-    notebook_container.ports.append(port_)
-    notebook_container.env = [V1EnvVar(k, v) for k, v in env.items()]
-    notebook_container.args = cmd
-    notebook_container.image_pull_policy = image_pull_policy
-    notebook_container.lifecycle = lifecycle_hooks
-    notebook_container.resources = V1ResourceRequirements()
+    notebook_container = V1Container(
+        name='notebook',
+        image=image_spec,
+        working_dir=working_dir,
+        ports=[V1ContainerPort(name='notebook-port', container_port=port)],
+        env=[V1EnvVar(k, v) for k, v in env.items()],
+        args=cmd,
+        image_pull_policy=image_pull_policy,
+        lifecycle=lifecycle_hooks,
+        resources=V1ResourceRequirements()
+    )
 
     if service_account is None:
         # Add a hack to ensure that no service accounts are mounted in spawned pods
@@ -177,15 +173,14 @@ def make_pod(
         # kubernetes API to the users in the spawned pods.
         # Note: We don't simply use `automountServiceAccountToken` here since we wanna be compatible
         # with older kubernetes versions too for now.
-        hack_volume = V1Volume()
-        hack_volume.name =  "no-api-access-please"
-        hack_volume.empty_dir = {}
+        hack_volume = V1Volume(name='no-api-access-please', empty_dir={})
         hack_volumes = [hack_volume]
 
-        hack_volume_mount = V1VolumeMount()
-        hack_volume_mount.name = "no-api-access-please"
-        hack_volume_mount.mount_path = "/var/run/secrets/kubernetes.io/serviceaccount"
-        hack_volume_mount.read_only = True
+        hack_volume_mount = V1VolumeMount(
+            name='no-api-access-please',
+            mount_path="/var/run/secrets/kubernetes.io/serviceaccount",
+            read_only=True
+        )
         hack_volume_mounts = [hack_volume_mount]
 
         # Non-hacky way of not mounting service accounts
@@ -197,9 +192,9 @@ def make_pod(
         pod.spec.service_account_name = service_account
 
     if run_privileged:
-        container_security_context = V1SecurityContext()
-        container_security_context.privileged = True
-        notebook_container.security_context = container_security_context
+        notebook_container.security_context = V1SecurityContext(
+            privileged=True
+        )
 
     notebook_container.resources.requests = {}
 

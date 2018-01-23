@@ -21,6 +21,7 @@ def test_make_simplest_pod():
         "metadata": {
             "name": "test",
             "labels": {},
+            "annotations": {}
         },
         "spec": {
             "securityContext": {},
@@ -64,6 +65,7 @@ def test_make_labeled_pod():
         "metadata": {
             "name": "test",
             "labels": {"test": "true"},
+            "annotations": {}
         },
         "spec": {
             "securityContext": {},
@@ -150,6 +152,7 @@ def test_make_pod_with_image_pull_secrets():
     )) == {
         "metadata": {
             "name": "test",
+            "annotations": {},
             "labels": {},
         },
         "spec": {
@@ -198,6 +201,7 @@ def test_set_pod_uid_fs_gid():
     )) == {
         "metadata": {
             "name": "test",
+            "annotations": {},
             "labels": {},
         },
         "spec": {
@@ -244,6 +248,7 @@ def test_run_privileged_container():
     )) == {
         "metadata": {
             "name": "test",
+            "annotations": {},
             "labels": {},
         },
         "spec": {
@@ -295,6 +300,7 @@ def test_make_pod_resources_all():
     )) == {
         "metadata": {
             "name": "test",
+            "annotations": {},
             "labels": {},
         },
         "spec": {
@@ -349,6 +355,7 @@ def test_make_pod_with_env():
     )) == {
         "metadata": {
             "name": "test",
+            "annotations": {},
             "labels": {},
         },
         "spec": {
@@ -400,6 +407,7 @@ def test_make_pod_with_lifecycle():
     )) == {
         "metadata": {
             "name": "test",
+            "annotations": {},
             "labels": {},
         },
         "spec": {
@@ -464,6 +472,7 @@ def test_make_pod_with_init_containers():
     )) == {
         "metadata": {
             "name": "test",
+            "annotations": {},
             "labels": {},
         },
         "spec": {
@@ -531,6 +540,7 @@ def test_make_pod_with_extra_container_config():
     )) == {
         "metadata": {
             "name": "test",
+            "annotations": {},
             "labels": {},
         },
         "spec": {
@@ -592,6 +602,7 @@ def test_make_pod_with_extra_pod_config():
     )) == {
         "metadata": {
             "name": "test",
+            "annotations": {},
             "labels": {},
         },
         "spec": {
@@ -651,6 +662,7 @@ def test_make_pod_with_extra_containers():
     )) == {
         "metadata": {
             "name": "test",
+            "annotations": {},
             "labels": {},
         },
         "spec": {
@@ -708,6 +720,7 @@ def test_make_pod_with_extra_resources():
     )) == {
         "metadata": {
             "name": "test",
+            "annotations": {},
             "labels": {},
         },
         "spec": {
@@ -763,8 +776,7 @@ def test_make_pvc_simple():
         'apiVersion': 'v1',
         'metadata': {
             'name': 'test',
-            'annotations': {
-            },
+            'annotations': {},
             'labels': {}
         },
         'spec': {
@@ -827,6 +839,7 @@ def test_make_pod_with_service_account():
         "metadata": {
             "name": "test",
             "labels": {},
+            "annotations": {}
         },
         "spec": {
             "securityContext": {},
