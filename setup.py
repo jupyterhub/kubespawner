@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='jupyterhub-kubespawner',
-    version='0.7.1',
+    version='0.8',
     install_requires=[
         'jupyterhub>=0.8',
         'pyYAML',
