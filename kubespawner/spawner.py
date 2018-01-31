@@ -702,11 +702,12 @@ class KubeSpawner(Spawner):
         Each item in the dict is field of pod configuration
         which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#podspec-v1-core.
 
-        One usage is set dnsPolicy with configuration below:
-        dnsPolicy: ClusterFirstWithHostNet
+        One usage is set dnsPolicy with configuration below::
 
-        The key could be either camelcase word (used by Kubernetes yaml, e.g. dnsPolicy)
-        or underscore-separated word (used by kubernetes python client, e.g. dns_policy).
+            dnsPolicy: ClusterFirstWithHostNet
+
+        The `key` could be either camelcase word (used by Kubernetes yaml, e.g. `dnsPolicy`)
+        or underscore-separated word (used by kubernetes python client, e.g. `dns_policy`).
         """
     )
 
