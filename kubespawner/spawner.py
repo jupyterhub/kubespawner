@@ -646,7 +646,9 @@ class KubeSpawner(Spawner):
         which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
 
         One usage is disabling access to metadata service from single-user notebook server with configuration below:
-        initContainers::
+        initContainers:
+
+        .. code::yaml
 
             - name: init-iptables
               image: <image with iptables installed>
@@ -656,6 +658,7 @@ class KubeSpawner(Spawner):
                   add:
                   - NET_ADMIN
 
+        
         See https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ for more
         info on what init containers are and why you might want to use them!
 
@@ -667,23 +670,27 @@ class KubeSpawner(Spawner):
         None,
         config=True,
         help="""
-        Extra configuration (e.g. envFrom) for notebook container which is not covered by other attributes.
+        Extra configuration (e.g. ``envFrom``) for notebook container which is not covered by other attributes.
 
         This dict will be directly merge into `container` of notebook server,
         so you should use the same structure. Each item in the dict is field of container configuration
         which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
 
-        One usage is set envFrom on notebook container with configuration below:
-        envFrom: [
-            {
-                configMapRef: {
-                    name: special-config
-                }
-            }
-        ]
+        One usage is set ``envFrom`` on notebook container with configuration below:
 
-        The key could be either camelcase word (used by Kubernetes yaml, e.g. envFrom)
-        or underscore-separated word (used by kubernetes python client, e.g. env_from).
+        .. code::yaml
+
+            envFrom: [
+                {
+                    configMapRef: {
+                        name: special-config
+                    }
+                }
+            ]
+
+        The key could be either camelcase word (used by Kubernetes yaml, e.g. ``envFrom``)
+        or underscore-separated word (used by kubernetes python client, e.g. ``env_from``).
+
         """
     )
 
@@ -716,13 +723,16 @@ class KubeSpawner(Spawner):
         which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
 
         One usage is setting crontab in a container to clean sensitive data with configuration below:
-        [
-            {
-                'name': 'crontab',
-                'image': 'supercronic',
-                'command': ['/usr/local/bin/supercronic', '/etc/crontab']
-            }
-        ]
+        
+        .. code::yaml
+            [
+                {
+                    'name': 'crontab',
+                    'image': 'supercronic',
+                    'command': ['/usr/local/bin/supercronic', '/etc/crontab']
+                }
+            ]
+        
         """
     )
 
@@ -732,8 +742,9 @@ class KubeSpawner(Spawner):
         help="""
         The dictionary used to request arbitrary resources.
         Default is None and means no additional resources are requested.
-        For example, to request 3 Nvidia GPUs
-            `{"nvidia.com/gpu": "3"}`
+        For example, to request 3 Nvidia GPUs:
+
+            {"nvidia.com/gpu": "3"}
         """
     )
 
@@ -743,8 +754,9 @@ class KubeSpawner(Spawner):
         help="""
         The dictionary used to limit arbitrary resources.
         Default is None and means no additional resources are limited.
-        For example, to add a limit of 3 Nvidia GPUs
-            `{"nvidia.com/gpu": "3"}`
+        For example, to add a limit of 3 Nvidia GPUs:
+
+            {"nvidia.com/gpu": "3"}
         """
     )
 
