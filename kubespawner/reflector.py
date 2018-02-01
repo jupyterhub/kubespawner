@@ -1,3 +1,7 @@
+# specifically use concurrent.futures for threadsafety
+# asyncio Futures cannot be used across threads
+from concurrent.futures import Future
+
 import time
 import threading
 
@@ -5,6 +9,7 @@ from traitlets.config import LoggingConfigurable
 from traitlets import Any, Dict, Unicode
 from kubernetes import client, config, watch
 from tornado.ioloop import IOLoop
+
 
 class NamespacedResourceReflector(LoggingConfigurable):
     """
@@ -84,6 +89,8 @@ class NamespacedResourceReflector(LoggingConfigurable):
         # FIXME: Protect against malicious labels?
         self.label_selector = ','.join(['{}={}'.format(k, v) for k, v in self.labels.items()])
 
+        self.first_load_future = Future()
+
         self.start()
 
     def _list_and_update(self):
@@ -130,6 +137,9 @@ class NamespacedResourceReflector(LoggingConfigurable):
             w = watch.Watch()
             try:
                 resource_version = self._list_and_update()
+                if not self.first_load_future.done():
+                    # signal that we've loaded our initial data
+                    self.first_load_future.set_result(None)
                 for ev in w.stream(
                         getattr(self.api, self.list_method_name),
                         self.namespace,

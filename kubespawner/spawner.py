@@ -931,6 +931,9 @@ class KubeSpawner(Spawner):
         Returns None if it is, and 1 if it isn't. These are the return values
         JupyterHub expects.
         """
+        # have to wait for first load of data before we have a valid answer
+        if not self.pod_reflector.first_load_future.done():
+            yield self.pod_reflector.first_load_future
         data = self.pod_reflector.pods.get(self.pod_name, None)
         if data is not None:
             return None
