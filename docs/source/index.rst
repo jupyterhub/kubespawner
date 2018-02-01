@@ -7,9 +7,9 @@ Kubespawner
    :maxdepth: 2
 
    overview.md
+   spawner
    objects
    reflector
-   spawner
    traitlets
    utils
 
