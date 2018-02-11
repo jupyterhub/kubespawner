@@ -449,6 +449,32 @@ class KubeSpawner(Spawner):
         """
     )
 
+    singleuser_supplemental_gids = Union([
+            List(),
+            Callable()
+        ],
+        allow_none=True,
+        config=True,
+        help="""
+        A list of GIDs that should be set as additional supplemental groups to the
+        user that the container runs as.
+
+        Instead of a list of integers, this could also be a callable that takes as one
+        parameter the current spawner instance and returns a list of integers. The
+        callable will be called asynchronously if it returns a future, rather than
+        a list. Note that the interface of the spawner class is not deemed stable
+        across versions, so using this functionality might cause your JupyterHub
+        or kubespawner upgrades to break.
+
+        You may have to set this if you are deploying to an environment with RBAC/SCC
+        enforced and pods run with a 'restricted' SCC which results in the image being
+        run as an assigned user ID. The supplemental group IDs would need to include
+        the corresponding group ID of the user ID the image normally would run as. The
+        image must setup all directories/files any application needs access to, as group
+        writable.
+        """
+    )
+
     singleuser_privileged = Bool(
         False,
         config=True,
@@ -833,6 +859,11 @@ class KubeSpawner(Spawner):
         else:
             singleuser_fs_gid = self.singleuser_fs_gid
 
+        if callable(self.singleuser_supplemental_gids):
+            singleuser_supplemental_gids = yield gen.maybe_future(self.singleuser_supplemental_gids(self))
+        else:
+            singleuser_supplemental_gids = self.singleuser_supplemental_gids
+
         if self.cmd:
             real_cmd = self.cmd + self.get_args()
         else:
@@ -851,6 +882,7 @@ class KubeSpawner(Spawner):
             node_selector=self.singleuser_node_selector,
             run_as_uid=singleuser_uid,
             fs_gid=singleuser_fs_gid,
+            supplemental_gids=singleuser_supplemental_gids,
             run_privileged=self.singleuser_privileged,
             env=self.get_env(),
             volumes=self._expand_all(self.volumes),

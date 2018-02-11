@@ -30,6 +30,7 @@ def make_pod(
     node_selector=None,
     run_as_uid=None,
     fs_gid=None,
+    supplemental_gids=None,
     run_privileged=False,
     env={},
     working_dir=None,
@@ -83,6 +84,15 @@ def make_pod(
         volume types that support this (such as GCE). This should be a group that
         the uid the process is running as should be a member of, so that it can
         read / write to the volumes mounted.
+    supplemental_gids:
+        A list of GIDs that should be set as additional supplemental groups to
+        the user that the container runs as. You may have to set this if you are
+        deploying to an environment with RBAC/SCC enforced and pods run with a
+        'restricted' SCC which results in the image being run as an assigned
+        user ID. The supplemental group IDs would need to include the
+        corresponding group ID of the user ID the image normally would run as.
+        The image must setup all directories/files any application needs access
+        to, as group writable.
     run_privileged:
         Whether the container should be run in privileged mode.
     env:
@@ -143,6 +153,8 @@ def make_pod(
     security_context = V1PodSecurityContext()
     if fs_gid is not None:
         security_context.fs_group = int(fs_gid)
+    if supplemental_gids is not None and supplemental_gids:
+        security_context.supplemental_groups = [int(gid) for gid in supplemental_gids]
     if run_as_uid is not None:
         security_context.run_as_user = int(run_as_uid)
     pod.spec.security_context = security_context
