@@ -6,12 +6,8 @@ implementation that should be used by JupyterHub.
 """
 import os
 import json
-import time
 import string
-import threading
-import sys
 from urllib.parse import urlparse, urlunparse
-import json
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
 
@@ -26,6 +22,7 @@ from kubernetes.client.rest import ApiException
 from kubernetes import client
 import escapism
 
+from .clients import shared_client
 from kubespawner.traitlets import Callable
 from kubespawner.utils import Callable
 from kubespawner.objects import make_pod, make_pvc
@@ -80,7 +77,7 @@ class KubeSpawner(Spawner):
                 on_failure=on_reflector_failure
             )
 
-        self.api = client.CoreV1Api()
+        self.api = shared_client('CoreV1Api')
 
         self.pod_name = self._expand_user_properties(self.pod_name_template)
         self.pvc_name = self._expand_user_properties(self.pvc_name_template)
