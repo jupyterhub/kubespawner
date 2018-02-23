@@ -17,6 +17,8 @@ def shared_client(ClientType, *args, **kwargs):
     cache_key = (ClientType, args, kwarg_key)
     client = None
     if cache_key in _client_cache:
+        # resolve cached weakref
+        # client can still be None after this!
         client = _client_cache[cache_key]()
 
     if client is None:
