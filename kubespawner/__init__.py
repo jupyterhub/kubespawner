@@ -14,5 +14,6 @@ Users can simply import kubespawner.KubeSpawner in their applications
 instead of the more verbose import kubespawner.spawner.KubeSpawner.
 """
 from kubespawner.spawner import KubeSpawner
+from kubespawner.profile_spawner import KubeProfileSpawner
 
-__all__ = [KubeSpawner]
+__all__ = [KubeSpawner, KubeProfileSpawner]
