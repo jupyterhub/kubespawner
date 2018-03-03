@@ -1,15 +1,13 @@
-from traitlets import (
-    Instance, Type, Tuple, List, Dict, Integer, Unicode, Float, Any
-)
 from jupyterhub.spawner import Spawner
 from kubespawner.spawner import KubeSpawner
+from traitlets import List, Dict, Unicode
 
 class KubeProfileSpawner(KubeSpawner):
     
     UNDEFINED_DISPLAY_NAME = "?? undefined 'display_name' ??"
 
     form_template = Unicode(
-        """<label for="profile">Please select a profile for your Jupyter instance:</label>
+        """<label for="profile">Please select a profile for your Jupyter:</label>
         <select class="form-control" name="profile" required autofocus>
         {input_template}
         </select>
