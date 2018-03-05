@@ -37,7 +37,7 @@ class KubeProfileSpawner(KubeSpawner):
     single_user_profile_list = List(
         trait = Dict(),
         default_value = [],
-        minlen = 1,
+        minlen = 0,
         config = True,
         help = """List of profiles to offer for selection. Signature is:
             List(Dict()), where each item is a dictionary that has two keys:
