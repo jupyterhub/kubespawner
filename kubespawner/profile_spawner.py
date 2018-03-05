@@ -42,12 +42,13 @@ class KubeProfileSpawner(KubeSpawner):
         help = """List of profiles to offer for selection. Signature is:
             List(Dict()), where each item is a dictionary that has two keys:
             - 'display_name': the human readable display name
-            - 'kubespawner_overrride': a dictionary with overrides to apply to the KubeSpawner 
+            - 'kubespawner_override': a dictionary with overrides to apply to the KubeSpawner 
               settings."""
         )
 
-    def __init__(self, *args, **kwargs):
-        Spawner.__init__(self, *args, **kwargs)
+    # Only for debugs
+    # def __init__(self, *args, **kwargs):
+    #     Spawner.__init__(self, *args, **kwargs)
 
     def _options_form_default(self):
         temp_keys = [
@@ -66,7 +67,7 @@ class KubeProfileSpawner(KubeSpawner):
         options = self.single_user_profile_list[selected_profile]
         self.log.debug("Applying KubeSpawner override for profile '%s'", 
                   options.get('display_name', self.UNDEFINED_DISPLAY_NAME))
-        kubespawner_overrride = options.get('kubespawner_overrride', {})
-        for k, v in kubespawner_overrride.items():
+        kubespawner_override = options.get('kubespawner_override', {})
+        for k, v in kubespawner_override.items():
             setattr(self, k, v)
         return options
