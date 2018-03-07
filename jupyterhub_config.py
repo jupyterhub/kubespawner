@@ -24,6 +24,6 @@ c.KubeSpawner.singleuser_service_account = 'default'
 # Do not use any authentication at all - any username / password will work.
 c.JupyterHub.authenticator_class = 'dummyauthenticator.DummyAuthenticator'
 
-c.KubeSpawner.user_storage_pvc_ensure = True
+c.KubeSpawner.user_storage_pvc_ensure = False
 
 c.JupyterHub.allow_named_servers = True
