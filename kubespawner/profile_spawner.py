@@ -36,7 +36,7 @@ class KubeProfileSpawner(KubeSpawner):
     
     single_user_profile_list = List(
         trait = Dict(),
-        default_value = [],
+        default_value = None,
         minlen = 0,
         config = True,
         help = """List of profiles to offer for selection. Signature is:
@@ -51,6 +51,8 @@ class KubeProfileSpawner(KubeSpawner):
     #     Spawner.__init__(self, *args, **kwargs)
 
     def _options_form_default(self):
+        if not self.single_user_profile_list:
+            return
         temp_keys = [
             {
                 'display': p.get('display_name', self.UNDEFINED_DISPLAY_NAME), 
@@ -62,6 +64,8 @@ class KubeProfileSpawner(KubeSpawner):
         return self.form_template.format(input_template=text)
 
     def options_from_form(self, formdata):
+        if not self.single_user_profile_list:
+            return form_data
         # Default to first profile if somehow none is provided
         selected_profile = int(formdata.get('profile',[0])[0])
         options = self.single_user_profile_list[selected_profile]
