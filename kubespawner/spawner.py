@@ -975,8 +975,15 @@ class KubeSpawner(Spawner):
             yield self.pod_reflector.first_load_future
         data = self.pod_reflector.pods.get(self.pod_name, None)
         if data is not None:
+            for c in data.status.container_statuses:
+                # return exit code if notebook container has terminated
+                if c.name == 'notebook':
+                    if c.state.terminated:
+                        return c.state.terminated.exit_code
+                    break
+            # None means pod is running or starting up
             return None
-
+        # pod doesn't exist or has been deleted
         return 1
 
     @run_on_executor
