@@ -336,7 +336,7 @@ class KubeSpawner(Spawner):
         set this with::
 
            c.KubeSpawner.start_timeout = 60 * 5  # Upto 5 minutes
-        
+
         """
     )
 
@@ -781,6 +781,16 @@ class KubeSpawner(Spawner):
         """
     )
 
+    delete_stopped_pods = Bool(
+        True,
+        config=True,
+        help="""
+        Whether to delete pods that have stopped themselves.
+        Set to False to leave stopped pods in the completed state,
+        allowing for easier debugging of why they may have stopped.
+        """
+        )
+
     def _expand_user_properties(self, template):
         # Make sure username and servername match the restrictions for DNS labels
         safe_chars = set(string.ascii_lowercase + string.digits)
@@ -979,6 +989,9 @@ class KubeSpawner(Spawner):
                 # return exit code if notebook container has terminated
                 if c.name == 'notebook':
                     if c.state.terminated:
+                        # call self.stop to delete the pod
+                        if self.delete_stopped_pods:
+                            yield self.stop(now=True)
                         return c.state.terminated.exit_code
                     break
             # None means pod is running or starting up
