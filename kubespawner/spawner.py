@@ -1072,6 +1072,7 @@ class KubeSpawner(Spawner):
             grace_seconds = 1
 
         delete_options.grace_period_seconds = grace_seconds
+        self.log.info("Deleting pod %s", self.pod_name)
         yield self.asynchronize(
             self.api.delete_namespaced_pod,
             name=self.pod_name,
