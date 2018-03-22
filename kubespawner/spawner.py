@@ -835,11 +835,57 @@ class KubeSpawner(Spawner):
         default_value = None,
         minlen = 0,
         config = True,
-        help = """List of profiles to offer for selection. Signature is:
-            List(Dict()), where each item is a dictionary that has two keys:
+        help = """
+            List of profiles to offer for selection by the user.
+
+            Signature is: List(Dict()), where each item is a dictionary that has two keys:
             - 'display_name': the human readable display name
-            - 'kubespawner_override': a dictionary with overrides to apply to the KubeSpawner 
-              settings."""
+            - 'kubespawner_override': a dictionary with overrides to apply to the KubeSpawner
+              settings.
+
+            Example::
+
+                c.KubeSpawner.profile_list = [
+                    {
+                        'display_name': 'Training Env - Python',
+                        'kubespawner_override': {
+                            'image_spec': 'training/python:label',
+                            'cpu_limit': 1,
+                            'mem_limit': '512M',
+                        }
+                    },
+                    {
+                        'display_name': 'Training Env - Datascience',
+                        'kubespawner_override': {
+                            'image_spec': 'training/datascience:label',
+                            'cpu_limit': 4,
+                            'mem_limit': '8G',
+                        }
+                    }, {
+                        'display_name': 'DataScience - Small instance',
+                        'kubespawner_override': {
+                            'image_spec': 'datascience/small:label',
+                            'cpu_limit': 10,
+                            'mem_limit': '16G',
+                        }
+                    }, {
+                        'display_name': 'DataScience - Medium instance',
+                        'kubespawner_override': {
+                            'image_spec': 'datascience/medium:label',
+                            'cpu_limit': 48,
+                            'mem_limit': '96G',
+                        }
+                    }, {
+                        'display_name': 'DataScience - Medium instance (GPUx2)',
+                        'kubespawner_override': {
+                            'image_spec': 'datascience/medium:label',
+                            'cpu_limit': 48,
+                            'mem_limit': '96G',
+                            'extra_resource_guarantees': {"nvidia.com/gpu": "2"},
+                        }
+                    }
+                ]
+            """
         )
 
     def _expand_user_properties(self, template):
@@ -1175,8 +1221,8 @@ class KubeSpawner(Spawner):
             return
         temp_keys = [
             {
-                'display': p.get('display_name', self.UNDEFINED_DISPLAY_NAME), 
-                'key': i, 
+                'display': p.get('display_name', self.UNDEFINED_DISPLAY_NAME),
+                'key': i,
                 'first': '',
         } for i, p in enumerate(self.profile_list)]
         temp_keys[0]['first'] = self.first_input
@@ -1189,7 +1235,7 @@ class KubeSpawner(Spawner):
         # Default to first profile if somehow none is provided
         selected_profile = int(formdata.get('profile',[0])[0])
         options = self.profile_list[selected_profile]
-        self.log.debug("Applying KubeSpawner override for profile '%s'", 
+        self.log.debug("Applying KubeSpawner override for profile '%s'",
                   options.get('display_name', self.UNDEFINED_DISPLAY_NAME))
         kubespawner_override = options.get('kubespawner_override', {})
         for k, v in kubespawner_override.items():
