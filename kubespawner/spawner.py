@@ -632,7 +632,7 @@ class KubeSpawner(Spawner):
         List of access modes the user has for the pvc.
 
         The access modes are:
-   
+
             - `ReadWriteOnce` – the volume can be mounted as read-write by a single node
             - `ReadOnlyMany` – the volume can be mounted read-only by many nodes
             - `ReadWriteMany` – the volume can be mounted as read-write by many nodes
@@ -651,7 +651,7 @@ class KubeSpawner(Spawner):
         The keys is name of hooks and there are only two hooks, postStart and preStop.
         The values are handler of hook which executes by Kubernetes management system when hook is called.
 
-        Below is an sample copied from 
+        Below is an sample copied from
         `Kubernetes doc <https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/>`_ ::
 
             lifecycle:
@@ -690,7 +690,7 @@ class KubeSpawner(Spawner):
                   add:
                   - NET_ADMIN
 
-        
+
         See https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ for more
         info on what init containers are and why you might want to use them!
 
@@ -756,7 +756,7 @@ class KubeSpawner(Spawner):
         which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
 
         One usage is setting crontab in a container to clean sensitive data with configuration below::
-        
+
             [
                 {
                     'name': 'crontab',
@@ -764,7 +764,7 @@ class KubeSpawner(Spawner):
                     'command': ['/usr/local/bin/supercronic', '/etc/crontab']
                 }
             ]
-        
+
         """
     )
 
@@ -829,7 +829,7 @@ class KubeSpawner(Spawner):
         )
 
     options_form = Unicode()
-    
+
     profile_list = List(
         trait = Dict(),
         default_value = None,
@@ -849,7 +849,7 @@ class KubeSpawner(Spawner):
                     {
                         'display_name': 'Training Env - Python',
                         'kubespawner_override': {
-                            'image_spec': 'training/python:label',
+                            'singleuser_image_spec': 'training/python:label',
                             'cpu_limit': 1,
                             'mem_limit': '512M',
                         }
@@ -857,28 +857,28 @@ class KubeSpawner(Spawner):
                     {
                         'display_name': 'Training Env - Datascience',
                         'kubespawner_override': {
-                            'image_spec': 'training/datascience:label',
+                            'singleuser_image_spec': 'training/datascience:label',
                             'cpu_limit': 4,
                             'mem_limit': '8G',
                         }
                     }, {
                         'display_name': 'DataScience - Small instance',
                         'kubespawner_override': {
-                            'image_spec': 'datascience/small:label',
+                            'singleuser_image_spec': 'datascience/small:label',
                             'cpu_limit': 10,
                             'mem_limit': '16G',
                         }
                     }, {
                         'display_name': 'DataScience - Medium instance',
                         'kubespawner_override': {
-                            'image_spec': 'datascience/medium:label',
+                            'singleuser_image_spec': 'datascience/medium:label',
                             'cpu_limit': 48,
                             'mem_limit': '96G',
                         }
                     }, {
                         'display_name': 'DataScience - Medium instance (GPUx2)',
                         'kubespawner_override': {
-                            'image_spec': 'datascience/medium:label',
+                            'singleuser_image_spec': 'datascience/medium:label',
                             'cpu_limit': 48,
                             'mem_limit': '96G',
                             'extra_resource_guarantees': {"nvidia.com/gpu": "2"},
