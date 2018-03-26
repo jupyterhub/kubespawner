@@ -841,7 +841,8 @@ class KubeSpawner(Spawner):
             Signature is: List(Dict()), where each item is a dictionary that has two keys:
             - 'display_name': the human readable display name
             - 'kubespawner_override': a dictionary with overrides to apply to the KubeSpawner
-              settings.
+              settings. Each value can be either the final value to change or a callable that
+              take the `KubeSpawner` instance as parameter and return the final value.
 
             Example::
 
@@ -1239,6 +1240,10 @@ class KubeSpawner(Spawner):
                   options.get('display_name', self.UNDEFINED_DISPLAY_NAME))
         kubespawner_override = options.get('kubespawner_override', {})
         for k, v in kubespawner_override.items():
-            self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
+            if callable(v):
+                v = v(self)
+                self.log.debug(".. overriding KubeSpawner value %s=%s (callable result)", k, v)
+            else:
+                self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
             setattr(self, k, v)
         return options
