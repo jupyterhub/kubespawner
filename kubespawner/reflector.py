@@ -25,6 +25,14 @@ class NamespacedResourceReflector(LoggingConfigurable):
         """
     )
 
+    fields = Dict(
+        {},
+        config=True,
+        help="""
+        Fields to restrict the reflected objects
+        """
+    )
+
     namespace = Unicode(
         None,
         allow_none=True,
@@ -88,8 +96,10 @@ class NamespacedResourceReflector(LoggingConfigurable):
 
         # FIXME: Protect against malicious labels?
         self.label_selector = ','.join(['{}={}'.format(k, v) for k, v in self.labels.items()])
+        self.field_selector = ','.join(['{}={}'.format(k, v) for k, v in self.fields.items()])
 
         self.first_load_future = Future()
+        self._stop_event = threading.Event()
 
         self.start()
 
@@ -101,7 +111,8 @@ class NamespacedResourceReflector(LoggingConfigurable):
         """
         initial_resources = getattr(self.api, self.list_method_name)(
             self.namespace,
-            label_selector=self.label_selector
+            label_selector=self.label_selector,
+            field_selector=self.field_selector
         )
         # This is an atomic operation on the dictionary!
         self.resources = {p.metadata.name: p for p in initial_resources.items}
@@ -133,7 +144,7 @@ class NamespacedResourceReflector(LoggingConfigurable):
         """
         cur_delay = 0.1
         while True:
-            self.log.info("watching for %s with label selector %s in namespace %s", self.kind, self.label_selector, self.namespace)
+            self.log.info("watching for %s with label selector %s / field selector %s in namespace %s", self.kind, self.label_selector, self.field_selector, self.namespace)
             w = watch.Watch()
             try:
                 resource_version = self._list_and_update()
@@ -144,6 +155,7 @@ class NamespacedResourceReflector(LoggingConfigurable):
                         getattr(self.api, self.list_method_name),
                         self.namespace,
                         label_selector=self.label_selector,
+                        field_selector=self.field_selector,
                         resource_version=resource_version,
                 ):
                     cur_delay = 0.1
@@ -154,6 +166,9 @@ class NamespacedResourceReflector(LoggingConfigurable):
                     else:
                         # This is an atomic operation on the dictionary!
                         self.resources[resource.metadata.name] = resource
+                    if self._stop_event.is_set():
+                        break
+
             except Exception:
                 cur_delay = cur_delay * 2
                 if cur_delay > 30:
@@ -166,6 +181,9 @@ class NamespacedResourceReflector(LoggingConfigurable):
                 continue
             finally:
                 w.stop()
+                if self._stop_event.is_set():
+                    self.log.info("%s watcher stopped", self.kind)
+                    break
 
     def start(self):
         """
@@ -186,4 +204,5 @@ class NamespacedResourceReflector(LoggingConfigurable):
         self.watch_thread.daemon = True
         self.watch_thread.start()
 
-
+    def stop(self):
+        self._stop_event.set()
