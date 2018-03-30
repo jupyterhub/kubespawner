@@ -1068,6 +1068,8 @@ class KubeSpawner(Spawner):
             yield self.pod_reflector.first_load_future
         data = self.pod_reflector.pods.get(self.pod_name, None)
         if data is not None:
+            if data.status.phase == 'Pending':
+                return None
             for c in data.status.container_statuses:
                 # return exit code if notebook container has terminated
                 if c.name == 'notebook':
