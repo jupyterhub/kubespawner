@@ -57,8 +57,6 @@ class KubeSpawner(Spawner):
     Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
     """
 
-    UNDEFINED_DISPLAY_NAME = "?? undefined 'display_name' ??"
-
     # We want to have one threadpool executor that is shared across all spawner objects
     # This is initialized by the first spawner that is created
     executor = None
@@ -1218,11 +1216,18 @@ class KubeSpawner(Spawner):
         return args
 
     def _options_form_default(self):
+        '''
+        Build the form template according to the `profile_list` setting.
+
+        Returns:
+            None when no `profile_list` has been defined
+            The rendered template when `profile_list` is defined.
+        '''
         if not self.profile_list:
             return
         temp_keys = [
             {
-                'display': p.get('display_name', self.UNDEFINED_DISPLAY_NAME),
+                'display': p['display_name'],
                 'key': i,
                 'first': '',
         } for i, p in enumerate(self.profile_list)]
@@ -1231,6 +1236,28 @@ class KubeSpawner(Spawner):
         return self.form_template.format(inputs=text)
 
     def options_from_form(self, formdata):
+        """get the option selected by the user on the form
+
+        It actually reset the settings of kubespawner to each item found in the selected profile
+        (`kubespawner_override`).
+
+        Args:
+            formdata: user selection returned by the form
+
+        To access to the value, you can use the `get` accessor and the name of the html element,
+        for example::
+
+            formdata.get('profile',[0])
+
+        to get the value of the form named "profile", as defined in `form_template`::
+
+            <select class="form-control" name="profile"...>
+            </select>
+
+        Returns:
+            the selected user option
+        """
+
         if not self.profile_list:
             return formdata
         # Default to first profile if somehow none is provided
