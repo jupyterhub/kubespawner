@@ -21,6 +21,7 @@ from jupyterhub.traitlets import Command
 from kubernetes.client.rest import ApiException
 from kubernetes import client
 import escapism
+from jinja2 import Environment, BaseLoader
 
 from .clients import shared_client
 from kubespawner.traitlets import Callable
@@ -803,18 +804,18 @@ class KubeSpawner(Spawner):
     form_template = Unicode(
         """<label for="profile">Please select a profile for your environment:</label>
         <select class="form-control" name="profile" required autofocus>
-        {inputs}
+        {{ inputs }}
         </select>
         """,
         config = True,
-        help = """Template to use to construct options_form text. {inputs} is replaced with
+        help = """Jinja2 template to use to construct options_form text. {inputs} is replaced with
             the result of formatting inputs against each item in the profiles list."""
         )
 
     inputs = Unicode("""
-        <option value="{key}" {first}>{display}</option>""",
+        <option value="{{ key }}" {{ first }} >{{ display }}</option>""",
         config = True,
-        help = """Template to construct {inputs} in form_template. This text will be formatted
+        help = """Jinja template to construct {inputs} in form_template. This text will be formatted
             against each item in the profiles list, in order, using the following key names:
             ( display, key, type ) for the first three items in the tuple, and additionally
             first = "checked" (taken from first_input) for the first item in the list, so that
@@ -837,7 +838,7 @@ class KubeSpawner(Spawner):
             List of profiles to offer for selection by the user.
 
             Signature is: List(Dict()), where each item is a dictionary that has two keys:
-            - 'display_name': the human readable display name
+            - 'display_name': the human readable display name (should be HTML safe)
             - 'kubespawner_override': a dictionary with overrides to apply to the KubeSpawner
               settings. Each value can be either the final value to change or a callable that
               take the `KubeSpawner` instance as parameter and return the final value.
@@ -852,8 +853,7 @@ class KubeSpawner(Spawner):
                             'cpu_limit': 1,
                             'mem_limit': '512M',
                         }
-                    },
-                    {
+                    }, {
                         'display_name': 'Training Env - Datascience',
                         'kubespawner_override': {
                             'singleuser_image_spec': 'training/datascience:label',
@@ -1221,7 +1221,7 @@ class KubeSpawner(Spawner):
 
         Returns:
             None when no `profile_list` has been defined
-            The rendered template when `profile_list` is defined.
+            The rendered template (using jinja2) when `profile_list` is defined.
         '''
         if not self.profile_list:
             return
@@ -1232,8 +1232,13 @@ class KubeSpawner(Spawner):
                 'first': '',
         } for i, p in enumerate(self.profile_list)]
         temp_keys[0]['first'] = self.first_input
-        text = ''.join([ self.inputs.format(**tk) for tk in temp_keys ])
-        return self.form_template.format(inputs=text)
+        inputs_tpl = Environment(loader=BaseLoader).from_string(self.inputs)
+        text = ''.join([ inputs_tpl.render(**tk) for tk in temp_keys ])
+        rtemplate = Environment(loader=BaseLoader).from_string(self.form_template)
+        data = {
+            'inputs': text,
+        }
+        return rtemplate.render(**data)
 
     def options_from_form(self, formdata):
         """get the option selected by the user on the form
@@ -1263,8 +1268,7 @@ class KubeSpawner(Spawner):
         # Default to first profile if somehow none is provided
         selected_profile = int(formdata.get('profile',[0])[0])
         options = self.profile_list[selected_profile]
-        self.log.debug("Applying KubeSpawner override for profile '%s'",
-                  options.get('display_name', self.UNDEFINED_DISPLAY_NAME))
+        self.log.debug("Applying KubeSpawner override for profile '%s'", options['display_name'])
         kubespawner_override = options.get('kubespawner_override', {})
         for k, v in kubespawner_override.items():
             if callable(v):

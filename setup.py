@@ -8,6 +8,7 @@ setup(
         'pyYAML',
         'kubernetes==4.*',
         'escapism',
+        'jinja2',
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
