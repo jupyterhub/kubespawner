@@ -72,6 +72,8 @@ class NamespacedResourceReflector(LoggingConfigurable):
         """
     )
 
+    queue = None
+
     api_group_name = Unicode(
         'CoreV1Api',
         help="""
@@ -166,6 +168,8 @@ class NamespacedResourceReflector(LoggingConfigurable):
                     else:
                         # This is an atomic operation on the dictionary!
                         self.resources[resource.metadata.name] = resource
+                        if self.queue:
+                            self.queue.put(resource)
                     if self._stop_event.is_set():
                         break
 
