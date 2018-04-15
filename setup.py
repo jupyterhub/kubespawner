@@ -9,6 +9,7 @@ setup(
         'kubernetes==4.*',
         'escapism',
         'jinja2',
+        'async_generator>=1.8',
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
