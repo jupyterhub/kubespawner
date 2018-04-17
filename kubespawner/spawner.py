@@ -1250,7 +1250,7 @@ class KubeSpawner(Spawner):
         if not self.profile_list:
             return formdata
         # Default to first profile if somehow none is provided
-        selected_profile = int(formdata.get('profile',[0])[0])
+        selected_profile = int(formdata.get('profile', [0])[0])
         options = self.profile_list[selected_profile]
         self.log.debug("Applying KubeSpawner override for profile '%s'", options['display_name'])
         kubespawner_override = options.get('kubespawner_override', {})
