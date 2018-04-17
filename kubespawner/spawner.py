@@ -1224,7 +1224,7 @@ class KubeSpawner(Spawner):
             The rendered template (using jinja2) when `profile_list` is defined.
         '''
         if not self.profile_list:
-            return
+            return ''
         temp_keys = [
             {
                 'display': p['display_name'],
