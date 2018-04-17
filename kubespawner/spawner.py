@@ -810,69 +810,77 @@ class KubeSpawner(Spawner):
             {% endfor %}
         </select>
         """,
-        config = True,
-        help = """Jinja2 template to use to construct options_form text. {inputs} is replaced with
-            the result of formatting inputs against each item in the profiles list."""
-        )
+        config=True,
+        help="""
+        Jinja2 template for constructing profile list shown to user.
+
+        Used when `profile_list` is set.
+
+        The contents of `profile_list` are passed in to the template.
+        This should be used to construct the contents of a HTML form. When
+        posted, this form is expected to have an item with name `profile` and
+        the value the index of the profile in `profile_list`.
+        """
+    )
 
     profile_list = List(
-        trait = Dict(),
-        default_value = None,
-        minlen = 0,
-        config = True,
-        help = """
-            List of profiles to offer for selection by the user.
+        trait=Dict(),
+        default_value=None,
+        minlen=0,
+        config=True,
+        help="""
+        List of profiles to offer for selection by the user.
 
-            Signature is: List(Dict()), where each item is a dictionary that has two keys:
-            - 'display_name': the human readable display name (should be HTML safe)
-            - 'kubespawner_override': a dictionary with overrides to apply to the KubeSpawner
-              settings. Each value can be either the final value to change or a callable that
-              take the `KubeSpawner` instance as parameter and return the final value.
-            - 'default': (optional Bool) True if this is the default selected option
+        Signature is: List(Dict()), where each item is a dictionary that has two keys:
+        - 'display_name': the human readable display name (should be HTML safe)
+        - 'kubespawner_override': a dictionary with overrides to apply to the KubeSpawner
+            settings. Each value can be either the final value to change or a callable that
+            take the `KubeSpawner` instance as parameter and return the final value.
+        - 'default': (optional Bool) True if this is the default selected option
 
-            Example::
+        Example::
 
-                c.KubeSpawner.profile_list = [
-                    {
-                        'display_name': 'Training Env - Python',
-                        'default': True,
-                        'kubespawner_override': {
-                            'singleuser_image_spec': 'training/python:label',
-                            'cpu_limit': 1,
-                            'mem_limit': '512M',
-                        }
-                    }, {
-                        'display_name': 'Training Env - Datascience',
-                        'kubespawner_override': {
-                            'singleuser_image_spec': 'training/datascience:label',
-                            'cpu_limit': 4,
-                            'mem_limit': '8G',
-                        }
-                    }, {
-                        'display_name': 'DataScience - Small instance',
-                        'kubespawner_override': {
-                            'singleuser_image_spec': 'datascience/small:label',
-                            'cpu_limit': 10,
-                            'mem_limit': '16G',
-                        }
-                    }, {
-                        'display_name': 'DataScience - Medium instance',
-                        'kubespawner_override': {
-                            'singleuser_image_spec': 'datascience/medium:label',
-                            'cpu_limit': 48,
-                            'mem_limit': '96G',
-                        }
-                    }, {
-                        'display_name': 'DataScience - Medium instance (GPUx2)',
-                        'kubespawner_override': {
-                            'singleuser_image_spec': 'datascience/medium:label',
-                            'cpu_limit': 48,
-                            'mem_limit': '96G',
-                            'extra_resource_guarantees': {"nvidia.com/gpu": "2"},
-                        }
+            c.KubeSpawner.profile_list = [
+                {
+                    'display_name': 'Training Env - Python',
+                    'default': True,
+                    'kubespawner_override': {
+                        'singleuser_image_spec': 'training/python:label',
+                        'cpu_limit': 1,
+                        'mem_limit': '512M',
                     }
-                ]
-            """
+                }, {
+                    'display_name': 'Training Env - Datascience',
+                    'kubespawner_override': {
+                        'singleuser_image_spec': 'training/datascience:label',
+                        'cpu_limit': 4,
+                        'mem_limit': '8G',
+                    }
+                }, {
+                    'display_name': 'DataScience - Small instance',
+                    'kubespawner_override': {
+                        'singleuser_image_spec': 'datascience/small:label',
+                        'cpu_limit': 10,
+                        'mem_limit': '16G',
+                    }
+                }, {
+                    'display_name': 'DataScience - Medium instance',
+                    'kubespawner_override': {
+                        'singleuser_image_spec': 'datascience/medium:label',
+                        'cpu_limit': 48,
+                        'mem_limit': '96G',
+                    }
+                }, {
+                    'display_name': 'DataScience - Medium instance (GPUx2)',
+                    'kubespawner_override': {
+                        'singleuser_image_spec': 'datascience/medium:label',
+                        'cpu_limit': 48,
+                        'mem_limit': '96G',
+                        'extra_resource_guarantees': {"nvidia.com/gpu": "2"},
+                    }
+                }
+            ]
+        """
         )
 
     def _expand_user_properties(self, template):
