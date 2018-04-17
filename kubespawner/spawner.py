@@ -801,33 +801,19 @@ class KubeSpawner(Spawner):
         """
         )
 
-    form_template = Unicode(
-        """<label for="profile">Please select a profile for your environment:</label>
+    profile_form_template = Unicode(
+        """
+        <label for="profile">Please select a profile to launch</label>
         <select class="form-control" name="profile" required autofocus>
-        {{ inputs }}
+            {% for profile in profile_list %}
+            <option {% if profile.default %}selected{% endif %} value="{{ loop.index0 }}">{{ profile.display_name }}</option>
+            {% endfor %}
         </select>
         """,
         config = True,
         help = """Jinja2 template to use to construct options_form text. {inputs} is replaced with
             the result of formatting inputs against each item in the profiles list."""
         )
-
-    inputs = Unicode("""
-        <option value="{{ key }}" {{ first }} >{{ display }}</option>""",
-        config = True,
-        help = """Jinja template to construct {inputs} in form_template. This text will be formatted
-            against each item in the profiles list, in order, using the following key names:
-            ( display, key, type ) for the first three items in the tuple, and additionally
-            first = "checked" (taken from first_input) for the first item in the list, so that
-            the first item starts selected."""
-        )
-
-    first_input = Unicode('selected',
-        config=True,
-        help="Text to substitute as {first} in inputs"
-        )
-
-    options_form = Unicode()
 
     profile_list = List(
         trait = Dict(),
@@ -842,12 +828,14 @@ class KubeSpawner(Spawner):
             - 'kubespawner_override': a dictionary with overrides to apply to the KubeSpawner
               settings. Each value can be either the final value to change or a callable that
               take the `KubeSpawner` instance as parameter and return the final value.
+            - 'default': (optional Bool) True if this is the default selected option
 
             Example::
 
                 c.KubeSpawner.profile_list = [
                     {
                         'display_name': 'Training Env - Python',
+                        'default': True,
                         'kubespawner_override': {
                             'singleuser_image_spec': 'training/python:label',
                             'cpu_limit': 1,
@@ -1220,25 +1208,13 @@ class KubeSpawner(Spawner):
         Build the form template according to the `profile_list` setting.
 
         Returns:
-            None when no `profile_list` has been defined
+            '' when no `profile_list` has been defined
             The rendered template (using jinja2) when `profile_list` is defined.
         '''
         if not self.profile_list:
             return ''
-        temp_keys = [
-            {
-                'display': p['display_name'],
-                'key': i,
-                'first': '',
-        } for i, p in enumerate(self.profile_list)]
-        temp_keys[0]['first'] = self.first_input
-        inputs_tpl = Environment(loader=BaseLoader).from_string(self.inputs)
-        text = ''.join([ inputs_tpl.render(**tk) for tk in temp_keys ])
-        rtemplate = Environment(loader=BaseLoader).from_string(self.form_template)
-        data = {
-            'inputs': text,
-        }
-        return rtemplate.render(**data)
+        profile_form_template = Environment(loader=BaseLoader).from_string(self.profile_form_template)
+        return profile_form_template.render(profile_list=self.profile_list)
 
     def options_from_form(self, formdata):
         """get the option selected by the user on the form
