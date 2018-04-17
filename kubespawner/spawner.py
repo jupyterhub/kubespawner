@@ -21,6 +21,7 @@ from jupyterhub.traitlets import Command
 from kubernetes.client.rest import ApiException
 from kubernetes import client
 import escapism
+from jinja2 import Environment, BaseLoader
 
 from .clients import shared_client
 from kubespawner.traitlets import Callable
@@ -630,7 +631,7 @@ class KubeSpawner(Spawner):
         List of access modes the user has for the pvc.
 
         The access modes are:
-   
+
             - `ReadWriteOnce` – the volume can be mounted as read-write by a single node
             - `ReadOnlyMany` – the volume can be mounted read-only by many nodes
             - `ReadWriteMany` – the volume can be mounted as read-write by many nodes
@@ -649,7 +650,7 @@ class KubeSpawner(Spawner):
         The keys is name of hooks and there are only two hooks, postStart and preStop.
         The values are handler of hook which executes by Kubernetes management system when hook is called.
 
-        Below is an sample copied from 
+        Below is an sample copied from
         `Kubernetes doc <https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/>`_ ::
 
             lifecycle:
@@ -688,7 +689,7 @@ class KubeSpawner(Spawner):
                   add:
                   - NET_ADMIN
 
-        
+
         See https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ for more
         info on what init containers are and why you might want to use them!
 
@@ -754,7 +755,7 @@ class KubeSpawner(Spawner):
         which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
 
         One usage is setting crontab in a container to clean sensitive data with configuration below::
-        
+
             [
                 {
                     'name': 'crontab',
@@ -762,7 +763,7 @@ class KubeSpawner(Spawner):
                     'command': ['/usr/local/bin/supercronic', '/etc/crontab']
                 }
             ]
-        
+
         """
     )
 
@@ -797,6 +798,88 @@ class KubeSpawner(Spawner):
         Whether to delete pods that have stopped themselves.
         Set to False to leave stopped pods in the completed state,
         allowing for easier debugging of why they may have stopped.
+        """
+        )
+
+    profile_form_template = Unicode(
+        """
+        <label for="profile">Please select a profile to launch</label>
+        <select class="form-control" name="profile" required autofocus>
+            {% for profile in profile_list %}
+            <option {% if profile.default %}selected{% endif %} value="{{ loop.index0 }}">{{ profile.display_name }}</option>
+            {% endfor %}
+        </select>
+        """,
+        config=True,
+        help="""
+        Jinja2 template for constructing profile list shown to user.
+
+        Used when `profile_list` is set.
+
+        The contents of `profile_list` are passed in to the template.
+        This should be used to construct the contents of a HTML form. When
+        posted, this form is expected to have an item with name `profile` and
+        the value the index of the profile in `profile_list`.
+        """
+    )
+
+    profile_list = List(
+        trait=Dict(),
+        default_value=None,
+        minlen=0,
+        config=True,
+        help="""
+        List of profiles to offer for selection by the user.
+
+        Signature is: List(Dict()), where each item is a dictionary that has two keys:
+        - 'display_name': the human readable display name (should be HTML safe)
+        - 'kubespawner_override': a dictionary with overrides to apply to the KubeSpawner
+            settings. Each value can be either the final value to change or a callable that
+            take the `KubeSpawner` instance as parameter and return the final value.
+        - 'default': (optional Bool) True if this is the default selected option
+
+        Example::
+
+            c.KubeSpawner.profile_list = [
+                {
+                    'display_name': 'Training Env - Python',
+                    'default': True,
+                    'kubespawner_override': {
+                        'singleuser_image_spec': 'training/python:label',
+                        'cpu_limit': 1,
+                        'mem_limit': '512M',
+                    }
+                }, {
+                    'display_name': 'Training Env - Datascience',
+                    'kubespawner_override': {
+                        'singleuser_image_spec': 'training/datascience:label',
+                        'cpu_limit': 4,
+                        'mem_limit': '8G',
+                    }
+                }, {
+                    'display_name': 'DataScience - Small instance',
+                    'kubespawner_override': {
+                        'singleuser_image_spec': 'datascience/small:label',
+                        'cpu_limit': 10,
+                        'mem_limit': '16G',
+                    }
+                }, {
+                    'display_name': 'DataScience - Medium instance',
+                    'kubespawner_override': {
+                        'singleuser_image_spec': 'datascience/medium:label',
+                        'cpu_limit': 48,
+                        'mem_limit': '96G',
+                    }
+                }, {
+                    'display_name': 'DataScience - Medium instance (GPUx2)',
+                    'kubespawner_override': {
+                        'singleuser_image_spec': 'datascience/medium:label',
+                        'cpu_limit': 48,
+                        'mem_limit': '96G',
+                        'extra_resource_guarantees': {"nvidia.com/gpu": "2"},
+                    }
+                }
+            ]
         """
         )
 
@@ -1127,3 +1210,55 @@ class KubeSpawner(Spawner):
                 args[i] = '--hub-api-url="%s"' % (self.accessible_hub_api_url)
                 break
         return args
+
+    def _options_form_default(self):
+        '''
+        Build the form template according to the `profile_list` setting.
+
+        Returns:
+            '' when no `profile_list` has been defined
+            The rendered template (using jinja2) when `profile_list` is defined.
+        '''
+        if not self.profile_list:
+            return ''
+        profile_form_template = Environment(loader=BaseLoader).from_string(self.profile_form_template)
+        return profile_form_template.render(profile_list=self.profile_list)
+
+    def options_from_form(self, formdata):
+        """get the option selected by the user on the form
+
+        It actually reset the settings of kubespawner to each item found in the selected profile
+        (`kubespawner_override`).
+
+        Args:
+            formdata: user selection returned by the form
+
+        To access to the value, you can use the `get` accessor and the name of the html element,
+        for example::
+
+            formdata.get('profile',[0])
+
+        to get the value of the form named "profile", as defined in `form_template`::
+
+            <select class="form-control" name="profile"...>
+            </select>
+
+        Returns:
+            the selected user option
+        """
+
+        if not self.profile_list:
+            return formdata
+        # Default to first profile if somehow none is provided
+        selected_profile = int(formdata.get('profile', [0])[0])
+        options = self.profile_list[selected_profile]
+        self.log.debug("Applying KubeSpawner override for profile '%s'", options['display_name'])
+        kubespawner_override = options.get('kubespawner_override', {})
+        for k, v in kubespawner_override.items():
+            if callable(v):
+                v = v(self)
+                self.log.debug(".. overriding KubeSpawner value %s=%s (callable result)", k, v)
+            else:
+                self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
+            setattr(self, k, v)
+        return options
