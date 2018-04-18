@@ -933,9 +933,9 @@ class KubeSpawner(Spawner):
         labels.update(extra_labels)
         labels.update({
             'app': os.getenv('LABEL_APP', 'jupyterhub'),
-            'release': os.getenv('LABEL_RELEASE', 'unknown')
-            'chart': os.getenv('LABEL_CHART', 'unknown')
-            'heritage': os.getenv('LABEL_HERITAGE', 'jupyterhub')
+            'release': os.getenv('LABEL_RELEASE', 'unknown'),
+            'chart': os.getenv('LABEL_CHART', 'unknown'),
+            'heritage': os.getenv('LABEL_HERITAGE', 'jupyterhub'),
         })
         return labels
 
