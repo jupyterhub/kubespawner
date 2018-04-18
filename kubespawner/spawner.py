@@ -32,7 +32,6 @@ from kubespawner.reflector import NamespacedResourceReflector
 
 class PodReflector(NamespacedResourceReflector):
     kind = 'pods'
-
     labels = {
         'heritage': 'jupyterhub',
         'component': 'singleuser-server',
@@ -930,22 +929,22 @@ class KubeSpawner(Spawner):
     def _build_common_labels(self, extra_labels):
         # Default set of labels, picked up from
         # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
-        labels = {
-            'heritage': 'jupyterhub',
-            'app': 'jupyterhub',
-        }
-
+        labels = {}
         labels.update(extra_labels)
+        labels.update({
+            'app': os.getenv('LABEL_APP', 'jupyterhub'),
+            'release': os.getenv('LABEL_RELEASE', 'unknown')
+            'chart': os.getenv('LABEL_CHART', 'unknown')
+            'heritage': os.getenv('LABEL_HERITAGE', 'jupyterhub')
+        })
         return labels
 
     def _build_pod_labels(self, extra_labels):
-        labels = {
+        labels = self._build_common_labels(extra_labels)
+        labels.update({
             'component': 'singleuser-server'
-        }
-        labels.update(extra_labels)
-        # Make sure pod_reflector.labels in final label list
-        labels.update(self.pod_reflector.labels)
-        return self._build_common_labels(labels)
+        })
+        return labels
 
     def _build_common_annotations(self, extra_annotations):
         # Annotations don't need to be escaped
@@ -1023,6 +1022,9 @@ class KubeSpawner(Spawner):
         Make a pvc manifest that will spawn current user's pvc.
         """
         labels = self._build_common_labels(self._expand_all(self.user_storage_extra_labels))
+        labels.update({
+            'component': 'singleuser-storage'
+        })
 
         annotations = self._build_common_annotations({})
 
