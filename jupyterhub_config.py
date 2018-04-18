@@ -1,4 +1,5 @@
 import os
+import socket
 
 
 c.JupyterHub.spawner_class = 'kubespawner.KubeSpawner'
@@ -16,9 +17,15 @@ c.KubeSpawner.start_timeout = 60 * 5
 # Our simplest user image! Optimized to just... start, and be small!
 c.KubeSpawner.singleuser_image_spec = 'jupyterhub/singleuser:0.8'
 
-# The spawned containers need to be able to talk to the hub through the proxy!
-c.KubeSpawner.hub_connect_ip = os.environ['HUB_CONNECT_IP']
-c.JupyterHub.hub_connect_ip = os.environ['HUB_CONNECT_IP']
+# Find the IP of the machine that minikube is most likely able to talk to
+# Graciously used from https://stackoverflow.com/a/166589
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.connect(("8.8.8.8", 80))
+host_ip = s.getsockname()[0]
+s.close()
+
+c.KubeSpawner.hub_connect_ip = host_ip
+c.JupyterHub.hub_connect_ip = c.KubeSpawner.hub_connect_ip
 
 c.KubeSpawner.singleuser_service_account = 'default'
 # Do not use any authentication at all - any username / password will work.
