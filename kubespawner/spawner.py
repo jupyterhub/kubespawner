@@ -277,6 +277,21 @@ class KubeSpawner(Spawner):
         """
         return self.hub.server.port
 
+    common_labels = Dict(
+        {
+            'app': 'jupyterhub',
+            'heritage': 'jupyterhub',
+        },
+        config=True,
+        help="""
+        Kubernetes labels that both spawned singleuser server pods and created
+        user PVCs will get.
+
+        Note that these are only set when the Pods and PVCs are created, not
+        later when this setting is updated.
+        """
+    )
+
     singleuser_extra_labels = Dict(
         {},
         config=True,
@@ -582,7 +597,7 @@ class KubeSpawner(Spawner):
 
         The keys and values specified here would be set as labels on the PVCs
         created by kubespawner for the user. Note that these are only set
-        when the PVC is created, not later when they are updated.
+        when the PVC is created, not later when this setting is updated.
 
         See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ for more
         info on what labels are and why you might want to use them!
@@ -931,12 +946,7 @@ class KubeSpawner(Spawner):
         # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
         labels = {}
         labels.update(extra_labels)
-        labels.update({
-            'app': os.getenv('LABEL_APP', 'jupyterhub'),
-            'release': os.getenv('LABEL_RELEASE', 'unknown'),
-            'chart': os.getenv('LABEL_CHART', 'unknown'),
-            'heritage': os.getenv('LABEL_HERITAGE', 'jupyterhub'),
-        })
+        labels.update(self.common_labels)
         return labels
 
     def _build_pod_labels(self, extra_labels):
