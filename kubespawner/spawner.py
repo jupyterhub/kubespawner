@@ -44,15 +44,6 @@ class PodReflector(NamespacedResourceReflector):
     def pods(self):
         return self.resources
 
-class EventReflector(NamespacedResourceReflector):
-    kind = 'events'
-
-    list_method_name = 'list_namespaced_event'
-
-    @property
-    def events(self):
-        return self.resources
-
 class KubeSpawner(Spawner):
     """
     Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
@@ -1111,17 +1102,6 @@ class KubeSpawner(Spawner):
                 else:
                     raise
 
-        main_loop = IOLoop.current()
-        def on_reflector_failure():
-            self.log.critical("Events reflector failed, halting Hub.")
-            main_loop.stop()
-
-        # events are selected based on pod name, which will include previous launch/stop
-        self.events = EventReflector(
-                parent=self, namespace=self.namespace,
-                fields={'involvedObject.kind': 'Pod', 'involvedObject.name': self.pod_name},
-                on_failure=on_reflector_failure
-            )
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
         # try again. We try 4 times, and if it still fails we give up.
@@ -1161,10 +1141,6 @@ class KubeSpawner(Spawner):
         )
 
         pod = self.pod_reflector.pods[self.pod_name]
-        self.log.debug('pod %s events before launch: %s', self.pod_name, self.events.events)
-        # Note: we stop the event watcher once launch is successful, but the reflector
-        # will only stop when the next event comes in, likely when it is stopped.
-        self.events.stop()
         return (pod.status.pod_ip, self.port)
 
     @gen.coroutine
