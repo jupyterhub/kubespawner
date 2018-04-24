@@ -28,7 +28,7 @@ from kubespawner.traitlets import Callable
 from kubespawner.utils import Callable
 from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import NamespacedResourceReflector
-from queue import Queue
+from asyncio import sleep
 from async_generator import async_generator, yield_
 
 class PodReflector(NamespacedResourceReflector):
@@ -47,13 +47,12 @@ class PodReflector(NamespacedResourceReflector):
 
 class EventReflector(NamespacedResourceReflector):
     kind = 'events'
-    queue = Queue(20)
 
     list_method_name = 'list_namespaced_event'
 
     @property
     def events(self):
-        return self.resources
+        return sorted(self.resources.values(), key = lambda x : x.last_timestamp)
 
 class KubeSpawner(Spawner):
     """
@@ -1125,12 +1124,21 @@ class KubeSpawner(Spawner):
 
     @async_generator
     async def progress(self):
+        next_event = 0
+        self.log.debug('progress generator: %s', self.pod_name)
+
         while True:
-            event = self.events.queue.get()
-            await yield_({
-                'progress': 50,
-                'message':  "%s [%s] %s" % (event.last_timestamp, event.type, event.message)
-            })
+            len_events = len(self.events.events)
+            if next_event < len_events:
+                for i in range(next_event, len_events):
+                    event = self.events.events[i]
+                    await yield_({
+                        'progress': 50,
+                        'message':  "%s [%s] %s" % (event.last_timestamp, event.type, event.message)
+                    })
+                next_event = len_events
+            await sleep(1)
+
 
     @gen.coroutine
     def start(self):
