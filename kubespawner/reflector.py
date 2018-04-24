@@ -148,8 +148,8 @@ class NamespacedResourceReflector(LoggingConfigurable):
         update' cycle on them), we should be ok!
         """
         cur_delay = 0.1
+        self.log.info("watching for %s with label selector %s / field selector %s in namespace %s", self.kind, self.label_selector, self.field_selector, self.namespace)
         while True:
-            self.log.info("watching for %s with label selector %s / field selector %s in namespace %s", self.kind, self.label_selector, self.field_selector, self.namespace)
             w = watch.Watch()
             try:
                 resource_version = self._list_and_update()
@@ -162,6 +162,7 @@ class NamespacedResourceReflector(LoggingConfigurable):
                         label_selector=self.label_selector,
                         field_selector=self.field_selector,
                         resource_version=resource_version,
+                        timeout_seconds=10,
                 ):
                     cur_delay = 0.1
                     resource = ev['object']
