@@ -105,6 +105,9 @@ class NamespacedResourceReflector(LoggingConfigurable):
 
         self.start()
 
+    def __del__(self):
+        self.stop()
+
     def _list_and_update(self):
         """
         Update current list of resources by doing a full fetch.
