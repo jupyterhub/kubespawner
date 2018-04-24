@@ -1206,7 +1206,10 @@ class KubeSpawner(Spawner):
         )
 
         pod = self.pod_reflector.pods[self.pod_name]
-        self.log.debug('pod %s events before launch: %s', self.pod_name, self.events.events)
+
+        self.log.debug('pod %s events before launch: %s',
+            self.pod_name, "\n".join(["%s [%s] %s" % (event.last_timestamp, event.type, event.message) for event in self.events.events]))
+
         # Note: we stop the event watcher once launch is successful, but the reflector
         # will only stop when the next event comes in, likely when it is stopped.
         self.events.stop()
