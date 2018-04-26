@@ -7,9 +7,9 @@ import threading
 
 from traitlets.config import LoggingConfigurable
 from traitlets import Any, Dict, Unicode
-from kubernetes import client, config, watch
+from kubernetes import config, watch
 from tornado.ioloop import IOLoop
-
+from .clients import shared_client
 
 class NamespacedResourceReflector(LoggingConfigurable):
     """
@@ -92,7 +92,7 @@ class NamespacedResourceReflector(LoggingConfigurable):
             config.load_incluster_config()
         except config.ConfigException:
             config.load_kube_config()
-        self.api = getattr(client, self.api_group_name)()
+        self.api = shared_client(self.api_group_name)
 
         # FIXME: Protect against malicious labels?
         self.label_selector = ','.join(['{}={}'.format(k, v) for k, v in self.labels.items()])
