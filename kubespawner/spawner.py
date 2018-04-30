@@ -794,12 +794,35 @@ class KubeSpawner(Spawner):
 
     profile_form_template = Unicode(
         """
-        <label for="profile">Please select a profile to launch</label>
-        <select class="form-control" name="profile" required autofocus>
-            {% for profile in profile_list %}
-            <option {% if profile.default %}selected{% endif %} value="{{ loop.index0 }}">{{ profile.display_name }}</option>
-            {% endfor %}
-        </select>
+        <script>
+        // JupyterHub 0.8 applied form-control indisciminately to all form elements.
+        // Can be removed once we stop supporting JupyterHub 0.8
+        $(document).ready(function() {
+            $('#kubespawner-profiles-list input[type="radio"]').removeClass('form-control');
+        });
+        </script>
+        <style>
+        /* The profile description should not be bold, even though it is inside the <label> tag */
+        #kubespawner-profiles-list label p {
+            font-weight: normal;
+        }
+        </style>
+
+        <div class='form-group' id='kubespawner-profiles-list'>
+        {% for profile in profile_list %}
+        <label for='profile-item-{{ loop.index0 }}' class='form-control input-group'>
+            <div class='col-md-1'>
+                <input type='radio' name='profile' id='profile-item-{{ loop.index0 }}' value='{{ loop.index0 }}' {% if profile.default %}checked{% endif %} />
+            </div>
+            <div class='col-md-11'>
+                <strong>{{ profile.display_name }}</strong>
+                {% if profile.description %}
+                <p>{{ profile.description }}</p>
+                {% endif %}
+            </div>
+        </label>
+        {% endfor %}
+        </div>
         """,
         config=True,
         help="""
@@ -824,6 +847,7 @@ class KubeSpawner(Spawner):
 
         Signature is: List(Dict()), where each item is a dictionary that has two keys:
         - 'display_name': the human readable display name (should be HTML safe)
+        - 'description': Optional description of this profile displayed to the user.
         - 'kubespawner_override': a dictionary with overrides to apply to the KubeSpawner
             settings. Each value can be either the final value to change or a callable that
             take the `KubeSpawner` instance as parameter and return the final value.
