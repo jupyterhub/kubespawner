@@ -1,12 +1,18 @@
+# specifically use concurrent.futures for threadsafety
+# asyncio Futures cannot be used across threads
+from concurrent.futures import Future
+
 import time
 import threading
 
 from traitlets.config import LoggingConfigurable
 from traitlets import Any, Dict, Unicode, Int
-from kubernetes import client, config, watch
+from kubernetes import config, watch
+from tornado.ioloop import IOLoop
 # This is kinda implementation specific, but we need to know it
 from urllib3.exceptions import ReadTimeoutError
 
+from .clients import shared_client
 
 class NamespacedResourceReflector(LoggingConfigurable):
     """
@@ -101,10 +107,12 @@ class NamespacedResourceReflector(LoggingConfigurable):
             config.load_incluster_config()
         except config.ConfigException:
             config.load_kube_config()
-        self.api = getattr(client, self.api_group_name)()
+        self.api = shared_client(self.api_group_name)
 
         # FIXME: Protect against malicious labels?
         self.label_selector = ','.join(['{}={}'.format(k, v) for k, v in self.labels.items()])
+
+        self.first_load_future = Future()
 
         self.start()
 
@@ -161,8 +169,14 @@ class NamespacedResourceReflector(LoggingConfigurable):
             self.log.info("watching for %s with label selector %s in namespace %s", self.kind, self.label_selector, self.namespace)
             w = watch.Watch()
             try:
+                resource_version = self._list_and_update()
+                if not self.first_load_future.done():
+                    # signal that we've loaded our initial data
+                    self.first_load_future.set_result(None)
+
                 # in case of timeout_seconds, the w.stream just exits (no exception thrown)
                 # -> we stop the watcher and start a new one
+
                 for ev in w.stream(
                         getattr(self.api, self.list_method_name),
                         **watch_args

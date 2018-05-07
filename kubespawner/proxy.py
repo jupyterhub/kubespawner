@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 import os
 import string
 import escapism
@@ -10,7 +11,7 @@ from jupyterhub.utils import exponential_backoff
 from kubespawner.objects import make_ingress
 from kubespawner.utils import generate_hashed_slug
 from kubespawner.reflector import NamespacedResourceReflector
-from concurrent.futures import ThreadPoolExecutor
+from .clients import shared_client
 from traitlets import Unicode
 from tornado import gen
 from tornado.concurrent import run_on_executor
@@ -96,8 +97,8 @@ class KubeIngressProxy(Proxy):
         self.service_reflector = ServiceReflector(parent=self, namespace=self.namespace)
         self.endpoint_reflector = EndpointsReflector(parent=self, namespace=self.namespace)
 
-        self.core_api = client.CoreV1Api()
-        self.extension_api = client.ExtensionsV1beta1Api()
+        self.core_api = shared_client('CoreV1Api')
+        self.extension_api = shared_client('ExtensionsV1beta1Api')
 
     @run_on_executor
     def asynchronize(self, method, *args, **kwargs):

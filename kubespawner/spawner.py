@@ -6,12 +6,8 @@ implementation that should be used by JupyterHub.
 """
 import os
 import json
-import time
 import string
-import threading
-import sys
 from urllib.parse import urlparse, urlunparse
-import json
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
 
@@ -25,7 +21,9 @@ from jupyterhub.traitlets import Command
 from kubernetes.client.rest import ApiException
 from kubernetes import client
 import escapism
+from jinja2 import Environment, BaseLoader
 
+from .clients import shared_client
 from kubespawner.traitlets import Callable
 from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import NamespacedResourceReflector
@@ -80,7 +78,7 @@ class KubeSpawner(Spawner):
                 on_failure=on_reflector_failure
             )
 
-        self.api = client.CoreV1Api()
+        self.api = shared_client('CoreV1Api')
 
         self.pod_name = self._expand_user_properties(self.pod_name_template)
         self.pvc_name = self._expand_user_properties(self.pvc_name_template)
@@ -108,7 +106,7 @@ class KubeSpawner(Spawner):
 
         Increase this if you are dealing with a very large number of users.
 
-        Defaults to '5 * cpu_cores', which is the default for ThreadPoolExecutor.
+        Defaults to `5 * cpu_cores`, which is the default for `ThreadPoolExecutor`.
         """
     )
 
@@ -118,7 +116,7 @@ class KubeSpawner(Spawner):
         Kubernetes namespace to spawn user pods in.
 
         If running inside a kubernetes cluster with service accounts enabled,
-        defaults to the current namespace. If not, defaults to 'default'
+        defaults to the current namespace. If not, defaults to `default`
         """
     )
 
@@ -127,7 +125,7 @@ class KubeSpawner(Spawner):
         Set namespace default to current namespace if running in a k8s cluster
 
         If not in a k8s cluster with service accounts enabled, default to
-        'default'
+        `default`
         """
         ns_path = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
         if os.path.exists(ns_path):
@@ -160,7 +158,7 @@ class KubeSpawner(Spawner):
         Some spawners allow shell-style expansion here, allowing you to use environment variables.
         Most, including the default, do not. Consult the documentation for your spawner to verify!
 
-        If set to None, Kubernetes will start the CMD that is specified in the Docker image being started.
+        If set to `None`, Kubernetes will start the `CMD` that is specified in the Docker image being started.
         """
     ).tag(config=True)
 
@@ -180,10 +178,10 @@ class KubeSpawner(Spawner):
         help="""
         The service account to be mounted in the spawned user pod.
 
-        When set to None (the default), no service account is mounted, and the default service account
+        When set to `None` (the default), no service account is mounted, and the default service account
         is explicitly disabled.
 
-        This serviceaccount must already exist in the namespace the user pod is being spawned in.
+        This `serviceaccount` must already exist in the namespace the user pod is being spawned in.
 
         WARNING: Be careful with this configuration! Make sure the service account being mounted
         has the minimal permissions needed, and nothing more. When misconfigured, this can easily
@@ -197,7 +195,7 @@ class KubeSpawner(Spawner):
         help="""
         Template to use to form the name of user's pods.
 
-        {username} and {userid} are expanded to the escaped, dns-label safe
+        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
         username & integer user id respectively.
 
         This must be unique within the namespace the pods are being spawned
@@ -223,7 +221,7 @@ class KubeSpawner(Spawner):
         help="""
         Template to use to form the name of user's pvc.
 
-        {username} and {userid} are expanded to the escaped, dns-label safe
+        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
         username & integer user id respectively.
 
         This must be unique within the namespace the pvc are being spawned
@@ -293,7 +291,7 @@ class KubeSpawner(Spawner):
         See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ for more
         info on what labels are and why you might want to use them!
 
-        {username} and {userid} are expanded to the escaped, dns-label safe
+        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
         username & integer user id respectively, wherever they are used.
         """
     )
@@ -310,7 +308,7 @@ class KubeSpawner(Spawner):
         See https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/ for more
         info on what annotations are and why you might want to use them!
 
-        {username} and {userid} are expanded to the escaped, dns-label safe
+        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
         username & integer user id respectively, wherever they are used.
         """
     )
@@ -336,11 +334,10 @@ class KubeSpawner(Spawner):
 
         If your image is very large, you might need to increase the timeout
         for starting the single user container from the default. You can
-        set this with:
+        set this with::
 
-        ```
-        c.KubeSpawner.start_timeout = 60 * 5  # Upto 5 minutes
-        ```
+           c.KubeSpawner.start_timeout = 60 * 5  # Upto 5 minutes
+
         """
     )
 
@@ -349,15 +346,15 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         The image pull policy of the docker container specified in
-        singleuser_image_spec.
+        `singleuser_image_spec`.
 
         Defaults to `IfNotPresent` which causes the Kubelet to NOT pull the image
         specified in singleuser_image_spec if it already exists, except if the tag
-        is :latest. For more information on image pull policy, refer to
-        http://kubernetes.io/docs/user-guide/images/
+        is `:latest`. For more information on image pull policy, refer to
+        https://kubernetes.io/docs/concepts/containers/images/
 
         This configuration is primarily used in development if you are
-        actively changing the singleuser_image_spec and would like to pull the image
+        actively changing the `singleuser_image_spec` and would like to pull the image
         whenever a user container is spawned.
         """
     )
@@ -370,9 +367,9 @@ class KubeSpawner(Spawner):
         The kubernetes secret to use for pulling images from private repository.
 
         Set this to the name of a Kubernetes secret containing the docker configuration
-        required to pull the image specified in singleuser_image_spec.
+        required to pull the image specified in `singleuser_image_spec`.
 
-        https://kubernetes.io/docs/user-guide/images/#specifying-imagepullsecrets-on-a-pod
+        https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
         has more information on when and why this might need to be set, and what it
         should be set to.
         """
@@ -386,8 +383,9 @@ class KubeSpawner(Spawner):
 
         Default is None and means it will be launched in any available Node.
 
-        For example to match the Nodes that have a label of `disktype: ssd` use:
-            `{"disktype": "ssd"}`
+        For example to match the Nodes that have a label of `disktype: ssd` use::
+
+            {"disktype": "ssd"}
         """
     )
 
@@ -444,8 +442,34 @@ class KubeSpawner(Spawner):
         upgrades to break.
 
         You'll *have* to set this if you are using auto-provisioned volumes with most
-        cloud providers. See [fsGroup](http://kubernetes.io/docs/api-reference/v1/definitions/#_v1_podsecuritycontext)
+        cloud providers. See `fsGroup <https://kubernetes.io/docs/api-reference/v1.9/#podsecuritycontext-v1-core>`_
         for more details.
+        """
+    )
+
+    singleuser_supplemental_gids = Union([
+            List(),
+            Callable()
+        ],
+        allow_none=True,
+        config=True,
+        help="""
+        A list of GIDs that should be set as additional supplemental groups to the
+        user that the container runs as.
+
+        Instead of a list of integers, this could also be a callable that takes as one
+        parameter the current spawner instance and returns a list of integers. The
+        callable will be called asynchronously if it returns a future, rather than
+        a list. Note that the interface of the spawner class is not deemed stable
+        across versions, so using this functionality might cause your JupyterHub
+        or kubespawner upgrades to break.
+
+        You may have to set this if you are deploying to an environment with RBAC/SCC
+        enforced and pods run with a 'restricted' SCC which results in the image being
+        run as an assigned user ID. The supplemental group IDs would need to include
+        the corresponding group ID of the user ID the image normally would run as. The
+        image must setup all directories/files any application needs access to, as group
+        writable.
         """
     )
 
@@ -489,20 +513,20 @@ class KubeSpawner(Spawner):
         so you should use the same structure. Each item in the list must have the
         following two keys:
 
-          - name
+          - `name`
             Name that'll be later used in the `volume_mounts` config to mount this
             volume at a specific path.
-          - <name-of-a-supported-volume-type> (such as `hostPath`, `persistentVolumeClaim`,
+          - `<name-of-a-supported-volume-type>` (such as `hostPath`, `persistentVolumeClaim`,
             etc)
             The key name determines the type of volume to mount, and the value should
             be an object specifying the various options available for that kind of
             volume.
 
-        See http://kubernetes.io/docs/user-guide/volumes/ for more information on the
+        See https://kubernetes.io/docs/concepts/storage/volumes for more information on the
         various kinds of volumes available and their options. Your kubernetes cluster
         must already be configured to support the volume types you want to use.
 
-        {username} and {userid} are expanded to the escaped, dns-label safe
+        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
         username & integer user id respectively, wherever they are used.
         """
     )
@@ -517,16 +541,13 @@ class KubeSpawner(Spawner):
         container in the kubernetes pod spec, so you should use the same structure as that.
         Each item in the list should be a dictionary with at least these two keys:
 
-          - mountPath
-            The path on the container in which we want to mount the volume.
-          - name
-            The name of the volume we want to mount, as specified in the `volumes`
-            config.
+           - `mountPath` The path on the container in which we want to mount the volume.
+           - `name` The name of the volume we want to mount, as specified in the `volumes` config.
 
-        See http://kubernetes.io/docs/user-guide/volumes/ for more information on how
-        the volumeMount item works.
+        See https://kubernetes.io/docs/concepts/storage/volumes for more information on how
+        the `volumeMount` item works.
 
-        {username} and {userid} are expanded to the escaped, dns-label safe
+        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
         username & integer user id respectively, wherever they are used.
         """
     )
@@ -543,13 +564,13 @@ class KubeSpawner(Spawner):
 
         This will be added to the `resources: requests: storage:` in the k8s pod spec.
 
-        See http://kubernetes.io/docs/user-guide/persistent-volumes/#persistentvolumeclaims
+        See https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
         for more information on how storage works.
 
         Quantities can be represented externally as unadorned integers, or as fixed-point
-        integers with one of these SI suffices (E, P, T, G, M, K, m) or their power-of-two
-        equivalents (Ei, Pi, Ti, Gi, Mi, Ki). For example, the following represent roughly
-        'the same value: 128974848, "129e6", "129M" , "123Mi".
+        integers with one of these SI suffices (`E, P, T, G, M, K, m`) or their power-of-two
+        equivalents (`Ei, Pi, Ti, Gi, Mi, Ki`). For example, the following represent roughly
+        the same value: `128974848`, `129e6`, `129M`, `123Mi`.
         (https://github.com/kubernetes/kubernetes/blob/master/docs/design/resources.md)
         """
     )
@@ -567,7 +588,7 @@ class KubeSpawner(Spawner):
         See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ for more
         info on what labels are and why you might want to use them!
 
-        {username} and {userid} are expanded to the escaped, dns-label safe
+        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
         username & integer user id respectively, wherever they are used.
         """
     )
@@ -588,8 +609,9 @@ class KubeSpawner(Spawner):
         b/c it has a storage class, k8s will dynamically spawn a pv for the pvc to bind to
         and a machine in the cluster for the pv to bind to.
 
-        See http://kubernetes.io/docs/user-guide/persistent-volumes/#storageclasses for
+        See https://kubernetes.io/docs/concepts/storage/storage-classes/ for
         more information on how StorageClasses work.
+
         """
     )
 
@@ -600,12 +622,12 @@ class KubeSpawner(Spawner):
         List of access modes the user has for the pvc.
 
         The access modes are:
-            The access modes are:
-                ReadWriteOnce – the volume can be mounted as read-write by a single node
-                ReadOnlyMany – the volume can be mounted read-only by many nodes
-                ReadWriteMany – the volume can be mounted as read-write by many nodes
 
-        See http://kubernetes.io/docs/user-guide/persistent-volumes/#access-modes for
+            - `ReadWriteOnce` – the volume can be mounted as read-write by a single node
+            - `ReadOnlyMany` – the volume can be mounted read-only by many nodes
+            - `ReadWriteMany` – the volume can be mounted as read-write by many nodes
+
+        See https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes for
         more information on how access modes work.
         """
     )
@@ -619,16 +641,16 @@ class KubeSpawner(Spawner):
         The keys is name of hooks and there are only two hooks, postStart and preStop.
         The values are handler of hook which executes by Kubernetes management system when hook is called.
 
-        Below are a sample copied from Kubernetes doc
-        https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/
+        Below is an sample copied from
+        `Kubernetes doc <https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/>`_ ::
 
-        lifecycle:
-          postStart:
-            exec:
-              command: ["/bin/sh", "-c", "echo Hello from the postStart handler > /usr/share/message"]
-          preStop:
-            exec:
-              command: ["/usr/sbin/nginx","-s","quit"]
+            lifecycle:
+            postStart:
+                exec:
+                command: ["/bin/sh", "-c", "echo Hello from the postStart handler > /usr/share/message"]
+            preStop:
+                exec:
+                command: ["/usr/sbin/nginx","-s","quit"]
 
         See https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/ for more
         info on what lifecycle hooks are and why you might want to use them!
@@ -646,7 +668,9 @@ class KubeSpawner(Spawner):
         which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
 
         One usage is disabling access to metadata service from single-user notebook server with configuration below:
-        initContainers::
+        initContainers:
+
+        .. code::yaml
 
             - name: init-iptables
               image: <image with iptables installed>
@@ -655,6 +679,7 @@ class KubeSpawner(Spawner):
                 capabilities:
                   add:
                   - NET_ADMIN
+
 
         See https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ for more
         info on what init containers are and why you might want to use them!
@@ -667,23 +692,27 @@ class KubeSpawner(Spawner):
         None,
         config=True,
         help="""
-        Extra configuration (e.g. envFrom) for notebook container which is not covered by other attributes.
+        Extra configuration (e.g. ``envFrom``) for notebook container which is not covered by other attributes.
 
         This dict will be directly merge into `container` of notebook server,
         so you should use the same structure. Each item in the dict is field of container configuration
         which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
 
-        One usage is set envFrom on notebook container with configuration below:
-        envFrom: [
-            {
-                configMapRef: {
-                    name: special-config
-                }
-            }
-        ]
+        One usage is set ``envFrom`` on notebook container with configuration below:
 
-        The key could be either camelcase word (used by Kubernetes yaml, e.g. envFrom)
-        or underscore-separated word (used by kubernetes python client, e.g. env_from).
+        .. code::yaml
+
+            envFrom: [
+                {
+                    configMapRef: {
+                        name: special-config
+                    }
+                }
+            ]
+
+        The key could be either camelcase word (used by Kubernetes yaml, e.g. ``envFrom``)
+        or underscore-separated word (used by kubernetes python client, e.g. ``env_from``).
+
         """
     )
 
@@ -697,11 +726,12 @@ class KubeSpawner(Spawner):
         Each item in the dict is field of pod configuration
         which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#podspec-v1-core.
 
-        One usage is set dnsPolicy with configuration below:
-        dnsPolicy: ClusterFirstWithHostNet
+        One usage is set dnsPolicy with configuration below::
 
-        The key could be either camelcase word (used by Kubernetes yaml, e.g. dnsPolicy)
-        or underscore-separated word (used by kubernetes python client, e.g. dns_policy).
+            dnsPolicy: ClusterFirstWithHostNet
+
+        The `key` could be either camelcase word (used by Kubernetes yaml, e.g. `dnsPolicy`)
+        or underscore-separated word (used by kubernetes python client, e.g. `dns_policy`).
         """
     )
 
@@ -715,14 +745,16 @@ class KubeSpawner(Spawner):
         so you should use the same structure. Each item in the list is container configuration
         which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
 
-        One usage is setting crontab in a container to clean sensitive data with configuration below:
-        [
-            {
-                'name': 'crontab',
-                'image': 'supercronic',
-                'command': ['/usr/local/bin/supercronic', '/etc/crontab']
-            }
-        ]
+        One usage is setting crontab in a container to clean sensitive data with configuration below::
+
+            [
+                {
+                    'name': 'crontab',
+                    'image': 'supercronic',
+                    'command': ['/usr/local/bin/supercronic', '/etc/crontab']
+                }
+            ]
+
         """
     )
 
@@ -732,8 +764,9 @@ class KubeSpawner(Spawner):
         help="""
         The dictionary used to request arbitrary resources.
         Default is None and means no additional resources are requested.
-        For example, to request 3 Nvidia GPUs
-            `{"nvidia.com/gpu": "3"}`
+        For example, to request 3 Nvidia GPUs::
+
+            {"nvidia.com/gpu": "3"}
         """
     )
 
@@ -743,10 +776,127 @@ class KubeSpawner(Spawner):
         help="""
         The dictionary used to limit arbitrary resources.
         Default is None and means no additional resources are limited.
-        For example, to add a limit of 3 Nvidia GPUs
-            `{"nvidia.com/gpu": "3"}`
+        For example, to add a limit of 3 Nvidia GPUs::
+
+            {"nvidia.com/gpu": "3"}
         """
     )
+
+    delete_stopped_pods = Bool(
+        True,
+        config=True,
+        help="""
+        Whether to delete pods that have stopped themselves.
+        Set to False to leave stopped pods in the completed state,
+        allowing for easier debugging of why they may have stopped.
+        """
+        )
+
+    profile_form_template = Unicode(
+        """
+        <script>
+        // JupyterHub 0.8 applied form-control indisciminately to all form elements.
+        // Can be removed once we stop supporting JupyterHub 0.8
+        $(document).ready(function() {
+            $('#kubespawner-profiles-list input[type="radio"]').removeClass('form-control');
+        });
+        </script>
+        <style>
+        /* The profile description should not be bold, even though it is inside the <label> tag */
+        #kubespawner-profiles-list label p {
+            font-weight: normal;
+        }
+        </style>
+
+        <div class='form-group' id='kubespawner-profiles-list'>
+        {% for profile in profile_list %}
+        <label for='profile-item-{{ loop.index0 }}' class='form-control input-group'>
+            <div class='col-md-1'>
+                <input type='radio' name='profile' id='profile-item-{{ loop.index0 }}' value='{{ loop.index0 }}' {% if profile.default %}checked{% endif %} />
+            </div>
+            <div class='col-md-11'>
+                <strong>{{ profile.display_name }}</strong>
+                {% if profile.description %}
+                <p>{{ profile.description }}</p>
+                {% endif %}
+            </div>
+        </label>
+        {% endfor %}
+        </div>
+        """,
+        config=True,
+        help="""
+        Jinja2 template for constructing profile list shown to user.
+
+        Used when `profile_list` is set.
+
+        The contents of `profile_list` are passed in to the template.
+        This should be used to construct the contents of a HTML form. When
+        posted, this form is expected to have an item with name `profile` and
+        the value the index of the profile in `profile_list`.
+        """
+    )
+
+    profile_list = List(
+        trait=Dict(),
+        default_value=None,
+        minlen=0,
+        config=True,
+        help="""
+        List of profiles to offer for selection by the user.
+
+        Signature is: List(Dict()), where each item is a dictionary that has two keys:
+        - 'display_name': the human readable display name (should be HTML safe)
+        - 'description': Optional description of this profile displayed to the user.
+        - 'kubespawner_override': a dictionary with overrides to apply to the KubeSpawner
+            settings. Each value can be either the final value to change or a callable that
+            take the `KubeSpawner` instance as parameter and return the final value.
+        - 'default': (optional Bool) True if this is the default selected option
+
+        Example::
+
+            c.KubeSpawner.profile_list = [
+                {
+                    'display_name': 'Training Env - Python',
+                    'default': True,
+                    'kubespawner_override': {
+                        'singleuser_image_spec': 'training/python:label',
+                        'cpu_limit': 1,
+                        'mem_limit': '512M',
+                    }
+                }, {
+                    'display_name': 'Training Env - Datascience',
+                    'kubespawner_override': {
+                        'singleuser_image_spec': 'training/datascience:label',
+                        'cpu_limit': 4,
+                        'mem_limit': '8G',
+                    }
+                }, {
+                    'display_name': 'DataScience - Small instance',
+                    'kubespawner_override': {
+                        'singleuser_image_spec': 'datascience/small:label',
+                        'cpu_limit': 10,
+                        'mem_limit': '16G',
+                    }
+                }, {
+                    'display_name': 'DataScience - Medium instance',
+                    'kubespawner_override': {
+                        'singleuser_image_spec': 'datascience/medium:label',
+                        'cpu_limit': 48,
+                        'mem_limit': '96G',
+                    }
+                }, {
+                    'display_name': 'DataScience - Medium instance (GPUx2)',
+                    'kubespawner_override': {
+                        'singleuser_image_spec': 'datascience/medium:label',
+                        'cpu_limit': 48,
+                        'mem_limit': '96G',
+                        'extra_resource_guarantees': {"nvidia.com/gpu": "2"},
+                    }
+                }
+            ]
+        """
+        )
 
     def _expand_user_properties(self, template):
         # Make sure username and servername match the restrictions for DNS labels
@@ -783,12 +933,8 @@ class KubeSpawner(Spawner):
         labels = {
             'heritage': 'jupyterhub',
             'app': 'jupyterhub',
-            'hub.jupyter.org/username': escapism.escape(self.user.name)
         }
 
-        if self.name:
-            # FIXME: Make sure this is dns safe?
-            labels['hub.jupyter.org/servername'] = self.name
         labels.update(extra_labels)
         return labels
 
@@ -800,6 +946,17 @@ class KubeSpawner(Spawner):
         # Make sure pod_reflector.labels in final label list
         labels.update(self.pod_reflector.labels)
         return self._build_common_labels(labels)
+
+    def _build_common_annotations(self, extra_annotations):
+        # Annotations don't need to be escaped
+        annotations = {
+            'hub.jupyter.org/username': self.user.name
+        }
+        if self.name:
+            annotations['hub.jupyter.org/servername'] = self.name
+
+        annotations.update(extra_annotations)
+        return annotations
 
     @gen.coroutine
     def get_pod_manifest(self):
@@ -816,13 +973,18 @@ class KubeSpawner(Spawner):
         else:
             singleuser_fs_gid = self.singleuser_fs_gid
 
+        if callable(self.singleuser_supplemental_gids):
+            singleuser_supplemental_gids = yield gen.maybe_future(self.singleuser_supplemental_gids(self))
+        else:
+            singleuser_supplemental_gids = self.singleuser_supplemental_gids
+
         if self.cmd:
             real_cmd = self.cmd + self.get_args()
         else:
             real_cmd = None
 
         labels = self._build_pod_labels(self._expand_all(self.singleuser_extra_labels))
-        annotations = self._expand_all(self.singleuser_extra_annotations)
+        annotations = self._build_common_annotations(self._expand_all(self.singleuser_extra_annotations))
 
         return make_pod(
             name=self.pod_name,
@@ -834,6 +996,7 @@ class KubeSpawner(Spawner):
             node_selector=self.singleuser_node_selector,
             run_as_uid=singleuser_uid,
             fs_gid=singleuser_fs_gid,
+            supplemental_gids=singleuser_supplemental_gids,
             run_privileged=self.singleuser_privileged,
             env=self.get_env(),
             volumes=self._expand_all(self.volumes),
@@ -861,12 +1024,15 @@ class KubeSpawner(Spawner):
         """
         labels = self._build_common_labels(self._expand_all(self.user_storage_extra_labels))
 
+        annotations = self._build_common_annotations({})
+
         return make_pvc(
             name=self.pvc_name,
             storage_class=self.user_storage_class,
             access_modes=self.user_storage_access_modes,
             storage=self.user_storage_capacity,
-            labels=labels
+            labels=labels,
+            annotations=annotations
         )
 
     def is_pod_running(self, pod):
@@ -889,11 +1055,11 @@ class KubeSpawner(Spawner):
         """
         Save state required to reinstate this user's pod from scratch
 
-        We save the pod_name, even though we could easily compute it,
+        We save the `pod_name`, even though we could easily compute it,
         because JupyterHub requires you save *some* state! Otherwise
         it assumes your server is dead. This works around that.
 
-        It's also useful for cases when the pod_template changes between
+        It's also useful for cases when the `pod_template` changes between
         restarts - this keeps the old pods around.
         """
         state = super().get_state()
@@ -904,9 +1070,9 @@ class KubeSpawner(Spawner):
         """
         Load state from storage required to reinstate this user's pod
 
-        Since this runs after __init__, this will override the generated pod_name
+        Since this runs after `__init__`, this will override the generated `pod_name`
         if there's one we have saved in state. These are the same in most cases,
-        but if the pod_template has changed in between restarts, it will no longer
+        but if the `pod_template` has changed in between restarts, it will no longer
         be the case. This allows us to continue serving from the old pods with
         the old names.
         """
@@ -921,10 +1087,25 @@ class KubeSpawner(Spawner):
         Returns None if it is, and 1 if it isn't. These are the return values
         JupyterHub expects.
         """
+        # have to wait for first load of data before we have a valid answer
+        if not self.pod_reflector.first_load_future.done():
+            yield self.pod_reflector.first_load_future
         data = self.pod_reflector.pods.get(self.pod_name, None)
         if data is not None:
+            if data.status.phase == 'Pending':
+                return None
+            for c in data.status.container_statuses:
+                # return exit code if notebook container has terminated
+                if c.name == 'notebook':
+                    if c.state.terminated:
+                        # call self.stop to delete the pod
+                        if self.delete_stopped_pods:
+                            yield self.stop(now=True)
+                        return c.state.terminated.exit_code
+                    break
+            # None means pod is running or starting up
             return None
-
+        # pod doesn't exist or has been deleted
         return 1
 
     @run_on_executor
@@ -1000,6 +1181,7 @@ class KubeSpawner(Spawner):
             grace_seconds = 1
 
         delete_options.grace_period_seconds = grace_seconds
+        self.log.info("Deleting pod %s", self.pod_name)
         yield self.asynchronize(
             self.api.delete_namespaced_pod,
             name=self.pod_name,
@@ -1031,3 +1213,55 @@ class KubeSpawner(Spawner):
                 args[i] = '--hub-api-url="%s"' % (self.accessible_hub_api_url)
                 break
         return args
+
+    def _options_form_default(self):
+        '''
+        Build the form template according to the `profile_list` setting.
+
+        Returns:
+            '' when no `profile_list` has been defined
+            The rendered template (using jinja2) when `profile_list` is defined.
+        '''
+        if not self.profile_list:
+            return ''
+        profile_form_template = Environment(loader=BaseLoader).from_string(self.profile_form_template)
+        return profile_form_template.render(profile_list=self.profile_list)
+
+    def options_from_form(self, formdata):
+        """get the option selected by the user on the form
+
+        It actually reset the settings of kubespawner to each item found in the selected profile
+        (`kubespawner_override`).
+
+        Args:
+            formdata: user selection returned by the form
+
+        To access to the value, you can use the `get` accessor and the name of the html element,
+        for example::
+
+            formdata.get('profile',[0])
+
+        to get the value of the form named "profile", as defined in `form_template`::
+
+            <select class="form-control" name="profile"...>
+            </select>
+
+        Returns:
+            the selected user option
+        """
+
+        if not self.profile_list:
+            return formdata
+        # Default to first profile if somehow none is provided
+        selected_profile = int(formdata.get('profile', [0])[0])
+        options = self.profile_list[selected_profile]
+        self.log.debug("Applying KubeSpawner override for profile '%s'", options['display_name'])
+        kubespawner_override = options.get('kubespawner_override', {})
+        for k, v in kubespawner_override.items():
+            if callable(v):
+                v = v(self)
+                self.log.debug(".. overriding KubeSpawner value %s=%s (callable result)", k, v)
+            else:
+                self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
+            setattr(self, k, v)
+        return options

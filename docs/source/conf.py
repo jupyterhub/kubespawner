@@ -42,6 +42,7 @@ sys.path.insert(0, os.path.join(docs, 'sphinxext'))
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
+    'sphinx.ext.napoleon',
     'autodoc_traits',
 ]
 
@@ -172,8 +173,6 @@ texinfo_documents = [
      author, 'Kubespawner', 'One line description of project.',
      'Miscellaneous'),
 ]
-
-
 
 
 # Example configuration for intersphinx: refer to the Python standard library.

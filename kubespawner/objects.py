@@ -30,6 +30,7 @@ def make_pod(
     node_selector=None,
     run_as_uid=None,
     fs_gid=None,
+    supplemental_gids=None,
     run_privileged=False,
     env={},
     working_dir=None,
@@ -53,77 +54,87 @@ def make_pod(
     """
     Make a k8s pod specification for running a user notebook.
 
-    Parameters:
-      - name:
+    Parameters
+    ----------
+    name:
         Name of pod. Must be unique within the namespace the object is
         going to be created in. Must be a valid DNS label.
-      - image_spec:
+    image_spec:
         Image specification - usually a image name and tag in the form
         of image_name:tag. Same thing you would use with docker commandline
         arguments
-      - image_pull_policy:
+    image_pull_policy:
         Image pull policy - one of 'Always', 'IfNotPresent' or 'Never'. Decides
         when kubernetes will check for a newer version of image and pull it when
         running a pod.
-      - image_pull_secret:
+    image_pull_secret:
         Image pull secret - Default is None -- set to your secret name to pull
         from private docker registry.
-      - port:
+    port:
         Port the notebook server is going to be listening on
-      - cmd:
+    cmd:
         The command used to execute the singleuser server.
-      - node_selector:
+    node_selector:
         Dictionary Selector to match nodes where to launch the Pods
-      - run_as_uid:
+    run_as_uid:
         The UID used to run single-user pods. The default is to run as the user
         specified in the Dockerfile, if this is set to None.
-      - fs_gid
+    fs_gid
         The gid that will own any fresh volumes mounted into this pod, if using
         volume types that support this (such as GCE). This should be a group that
         the uid the process is running as should be a member of, so that it can
         read / write to the volumes mounted.
-      - run_privileged:
+    supplemental_gids:
+        A list of GIDs that should be set as additional supplemental groups to
+        the user that the container runs as. You may have to set this if you are
+        deploying to an environment with RBAC/SCC enforced and pods run with a
+        'restricted' SCC which results in the image being run as an assigned
+        user ID. The supplemental group IDs would need to include the
+        corresponding group ID of the user ID the image normally would run as.
+        The image must setup all directories/files any application needs access
+        to, as group writable.
+    run_privileged:
         Whether the container should be run in privileged mode.
-      - env:
+    env:
         Dictionary of environment variables.
-      - volumes:
+    volumes:
         List of dictionaries containing the volumes of various types this pod
         will be using. See k8s documentation about volumes on how to specify
         these
-      - volume_mounts:
+    volume_mounts:
         List of dictionaries mapping paths in the container and the volume(
         specified in volumes) that should be mounted on them. See the k8s
         documentaiton for more details
-      - working_dir:
+    working_dir:
         String specifying the working directory for the notebook container
-      - labels:
+    labels:
         Labels to add to the spawned pod.
-      - annotations:
+    annotations:
         Annotations to add to the spawned pod.
-      - cpu_limit:
+    cpu_limit:
         Float specifying the max number of CPU cores the user's pod is
         allowed to use.
-      - cpu_guarentee:
+    cpu_guarentee:
         Float specifying the max number of CPU cores the user's pod is
         guaranteed to have access to, by the scheduler.
-      - mem_limit:
+    mem_limit:
         String specifying the max amount of RAM the user's pod is allowed
         to use. String instead of float/int since common suffixes are allowed
-      - mem_guarantee:
+    mem_guarantee:
         String specifying the max amount of RAM the user's pod is guaranteed
         to have access to. String ins loat/int since common suffixes
         are allowed
-      - lifecycle_hooks:
+    lifecycle_hooks:
         Dictionary of lifecycle hooks
-      - init_containers:
+    init_containers:
         List of initialization containers belonging to the pod.
-      - service_account:
+    service_account:
         Service account to mount on the pod. None disables mounting
-      - extra_container_config:
+    extra_container_config:
         Extra configuration (e.g. envFrom) for notebook container which is not covered by parameters above.
-      - extra_pod_config:
+    extra_pod_config:
         Extra configuration (e.g. tolerations) for pod which is not covered by parameters above.
-      - extra_containers:
+    extra_containers:
         Extra containers besides notebook container. Used for some housekeeping jobs (e.g. crontab).
     """
 
@@ -131,17 +142,20 @@ def make_pod(
     pod.kind = "Pod"
     pod.api_version = "v1"
 
-    pod.metadata = V1ObjectMeta()
-    pod.metadata.name = name
-    pod.metadata.labels = labels.copy()
-    if annotations:
-        pod.metadata.annotations = annotations.copy()
+    pod.metadata = V1ObjectMeta(
+        name=name,
+        labels=labels.copy(),
+        annotations=annotations.copy()
+    )
 
-    pod.spec = V1PodSpec()
+    pod.spec = V1PodSpec(containers=[])
+    pod.spec.restartPolicy = 'Never'
 
     security_context = V1PodSecurityContext()
     if fs_gid is not None:
         security_context.fs_group = int(fs_gid)
+    if supplemental_gids is not None and supplemental_gids:
+        security_context.supplemental_groups = [int(gid) for gid in supplemental_gids]
     if run_as_uid is not None:
         security_context.run_as_user = int(run_as_uid)
     pod.spec.security_context = security_context
@@ -155,38 +169,36 @@ def make_pod(
     if node_selector:
         pod.spec.node_selector = node_selector
 
-    pod.spec.containers = []
-    notebook_container = V1Container()
-    notebook_container.name = "notebook"
-    notebook_container.image = image_spec
-    notebook_container.working_dir = working_dir
-    notebook_container.ports = []
-    port_ = V1ContainerPort()
-    port_.name = "notebook-port"
-    port_.container_port = port
-    notebook_container.ports.append(port_)
-    notebook_container.env = [V1EnvVar(k, v) for k, v in env.items()]
-    notebook_container.args = cmd
-    notebook_container.image_pull_policy = image_pull_policy
-    notebook_container.lifecycle = lifecycle_hooks
-    notebook_container.resources = V1ResourceRequirements()
-    
+    notebook_container = V1Container(
+        name='notebook',
+        image=image_spec,
+        working_dir=working_dir,
+        ports=[V1ContainerPort(name='notebook-port', container_port=port)],
+        env=[V1EnvVar(k, v) for k, v in env.items()],
+        args=cmd,
+        image_pull_policy=image_pull_policy,
+        lifecycle=lifecycle_hooks,
+        resources=V1ResourceRequirements()
+    )
+
     if service_account is None:
         # Add a hack to ensure that no service accounts are mounted in spawned pods
         # This makes sure that we don"t accidentally give access to the whole
         # kubernetes API to the users in the spawned pods.
         # Note: We don't simply use `automountServiceAccountToken` here since we wanna be compatible
         # with older kubernetes versions too for now.
-        hack_volume = V1Volume()
-        hack_volume.name =  "no-api-access-please"
-        hack_volume.empty_dir = {}
+        hack_volume = V1Volume(name='no-api-access-please', empty_dir={})
         hack_volumes = [hack_volume]
 
-        hack_volume_mount = V1VolumeMount()
-        hack_volume_mount.name = "no-api-access-please"
-        hack_volume_mount.mount_path = "/var/run/secrets/kubernetes.io/serviceaccount"
-        hack_volume_mount.read_only = True
+        hack_volume_mount = V1VolumeMount(
+            name='no-api-access-please',
+            mount_path="/var/run/secrets/kubernetes.io/serviceaccount",
+            read_only=True
+        )
         hack_volume_mounts = [hack_volume_mount]
+
+        # Non-hacky way of not mounting service accounts
+        pod.spec.automount_service_account_token = False
     else:
         hack_volumes = []
         hack_volume_mounts = []
@@ -194,9 +206,9 @@ def make_pod(
         pod.spec.service_account_name = service_account
 
     if run_privileged:
-        container_security_context = V1SecurityContext()
-        container_security_context.privileged = True
-        notebook_container.security_context = container_security_context
+        notebook_container.security_context = V1SecurityContext(
+            privileged=True
+        )
 
     notebook_container.resources.requests = {}
 
@@ -250,20 +262,22 @@ def make_pvc(
     storage_class,
     access_modes,
     storage,
-    labels
+    labels,
+    annotations={}
     ):
     """
     Make a k8s pvc specification for running a user notebook.
 
-    Parameters:
-      - name:
+    Parameters
+    ----------
+    name:
         Name of persistent volume claim. Must be unique within the namespace the object is
         going to be created in. Must be a valid DNS label.
-      - storage_class
+    storage_class:
         String of the name of the k8s Storage Class to use.
-      - access_modes:
+    access_modes:
         A list of specifying what access mode the pod should have towards the pvc
-      - storage
+    storage:
         The ammount of storage needed for the pvc
 
     """
@@ -272,15 +286,17 @@ def make_pvc(
     pvc.api_version = "v1"
     pvc.metadata = V1ObjectMeta()
     pvc.metadata.name = name
-    pvc.metadata.annotations = {}
-    if storage_class:
-        pvc.metadata.annotations.update({"volume.beta.kubernetes.io/storage-class": storage_class})
+    pvc.metadata.annotations = annotations
     pvc.metadata.labels = {}
     pvc.metadata.labels.update(labels)
     pvc.spec = V1PersistentVolumeClaimSpec()
     pvc.spec.access_modes = access_modes
     pvc.spec.resources = V1ResourceRequirements()
     pvc.spec.resources.requests = {"storage": storage}
+
+    if storage_class:
+        pvc.metadata.annotations.update({"volume.beta.kubernetes.io/storage-class": storage_class})
+        pvc.spec.storage_class_name = storage_class
 
     return pvc
 
