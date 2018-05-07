@@ -25,7 +25,6 @@ from jinja2 import Environment, BaseLoader
 
 from .clients import shared_client
 from kubespawner.traitlets import Callable
-from kubespawner.utils import Callable
 from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import NamespacedResourceReflector
 
@@ -43,6 +42,7 @@ class PodReflector(NamespacedResourceReflector):
     @property
     def pods(self):
         return self.resources
+
 
 class KubeSpawner(Spawner):
     """
@@ -1189,11 +1189,12 @@ class KubeSpawner(Spawner):
             body=delete_options,
             grace_period_seconds=grace_seconds
         )
-        while True:
-            data = self.pod_reflector.pods.get(self.pod_name, None)
-            if data is None:
-                break
-            yield gen.sleep(1)
+        self.log.info('Deleted pod {}'.format(self.pod_name))
+        yield exponential_backoff(
+            lambda: self.pod_reflector.pods.get(self.pod_name, None) is None,
+            'pod/%s did not disappear in %s seconds!' % (self.pod_name, self.start_timeout),
+            timeout=self.start_timeout
+        )
 
     def _env_keep_default(self):
         return []
