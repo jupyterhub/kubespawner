@@ -360,7 +360,7 @@ def test_run_privileged_container():
                     "ports": [{
                         "name": "notebook-port",
                         "containerPort": 8888
-                    }],                    
+                    }],
                     "resources": {
                         "limits": {},
                         "requests": {}
@@ -919,7 +919,7 @@ def test_make_resources_all():
         }
     }
 
-    
+
 def test_make_pod_with_service_account():
     """
     Test specification of the simplest possible pod specification with non-default service account
@@ -959,6 +959,64 @@ def test_make_pod_with_service_account():
             ],
             'volumes': [],
             'serviceAccountName': 'test'
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
+def test_make_pod_with_tolerations():
+    """
+    Test specification of the simplest possible pod specification with non-empty tolerations
+    """
+    tolerations = [
+        {
+            'key': 'key',
+            'operator': 'Equal',
+            'value': 'value',
+            'effect': 'NoSchedule'
+        },
+        {
+            'key': 'key',
+            'operator': 'Exists',
+            'effect': 'NoSchedule'
+        }
+    ]
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        tolerations=tolerations
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+            "annotations": {}
+        },
+        "spec": {
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            'volumes': [],
+            'tolerations': tolerations
         },
         "kind": "Pod",
         "apiVersion": "v1"

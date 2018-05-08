@@ -52,7 +52,8 @@ def make_pod(
     extra_container_config=None,
     extra_pod_config=None,
     extra_containers=None,
-    scheduler_name=None
+    scheduler_name=None,
+    tolerations=None,
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -232,6 +233,9 @@ def make_pod(
             setattr(pod.spec, _map_attribute(pod.spec.attribute_map, key), value)
     if extra_containers:
         pod.spec.containers.extend(extra_containers)
+
+    if tolerations:
+        pod.spec.tolerations = tolerations
 
     pod.spec.init_containers = init_containers
     pod.spec.volumes = volumes

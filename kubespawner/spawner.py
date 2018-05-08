@@ -841,6 +841,33 @@ class KubeSpawner(Spawner):
         """
     )
 
+    singleuser_tolerations = List(
+        None,
+        config=True,
+        help="""
+        List of tolerations that are to be assigned to the pod in order to be able to schedule the pod
+        on a node with the corresponding taints. See the official Kubernetes documentation for additional details 
+        https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+        
+        Example:
+        
+            [
+                {
+                    'key': 'key',
+                    'operator': 'Equal',
+                    'value': 'value',
+                    'effect': 'NoSchedule'
+                },
+                {
+                    'key': 'key',
+                    'operator': 'Exists',
+                    'effect': 'NoSchedule'
+                }
+            ]
+         
+        """
+    )
+
     extra_resource_guarantees = Dict(
         {},
         config=True,
@@ -1213,6 +1240,7 @@ class KubeSpawner(Spawner):
             extra_container_config=self.extra_container_config,
             extra_pod_config=self.extra_pod_config,
             extra_containers=self.extra_containers,
+            tolerations=self.tolerations,
         )
 
     def get_pvc_manifest(self):
