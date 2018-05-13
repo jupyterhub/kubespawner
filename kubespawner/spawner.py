@@ -32,8 +32,11 @@ from kubespawner.reflector import NamespacedResourceReflector
 
 class PodReflector(NamespacedResourceReflector):
     kind = 'pods'
+    # FUTURE: These labels are the selection labels for the PodReflector. We
+    # might want to support multiple deployments in the same namespace, so we
+    # would need to select based on additional labels such as `app` and
+    # `release`.
     labels = {
-        'heritage': 'jupyterhub',
         'component': 'singleuser-server',
     }
 
