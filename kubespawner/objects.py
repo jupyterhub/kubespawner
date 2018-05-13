@@ -233,15 +233,11 @@ def make_pod(
         pod.spec.containers.extend(extra_containers)
 
     pod.spec.init_containers = init_containers
-<<<<<<< 4d0221e2e8c670cfe712551035add23012f48cce
-    pod.spec.volumes = volumes + hack_volumes
+    pod.spec.volumes = volumes
 
     if scheduler_name:
         pod.spec.scheduler_name = scheduler_name
 
-=======
-    pod.spec.volumes = volumes
->>>>>>> Removed hack for security in k8s <= v1.5
     return pod
 
 
