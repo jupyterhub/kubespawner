@@ -1127,7 +1127,7 @@ class KubeSpawner(Spawner):
         next_event = 0
         self.log.debug('progress generator: %s', self.pod_name)
 
-        while True:
+        while not self.events.stopped():
             len_events = len(self.events.events)
             if next_event < len_events:
                 for i in range(next_event, len_events):

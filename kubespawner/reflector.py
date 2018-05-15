@@ -210,3 +210,6 @@ class NamespacedResourceReflector(LoggingConfigurable):
 
     def stop(self):
         self._stop_event.set()
+
+    def stopped(self):
+        return self._stop_event.is_set()
