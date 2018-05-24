@@ -1104,7 +1104,11 @@ class KubeSpawner(Spawner):
         if data is not None:
             if data.status.phase == 'Pending':
                 return None
-            for c in data.status.container_statuses:
+            ctr_stat = data.status.container_statuses
+            if ctr_stat is None:  # No status, no container (we hope)
+                # This seems to happen when a pod is idle-culled.
+                return 1
+            for c in ctr_stat:
                 # return exit code if notebook container has terminated
                 if c.name == 'notebook':
                     if c.state.terminated:
