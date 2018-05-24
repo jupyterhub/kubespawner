@@ -28,7 +28,8 @@ from kubespawner.traitlets import Callable
 from kubespawner.utils import Callable
 from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import NamespacedResourceReflector
-
+from asyncio import sleep
+from async_generator import async_generator, yield_
 
 class PodReflector(NamespacedResourceReflector):
     kind = 'pods'
@@ -43,6 +44,15 @@ class PodReflector(NamespacedResourceReflector):
     @property
     def pods(self):
         return self.resources
+
+class EventReflector(NamespacedResourceReflector):
+    kind = 'events'
+
+    list_method_name = 'list_namespaced_event'
+
+    @property
+    def events(self):
+        return sorted(self.resources.values(), key = lambda x : x.last_timestamp)
 
 class KubeSpawner(Spawner):
     """
@@ -1112,6 +1122,24 @@ class KubeSpawner(Spawner):
     def asynchronize(self, method, *args, **kwargs):
         return method(*args, **kwargs)
 
+    @async_generator
+    async def progress(self):
+        next_event = 0
+        self.log.debug('progress generator: %s', self.pod_name)
+
+        while not self.events.stopped():
+            len_events = len(self.events.events)
+            if next_event < len_events:
+                for i in range(next_event, len_events):
+                    event = self.events.events[i]
+                    await yield_({
+                        'progress': 50,
+                        'message':  "%s [%s] %s" % (event.last_timestamp, event.type, event.message)
+                    })
+                next_event = len_events
+            await sleep(1)
+
+
     @gen.coroutine
     def start(self):
         if self.user_storage_pvc_ensure:
@@ -1128,6 +1156,17 @@ class KubeSpawner(Spawner):
                 else:
                     raise
 
+        main_loop = IOLoop.current()
+        def on_reflector_failure():
+            self.log.critical("Events reflector failed, halting Hub.")
+            main_loop.stop()
+
+        # events are selected based on pod name, which will include previous launch/stop
+        self.events = EventReflector(
+                parent=self, namespace=self.namespace,
+                fields={'involvedObject.kind': 'Pod', 'involvedObject.name': self.pod_name},
+                on_failure=on_reflector_failure
+            )
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
         # try again. We try 4 times, and if it still fails we give up.
@@ -1167,6 +1206,13 @@ class KubeSpawner(Spawner):
         )
 
         pod = self.pod_reflector.pods[self.pod_name]
+
+        self.log.debug('pod %s events before launch: %s',
+            self.pod_name, "\n".join(["%s [%s] %s" % (event.last_timestamp, event.type, event.message) for event in self.events.events]))
+
+        # Note: we stop the event watcher once launch is successful, but the reflector
+        # will only stop when the next event comes in, likely when it is stopped.
+        self.events.stop()
         return (pod.status.pod_ip, self.port)
 
     @gen.coroutine
