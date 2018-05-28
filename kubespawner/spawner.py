@@ -905,11 +905,12 @@ class KubeSpawner(Spawner):
         List of profiles to offer for selection by the user.
 
         Signature is: List(Dict()), where each item is a dictionary that has two keys:
+        
         - 'display_name': the human readable display name (should be HTML safe)
         - 'description': Optional description of this profile displayed to the user.
         - 'kubespawner_override': a dictionary with overrides to apply to the KubeSpawner
-            settings. Each value can be either the final value to change or a callable that
-            take the `KubeSpawner` instance as parameter and return the final value.
+          settings. Each value can be either the final value to change or a callable that
+          take the `KubeSpawner` instance as parameter and return the final value.
         - 'default': (optional Bool) True if this is the default selected option
 
         Example::
