@@ -6,9 +6,12 @@ import time
 import threading
 
 from traitlets.config import LoggingConfigurable
-from traitlets import Any, Dict, Unicode
+from traitlets import Any, Dict, Int, Unicode
 from kubernetes import config, watch
-from tornado.ioloop import IOLoop
+# This is kubernetes client implementation specific, but we need to know
+# whether it was a network or watch timeout.
+from urllib3.exceptions import ReadTimeoutError
+
 from .clients import shared_client
 
 class NamespacedResourceReflector(LoggingConfigurable):
@@ -82,6 +85,29 @@ class NamespacedResourceReflector(LoggingConfigurable):
         """
     )
 
+    request_timeout = Int(
+        0,
+        config=True,
+        help="""
+        Network timeout for kubernetes watch.
+
+        Trigger watch reconnect when no traffic has been received for this time.
+        This can be used to restart the watch periodically.
+        """
+    )
+
+    timeout_seconds = Int(
+        10,
+        config=True,
+        help="""
+        Timeout for kubernetes watch.
+
+        Trigger watch reconnect when no watch event has been received.
+        This will cause a full reload of the currently existing resources
+        from the API server.
+        """
+    )
+
     on_failure = Any(help="""Function to be called when the reflector gives up.""")
 
     def __init__(self, *args, **kwargs):
@@ -115,7 +141,8 @@ class NamespacedResourceReflector(LoggingConfigurable):
         initial_resources = getattr(self.api, self.list_method_name)(
             self.namespace,
             label_selector=self.label_selector,
-            field_selector=self.field_selector
+            field_selector=self.field_selector,
+            _request_timeout=self.request_timeout,
         )
         # This is an atomic operation on the dictionary!
         self.resources = {p.metadata.name: p for p in initial_resources.items}
@@ -154,13 +181,23 @@ class NamespacedResourceReflector(LoggingConfigurable):
                 if not self.first_load_future.done():
                     # signal that we've loaded our initial data
                     self.first_load_future.set_result(None)
+                watch_args = {
+                    'namespace': self.namespace,
+                    'label_selector': self.label_selector,
+                    'field_selector': self.field_selector,
+                    'resource_version': resource_version,
+                }
+                if self.request_timeout:
+                    # set network receive timeout
+                    watch_args['_request_timeout'] = self.request_timeout
+                if self.timeout_seconds:
+                    # set watch timeout
+                    watch_args['timeout_seconds'] = self.timeout_seconds
+                # in case of timeout_seconds, the w.stream just exits (no exception thrown)
+                # -> we stop the watcher and start a new one
                 for ev in w.stream(
                         getattr(self.api, self.list_method_name),
-                        self.namespace,
-                        label_selector=self.label_selector,
-                        field_selector=self.field_selector,
-                        resource_version=resource_version,
-                        timeout_seconds=10,
+                        **watch_args
                 ):
                     cur_delay = 0.1
                     resource = ev['object']
@@ -172,7 +209,9 @@ class NamespacedResourceReflector(LoggingConfigurable):
                         self.resources[resource.metadata.name] = resource
                     if self._stop_event.is_set():
                         break
-
+            except ReadTimeoutError:
+                # network read time out, just continue and restart the watch
+                continue
             except Exception:
                 cur_delay = cur_delay * 2
                 if cur_delay > 30:
