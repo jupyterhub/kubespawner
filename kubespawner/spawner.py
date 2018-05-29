@@ -32,9 +32,11 @@ from async_generator import async_generator, yield_
 
 class PodReflector(NamespacedResourceReflector):
     kind = 'pods'
-
+    # FUTURE: These labels are the selection labels for the PodReflector. We
+    # might want to support multiple deployments in the same namespace, so we
+    # would need to select based on additional labels such as `app` and
+    # `release`.
     labels = {
-        'heritage': 'jupyterhub',
         'component': 'singleuser-server',
     }
 
@@ -286,6 +288,21 @@ class KubeSpawner(Spawner):
         some amount of port mapping is happening.
         """
         return self.hub.server.port
+
+    common_labels = Dict(
+        {
+            'app': 'jupyterhub',
+            'heritage': 'jupyterhub',
+        },
+        config=True,
+        help="""
+        Kubernetes labels that both spawned singleuser server pods and created
+        user PVCs will get.
+
+        Note that these are only set when the Pods and PVCs are created, not
+        later when this setting is updated.
+        """
+    )
 
     singleuser_extra_labels = Dict(
         {},
@@ -592,7 +609,7 @@ class KubeSpawner(Spawner):
 
         The keys and values specified here would be set as labels on the PVCs
         created by kubespawner for the user. Note that these are only set
-        when the PVC is created, not later when they are updated.
+        when the PVC is created, not later when this setting is updated.
 
         See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ for more
         info on what labels are and why you might want to use them!
@@ -939,22 +956,17 @@ class KubeSpawner(Spawner):
     def _build_common_labels(self, extra_labels):
         # Default set of labels, picked up from
         # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
-        labels = {
-            'heritage': 'jupyterhub',
-            'app': 'jupyterhub',
-        }
-
+        labels = {}
         labels.update(extra_labels)
+        labels.update(self.common_labels)
         return labels
 
     def _build_pod_labels(self, extra_labels):
-        labels = {
+        labels = self._build_common_labels(extra_labels)
+        labels.update({
             'component': 'singleuser-server'
-        }
-        labels.update(extra_labels)
-        # Make sure pod_reflector.labels in final label list
-        labels.update(self.pod_reflector.labels)
-        return self._build_common_labels(labels)
+        })
+        return labels
 
     def _build_common_annotations(self, extra_annotations):
         # Annotations don't need to be escaped
@@ -1032,6 +1044,9 @@ class KubeSpawner(Spawner):
         Make a pvc manifest that will spawn current user's pvc.
         """
         labels = self._build_common_labels(self._expand_all(self.user_storage_extra_labels))
+        labels.update({
+            'component': 'singleuser-storage'
+        })
 
         annotations = self._build_common_annotations({})
 

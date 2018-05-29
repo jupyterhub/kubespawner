@@ -20,7 +20,6 @@ from tornado.concurrent import run_on_executor
 class IngressReflector(NamespacedResourceReflector):
     kind = 'ingresses'
     labels = {
-        'heritage': 'jupyterhub',
         'component': 'singleuser-server',
         'hub.jupyter.org/proxy-route': 'true'
     }
@@ -35,7 +34,6 @@ class IngressReflector(NamespacedResourceReflector):
 class ServiceReflector(NamespacedResourceReflector):
     kind = 'services'
     labels = {
-        'heritage': 'jupyterhub',
         'component': 'singleuser-server',
         'hub.jupyter.org/proxy-route': 'true'
     }
@@ -49,7 +47,6 @@ class ServiceReflector(NamespacedResourceReflector):
 class EndpointsReflector(NamespacedResourceReflector):
     kind = 'endpoints'
     labels = {
-        'heritage': 'jupyterhub',
         'component': 'singleuser-server',
         'hub.jupyter.org/proxy-route': 'true'
     }
