@@ -29,6 +29,7 @@ def make_pod(
     image_pull_secret=None,
     node_selector=None,
     run_as_uid=None,
+    run_as_gid=None,
     fs_gid=None,
     supplemental_gids=None,
     run_privileged=False,
@@ -79,6 +80,9 @@ def make_pod(
     run_as_uid:
         The UID used to run single-user pods. The default is to run as the user
         specified in the Dockerfile, if this is set to None.
+    run_as_gid:
+        The GID used to run single-user pods. The default is to run as the primary
+        group of the user specified in the Dockerfile, if this is set to None.
     fs_gid
         The gid that will own any fresh volumes mounted into this pod, if using
         volume types that support this (such as GCE). This should be a group that
@@ -158,6 +162,8 @@ def make_pod(
         security_context.supplemental_groups = [int(gid) for gid in supplemental_gids]
     if run_as_uid is not None:
         security_context.run_as_user = int(run_as_uid)
+    if run_as_gid is not None:
+        security_context.run_as_group = int(run_as_gid)
     pod.spec.security_context = security_context
 
     if image_pull_secret is not None:

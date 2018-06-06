@@ -439,6 +439,30 @@ class KubeSpawner(Spawner):
         """
     )
 
+    singleuser_gid = Union([
+            Integer(),
+            Callable()
+        ],
+        allow_none=True,
+        config=True,
+        help="""
+        The GID to run the single-user server containers as.
+
+        This GID should ideally map to a group that already exists in the container
+        image being used. Running as root is discouraged.
+
+        Instead of an integer, this could also be a callable that takes as one
+        parameter the current spawner instance and returns an integer. The callable
+        will be called asynchronously if it returns a future. Note that
+        the interface of the spawner class is not deemed stable across versions,
+        so using this functionality might cause your JupyterHub or kubespawner
+        upgrades to break.
+
+        If set to `None`, the group of the user specified with the `USER` directive
+        in the container metadata is used.
+        """
+    )
+
     singleuser_fs_gid = Union([
             Integer(),
             Callable()
@@ -989,6 +1013,11 @@ class KubeSpawner(Spawner):
         else:
             singleuser_uid = self.singleuser_uid
 
+        if callable(self.singleuser_gid):
+            singleuser_gid = yield gen.maybe_future(self.singleuser_gid(self))
+        else:
+            singleuser_gid = self.singleuser_gid
+
         if callable(self.singleuser_fs_gid):
             singleuser_fs_gid = yield gen.maybe_future(self.singleuser_fs_gid(self))
         else:
@@ -1016,6 +1045,7 @@ class KubeSpawner(Spawner):
             image_pull_secret=self.singleuser_image_pull_secrets,
             node_selector=self.singleuser_node_selector,
             run_as_uid=singleuser_uid,
+            run_as_gid=singleuser_gid,
             fs_gid=singleuser_fs_gid,
             supplemental_gids=singleuser_supplemental_gids,
             run_privileged=self.singleuser_privileged,

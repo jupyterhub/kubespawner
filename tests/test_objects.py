@@ -186,6 +186,54 @@ def test_make_pod_with_image_pull_secrets():
     }
 
 
+def test_set_pod_uid_and_gid():
+    """
+    Test specification of the simplest possible pod specification
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        run_as_uid=1000,
+        run_as_gid=2000,
+        image_pull_policy='IfNotPresent'
+    )) == {
+        "metadata": {
+            "name": "test",
+            "annotations": {},
+            "labels": {},
+        },
+        "spec": {
+            "securityContext": {
+                "runAsUser": 1000,
+                "runAsGroup": 2000
+            },
+            'automountServiceAccountToken': False,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
 def test_set_pod_uid_fs_gid():
     """
     Test specification of the simplest possible pod specification
