@@ -4,17 +4,18 @@ JupyterHub Spawner to spawn user notebooks on a Kubernetes cluster.
 This module exports `KubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
+
 import os
-import json
 import string
 from urllib.parse import urlparse, urlunparse
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
+import warnings
 
 from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
-from traitlets import Unicode, List, Integer, Union, Dict, Bool
+from traitlets import Unicode, List, Integer, Union, Dict, Bool, Any, observe
 from jupyterhub.spawner import Spawner
 from jupyterhub.utils import exponential_backoff
 from jupyterhub.traitlets import Command
@@ -29,6 +30,7 @@ from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import NamespacedResourceReflector
 from asyncio import sleep
 from async_generator import async_generator, yield_
+
 
 class PodReflector(NamespacedResourceReflector):
     kind = 'pods'
@@ -46,6 +48,7 @@ class PodReflector(NamespacedResourceReflector):
     def pods(self):
         return self.resources
 
+
 class EventReflector(NamespacedResourceReflector):
     kind = 'events'
 
@@ -54,6 +57,7 @@ class EventReflector(NamespacedResourceReflector):
     @property
     def events(self):
         return sorted(self.resources.values(), key = lambda x : x.last_timestamp)
+
 
 class KubeSpawner(Spawner):
     """
@@ -173,16 +177,16 @@ class KubeSpawner(Spawner):
         """
     ).tag(config=True)
 
-    singleuser_working_dir = Unicode(
+    working_dir = Unicode(
         None,
         allow_none=True,
         help="""
-        The working directory were the Notebook server will be started inside the container.
+        The working directory where the Notebook server will be started inside the container.
         Defaults to `None` so the working directory will be the one defined in the Dockerfile.
         """
     ).tag(config=True)
 
-    singleuser_service_account = Unicode(
+    service_account = Unicode(
         None,
         allow_none=True,
         config=True,
@@ -215,7 +219,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    user_storage_pvc_ensure = Bool(
+    storage_pvc_ensure = Bool(
         False,
         config=True,
         help="""
@@ -304,7 +308,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_extra_labels = Dict(
+    extra_labels = Dict(
         {},
         config=True,
         help="""
@@ -322,7 +326,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_extra_annotations = Dict(
+    extra_annotations = Dict(
         {},
         config=True,
         help="""
@@ -339,7 +343,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_image_spec = Unicode(
+    image_spec = Unicode(
         'jupyterhub/singleuser:latest',
         config=True,
         help="""
@@ -367,25 +371,25 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_image_pull_policy = Unicode(
+    image_pull_policy = Unicode(
         'IfNotPresent',
         config=True,
         help="""
         The image pull policy of the docker container specified in
-        `singleuser_image_spec`.
+        `image_spec`.
 
         Defaults to `IfNotPresent` which causes the Kubelet to NOT pull the image
-        specified in singleuser_image_spec if it already exists, except if the tag
+        specified in image_spec if it already exists, except if the tag
         is `:latest`. For more information on image pull policy, refer to
         https://kubernetes.io/docs/concepts/containers/images/
 
         This configuration is primarily used in development if you are
-        actively changing the `singleuser_image_spec` and would like to pull the image
+        actively changing the `image_spec` and would like to pull the image
         whenever a user container is spawned.
         """
     )
 
-    singleuser_image_pull_secrets = Unicode(
+    image_pull_secrets = Unicode(
         None,
         allow_none=True,
         config=True,
@@ -393,7 +397,7 @@ class KubeSpawner(Spawner):
         The kubernetes secret to use for pulling images from private repository.
 
         Set this to the name of a Kubernetes secret containing the docker configuration
-        required to pull the image specified in `singleuser_image_spec`.
+        required to pull the image specified in `image_spec`.
 
         https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
         has more information on when and why this might need to be set, and what it
@@ -401,7 +405,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_node_selector = Dict(
+    node_selector = Dict(
         {},
         config=True,
         help="""
@@ -415,9 +419,10 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_uid = Union([
+    uid = Union(
+        [
             Integer(),
-            Callable()
+            Callable(),
         ],
         allow_none=True,
         config=True,
@@ -439,9 +444,10 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_gid = Union([
+    gid = Union(
+        [
             Integer(),
-            Callable()
+            Callable(),
         ],
         allow_none=True,
         config=True,
@@ -463,9 +469,10 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_fs_gid = Union([
+    fs_gid = Union(
+        [
             Integer(),
-            Callable()
+            Callable(),
         ],
         allow_none=True,
         config=True,
@@ -497,9 +504,10 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_supplemental_gids = Union([
+    supplemental_gids = Union(
+        [
             List(),
-            Callable()
+            Callable(),
         ],
         allow_none=True,
         config=True,
@@ -523,7 +531,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_privileged = Bool(
+    privileged = Bool(
         False,
         config=True,
         help="""
@@ -602,7 +610,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    user_storage_capacity = Unicode(
+    storage_capacity = Unicode(
         None,
         config=True,
         allow_none=True,
@@ -625,7 +633,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    user_storage_extra_labels = Dict(
+    storage_extra_labels = Dict(
         {},
         config=True,
         help="""
@@ -643,7 +651,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    user_storage_class = Unicode(
+    storage_class = Unicode(
         None,
         config=True,
         allow_none=True,
@@ -665,7 +673,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    user_storage_access_modes = List(
+    storage_access_modes = List(
         ["ReadWriteOnce"],
         config=True,
         help="""
@@ -682,7 +690,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_lifecycle_hooks = Dict(
+    lifecycle_hooks = Dict(
         {},
         config=True,
         help="""
@@ -707,7 +715,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_init_containers = List(
+    init_containers = List(
         None,
         config=True,
         help="""
@@ -738,7 +746,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_extra_container_config = Dict(
+    extra_container_config = Dict(
         None,
         config=True,
         help="""
@@ -766,7 +774,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_extra_pod_config = Dict(
+    extra_pod_config = Dict(
         None,
         config=True,
         help="""
@@ -785,7 +793,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_extra_containers = List(
+    extra_containers = List(
         None,
         config=True,
         help="""
@@ -910,35 +918,35 @@ class KubeSpawner(Spawner):
                     'display_name': 'Training Env - Python',
                     'default': True,
                     'kubespawner_override': {
-                        'singleuser_image_spec': 'training/python:label',
+                        'image_spec': 'training/python:label',
                         'cpu_limit': 1,
                         'mem_limit': '512M',
                     }
                 }, {
                     'display_name': 'Training Env - Datascience',
                     'kubespawner_override': {
-                        'singleuser_image_spec': 'training/datascience:label',
+                        'image_spec': 'training/datascience:label',
                         'cpu_limit': 4,
                         'mem_limit': '8G',
                     }
                 }, {
                     'display_name': 'DataScience - Small instance',
                     'kubespawner_override': {
-                        'singleuser_image_spec': 'datascience/small:label',
+                        'image_spec': 'datascience/small:label',
                         'cpu_limit': 10,
                         'mem_limit': '16G',
                     }
                 }, {
                     'display_name': 'DataScience - Medium instance',
                     'kubespawner_override': {
-                        'singleuser_image_spec': 'datascience/medium:label',
+                        'image_spec': 'datascience/medium:label',
                         'cpu_limit': 48,
                         'mem_limit': '96G',
                     }
                 }, {
                     'display_name': 'DataScience - Medium instance (GPUx2)',
                     'kubespawner_override': {
-                        'singleuser_image_spec': 'datascience/medium:label',
+                        'image_spec': 'datascience/medium:label',
                         'cpu_limit': 48,
                         'mem_limit': '96G',
                         'extra_resource_guarantees': {"nvidia.com/gpu": "2"},
@@ -946,7 +954,62 @@ class KubeSpawner(Spawner):
                 }
             ]
         """
+    )
+
+    # deprecate redundant and inconsistent singleuser_ and user_ prefixes:
+    _deprecated_traits = [
+        "singleuser_working_dir",
+        "singleuser_service_account",
+        "singleuser_extra_labels",
+        "singleuser_extra_annotations",
+        "singleuser_image_spec",
+        "singleuser_image_pull_policy",
+        "singleuser_image_pull_secrets",
+        "singleuser_node_selector",
+        "singleuser_uid",
+        "singleuser_fs_gid",
+        "singleuser_supplemental_gids",
+        "singleuser_privileged",
+        "singleuser_lifecycle_hooks",
+        "singleuser_extra_pod_config",
+        "singleuser_init_containers",
+        "singleuser_extra_container_config",
+        "singleuser_extra_containers",
+        "user_storage_class",
+        "user_storage_pvc_ensure",
+        "user_storage_capacity",
+        "user_storage_extra_labels",
+        "user_storage_access_modes",
+    ]
+    # define Any traits for deprecated names
+    # so we can propagate their values to the new traits
+    for _deprecated_name in _deprecated_traits:
+        _new_name = _deprecated_name.split('_', 1)[1]
+        exec(
+            "{} = Any(config=True, help='DEPRECATED. Use {}.')".format(
+                _deprecated_name, _new_name
+            )
         )
+    del _deprecated_name, _new_name
+
+    @observe(*_deprecated_traits)
+    def _deprecated_trait_changed(self, change):
+        """Warn on use of deprecated config traits
+
+        preserving behavior by propagating values to the new name
+        """
+        # new name without prefix:
+        _new_name = change.name.split('_', 1)[1]
+        # warn about the deprecated name
+        warnings.warn(
+            "KubeSpawner.{} is deprecated in 0.9. Use KubeSpawner.{}".format(
+                change.name, _new_name,
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        # assign to the real attribute
+        setattr(self, _new_name, change.new)
 
     def _expand_user_properties(self, template):
         # Make sure username and servername match the restrictions for DNS labels
@@ -1008,51 +1071,51 @@ class KubeSpawner(Spawner):
         """
         Make a pod manifest that will spawn current user's notebook pod.
         """
-        if callable(self.singleuser_uid):
-            singleuser_uid = yield gen.maybe_future(self.singleuser_uid(self))
+        if callable(self.uid):
+            uid = yield gen.maybe_future(self.uid(self))
         else:
-            singleuser_uid = self.singleuser_uid
+            uid = self.uid
 
-        if callable(self.singleuser_gid):
-            singleuser_gid = yield gen.maybe_future(self.singleuser_gid(self))
+        if callable(self.gid):
+            gid = yield gen.maybe_future(self.gid(self))
         else:
-            singleuser_gid = self.singleuser_gid
+            gid = self.gid
 
-        if callable(self.singleuser_fs_gid):
-            singleuser_fs_gid = yield gen.maybe_future(self.singleuser_fs_gid(self))
+        if callable(self.fs_gid):
+            fs_gid = yield gen.maybe_future(self.fs_gid(self))
         else:
-            singleuser_fs_gid = self.singleuser_fs_gid
+            fs_gid = self.fs_gid
 
-        if callable(self.singleuser_supplemental_gids):
-            singleuser_supplemental_gids = yield gen.maybe_future(self.singleuser_supplemental_gids(self))
+        if callable(self.supplemental_gids):
+            supplemental_gids = yield gen.maybe_future(self.supplemental_gids(self))
         else:
-            singleuser_supplemental_gids = self.singleuser_supplemental_gids
+            supplemental_gids = self.supplemental_gids
 
         if self.cmd:
             real_cmd = self.cmd + self.get_args()
         else:
             real_cmd = None
 
-        labels = self._build_pod_labels(self._expand_all(self.singleuser_extra_labels))
-        annotations = self._build_common_annotations(self._expand_all(self.singleuser_extra_annotations))
+        labels = self._build_pod_labels(self._expand_all(self.extra_labels))
+        annotations = self._build_common_annotations(self._expand_all(self.extra_annotations))
 
         return make_pod(
             name=self.pod_name,
             cmd=real_cmd,
             port=self.port,
-            image_spec=self.singleuser_image_spec,
-            image_pull_policy=self.singleuser_image_pull_policy,
-            image_pull_secret=self.singleuser_image_pull_secrets,
-            node_selector=self.singleuser_node_selector,
-            run_as_uid=singleuser_uid,
-            run_as_gid=singleuser_gid,
-            fs_gid=singleuser_fs_gid,
-            supplemental_gids=singleuser_supplemental_gids,
-            run_privileged=self.singleuser_privileged,
+            image_spec=self.image_spec,
+            image_pull_policy=self.image_pull_policy,
+            image_pull_secret=self.image_pull_secrets,
+            node_selector=self.node_selector,
+            run_as_uid=uid,
+            run_as_gid=gid,
+            fs_gid=fs_gid,
+            supplemental_gids=supplemental_gids,
+            run_privileged=self.privileged,
             env=self.get_env(),
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),
-            working_dir=self.singleuser_working_dir,
+            working_dir=self.working_dir,
             labels=labels,
             annotations=annotations,
             cpu_limit=self.cpu_limit,
@@ -1061,19 +1124,19 @@ class KubeSpawner(Spawner):
             mem_guarantee=self.mem_guarantee,
             extra_resource_limits=self.extra_resource_limits,
             extra_resource_guarantees=self.extra_resource_guarantees,
-            lifecycle_hooks=self.singleuser_lifecycle_hooks,
-            init_containers=self._expand_all(self.singleuser_init_containers),
-            service_account=self.singleuser_service_account,
-            extra_container_config=self.singleuser_extra_container_config,
-            extra_pod_config=self.singleuser_extra_pod_config,
-            extra_containers=self.singleuser_extra_containers
+            lifecycle_hooks=self.lifecycle_hooks,
+            init_containers=self._expand_all(self.init_containers),
+            service_account=self.service_account,
+            extra_container_config=self.extra_container_config,
+            extra_pod_config=self.extra_pod_config,
+            extra_containers=self.extra_containers,
         )
 
     def get_pvc_manifest(self):
         """
         Make a pvc manifest that will spawn current user's pvc.
         """
-        labels = self._build_common_labels(self._expand_all(self.user_storage_extra_labels))
+        labels = self._build_common_labels(self._expand_all(self.storage_extra_labels))
         labels.update({
             'component': 'singleuser-storage'
         })
@@ -1082,9 +1145,9 @@ class KubeSpawner(Spawner):
 
         return make_pvc(
             name=self.pvc_name,
-            storage_class=self.user_storage_class,
-            access_modes=self.user_storage_access_modes,
-            storage=self.user_storage_capacity,
+            storage_class=self.storage_class,
+            access_modes=self.storage_access_modes,
+            storage=self.storage_capacity,
             labels=labels,
             annotations=annotations
         )
@@ -1196,7 +1259,7 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def start(self):
-        if self.user_storage_pvc_ensure:
+        if self.storage_pvc_ensure:
             pvc = self.get_pvc_manifest()
             try:
                 yield self.asynchronize(
