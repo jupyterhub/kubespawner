@@ -5,6 +5,7 @@ This module exports `KubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
 
+from functools import partial
 import os
 import string
 from urllib.parse import urlparse, urlunparse
@@ -15,7 +16,7 @@ import warnings
 from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
-from traitlets import Unicode, List, Integer, Union, Dict, Bool, Any, observe
+from traitlets import Any, Unicode, List, Integer, Union, Dict, Bool, Any, observe
 from jupyterhub.spawner import Spawner
 from jupyterhub.utils import exponential_backoff
 from jupyterhub.traitlets import Command
@@ -1011,6 +1012,8 @@ class KubeSpawner(Spawner):
         # assign to the real attribute
         setattr(self, _new_name, change.new)
 
+    events = Any(help="The event reflector object when it is created.")
+
     def _expand_user_properties(self, template):
         # Make sure username and servername match the restrictions for DNS labels
         safe_chars = set(string.ascii_lowercase + string.digits)
@@ -1244,11 +1247,26 @@ class KubeSpawner(Spawner):
         next_event = 0
         self.log.debug('progress generator: %s', self.pod_name)
 
-        while not self.events.stopped():
-            len_events = len(self.events.events)
+        pod_id = None
+        first_run = True
+        while self.events and (first_run or not self.events.stopped()):
+            # run at least once, so we get events that are already waiting,
+            # even if we've stopped waiting for new events
+            first_run = False
+            events = self.events.events
+            len_events = len(events)
             if next_event < len_events:
+                # only show messages for the 'current' pod
+                # pod_id may change if a previous pod is being stopped
+                # before starting a new one
+                # use the uid of the latest event to identify 'current'
+                pod_id = events[-1].involved_object.uid
                 for i in range(next_event, len_events):
-                    event = self.events.events[i]
+                    event = events[i]
+                    # events will include events for previous pods with our name
+                    # only show events that correspond to our currently spawning pod
+                    if event.involved_object.uid != pod_id:
+                        continue
                     await yield_({
                         'progress': 50,
                         'message':  "%s [%s] %s" % (event.last_timestamp, event.type, event.message)
@@ -1256,9 +1274,23 @@ class KubeSpawner(Spawner):
                 next_event = len_events
             await sleep(1)
 
+    def _start_watching_events(self):
+        """Start watching for pod events for our pod"""
+        # clear previous events reflector
+        if self.events and not self.events.stopped():
+            self.events.stop()
+
+
+        # This will include events for any previous launch of pods with our name
+        self.events = EventReflector(
+            parent=self, namespace=self.namespace,
+            fields={"involvedObject.kind": "Pod", "involvedObject.name": self.pod_name},
+        )
 
     @gen.coroutine
     def start(self):
+        self._start_watching_events()
+
         if self.storage_pvc_ensure:
             pvc = self.get_pvc_manifest()
             try:
@@ -1273,17 +1305,6 @@ class KubeSpawner(Spawner):
                 else:
                     raise
 
-        main_loop = IOLoop.current()
-        def on_reflector_failure():
-            self.log.critical("Events reflector failed, halting Hub.")
-            main_loop.stop()
-
-        # events are selected based on pod name, which will include previous launch/stop
-        self.events = EventReflector(
-                parent=self, namespace=self.namespace,
-                fields={'involvedObject.kind': 'Pod', 'involvedObject.name': self.pod_name},
-                on_failure=on_reflector_failure
-            )
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
         # try again. We try 4 times, and if it still fails we give up.
@@ -1297,7 +1318,7 @@ class KubeSpawner(Spawner):
                 yield self.asynchronize(
                     self.api.create_namespaced_pod,
                     self.namespace,
-                    pod
+                    pod,
                 )
                 break
             except ApiException as e:
@@ -1306,6 +1327,7 @@ class KubeSpawner(Spawner):
                     self.log.exception("Failed for %s", pod.to_str())
                     raise
                 self.log.info('Found existing pod %s, attempting to kill', self.pod_name)
+                # TODO: this should show up in events
                 yield self.stop(True)
 
                 self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
@@ -1334,6 +1356,10 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def stop(self, now=False):
+        if self.events:
+            if not self.events.stopped():
+                self.events.stop()
+            self.events = None
         delete_options = client.V1DeleteOptions()
 
         if now:
