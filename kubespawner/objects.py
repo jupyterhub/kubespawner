@@ -50,7 +50,8 @@ def make_pod(
     service_account=None,
     extra_container_config=None,
     extra_pod_config=None,
-    extra_containers=None
+    extra_containers=None,
+    scheduler_name=None
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -140,6 +141,8 @@ def make_pod(
         Extra configuration (e.g. tolerations) for pod which is not covered by parameters above.
     extra_containers:
         Extra containers besides notebook container. Used for some housekeeping jobs (e.g. crontab).
+    scheduler_name:
+        A custom scheduler's name.
     """
 
     pod = V1Pod()
@@ -249,6 +252,10 @@ def make_pod(
 
     pod.spec.init_containers = init_containers
     pod.spec.volumes = volumes + hack_volumes
+
+    if scheduler_name:
+        pod.spec.scheduler_name = scheduler_name
+
     return pod
 
 
