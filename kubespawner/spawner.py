@@ -1186,6 +1186,17 @@ class KubeSpawner(Spawner):
         state['pod_name'] = self.pod_name
         return state
 
+    def get_env(self):
+        """Return the environment dict to use for the Spawner.
+
+        See also: jupyterhub.Spawner.get_env
+        """
+
+        env = super(KubeSpawner, self).get_env()
+        env['JUPYTER_IMAGE_SPEC'] = self.image_spec
+
+        return env
+
     def load_state(self, state):
         """
         Load state from storage required to reinstate this user's pod
