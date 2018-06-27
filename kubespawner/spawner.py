@@ -1360,6 +1360,10 @@ class KubeSpawner(Spawner):
             if not self.events.stopped():
                 self.events.stop()
             self.events = None
+
+        if self.pod_name not in self.pods:
+            self.log.info("No pod %s to delete", self.pod_name)
+            return
         delete_options = client.V1DeleteOptions()
 
         if now:
@@ -1371,13 +1375,22 @@ class KubeSpawner(Spawner):
 
         delete_options.grace_period_seconds = grace_seconds
         self.log.info("Deleting pod %s", self.pod_name)
-        yield self.asynchronize(
-            self.api.delete_namespaced_pod,
-            name=self.pod_name,
-            namespace=self.namespace,
-            body=delete_options,
-            grace_period_seconds=grace_seconds
-        )
+        try:
+            yield self.asynchronize(
+                self.api.delete_namespaced_pod,
+                name=self.pod_name,
+                namespace=self.namespace,
+                body=delete_options,
+                grace_period_seconds=grace_seconds,
+            )
+        except ApiException as e:
+            if e.status == 404:
+                self.log.warning(
+                    "No pod %s to delete. Assuming already deleted.",
+                    self.pod_name,
+                )
+            else:
+                raise
         yield exponential_backoff(
             lambda: self.pod_reflector.pods.get(self.pod_name, None) is None,
             'pod/%s did not disappear in %s seconds!' % (self.pod_name, self.start_timeout),
