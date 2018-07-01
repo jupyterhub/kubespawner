@@ -72,7 +72,14 @@ class KubeSpawner(Spawner):
     pod_reflector = None
 
     def __init__(self, *args, **kwargs):
+        _mock = kwargs.pop('_mock', False)
         super().__init__(*args, **kwargs)
+
+        if _mock:
+            # if testing, skip the rest of initialization
+            # FIXME: rework initialization for easier mocking
+            return
+
         # By now, all the traitlets have been set, so we can use them to compute
         # other attributes
         if self.__class__.executor is None:
