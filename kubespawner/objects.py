@@ -187,31 +187,15 @@ def make_pod(
         args=cmd,
         image_pull_policy=image_pull_policy,
         lifecycle=lifecycle_hooks,
-        resources=V1ResourceRequirements()
+        resources=V1ResourceRequirements(),
+        volume_mounts=volume_mounts
     )
 
     if service_account is None:
-        # Add a hack to ensure that no service accounts are mounted in spawned pods
-        # This makes sure that we don"t accidentally give access to the whole
+        # This makes sure that we don't accidentally give access to the whole
         # kubernetes API to the users in the spawned pods.
-        # Note: We don't simply use `automountServiceAccountToken` here since we wanna be compatible
-        # with older kubernetes versions too for now.
-        hack_volume = V1Volume(name='no-api-access-please', empty_dir={})
-        hack_volumes = [hack_volume]
-
-        hack_volume_mount = V1VolumeMount(
-            name='no-api-access-please',
-            mount_path="/var/run/secrets/kubernetes.io/serviceaccount",
-            read_only=True
-        )
-        hack_volume_mounts = [hack_volume_mount]
-
-        # Non-hacky way of not mounting service accounts
         pod.spec.automount_service_account_token = False
     else:
-        hack_volumes = []
-        hack_volume_mounts = []
-
         pod.spec.service_account_name = service_account
 
     if run_privileged:
@@ -220,7 +204,6 @@ def make_pod(
         )
 
     notebook_container.resources.requests = {}
-
     if cpu_guarantee:
         notebook_container.resources.requests['cpu'] = cpu_guarantee
     if mem_guarantee:
@@ -238,7 +221,6 @@ def make_pod(
         for k in extra_resource_limits:
             notebook_container.resources.limits[k] = extra_resource_limits[k]
 
-    notebook_container.volume_mounts = volume_mounts + hack_volume_mounts
     pod.spec.containers.append(notebook_container)
 
     if extra_container_config:
@@ -251,7 +233,7 @@ def make_pod(
         pod.spec.containers.extend(extra_containers)
 
     pod.spec.init_containers = init_containers
-    pod.spec.volumes = volumes + hack_volumes
+    pod.spec.volumes = volumes
 
     if scheduler_name:
         pod.spec.scheduler_name = scheduler_name

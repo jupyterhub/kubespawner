@@ -37,14 +37,14 @@ def test_make_simplest_pod():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -81,14 +81,14 @@ def test_make_labeled_pod():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -125,14 +125,14 @@ def test_make_annotated_pod():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -172,14 +172,14 @@ def test_make_pod_with_image_pull_secrets():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -221,14 +221,14 @@ def test_set_pod_uid_and_gid():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -269,14 +269,14 @@ def test_set_pod_uid_fs_gid():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -317,14 +317,14 @@ def test_set_pod_supplemental_gids():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -368,10 +368,10 @@ def test_run_privileged_container():
                     "securityContext": {
                         "privileged": True,
                     },
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -415,7 +415,7 @@ def test_make_pod_resources_all():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {
                             "cpu": 2,
@@ -428,7 +428,7 @@ def test_make_pod_resources_all():
                     }
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -468,7 +468,7 @@ def test_make_pod_with_env():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {
                         },
@@ -477,7 +477,7 @@ def test_make_pod_with_env():
                     }
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -520,7 +520,7 @@ def test_make_pod_with_lifecycle():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {
                         },
@@ -536,7 +536,7 @@ def test_make_pod_with_lifecycle():
                     }
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -585,7 +585,7 @@ def test_make_pod_with_init_containers():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {
                         },
@@ -607,7 +607,7 @@ def test_make_pod_with_init_containers():
                     "command": ["sh", "-c", "until nslookup mydb; do echo waiting for mydb; sleep 2; done;"]
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -653,7 +653,7 @@ def test_make_pod_with_extra_container_config():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {
                         },
@@ -669,7 +669,7 @@ def test_make_pod_with_extra_container_config():
                     ]
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -715,7 +715,7 @@ def test_make_pod_with_extra_pod_config():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {
                         },
@@ -724,7 +724,7 @@ def test_make_pod_with_extra_pod_config():
                     }
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
             'tolerations': [
                 {
                     'key': 'dedicated',
@@ -775,7 +775,7 @@ def test_make_pod_with_extra_containers():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {
                         },
@@ -789,7 +789,7 @@ def test_make_pod_with_extra_containers():
                     'command': ['/usr/local/bin/supercronic', '/etc/crontab']
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -835,7 +835,7 @@ def test_make_pod_with_extra_resources():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {
                             "cpu": 2,
@@ -851,7 +851,7 @@ def test_make_pod_with_extra_resources():
                     }
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
