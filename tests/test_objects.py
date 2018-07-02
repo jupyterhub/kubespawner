@@ -317,14 +317,14 @@ def test_set_pod_supplemental_gids():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'volumeMounts': [{'name': 'no-api-access-please', 'mountPath': '/var/run/secrets/kubernetes.io/serviceaccount', 'readOnly': True}],
+                    'volumeMounts': [],
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
-            'volumes': [{'name': 'no-api-access-please', 'emptyDir': {}}],
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
