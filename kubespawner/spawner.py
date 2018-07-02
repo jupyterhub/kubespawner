@@ -5,18 +5,17 @@ This module exports `KubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
 
-from functools import partial
+from functools import partial  # noqa
 import os
 import string
 from urllib.parse import urlparse, urlunparse
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
-import warnings
 
 from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
-from traitlets import Any, Unicode, List, Integer, Union, Dict, Bool, Any, observe
+from traitlets import Any, Unicode, List, Integer, Union, Dict, Bool, Any, validate
 from jupyterhub.spawner import Spawner
 from jupyterhub.utils import exponential_backoff
 from jupyterhub.traitlets import Command
@@ -73,7 +72,14 @@ class KubeSpawner(Spawner):
     pod_reflector = None
 
     def __init__(self, *args, **kwargs):
+        _mock = kwargs.pop('_mock', False)
         super().__init__(*args, **kwargs)
+
+        if _mock:
+            # if testing, skip the rest of initialization
+            # FIXME: rework initialization for easier mocking
+            return
+
         # By now, all the traitlets have been set, so we can use them to compute
         # other attributes
         if self.__class__.executor is None:
@@ -982,35 +988,83 @@ class KubeSpawner(Spawner):
         "user_storage_extra_labels",
         "user_storage_access_modes",
     ]
-    # define Any traits for deprecated names
-    # so we can propagate their values to the new traits
+
+    @validate('config')
+    def _handle_deprecated_config(self, proposal):
+        config = proposal.value
+        if 'KubeSpawner' not in config:
+            # nothing to check
+            return config
+        for _deprecated_name in self._deprecated_traits:
+            # for any `singleuser_name` deprecate in favor of `name`
+            _new_name = _deprecated_name.split('_', 1)[1]
+            if _deprecated_name not in config.KubeSpawner:
+                # nothing to do
+                continue
+
+            # remove deprecated value from config
+            _deprecated_value = config.KubeSpawner.pop(_deprecated_name)
+            self.log.warning(
+                "KubeSpawner.%s is deprecated in 0.9. Use KubeSpawner.%s instead",
+                _deprecated_name,
+                _new_name,
+            )
+            if _new_name in config.KubeSpawner:
+                # *both* config values found,
+                # ignore deprecated config and warn about the collision
+                _new_value = config.KubeSpawner[_new_name]
+                # ignore deprecated config in favor of non-deprecated config
+                self.log.warning(
+                    "Ignoring deprecated config KubeSpawner.%s = %r "
+                    " in favor of KubeSpawner.%s = %r",
+                    _deprecated_name,
+                    _deprecated_value,
+                    _new_name,
+                    _new_value,
+                )
+            else:
+                # move deprecated config to its new home
+                config.KubeSpawner[_new_name] = _deprecated_value
+
+        return config
+
+    # define properties for deprecated names
+    # so we can propagate their values to the new traits.
+    # most deprecations should be handled via config above,
+    # but in case these are set at runtime, e.g. by subclasses
+    # or hooks, hook this up.
+    # The signature-order of these is funny
+    # because the property methods are created with
+    # functools.partial(f, name) so name is passed as the first arg
+    # before self.
+
+    def _get_deprecated(name, self):
+        _new_name = name.split('_', 1)[1]
+        # warn about the deprecated name
+        self.log.warning(
+            "KubeSpawner.%s is deprecated in 0.9. Use KubeSpawner.%s", name, _new_name
+        )
+        return getattr(self, _new_name)
+
+    def _set_deprecated(name, self, value):
+        _new_name = name.split('_', 1)[1]
+        # warn about the deprecated name
+        self.log.warning(
+            "KubeSpawner.%s is deprecated in 0.9. Use KubeSpawner.%s", name, _new_name
+        )
+        return setattr(self, _new_name, value)
+
     for _deprecated_name in _deprecated_traits:
-        _new_name = _deprecated_name.split('_', 1)[1]
         exec(
-            "{} = Any(config=True, help='DEPRECATED. Use {}.')".format(
-                _deprecated_name, _new_name
+            """{} = property(
+                partial(_get_deprecated, _deprecated_name),
+                partial(_set_deprecated, _deprecated_name),
+            )
+            """.format(
+                _deprecated_name
             )
         )
-    del _deprecated_name, _new_name
-
-    @observe(*_deprecated_traits)
-    def _deprecated_trait_changed(self, change):
-        """Warn on use of deprecated config traits
-
-        preserving behavior by propagating values to the new name
-        """
-        # new name without prefix:
-        _new_name = change.name.split('_', 1)[1]
-        # warn about the deprecated name
-        warnings.warn(
-            "KubeSpawner.{} is deprecated in 0.9. Use KubeSpawner.{}".format(
-                change.name, _new_name,
-            ),
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        # assign to the real attribute
-        setattr(self, _new_name, change.new)
+    del _deprecated_name
 
     events = Any(help="The event reflector object when it is created.")
 
