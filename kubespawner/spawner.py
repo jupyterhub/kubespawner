@@ -1074,7 +1074,7 @@ class KubeSpawner(Spawner):
         )
     del _deprecated_name
 
-    events = Any(help="The event reflector object when it is created.")
+    event_reflector = Any(help="The event reflector object when it is created.")
 
     def _expand_user_properties(self, template):
         # Make sure username and servername match the restrictions for DNS labels
@@ -1322,11 +1322,15 @@ class KubeSpawner(Spawner):
 
         pod_id = None
         first_run = True
-        while self.events and (first_run or not self.events.stopped()):
+        event_reflector = self.event_reflector
+        if not event_reflector:
+            self.log.warning("No event reflector for %s", self.pod_name)
+            return
+        while first_run or not event_reflector.stopped():
             # run at least once, so we get events that are already waiting,
             # even if we've stopped waiting for new events
             first_run = False
-            events = self.events.events
+            events = event_reflector.events
             len_events = len(events)
             if next_event < len_events:
                 # only show messages for the 'current' pod
@@ -1350,19 +1354,20 @@ class KubeSpawner(Spawner):
     def _start_watching_events(self):
         """Start watching for pod events for our pod"""
         # clear previous events reflector
-        if self.events and not self.events.stopped():
-            self.events.stop()
-
+        if self.event_reflector and not self.event_reflector.stopped():
+            self.event_reflector.stop()
 
         # This will include events for any previous launch of pods with our name
-        self.events = EventReflector(
-            parent=self, namespace=self.namespace,
+        self.event_reflector = EventReflector(
+            parent=self,
+            namespace=self.namespace,
             fields={"involvedObject.kind": "Pod", "involvedObject.name": self.pod_name},
         )
+        return self.event_reflector
 
     @gen.coroutine
     def start(self):
-        self._start_watching_events()
+        event_reflector = self._start_watching_events()
 
         if self.storage_pvc_ensure:
             pvc = self.get_pvc_manifest()
@@ -1418,23 +1423,31 @@ class KubeSpawner(Spawner):
         )
 
         pod = self.pod_reflector.pods[self.pod_name]
-
-        self.log.debug('pod %s events before launch: %s',
-            self.pod_name, "\n".join(["%s [%s] %s" % (event.last_timestamp, event.type, event.message) for event in self.events.events]))
+        self.log.debug(
+            'pod %s events before launch: %s',
+            self.pod_name,
+            "\n".join(
+                [
+                    "%s [%s] %s" % (event.last_timestamp, event.type, event.message)
+                    for event in event_reflector.events
+                ]
+            ),
+        )
 
         # Note: we stop the event watcher once launch is successful, but the reflector
         # will only stop when the next event comes in, likely when it is stopped.
-        self.events.stop()
+        if not event_reflector.stopped():
+            event_reflector.stop()
         return (pod.status.pod_ip, self.port)
 
     @gen.coroutine
     def stop(self, now=False):
-        if self.events:
-            if not self.events.stopped():
-                self.events.stop()
-            self.events = None
+        if self.event_reflector:
+            if not self.event_reflector.stopped():
+                self.event_reflector.stop()
+            self.event_reflector = None
 
-        if self.pod_name not in self.pods:
+        if self.pod_name not in self.pod_reflector.pods:
             self.log.info("No pod %s to delete", self.pod_name)
             return
         delete_options = client.V1DeleteOptions()
