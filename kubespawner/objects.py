@@ -4,6 +4,7 @@ Helper methods for generating k8s API objects.
 import json
 from urllib.parse import urlparse
 import escapism
+import re
 import string
 
 from kubernetes.client.models import (
@@ -329,26 +330,45 @@ def make_ingress(
     target_ip = target_parts.hostname
     target_port = target_parts.port
 
+    target_is_ip = re.match('^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', target_ip) is not None
+
     # Make endpoint object
-    endpoint = V1Endpoints(
-        kind='Endpoints',
-        metadata=meta,
-        subsets=[
-            V1EndpointSubset(
-                addresses=[V1EndpointAddress(ip=target_ip)],
-                ports=[V1EndpointPort(port=target_port)]
-            )
-        ]
-    )
+    if target_is_ip:
+        endpoint = V1Endpoints(
+            kind='Endpoints',
+            metadata=meta,
+            subsets=[
+                V1EndpointSubset(
+                    addresses=[V1EndpointAddress(ip=target_ip)],
+                    ports=[V1EndpointPort(port=target_port)]
+                )
+            ]
+        )
+    else:
+        endpoint = None
 
     # Make service object
-    service = V1Service(
-        kind='Service',
-        metadata=meta,
-        spec=V1ServiceSpec(
-            ports=[V1ServicePort(port=target_port, target_port=target_port)]
+    if target_is_ip:
+        service = V1Service(
+            kind='Service',
+            metadata=meta,
+            spec=V1ServiceSpec(
+                type='ClusterIP',
+                external_name='',
+                ports=[V1ServicePort(port=target_port, target_port=target_port)]
+            )
         )
-    )
+    else:
+        service = V1Service(
+            kind='Service',
+            metadata=meta,
+            spec=V1ServiceSpec(
+                type='ExternalName',
+                external_name=target_ip,
+                cluster_ip='',
+                ports=[V1ServicePort(port=target_port, target_port=target_port)],
+            ),
+        )
 
     # Make Ingress object
     ingress = V1beta1Ingress(
