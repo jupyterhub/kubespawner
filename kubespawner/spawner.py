@@ -902,20 +902,21 @@ class KubeSpawner(Spawner):
         """
     )
 
-    profile_list = List(
-        trait=Dict(),
-        default_value=None,
-        minlen=0,
+    profile_list = Union([
+            List(trait=Dict()),
+            Callable()
+        ],
         config=True,
         help="""
         List of profiles to offer for selection by the user.
 
         Signature is: List(Dict()), where each item is a dictionary that has two keys:
+        
         - 'display_name': the human readable display name (should be HTML safe)
         - 'description': Optional description of this profile displayed to the user.
         - 'kubespawner_override': a dictionary with overrides to apply to the KubeSpawner
-            settings. Each value can be either the final value to change or a callable that
-            take the `KubeSpawner` instance as parameter and return the final value.
+          settings. Each value can be either the final value to change or a callable that
+          take the `KubeSpawner` instance as parameter and return the final value.
         - 'default': (optional Bool) True if this is the default selected option
 
         Example::
@@ -960,6 +961,13 @@ class KubeSpawner(Spawner):
                     }
                 }
             ]
+
+        Instead of a list of dictionaries, this could also be a callable that takes as one
+        parameter the current spawner instance and returns a list of dictionaries. The
+        callable will be called asynchronously if it returns a future, rather than
+        a list. Note that the interface of the spawner class is not deemed stable
+        across versions, so using this functionality might cause your JupyterHub
+        or kubespawner upgrades to break.
         """
     )
 
@@ -1480,6 +1488,16 @@ class KubeSpawner(Spawner):
                 break
         return args
 
+    def _render_options_form(self, profile_list):
+        self._profile_list = profile_list
+        profile_form_template = Environment(loader=BaseLoader).from_string(self.profile_form_template)
+        return profile_form_template.render(profile_list=profile_list)
+
+    @gen.coroutine
+    def _render_options_form_dynamically(self, current_spawner):
+        profile_list = yield gen.maybe_future(self.profile_list(current_spawner))
+        return self._render_options_form(profile_list)
+
     def _options_form_default(self):
         '''
         Build the form template according to the `profile_list` setting.
@@ -1490,8 +1508,10 @@ class KubeSpawner(Spawner):
         '''
         if not self.profile_list:
             return ''
-        profile_form_template = Environment(loader=BaseLoader).from_string(self.profile_form_template)
-        return profile_form_template.render(profile_list=self.profile_list)
+        if callable(self.profile_list):
+            return self._render_options_form_dynamically
+        else:
+            return self._render_options_form(self.profile_list)
 
     def options_from_form(self, formdata):
         """get the option selected by the user on the form
@@ -1515,12 +1535,11 @@ class KubeSpawner(Spawner):
         Returns:
             the selected user option
         """
-
-        if not self.profile_list:
+        if not self.profile_list or not hasattr(self, '_profile_list'):
             return formdata
         # Default to first profile if somehow none is provided
         selected_profile = int(formdata.get('profile', [0])[0])
-        options = self.profile_list[selected_profile]
+        options = self._profile_list[selected_profile]
         self.log.debug("Applying KubeSpawner override for profile '%s'", options['display_name'])
         kubespawner_override = options.get('kubespawner_override', {})
         for k, v in kubespawner_override.items():
