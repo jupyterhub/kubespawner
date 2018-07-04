@@ -7,6 +7,7 @@ implementation that should be used by JupyterHub.
 
 from functools import partial
 import os
+import sys
 import string
 from urllib.parse import urlparse, urlunparse
 import multiprocessing
