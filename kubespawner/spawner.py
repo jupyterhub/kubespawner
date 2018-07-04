@@ -1304,59 +1304,42 @@ class KubeSpawner(Spawner):
         self._start_watching_events()
 
         if self.storage_pvc_ensure:
-            # Because quotas are checked before seeing if the pvc exists,
-            # we need to check whether pvc already exists before trying
-            # to create it. If we don't and quota has been reached, the
-            # attempt to create it will fail on quota check rather than
-            # raising error which indicates pvc already exists.
+            # Try and create the pvc. If it succeeds we are good. If
+            # returns a 409 indicating it already exists we are good. If
+            # it returns a 403, indicating potential quota issue we need
+            # to see if pvc already exists before we decide to raise the
+            # error for quota being exceeded. This is because quota is
+            # checked before determining if the PVC needed to be
+            # created.
+
+            pvc = self.get_pvc_manifest()
 
             try:
                 yield self.asynchronize(
-                    self.api.read_namespaced_persistent_volume_claim,
-                    name=self.pvc_name,
-                    namespace=self.namespace)
-
+                    self.api.create_namespaced_persistent_volume_claim,
+                    namespace=self.namespace,
+                    body=pvc
+                )
             except ApiException as e:
-                if e.status != 404:
+                if e.status == 409:
+                    self.log.info("PVC " + self.pvc_name + " already exists, so did not create new pvc.")
+
+                elif e.status == 403:
+                    t, v, tb = sys.exc_info()
+
+                    try:
+                        yield self.asynchronize(
+                            self.api.read_namespaced_persistent_volume_claim,
+                            name=self.pvc_name,
+                            namespace=self.namespace)
+
+                    except ApiException as e:
+                        raise v.with_traceback(tb)
+
+                    self.log.info("PVC " + self.pvc_name + " already exists, possibly have reached quota though.")
+
+                else:
                     raise
-
-                t, v, tb = sys.exc_info()
-
-                # Now try and create the pvc. If succeeds we are good.
-                # If returns a 409 indicating it already exists we are
-                # good. If it returns a 403, indicating potential quota
-                # issue we need to see if pvc already exists before we
-                # decide to raise the error for quota being exceeded.
-
-                pvc = self.get_pvc_manifest()
-
-                try:
-                    yield self.asynchronize(
-                        self.api.create_namespaced_persistent_volume_claim,
-                        namespace=self.namespace,
-                        body=pvc
-                    )
-                except ApiException as e:
-                    if e.status == 409:
-                        self.log.info("PVC " + self.pvc_name + " already exists, was created by something else.")
-
-                    elif e.status == 403:
-                        try:
-                            yield self.asynchronize(
-                                self.api.read_namespaced_persistent_volume_claim,
-                                name=self.pvc_name,
-                                namespace=self.namespace)
-
-                        except ApiException as e:
-                            raise v.with_traceback(tb)
-
-                        self.log.info("PVC " + self.pvc_name + " already exists, possibly have reached quota though.")
-
-                    else:
-                        raise
-
-            else:
-                self.log.info("PVC " + self.pvc_name + " already exists, so do not attempt to create new pvc.")
 
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
