@@ -996,6 +996,7 @@ def test_make_pod_with_tolerations():
             "annotations": {}
         },
         "spec": {
+            "automountServiceAccountToken": False,
             "securityContext": {},
             "containers": [
                 {
