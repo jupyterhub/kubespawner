@@ -1022,3 +1022,62 @@ def test_make_pod_with_tolerations():
         "kind": "Pod",
         "apiVersion": "v1"
     }
+
+def test_make_pod_with_node_affinity_required():
+    """
+    Test specification of the simplest possible pod specification with non-empty node_affinity
+    """
+    node_affinity_required = [{
+        "matchExpressions": [{
+            "key": "kubernetes.io/e2e-az-name",
+            "operator": "In",
+            "values": ["e2e-az1", "e2e-az2"],
+        }]
+    }]
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        node_affinity_required=node_affinity_required
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+            "annotations": {}
+        },
+        "spec": {
+            "automountServiceAccountToken": False,
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            "volumes": [],
+            "affinity": {
+                "nodeAffinity": {
+                    "requiredDuringSchedulingIgnoredDuringExecution": {
+                        "nodeSelectorTerms": node_affinity_required
+                    }
+                }
+            }
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+    

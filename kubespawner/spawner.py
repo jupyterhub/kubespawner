@@ -1241,6 +1241,12 @@ class KubeSpawner(Spawner):
             extra_pod_config=self.extra_pod_config,
             extra_containers=self.extra_containers,
             tolerations=self.tolerations,
+            node_affinity_preferred=self.node_affinity_preferred,
+            node_affinity_required=self.node_affinity_required,
+            pod_affinity_preferred=self.pod_affinity_preferred,
+            pod_affinity_required=self.pod_affinity_required,
+            pod_anti_affinity_preferred=self.pod_anti_affinity_preferred,
+            pod_anti_affinity_required=self.pod_anti_affinity_required,
         )
 
     def get_pvc_manifest(self):
