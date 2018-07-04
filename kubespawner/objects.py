@@ -145,6 +145,13 @@ def make_pod(
         Extra containers besides notebook container. Used for some housekeeping jobs (e.g. crontab).
     scheduler_name:
         A custom scheduler's name.
+    tolerations:
+        Tolerations can allow a pod to schedule or execute on a tainted node. To
+        learn more about pod tolerations, see
+        https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/.
+
+        Pass this field an array of "Toleration" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#nodeselectorterm-v1-core
     """
 
     pod = V1Pod()
