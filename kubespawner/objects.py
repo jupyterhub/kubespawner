@@ -18,7 +18,8 @@ from kubernetes.client.models import (
     V1Service, V1ServiceSpec, V1ServicePort,
     V1beta1Ingress, V1beta1IngressSpec, V1beta1IngressRule,
     V1beta1HTTPIngressRuleValue, V1beta1HTTPIngressPath,
-    V1beta1IngressBackend
+    V1beta1IngressBackend,
+    V1Toleration,
 )
 
 def make_pod(
@@ -242,7 +243,7 @@ def make_pod(
         pod.spec.containers.extend(extra_containers)
 
     if tolerations:
-        pod.spec.tolerations = tolerations
+        pod.spec.tolerations = [V1Toleration(**t) for t in tolerations]
 
     pod.spec.init_containers = init_containers
     pod.spec.volumes = volumes
