@@ -1347,7 +1347,7 @@ class KubeSpawner(Spawner):
                                 namespace=self.namespace)
 
                         except ApiException as e:
-                            raise t, v, tb
+                            raise v.with_traceback(tb)
 
                         self.log.info("PVC " + self.pvc_name + " already exists, possibly have reached quota though.")
 
