@@ -58,13 +58,13 @@ def make_pod(
     extra_pod_config=None,
     extra_containers=None,
     scheduler_name=None,
-    tolerations=None,
-    node_affinity_preferred=None,
-    node_affinity_required=None,
-    pod_affinity_preferred=None,
-    pod_affinity_required=None,
-    pod_anti_affinity_preferred=None,
-    pod_anti_affinity_required=None,
+    tolerations=[],
+    node_affinity_preferred=[],
+    node_affinity_required=[],
+    pod_affinity_preferred=[],
+    pod_affinity_required=[],
+    pod_anti_affinity_preferred=[],
+    pod_anti_affinity_required=[],
 ):
     """
     Make a k8s pod specification for running a user notebook.
