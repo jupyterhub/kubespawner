@@ -4,7 +4,6 @@ Test functions used to create k8s objects
 from kubespawner.objects import make_pod, make_pvc
 from kubernetes.client import ApiClient
 
-
 api_client = ApiClient()
 
 def test_make_simplest_pod():

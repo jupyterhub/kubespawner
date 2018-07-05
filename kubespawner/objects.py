@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 import escapism
 import re
 import string
+from kubespawner.utils import convert_keys_from_camel_to_snake_case
 
 from kubernetes.client.models import (
     V1Pod, V1PodSpec, V1PodSecurityContext,
@@ -21,7 +22,7 @@ from kubernetes.client.models import (
     V1beta1IngressBackend,
     V1Toleration,
     V1Affinity,
-    V1NodeAffinity, V1NodeSelector, V1NodeSelectorTerm, V1PreferredSchedulingTerm,
+    V1NodeAffinity, V1NodeSelector, V1NodeSelectorTerm, V1PreferredSchedulingTerm, V1NodeSelectorRequirement,
     V1PodAffinity, V1PodAntiAffinity, V1WeightedPodAffinityTerm, V1PodAffinityTerm,
 )
 
@@ -300,7 +301,7 @@ def make_pod(
         pod.spec.containers.extend(extra_containers)
 
     if tolerations:
-        pod.spec.tolerations = [V1Toleration(**t) for t in tolerations]
+        pod.spec.tolerations = [V1Toleration(**convert_keys_from_camel_to_snake_case(t)) for t in tolerations]
 
     pod.spec.init_containers = init_containers
     pod.spec.volumes = volumes
@@ -314,12 +315,12 @@ def make_pod(
         node_selector = None
         if node_affinity_required:
             node_selector = V1NodeSelector(
-                node_selector_terms=[V1NodeSelectorTerm(**t) for t in node_affinity_required],
+                node_selector_terms=[V1NodeSelectorTerm(**convert_keys_from_camel_to_snake_case(t)) for t in node_affinity_required],
             )
 
         preferred_scheduling_terms = None
         if node_affinity_preferred:
-            preferred_scheduling_terms = [V1PreferredSchedulingTerm(**t) for t in node_affinity_preferred]
+            preferred_scheduling_terms = [V1PreferredSchedulingTerm(**convert_keys_from_camel_to_snake_case(t)) for t in node_affinity_preferred]
 
         node_affinity = V1NodeAffinity(
             preferred_during_scheduling_ignored_during_execution=preferred_scheduling_terms,
@@ -330,11 +331,11 @@ def make_pod(
     if pod_affinity_preferred or pod_affinity_required:
         weighted_pod_affinity_terms = None
         if pod_affinity_preferred:
-            weighted_pod_affinity_terms = [V1WeightedPodAffinityTerm(**t) for t in pod_affinity_preferred]
+            weighted_pod_affinity_terms = [V1WeightedPodAffinityTerm(**convert_keys_from_camel_to_snake_case(t)) for t in pod_affinity_preferred]
         
         pod_affinity_terms = None
-        if pod_affinity_preferred:
-            pod_affinity_terms = [V1PodAffinityTerm(**t) for t in pod_affinity_required]
+        if pod_affinity_required:
+            pod_affinity_terms = [V1PodAffinityTerm(**convert_keys_from_camel_to_snake_case(t)) for t in pod_affinity_required]
 
         pod_affinity = V1PodAffinity(
             preferred_during_scheduling_ignored_during_execution=weighted_pod_affinity_terms,
@@ -344,12 +345,12 @@ def make_pod(
     pod_anti_affinity = None
     if pod_anti_affinity_preferred or pod_anti_affinity_required:
         weighted_pod_affinity_terms = None
-        if pod_affinity_preferred:
-            weighted_pod_affinity_terms = [V1WeightedPodAffinityTerm(**t) for t in pod_anti_affinity_preferred]
+        if pod_anti_affinity_preferred:
+            weighted_pod_affinity_terms = [V1WeightedPodAffinityTerm(**convert_keys_from_camel_to_snake_case(t)) for t in pod_anti_affinity_preferred]
         
         pod_affinity_terms = None
-        if pod_affinity_preferred:
-            pod_affinity_terms = [V1PodAffinityTerm(**t) for t in pod_anti_affinity_required]
+        if pod_anti_affinity_required:
+            pod_affinity_terms = [V1PodAffinityTerm(**convert_keys_from_camel_to_snake_case(t)) for t in pod_anti_affinity_required]
 
         pod_anti_affinity = V1PodAffinity(
             preferred_during_scheduling_ignored_during_execution=weighted_pod_affinity_terms,
