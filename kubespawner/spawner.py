@@ -841,7 +841,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    singleuser_tolerations = List(
+    tolerations = List(
         None,
         config=True,
         help="""
@@ -849,6 +849,9 @@ class KubeSpawner(Spawner):
         on a node with the corresponding taints. See the official Kubernetes documentation for additional details 
         https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
         
+        Pass this field an array of "Toleration" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#nodeselectorterm-v1-core
+
         Example:
         
             [
@@ -868,6 +871,85 @@ class KubeSpawner(Spawner):
         """
     )
 
+    node_affinity_preferred = List(
+        None,
+        config=True,
+        help="""
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "PreferredSchedulingTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#preferredschedulingterm-v1-core
+        """
+    )
+    node_affinity_required = List(
+        None,
+        config=True,
+        help="""
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "NodeSelectorTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#nodeselectorterm-v1-core
+        """
+    )
+    pod_affinity_preferred = List(
+        None,
+        config=True,
+        help="""
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "WeightedPodAffinityTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#weightedpodaffinityterm-v1-core
+        """
+    )
+    pod_affinity_required = List(
+        None,
+        config=True,
+        help="""
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "PodAffinityTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#podaffinityterm-v1-core
+        """
+    )
+    pod_anti_affinity_preferred = List(
+        None,
+        config=True,
+        help="""
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+        
+        Pass this field an array of "WeightedPodAffinityTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#weightedpodaffinityterm-v1-core
+        """
+    )
+    pod_anti_affinity_required = List(
+        None,
+        config=True,
+        help="""
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+        
+        Pass this field an array of "PodAffinityTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#podaffinityterm-v1-core
+        """
+    )
+
     extra_resource_guarantees = Dict(
         {},
         config=True,
@@ -879,7 +961,6 @@ class KubeSpawner(Spawner):
             {"nvidia.com/gpu": "3"}
         """
     )
-
     extra_resource_limits = Dict(
         {},
         config=True,
