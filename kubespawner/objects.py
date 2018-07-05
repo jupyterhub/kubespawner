@@ -23,7 +23,6 @@ from kubernetes.client.models import (
     V1Affinity,
     V1NodeAffinity, V1NodeSelector, V1NodeSelectorTerm,
     V1PodAffinity, V1PodAntiAffinity, V1WeightedPodAffinityTerm, V1PodAffinityTerm,
-    V1,
 )
 
 def make_pod(
