@@ -13,7 +13,7 @@ from kubernetes.client.models import (
     V1ObjectMeta,
     V1LocalObjectReference,
     V1Volume, V1VolumeMount,
-    V1Container, V1ContainerPort, V1SecurityContext, V1EnvVar, V1ResourceRequirements,
+    V1Container, V1ContainerPort, V1SecurityContext, V1EnvVar, V1ResourceRequirements, V1Lifecycle,
     V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec,
     V1Endpoints, V1EndpointSubset, V1EndpointAddress, V1EndpointPort,
     V1Service, V1ServiceSpec, V1ServicePort,
@@ -50,13 +50,13 @@ def make_pod(
     mem_limit=None,
     mem_guarantee=None,
     extra_resource_limits=None,
-    extra_resource_guarantees=None,
-    lifecycle_hooks=None,
-    init_containers=None,
+    extra_resource_guarantees=None, 
+    lifecycle_hooks={},
+    init_containers=[],
     service_account=None,
     extra_container_config=None,
     extra_pod_config=None,
-    extra_containers=None,
+    extra_containers=[],
     scheduler_name=None,
     tolerations=[],
     node_affinity_preferred=[],
@@ -246,6 +246,11 @@ def make_pod(
     if node_selector:
         pod.spec.node_selector = node_selector
 
+    if lifecycle_hooks:
+        lifecycle_hooks = V1Lifecycle(**convert_keys_from_camel_to_snake_case(lifecycle_hooks))
+    else:
+        lifecycle_hooks = None
+
     notebook_container = V1Container(
         name='notebook',
         image=image_spec,
@@ -256,7 +261,7 @@ def make_pod(
         image_pull_policy=image_pull_policy,
         lifecycle=lifecycle_hooks,
         resources=V1ResourceRequirements(),
-        volume_mounts=volume_mounts
+        volume_mounts=[V1VolumeMount(**convert_keys_from_camel_to_snake_case(obj)) for obj in volume_mounts],
     )
 
     if service_account is None:
@@ -298,14 +303,13 @@ def make_pod(
         for key, value in extra_pod_config.items():
             setattr(pod.spec, _map_attribute(pod.spec.attribute_map, key), value)
     if extra_containers:
-        pod.spec.containers.extend(extra_containers)
-
+        pod.spec.containers.extend([V1Container(**convert_keys_from_camel_to_snake_case(obj)) for obj in extra_containers])
     if tolerations:
-        pod.spec.tolerations = [V1Toleration(**convert_keys_from_camel_to_snake_case(t)) for t in tolerations]
-
-    pod.spec.init_containers = init_containers
-    pod.spec.volumes = volumes
-
+        pod.spec.tolerations = [V1Toleration(**convert_keys_from_camel_to_snake_case(obj)) for obj in tolerations]
+    if init_containers:
+        pod.spec.init_containers = [V1Container(**convert_keys_from_camel_to_snake_case(obj)) for obj in init_containers]
+    if volumes:
+        pod.spec.volumes = [V1Volume(**convert_keys_from_camel_to_snake_case(obj)) for obj in volumes]
     if scheduler_name:
         pod.spec.scheduler_name = scheduler_name
     
@@ -315,12 +319,12 @@ def make_pod(
         node_selector = None
         if node_affinity_required:
             node_selector = V1NodeSelector(
-                node_selector_terms=[V1NodeSelectorTerm(**convert_keys_from_camel_to_snake_case(t)) for t in node_affinity_required],
+                node_selector_terms=[V1NodeSelectorTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in node_affinity_required],
             )
 
         preferred_scheduling_terms = None
         if node_affinity_preferred:
-            preferred_scheduling_terms = [V1PreferredSchedulingTerm(**convert_keys_from_camel_to_snake_case(t)) for t in node_affinity_preferred]
+            preferred_scheduling_terms = [V1PreferredSchedulingTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in node_affinity_preferred]
 
         node_affinity = V1NodeAffinity(
             preferred_during_scheduling_ignored_during_execution=preferred_scheduling_terms,
@@ -331,11 +335,11 @@ def make_pod(
     if pod_affinity_preferred or pod_affinity_required:
         weighted_pod_affinity_terms = None
         if pod_affinity_preferred:
-            weighted_pod_affinity_terms = [V1WeightedPodAffinityTerm(**convert_keys_from_camel_to_snake_case(t)) for t in pod_affinity_preferred]
+            weighted_pod_affinity_terms = [V1WeightedPodAffinityTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in pod_affinity_preferred]
         
         pod_affinity_terms = None
         if pod_affinity_required:
-            pod_affinity_terms = [V1PodAffinityTerm(**convert_keys_from_camel_to_snake_case(t)) for t in pod_affinity_required]
+            pod_affinity_terms = [V1PodAffinityTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in pod_affinity_required]
 
         pod_affinity = V1PodAffinity(
             preferred_during_scheduling_ignored_during_execution=weighted_pod_affinity_terms,
@@ -346,11 +350,11 @@ def make_pod(
     if pod_anti_affinity_preferred or pod_anti_affinity_required:
         weighted_pod_affinity_terms = None
         if pod_anti_affinity_preferred:
-            weighted_pod_affinity_terms = [V1WeightedPodAffinityTerm(**convert_keys_from_camel_to_snake_case(t)) for t in pod_anti_affinity_preferred]
+            weighted_pod_affinity_terms = [V1WeightedPodAffinityTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in pod_anti_affinity_preferred]
         
         pod_affinity_terms = None
         if pod_anti_affinity_required:
-            pod_affinity_terms = [V1PodAffinityTerm(**convert_keys_from_camel_to_snake_case(t)) for t in pod_anti_affinity_required]
+            pod_affinity_terms = [V1PodAffinityTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in pod_anti_affinity_required]
 
         pod_anti_affinity = V1PodAffinity(
             preferred_during_scheduling_ignored_during_execution=weighted_pod_affinity_terms,
