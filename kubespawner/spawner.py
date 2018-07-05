@@ -7,6 +7,7 @@ implementation that should be used by JupyterHub.
 
 from functools import partial  # noqa
 import os
+import sys
 import string
 from urllib.parse import urlparse, urlunparse
 import multiprocessing
@@ -1370,7 +1371,16 @@ class KubeSpawner(Spawner):
         event_reflector = self._start_watching_events()
 
         if self.storage_pvc_ensure:
+            # Try and create the pvc. If it succeeds we are good. If
+            # returns a 409 indicating it already exists we are good. If
+            # it returns a 403, indicating potential quota issue we need
+            # to see if pvc already exists before we decide to raise the
+            # error for quota being exceeded. This is because quota is
+            # checked before determining if the PVC needed to be
+            # created.
+
             pvc = self.get_pvc_manifest()
+
             try:
                 yield self.asynchronize(
                     self.api.create_namespaced_persistent_volume_claim,
@@ -1380,6 +1390,21 @@ class KubeSpawner(Spawner):
             except ApiException as e:
                 if e.status == 409:
                     self.log.info("PVC " + self.pvc_name + " already exists, so did not create new pvc.")
+
+                elif e.status == 403:
+                    t, v, tb = sys.exc_info()
+
+                    try:
+                        yield self.asynchronize(
+                            self.api.read_namespaced_persistent_volume_claim,
+                            name=self.pvc_name,
+                            namespace=self.namespace)
+
+                    except ApiException as e:
+                        raise v.with_traceback(tb)
+
+                    self.log.info("PVC " + self.pvc_name + " already exists, possibly have reached quota though.")
+
                 else:
                     raise
 
