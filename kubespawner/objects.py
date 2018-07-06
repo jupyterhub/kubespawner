@@ -310,6 +310,9 @@ def make_pod(
         pod.spec.init_containers = [V1Container(**convert_keys_from_camel_to_snake_case(obj)) for obj in init_containers]
     if volumes:
         pod.spec.volumes = [V1Volume(**convert_keys_from_camel_to_snake_case(obj)) for obj in volumes]
+    else:
+        # remain backward compatible by not cleaning up generated pod spec.
+        pod.spec.volumes = volumes
     if scheduler_name:
         pod.spec.scheduler_name = scheduler_name
     
