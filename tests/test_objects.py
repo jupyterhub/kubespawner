@@ -43,7 +43,6 @@ def test_make_simplest_pod():
                     }
                 }
             ],
-            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -87,7 +86,6 @@ def test_make_labeled_pod():
                     }
                 }
             ],
-            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -131,7 +129,6 @@ def test_make_annotated_pod():
                     }
                 }
             ],
-            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -178,7 +175,6 @@ def test_make_pod_with_image_pull_secrets():
                     }
                 }
             ],
-            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -227,7 +223,6 @@ def test_set_pod_uid_and_gid():
                     }
                 }
             ],
-            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -275,7 +270,6 @@ def test_set_pod_uid_fs_gid():
                     }
                 }
             ],
-            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -323,7 +317,6 @@ def test_set_pod_supplemental_gids():
                     }
                 }
             ],
-            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -370,7 +363,6 @@ def test_run_privileged_container():
                     'volumeMounts': [],
                 }
             ],
-            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -427,7 +419,6 @@ def test_make_pod_resources_all():
                     }
                 }
             ],
-            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -476,7 +467,6 @@ def test_make_pod_with_env():
                     }
                 }
             ],
-            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -535,7 +525,6 @@ def test_make_pod_with_lifecycle():
                     }
                 }
             ],
-            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -606,7 +595,6 @@ def test_make_pod_with_init_containers():
                     "command": ["sh", "-c", "until nslookup mydb; do echo waiting for mydb; sleep 2; done;"]
                 }
             ],
-            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -668,7 +656,6 @@ def test_make_pod_with_extra_container_config():
                     ]
                 }
             ],
-            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -723,7 +710,6 @@ def test_make_pod_with_extra_pod_config():
                     }
                 }
             ],
-            'volumes': [],
             'tolerations': [
                 {
                     'key': 'dedicated',
@@ -788,7 +774,6 @@ def test_make_pod_with_extra_containers():
                     'command': ['/usr/local/bin/supercronic', '/etc/crontab']
                 }
             ],
-            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -850,7 +835,6 @@ def test_make_pod_with_extra_resources():
                     }
                 }
             ],
-            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1"
@@ -956,7 +940,6 @@ def test_make_pod_with_service_account():
                     }
                 }
             ],
-            'volumes': [],
             'serviceAccountName': 'test'
         },
         "kind": "Pod",
@@ -1015,7 +998,6 @@ def test_make_pod_with_tolerations():
                     }
                 }
             ],
-            'volumes': [],
             'tolerations': tolerations
         },
         "kind": "Pod",
@@ -1070,7 +1052,6 @@ def test_make_pod_with_node_affinity_preferred():
                     }
                 }
             ],
-            "volumes": [],
             "affinity": {
                 "nodeAffinity": {
                     "preferredDuringSchedulingIgnoredDuringExecution": node_affinity_preferred
@@ -1126,7 +1107,6 @@ def test_make_pod_with_node_affinity_required():
                     }
                 }
             ],
-            "volumes": [],
             "affinity": {
                 "nodeAffinity": {
                     "requiredDuringSchedulingIgnoredDuringExecution": {
@@ -1190,7 +1170,6 @@ def test_make_pod_with_pod_affinity_preferred():
                     }
                 }
             ],
-            "volumes": [],
             "affinity": {
                 "podAffinity": {
                     "preferredDuringSchedulingIgnoredDuringExecution": pod_affinity_preferred
@@ -1250,7 +1229,6 @@ def test_make_pod_with_pod_affinity_required():
                     }
                 }
             ],
-            "volumes": [],
             "affinity": {
                 "podAffinity": {
                     "requiredDuringSchedulingIgnoredDuringExecution": pod_affinity_required
@@ -1312,7 +1290,6 @@ def test_make_pod_with_pod_anti_affinity_preferred():
                     }
                 }
             ],
-            "volumes": [],
             "affinity": {
                 "podAntiAffinity": {
                     "preferredDuringSchedulingIgnoredDuringExecution": pod_anti_affinity_preferred
@@ -1372,7 +1349,6 @@ def test_make_pod_with_pod_anti_affinity_required():
                     }
                 }
             ],
-            "volumes": [],
             "affinity": {
                 "podAntiAffinity": {
                     "requiredDuringSchedulingIgnoredDuringExecution": pod_anti_affinity_required
