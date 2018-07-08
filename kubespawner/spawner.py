@@ -1472,9 +1472,6 @@ class KubeSpawner(Spawner):
                 self.event_reflector.stop()
             self.event_reflector = None
 
-        if self.pod_name not in self.pod_reflector.pods:
-            self.log.info("No pod %s to delete", self.pod_name)
-            return
         delete_options = client.V1DeleteOptions()
 
         if now:
