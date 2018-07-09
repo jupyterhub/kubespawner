@@ -912,7 +912,7 @@ class KubeSpawner(Spawner):
         List of profiles to offer for selection by the user.
 
         Signature is: List(Dict()), where each item is a dictionary that has two keys:
-        
+
         - 'display_name': the human readable display name (should be HTML safe)
         - 'description': Optional description of this profile displayed to the user.
         - 'kubespawner_override': a dictionary with overrides to apply to the KubeSpawner
@@ -1079,6 +1079,7 @@ class KubeSpawner(Spawner):
 
     def _expand_user_properties(self, template):
         # Make sure username and servername match the restrictions for DNS labels
+        # Note: '-' is not in safe_chars, as it is being used as escape character
         safe_chars = set(string.ascii_lowercase + string.digits)
 
         # Set servername based on whether named-server initialised
@@ -1092,6 +1093,7 @@ class KubeSpawner(Spawner):
         return template.format(
             userid=self.user.id,
             username=safe_username,
+            unescaped_username=self.user.name,
             legacy_escape_username=legacy_escaped_username,
             servername=servername
             )
