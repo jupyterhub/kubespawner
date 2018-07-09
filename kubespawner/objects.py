@@ -50,7 +50,7 @@ def make_pod(
     mem_limit=None,
     mem_guarantee=None,
     extra_resource_limits=None,
-    extra_resource_guarantees=None, 
+    extra_resource_guarantees=None,
     lifecycle_hooks={},
     init_containers=[],
     service_account=None,
@@ -65,6 +65,7 @@ def make_pod(
     pod_affinity_required=[],
     pod_anti_affinity_preferred=[],
     pod_anti_affinity_required=[],
+    logger=None,
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -200,7 +201,7 @@ def make_pod(
         may prefer or require a node to have a certain label or be in proximity
         / remoteness to another pod. To learn more visit
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-        
+
         Pass this field an array of "WeightedPodAffinityTerm" objects.*
         * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#weightedpodaffinityterm-v1-core
     pod_anti_affinity_required:
@@ -208,7 +209,7 @@ def make_pod(
         may prefer or require a node to have a certain label or be in proximity
         / remoteness to another pod. To learn more visit
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-        
+
         Pass this field an array of "PodAffinityTerm" objects.*
         * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#podaffinityterm-v1-core
     """
@@ -299,9 +300,7 @@ def make_pod(
     if extra_container_config:
         for key, value in extra_container_config.items():
             setattr(notebook_container, _map_attribute(notebook_container.attribute_map, key), value)
-    if extra_pod_config:
-        for key, value in extra_pod_config.items():
-            setattr(pod.spec, _map_attribute(pod.spec.attribute_map, key), value)
+
     if extra_containers:
         pod.spec.containers.extend([V1Container(**convert_keys_from_camel_to_snake_case(obj)) for obj in extra_containers])
     if tolerations:
@@ -315,7 +314,6 @@ def make_pod(
         pod.spec.volumes = volumes
     if scheduler_name:
         pod.spec.scheduler_name = scheduler_name
-    
 
     node_affinity = None
     if node_affinity_preferred or node_affinity_required:
@@ -339,7 +337,7 @@ def make_pod(
         weighted_pod_affinity_terms = None
         if pod_affinity_preferred:
             weighted_pod_affinity_terms = [V1WeightedPodAffinityTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in pod_affinity_preferred]
-        
+
         pod_affinity_terms = None
         if pod_affinity_required:
             pod_affinity_terms = [V1PodAffinityTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in pod_affinity_required]
@@ -354,7 +352,7 @@ def make_pod(
         weighted_pod_affinity_terms = None
         if pod_anti_affinity_preferred:
             weighted_pod_affinity_terms = [V1WeightedPodAffinityTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in pod_anti_affinity_preferred]
-        
+
         pod_affinity_terms = None
         if pod_anti_affinity_required:
             pod_affinity_terms = [V1PodAffinityTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in pod_anti_affinity_required]
@@ -363,7 +361,7 @@ def make_pod(
             preferred_during_scheduling_ignored_during_execution=weighted_pod_affinity_terms,
             required_during_scheduling_ignored_during_execution=pod_affinity_terms,
         )
-    
+
     affinity = None
     if (node_affinity or pod_affinity or pod_anti_affinity):
         affinity = V1Affinity(
@@ -371,9 +369,16 @@ def make_pod(
             pod_affinity=pod_affinity,
             pod_anti_affinity=pod_anti_affinity,
         )
-    
+
     if affinity:
         pod.spec.affinity = affinity
+
+    if extra_pod_config:
+        for key, value in extra_pod_config.items():
+            key = _map_attribute(pod.spec.attribute_map, key)
+            if logger and hasattr(pod.spec, key):
+                logger.warning("Kubespawner.extra_pod_config is overriding %s!\n- Previous value: %s\n- New value: %s", key, pod.spec[key], value)
+            setattr(pod.spec, key, value)
 
     return pod
 
