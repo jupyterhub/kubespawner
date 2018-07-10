@@ -1097,6 +1097,18 @@ class KubeSpawner(Spawner):
         """
     )
 
+    priority_class_name = Unicode(
+        None,
+        config=True,
+        allow_none=True,
+        help="""
+        The priority class that the pods will use.
+
+        See https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption for
+        more information on how pod priority works.
+        """
+    )
+
     # deprecate redundant and inconsistent singleuser_ and user_ prefixes:
     _deprecated_traits = [
         "singleuser_working_dir",
@@ -1328,6 +1340,8 @@ class KubeSpawner(Spawner):
             pod_affinity_required=self.pod_affinity_required,
             pod_anti_affinity_preferred=self.pod_anti_affinity_preferred,
             pod_anti_affinity_required=self.pod_anti_affinity_required,
+            priority_class_name=self.priority_class_name,
+            logger=self.log,
         )
 
     def get_pvc_manifest(self):

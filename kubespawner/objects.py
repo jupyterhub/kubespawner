@@ -65,6 +65,7 @@ def make_pod(
     pod_affinity_required=[],
     pod_anti_affinity_preferred=[],
     pod_anti_affinity_required=[],
+    priority_class_name=None,
     logger=None,
 ):
     """
@@ -212,6 +213,8 @@ def make_pod(
 
         Pass this field an array of "PodAffinityTerm" objects.*
         * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#podaffinityterm-v1-core
+    priority_class_name:
+        The name of the PriorityClass to be assigned the pod. This feature is Beta available in K8s 1.11.
     """
 
     pod = V1Pod()
@@ -372,6 +375,9 @@ def make_pod(
 
     if affinity:
         pod.spec.affinity = affinity
+
+    if priority_class_name:
+        pod.spec.priority_class_name = priority_class_name
 
     if extra_pod_config:
         for key, value in extra_pod_config.items():
