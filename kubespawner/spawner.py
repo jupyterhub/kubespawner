@@ -133,6 +133,17 @@ class KubeSpawner(Spawner):
         """
     )
 
+    events_enabled = Bool(
+        True,
+        config=True,
+        help="""
+        Enable event-watching for progress-reports to the user spawn page.
+
+        Disable if these events are not desirable
+        or to save some performance cost.
+        """
+        )
+
     namespace = Unicode(
         config=True,
         help="""
@@ -1318,6 +1329,8 @@ class KubeSpawner(Spawner):
 
     @async_generator
     async def progress(self):
+        if not self.events_enabled:
+            return
         next_event = 0
         self.log.debug('progress generator: %s', self.pod_name)
 
@@ -1368,7 +1381,10 @@ class KubeSpawner(Spawner):
 
     @gen.coroutine
     def start(self):
-        event_reflector = self._start_watching_events()
+        if self.events_enabled:
+            event_reflector = self._start_watching_events()
+        else:
+            event_reflector = None
 
         if self.storage_pvc_ensure:
             # Try and create the pvc. If it succeeds we are good. If
@@ -1448,21 +1464,22 @@ class KubeSpawner(Spawner):
         )
 
         pod = self.pod_reflector.pods[self.pod_name]
-        self.log.debug(
-            'pod %s events before launch: %s',
-            self.pod_name,
-            "\n".join(
-                [
-                    "%s [%s] %s" % (event.last_timestamp, event.type, event.message)
-                    for event in event_reflector.events
-                ]
-            ),
-        )
+        if event_reflector:
+            self.log.debug(
+                'pod %s events before launch: %s',
+                self.pod_name,
+                "\n".join(
+                    [
+                        "%s [%s] %s" % (event.last_timestamp, event.type, event.message)
+                        for event in event_reflector.events
+                    ]
+                ),
+            )
 
-        # Note: we stop the event watcher once launch is successful, but the reflector
-        # will only stop when the next event comes in, likely when it is stopped.
-        if not event_reflector.stopped():
-            event_reflector.stop()
+            # Note: we stop the event watcher once launch is successful, but the reflector
+            # will only stop when the next event comes in, likely when it is stopped.
+            if not event_reflector.stopped():
+                event_reflector.stop()
         return (pod.status.pod_ip, self.port)
 
     @gen.coroutine
