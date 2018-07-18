@@ -86,13 +86,13 @@ class NamespacedResourceReflector(LoggingConfigurable):
     )
 
     request_timeout = Int(
-        0,
+        60,
         config=True,
         help="""
         Network timeout for kubernetes watch.
 
-        Trigger watch reconnect when no traffic has been received for this time.
-        This can be used to restart the watch periodically.
+        Trigger watch reconnect when a given request is taking too long,
+        which can indicate network issues.
         """
     )
 
