@@ -88,18 +88,9 @@ class KubeSpawner(Spawner):
                 max_workers=self.k8s_api_threadpool_workers
             )
 
-        main_loop = IOLoop.current()
-        def on_reflector_failure():
-            self.log.critical("Pod reflector failed, halting Hub.")
-            main_loop.stop()
-
         # This will start watching in __init__, so it'll start the first
         # time any spawner object is created. Not ideal but works!
-        if self.__class__.pod_reflector is None:
-            self.__class__.pod_reflector = PodReflector(
-                parent=self, namespace=self.namespace,
-                on_failure=on_reflector_failure
-            )
+        self._start_watching_pods()
 
         self.api = shared_client('CoreV1Api')
 
@@ -1381,6 +1372,35 @@ class KubeSpawner(Spawner):
         )
         return self.event_reflector
 
+    def _start_watching_pods(self, replace=False):
+        """Start the pod reflector
+
+        If replace=False and the pod reflector is already running,
+        do nothing.
+
+        If replace=True, a running pod reflector will be stopped
+        and a new one started (for recovering from possible errors).
+        """
+
+        main_loop = IOLoop.current()
+        def on_reflector_failure():
+            self.log.critical("Pod reflector failed, halting Hub.")
+            sys.exit(1)
+
+        previous_reflector = self.__class__.pod_reflector
+
+        if replace or self.__class__.pod_reflector is None:
+            self.__class__.pod_reflector = PodReflector(
+                parent=self,
+                namespace=self.namespace,
+                on_failure=on_reflector_failure,
+            )
+
+        if replace and previous_reflector:
+            # we replaced the reflector, stop the old one
+            previous_reflector.stop()
+
+
     @gen.coroutine
     def start(self):
         if self.events_enabled:
@@ -1456,14 +1476,28 @@ class KubeSpawner(Spawner):
             raise Exception(
                 'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
 
-        # Note: The self.start_timeout here is kinda superfluous, since
-        # there is already a timeout on how long start can run for in
-        # jupyterhub itself.
-        yield exponential_backoff(
-            lambda: self.is_pod_running(self.pod_reflector.pods.get(self.pod_name, None)),
-            'pod/%s did not start in %s seconds!' % (self.pod_name, self.start_timeout),
-            timeout=self.start_timeout
-        )
+        # we need a timeout here even though start itself has a timeout
+        # in order for this coroutine to finish at some point.
+        # using the same start_timeout here
+        # essentially ensures that this timeout should never propagate up
+        # because the handler will have stopped waiting after
+        # start_timeout, starting from a slightly earlier point.
+        try:
+            yield exponential_backoff(
+                lambda: self.is_pod_running(self.pod_reflector.pods.get(self.pod_name, None)),
+                'pod/%s did not start in %s seconds!' % (self.pod_name, self.start_timeout),
+                timeout=self.start_timeout,
+            )
+        except TimeoutError:
+            if self.pod_name not in self.pod_reflector.pods:
+                # if pod never showed up at all,
+                # restart the pod reflector which may have become disconnected.
+                self.log.error(
+                    "Pod %s never showed up in reflector, restarting pod reflector",
+                    self.pod_name,
+                )
+                self._start_watching_pods(replace=True)
+            raise
 
         pod = self.pod_reflector.pods[self.pod_name]
         if event_reflector:
@@ -1518,11 +1552,16 @@ class KubeSpawner(Spawner):
                 )
             else:
                 raise
-        yield exponential_backoff(
-            lambda: self.pod_reflector.pods.get(self.pod_name, None) is None,
-            'pod/%s did not disappear in %s seconds!' % (self.pod_name, self.start_timeout),
-            timeout=self.start_timeout
-        )
+        try:
+            yield exponential_backoff(
+                lambda: self.pod_reflector.pods.get(self.pod_name, None) is None,
+                'pod/%s did not disappear in %s seconds!' % (self.pod_name, self.start_timeout),
+                timeout=self.start_timeout,
+            )
+        except TimeoutError:
+            self.log.error("Pod %s did not disappear, restarting pod reflector", self.pod_name)
+            self._start_watching_pods(replace=True)
+            raise
 
     def _env_keep_default(self):
         return []
