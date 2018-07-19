@@ -16,7 +16,7 @@ def test_deprecated_config():
     assert spawner.extra_pod_config == extra_pod_config
     # deprecated access gets the right values, too
     assert spawner.singleuser_fs_gid == spawner.fs_gid
-    assert spawner.singleuser_extra_pod_config == spawner.singleuser_extra_pod_config
+    assert spawner.singleuser_extra_pod_config == spawner.extra_pod_config
 
 
 def test_deprecated_runtime_access():
