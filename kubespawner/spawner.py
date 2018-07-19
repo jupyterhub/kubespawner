@@ -63,6 +63,9 @@ class EventReflector(NamespacedResourceReflector):
         )
 
 
+class MockObject(object):
+    pass
+
 class KubeSpawner(Spawner):
     """
     Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
@@ -90,27 +93,46 @@ class KubeSpawner(Spawner):
         super().__init__(*args, **kwargs)
 
         if _mock:
-            # if testing, skip the rest of initialization
-            # FIXME: rework initialization for easier mocking
-            return
+            # initialization for testing
+            user = MockObject()
+            setattr(user, "name", "mock_name")
+            setattr(user, "id", "mock_id")
+            hub = MockObject
+            setattr(hub, "public_host", "mock_public_host")
+            setattr(hub, "url", "mock_url")
+            setattr(hub, "base_url", "mock_base_url")
+            setattr(hub, "api_url", "mock_api_url")
+            self.user = user
+            self.hub = hub
+        else:
+            # By now, all the traitlets have been set, so we can use them to compute
+            # other attributes
+            if self.__class__.executor is None:
+                self.__class__.executor = ThreadPoolExecutor(
+                    max_workers=self.k8s_api_threadpool_workers
+                )
 
-        # By now, all the traitlets have been set, so we can use them to compute
-        # other attributes
-        if self.__class__.executor is None:
-            self.__class__.executor = ThreadPoolExecutor(
-                max_workers=self.k8s_api_threadpool_workers
-            )
+            main_loop = IOLoop.current()
+            def on_reflector_failure():
+                self.log.critical("Pod reflector failed, halting Hub.")
+                main_loop.stop()
+
+            # This will start watching in __init__, so it'll start the first
+            # time any spawner object is created. Not ideal but works!
+            if self.__class__.pod_reflector is None:
+                self.__class__.pod_reflector = PodReflector(
+                    parent=self, namespace=self.namespace,
+                    on_failure=on_reflector_failure
+                )
 
         # This will start watching in __init__, so it'll start the first
         # time any spawner object is created. Not ideal but works!
         self._start_watching_pods()
         if self.events_enabled:
             self._start_watching_events()
-
+        
         self.api = shared_client('CoreV1Api')
 
-        self.pod_name = self._expand_user_properties(self.pod_name_template)
-        self.pvc_name = self._expand_user_properties(self.pvc_name_template)
         if self.hub_connect_ip:
             scheme, netloc, path, params, query, fragment = urlparse(self.hub.api_url)
             netloc = '{ip}:{port}'.format(
@@ -121,6 +143,8 @@ class KubeSpawner(Spawner):
         else:
             self.accessible_hub_api_url = self.hub.api_url
 
+        self.pod_name = self._expand_user_properties(self.pod_name_template)
+        self.pvc_name = self._expand_user_properties(self.pvc_name_template)
         if self.port == 0:
             # Our default port is 8888
             self.port = 8888
@@ -846,14 +870,14 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         List of tolerations that are to be assigned to the pod in order to be able to schedule the pod
-        on a node with the corresponding taints. See the official Kubernetes documentation for additional details 
+        on a node with the corresponding taints. See the official Kubernetes documentation for additional details
         https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
-        
+
         Pass this field an array of "Toleration" objects.*
         * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#nodeselectorterm-v1-core
 
         Example:
-        
+
             [
                 {
                     'key': 'key',
@@ -867,7 +891,7 @@ class KubeSpawner(Spawner):
                     'effect': 'NoSchedule'
                 }
             ]
-         
+
         """
     )
 
@@ -931,7 +955,7 @@ class KubeSpawner(Spawner):
         may prefer or require a node to have a certain label or be in proximity
         / remoteness to another pod. To learn more visit
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-        
+
         Pass this field an array of "WeightedPodAffinityTerm" objects.*
         * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#weightedpodaffinityterm-v1-core
         """
@@ -944,7 +968,7 @@ class KubeSpawner(Spawner):
         may prefer or require a node to have a certain label or be in proximity
         / remoteness to another pod. To learn more visit
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-        
+
         Pass this field an array of "PodAffinityTerm" objects.*
         * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#podaffinityterm-v1-core
         """
