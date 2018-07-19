@@ -2,9 +2,7 @@
 Misc. general utility functions, not tied to Kubespawner directly
 """
 import hashlib
-import re
 import copy
-
 
 def generate_hashed_slug(slug, limit=63, hash_length=6):
     """
@@ -31,26 +29,108 @@ def generate_hashed_slug(slug, limit=63, hash_length=6):
     ).lower()
 
 
-_underscorer1 = re.compile(r'(.)([A-Z][a-z]+)')
-_underscorer2 = re.compile('([a-z0-9])([A-Z])')
+def update_k8s_model(target, source, logger=None, origin=None):
+    """
+    Takes a model instance such as V1PodSpec() and updates it with another
+    model representation. The origin parameter could be "extra_pod_config" for example. 
+    """
+    model = type(target)
+    if not hasattr(target, 'attribute_map'):
+        raise AttributeError(f"Attribute 'target' ({model.__name__}) must be an object (such as 'V1PodSpec') with an attribute 'attribute_map'.")
+    if not isinstance(source, model) and not isinstance(source, dict):
+        raise AttributeError(f"Attribute 'source' ({type(source).__name__}) must be an object of the same type as 'target' ({model.__name__}) or a 'dict'.")
 
-def from_camel_to_snake_case(str):
-    """
-    Convert a string from camelCase to snake_case.
-    """
-    subbed = _underscorer1.sub(r'\1_\2', str)
-    return _underscorer2.sub(r'\1_\2', subbed).lower()
+    source_dict = _get_k8s_model_dict(model, source)
+    for key, value in source_dict.items():
+        if key not in target.attribute_map:
+            raise ValueError(f"The attribute 'source' ({type(source).__name__}) contained '{key}' not modeled by '{model.__name__}'.")
+        if getattr(target, key):
+            if logger and origin:
+                logger.warning(f"Overriding KubeSpawner.{origin}'s value '{getattr(target,key)}' with '{value}'.")
+        setattr(target, key, value)
 
-def convert_keys_from_camel_to_snake_case(obj):
-    """
-    Returns a shallow copy of an dict object with the object's keys converted
-    from camelCase to snake_case. Note that the function will not influence
-    nested object's keys.
-    """
+    return target
 
+def get_k8s_model(model, model_dict):
+    """
+    Returns a model object from an model instance or represantative dictionary. 
+    """
+    model_dict = copy.deepcopy(model_dict)
+
+    if isinstance(model_dict, model):
+        return model_dict
+    elif isinstance(model_dict, dict):
+        _map_dict_keys_to_model_attributes(model, model_dict)
+        return model(**model_dict)
+    else:
+        raise AttributeError(f"Expected object of type 'dict' (or '{model.__type__.__name__}') but got '{model_dict.__type__.__name__}'.")
+
+def _get_k8s_model_dict(model, obj):
+    """
+    Returns a model of dictionary kind
+    """
     obj = copy.deepcopy(obj)
 
-    for old_key in obj.keys():
-        obj[from_camel_to_snake_case(old_key)] = obj.pop(old_key)
+    if isinstance(obj, model):
+        return obj.to_dict()
+    elif isinstance(obj, dict):
+        return _map_dict_keys_to_model_attributes(model, obj)
+    else:
+        raise AttributeError(f"Expected object of type '{model.__type__.__name__}' (or 'dict') but got '{obj.__type__.__name__}'.")
 
-    return obj
+def _map_dict_keys_to_model_attributes(model, model_dict):
+    """
+    Maps a dict's keys to the provided models attributes using its attribute_map
+    attribute. This is (always?) the same as converting camelCase to snake_case.
+    Note that the function will not influence nested object's keys.
+    """
+    for key in model_dict.keys():
+        model_dict[_get_k8s_model_attribute(model, key)] = model_dict.pop(key)
+
+    return model_dict
+
+def _get_k8s_model_attribute(model, field_name):
+    """
+    Takes an kubernetes resource field name such as "serviceAccount" and returns
+    its associated attribute name "service_account" used by the provided
+    kubernetes.client.models object representing the resource.
+
+    Example of V1PodSpec's attribute_map:
+    {
+        'active_deadline_seconds': 'activeDeadlineSeconds',
+        'affinity': 'affinity',
+        'automount_service_account_token': 'automountServiceAccountToken',
+        'containers': 'containers',
+        'dns_policy': 'dnsPolicy',
+        'host_aliases': 'hostAliases',
+        'host_ipc': 'hostIPC',
+        'host_network': 'hostNetwork',
+        'host_pid': 'hostPID',
+        'hostname': 'hostname',
+        'image_pull_secrets': 'imagePullSecrets',
+        'init_containers': 'initContainers',
+        'node_name': 'nodeName',
+        'node_selector': 'nodeSelector',
+        'priority': 'priority',
+        'priority_class_name': 'priorityClassName',
+        'restart_policy': 'restartPolicy',
+        'scheduler_name': 'schedulerName',
+        'security_context': 'securityContext',
+        'service_account': 'serviceAccount',
+        'service_account_name': 'serviceAccountName',
+        'subdomain': 'subdomain',
+        'termination_grace_period_seconds': 'terminationGracePeriodSeconds',
+        'tolerations': 'tolerations',
+        'volumes': 'volumes'
+    }
+    """
+    # if we get "service_account", return
+    if field_name in model.attribute_map:
+        return field_name
+
+    # if we get "serviceAccount", then return "service_account"
+    for key, value in model.attribute_map.items():
+        if value == field_name:
+            return key
+    else:
+        raise ValueError(f"'{model.__name__}' does not model '{field_name}'")

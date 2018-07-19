@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 import escapism
 import re
 import string
-from kubespawner.utils import convert_keys_from_camel_to_snake_case
+from kubespawner.utils import get_k8s_model, update_k8s_model
 
 from kubernetes.client.models import (
     V1Pod, V1PodSpec, V1PodSecurityContext,
@@ -251,7 +251,7 @@ def make_pod(
         pod.spec.node_selector = node_selector
 
     if lifecycle_hooks:
-        lifecycle_hooks = V1Lifecycle(**convert_keys_from_camel_to_snake_case(lifecycle_hooks))
+        lifecycle_hooks = get_k8s_model(V1Lifecycle, lifecycle_hooks)
     else:
         lifecycle_hooks = None
 
@@ -265,7 +265,7 @@ def make_pod(
         image_pull_policy=image_pull_policy,
         lifecycle=lifecycle_hooks,
         resources=V1ResourceRequirements(),
-        volume_mounts=[V1VolumeMount(**convert_keys_from_camel_to_snake_case(obj)) for obj in volume_mounts],
+        volume_mounts=[get_k8s_model(V1VolumeMount, obj) for obj in volume_mounts],
     )
 
     if service_account is None:
@@ -276,9 +276,7 @@ def make_pod(
         pod.spec.service_account_name = service_account
 
     if run_privileged:
-        notebook_container.security_context = V1SecurityContext(
-            privileged=True
-        )
+        notebook_container.security_context = V1SecurityContext(privileged=True)
 
     notebook_container.resources.requests = {}
     if cpu_guarantee:
@@ -286,8 +284,7 @@ def make_pod(
     if mem_guarantee:
         notebook_container.resources.requests['memory'] = mem_guarantee
     if extra_resource_guarantees:
-        for k in extra_resource_guarantees:
-            notebook_container.resources.requests[k] = extra_resource_guarantees[k]
+        notebook_container.resources.requests.update(extra_resource_guarantees)
 
     notebook_container.resources.limits = {}
     if cpu_limit:
@@ -295,23 +292,26 @@ def make_pod(
     if mem_limit:
         notebook_container.resources.limits['memory'] = mem_limit
     if extra_resource_limits:
-        for k in extra_resource_limits:
-            notebook_container.resources.limits[k] = extra_resource_limits[k]
+        notebook_container.resources.limits.update(extra_resource_limits)
+
+    if extra_container_config:
+        notebook_container = update_k8s_model(
+            target=notebook_container,
+            source=extra_container_config,
+            logger=logger,
+            origin="extra_container_config",
+        )
 
     pod.spec.containers.append(notebook_container)
 
-    if extra_container_config:
-        for key, value in extra_container_config.items():
-            setattr(notebook_container, _map_attribute(notebook_container.attribute_map, key), value)
-
     if extra_containers:
-        pod.spec.containers.extend([V1Container(**convert_keys_from_camel_to_snake_case(obj)) for obj in extra_containers])
+        pod.spec.containers.extend([get_k8s_model(V1Container, obj) for obj in extra_containers])
     if tolerations:
-        pod.spec.tolerations = [V1Toleration(**convert_keys_from_camel_to_snake_case(obj)) for obj in tolerations]
+        pod.spec.tolerations = [get_k8s_model(V1Toleration, obj) for obj in tolerations]
     if init_containers:
-        pod.spec.init_containers = [V1Container(**convert_keys_from_camel_to_snake_case(obj)) for obj in init_containers]
+        pod.spec.init_containers = [get_k8s_model(V1Container, obj) for obj in init_containers]
     if volumes:
-        pod.spec.volumes = [V1Volume(**convert_keys_from_camel_to_snake_case(obj)) for obj in volumes]
+        pod.spec.volumes = [get_k8s_model(V1Volume, obj) for obj in volumes]
     else:
         # remain backward compatible by not cleaning up generated pod spec.
         pod.spec.volumes = volumes
@@ -323,12 +323,12 @@ def make_pod(
         node_selector = None
         if node_affinity_required:
             node_selector = V1NodeSelector(
-                node_selector_terms=[V1NodeSelectorTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in node_affinity_required],
+                node_selector_terms=[get_k8s_model(V1NodeSelectorTerm, obj) for obj in node_affinity_required],
             )
 
         preferred_scheduling_terms = None
         if node_affinity_preferred:
-            preferred_scheduling_terms = [V1PreferredSchedulingTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in node_affinity_preferred]
+            preferred_scheduling_terms = [get_k8s_model(V1PreferredSchedulingTerm, obj) for obj in node_affinity_preferred]
 
         node_affinity = V1NodeAffinity(
             preferred_during_scheduling_ignored_during_execution=preferred_scheduling_terms,
@@ -339,11 +339,11 @@ def make_pod(
     if pod_affinity_preferred or pod_affinity_required:
         weighted_pod_affinity_terms = None
         if pod_affinity_preferred:
-            weighted_pod_affinity_terms = [V1WeightedPodAffinityTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in pod_affinity_preferred]
+            weighted_pod_affinity_terms = [get_k8s_model(V1WeightedPodAffinityTerm, obj) for obj in pod_affinity_preferred]
 
         pod_affinity_terms = None
         if pod_affinity_required:
-            pod_affinity_terms = [V1PodAffinityTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in pod_affinity_required]
+            pod_affinity_terms = [get_k8s_model(V1PodAffinityTerm, obj) for obj in pod_affinity_required]
 
         pod_affinity = V1PodAffinity(
             preferred_during_scheduling_ignored_during_execution=weighted_pod_affinity_terms,
@@ -354,11 +354,11 @@ def make_pod(
     if pod_anti_affinity_preferred or pod_anti_affinity_required:
         weighted_pod_affinity_terms = None
         if pod_anti_affinity_preferred:
-            weighted_pod_affinity_terms = [V1WeightedPodAffinityTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in pod_anti_affinity_preferred]
+            weighted_pod_affinity_terms = [get_k8s_model(V1WeightedPodAffinityTerm, obj) for obj in pod_anti_affinity_preferred]
 
         pod_affinity_terms = None
         if pod_anti_affinity_required:
-            pod_affinity_terms = [V1PodAffinityTerm(**convert_keys_from_camel_to_snake_case(obj)) for obj in pod_anti_affinity_required]
+            pod_affinity_terms = [get_k8s_model(V1PodAffinityTerm, obj) for obj in pod_anti_affinity_required]
 
         pod_anti_affinity = V1PodAffinity(
             preferred_during_scheduling_ignored_during_execution=weighted_pod_affinity_terms,
@@ -380,24 +380,14 @@ def make_pod(
         pod.spec.priority_class_name = priority_class_name
 
     if extra_pod_config:
-        for key, value in extra_pod_config.items():
-            key = _map_attribute(pod.spec.attribute_map, key)
-            if logger and hasattr(pod.spec, key):
-                logger.warning("Kubespawner.extra_pod_config is overriding %s!\n- Previous value: %s\n- New value: %s", key, pod.spec[key], value)
-            setattr(pod.spec, key, value)
+        pod.spec = update_k8s_model(
+            target=pod.spec,
+            source=extra_pod_config,
+            logger=logger,
+            origin="extra_pod_config",
+        )
 
     return pod
-
-
-def _map_attribute(attribute_map, attribute):
-    if attribute in attribute_map:
-        return attribute
-
-    for key, value in attribute_map.items():
-        if value == attribute:
-            return key
-    else:
-        raise ValueError('Attribute must be one of {}'.format(attribute_map.values()))
 
 
 def make_pvc(
