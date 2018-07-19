@@ -32,28 +32,29 @@ def generate_hashed_slug(slug, limit=63, hash_length=6):
 def update_k8s_model(target, source, logger=None, origin=None):
     """
     Takes a model instance such as V1PodSpec() and updates it with another
-    model representation. The origin parameter could be "extra_pod_config" for example. 
+    model representation. The origin parameter could be "extra_pod_config" for
+    example.
     """
     model = type(target)
     if not hasattr(target, 'attribute_map'):
-        raise AttributeError(f"Attribute 'target' ({model.__name__}) must be an object (such as 'V1PodSpec') with an attribute 'attribute_map'.")
+        raise AttributeError("Attribute 'target' ({}) must be an object (such as 'V1PodSpec') with an attribute 'attribute_map'.".format(model.__name__))
     if not isinstance(source, model) and not isinstance(source, dict):
-        raise AttributeError(f"Attribute 'source' ({type(source).__name__}) must be an object of the same type as 'target' ({model.__name__}) or a 'dict'.")
+        raise AttributeError("Attribute 'source' ({}) must be an object of the same type as 'target' ({}) or a 'dict'.".format(type(source).__name__, model.__name__))
 
     source_dict = _get_k8s_model_dict(model, source)
     for key, value in source_dict.items():
         if key not in target.attribute_map:
-            raise ValueError(f"The attribute 'source' ({type(source).__name__}) contained '{key}' not modeled by '{model.__name__}'.")
+            raise ValueError("The attribute 'source' ({}) contained '{}' not modeled by '{}'.".format(type(source).__name__, key, model.__name__))
         if getattr(target, key):
             if logger and origin:
-                logger.warning(f"Overriding KubeSpawner.{origin}'s value '{getattr(target,key)}' with '{value}'.")
+                logger.warning("Overriding KubeSpawner.{}'s value '{getattr(target,key)}' with '{}'.".format(origin, value))
         setattr(target, key, value)
 
     return target
 
 def get_k8s_model(model, model_dict):
     """
-    Returns a model object from an model instance or represantative dictionary. 
+    Returns a model object from an model instance or represantative dictionary.
     """
     model_dict = copy.deepcopy(model_dict)
 
@@ -63,7 +64,7 @@ def get_k8s_model(model, model_dict):
         _map_dict_keys_to_model_attributes(model, model_dict)
         return model(**model_dict)
     else:
-        raise AttributeError(f"Expected object of type 'dict' (or '{model.__type__.__name__}') but got '{model_dict.__type__.__name__}'.")
+        raise AttributeError("Expected object of type 'dict' (or '{}') but got '{}'.".format(model.__type__.__name__, model_dict.__type__.__name__))
 
 def _get_k8s_model_dict(model, obj):
     """
@@ -76,7 +77,7 @@ def _get_k8s_model_dict(model, obj):
     elif isinstance(obj, dict):
         return _map_dict_keys_to_model_attributes(model, obj)
     else:
-        raise AttributeError(f"Expected object of type '{model.__type__.__name__}' (or 'dict') but got '{obj.__type__.__name__}'.")
+        raise AttributeError("Expected object of type '{}' (or 'dict') but got '{}'.".format(model.__type__.__name__, obj.__type__.__name__))
 
 def _map_dict_keys_to_model_attributes(model, model_dict):
     """
@@ -133,4 +134,4 @@ def _get_k8s_model_attribute(model, field_name):
         if value == field_name:
             return key
     else:
-        raise ValueError(f"'{model.__name__}' does not model '{field_name}'")
+        raise ValueError("'{}' does not model '{}'".format(model.__name__, field_name))
