@@ -7,7 +7,6 @@ implementation that should be used by JupyterHub.
 
 from functools import partial  # noqa
 import os
-import sys
 import string
 from urllib.parse import urlparse, urlunparse
 import multiprocessing
@@ -45,10 +44,18 @@ class PodReflector(NamespacedResourceReflector):
 
     list_method_name = 'list_namespaced_pod'
 
+    # Override parent class default key of `resource.metadata.name`
+    # as pod names are not guaranteed unique across namespaces
+    def _create_resource_key(self,resource):
+        return (resource.metadata.namespace, resource.metadata.name)
+
     @property
     def pods(self):
         return self.resources
 
+class PodReflectorAllNamespaces(PodReflector):
+    list_method_omit_namespace = True
+    list_method_name = 'list_pod_for_all_namespaces'
 
 class EventReflector(NamespacedResourceReflector):
     kind = 'events'
@@ -58,7 +65,6 @@ class EventReflector(NamespacedResourceReflector):
     @property
     def events(self):
         return sorted(self.resources.values(), key = lambda x : x.last_timestamp)
-
 
 class KubeSpawner(Spawner):
     """
@@ -93,10 +99,24 @@ class KubeSpawner(Spawner):
             self.log.critical("Pod reflector failed, halting Hub.")
             main_loop.stop()
 
+        # Default reflector is single-namespace
+        selected_pod_reflector_classref = PodReflector
+
+        # namespace_template implies >1 namespace => must watch pods globally
+        if self.namespace_template:
+            selected_pod_reflector_classref = PodReflectorAllNamespaces
+
+            if callable(self.namespace_template):
+                # Warning - function call must be a quick transformation to avoid
+                # stalling Tornado (Futures not usable in constructors.)
+                self.namespace = self.namespace_template(self);
+            else:
+                self.namespace = self._expand_user_properties(self.namespace_template)
+
         # This will start watching in __init__, so it'll start the first
         # time any spawner object is created. Not ideal but works!
         if self.__class__.pod_reflector is None:
-            self.__class__.pod_reflector = PodReflector(
+            self.__class__.pod_reflector = selected_pod_reflector_classref(
                 parent=self, namespace=self.namespace,
                 on_failure=on_reflector_failure
             )
@@ -166,6 +186,30 @@ class KubeSpawner(Spawner):
             with open(ns_path) as f:
                 return f.read().strip()
         return 'default'
+
+    namespace_template = Union(
+        [
+            Unicode(),
+            Callable(),
+        ],
+        default_value=None,
+        allow_none=True,
+        help="""
+        Template to form the namespace destination for a user's pods
+        & pvcs.  {username} and {userid} are expanded to the escaped, dns-label
+        safe username & integer user id respectively.
+
+        If it is a callable instead of a template string, it will be
+        called with one parameter (the spawner instance), and should return a
+        string fairly quickly (no blocking operations please!).
+
+        If namespace_template is specified, KubeSpawner will monitor pod activity 
+        cluster-wide (equivalent of "kubectl get pods --all-namespaces --watch") 
+        The Hub service account must have RoleBindings/ClusterRoleBindings allowing 
+        it permission to operate within destination namespaces, as well as 
+        cluster-wide 'List Pod' permissions.
+        """
+    ).tag(config=True)
 
     ip = Unicode('0.0.0.0',
         help="""
@@ -1303,7 +1347,7 @@ class KubeSpawner(Spawner):
         # have to wait for first load of data before we have a valid answer
         if not self.pod_reflector.first_load_future.done():
             yield self.pod_reflector.first_load_future
-        data = self.pod_reflector.pods.get(self.pod_name, None)
+        data = self.pod_reflector.pods.get( (self.namespace, self.pod_name),  None)
         if data is not None:
             if data.status.phase == 'Pending':
                 return None
@@ -1460,12 +1504,12 @@ class KubeSpawner(Spawner):
         # there is already a timeout on how long start can run for in
         # jupyterhub itself.
         yield exponential_backoff(
-            lambda: self.is_pod_running(self.pod_reflector.pods.get(self.pod_name, None)),
+            lambda: self.is_pod_running(self.pod_reflector.pods.get( (self.namespace, self.pod_name), None)),
             'pod/%s did not start in %s seconds!' % (self.pod_name, self.start_timeout),
             timeout=self.start_timeout
         )
 
-        pod = self.pod_reflector.pods[self.pod_name]
+        pod = self.pod_reflector.pods[ (self.namespace, self.pod_name) ]
         if event_reflector:
             self.log.debug(
                 'pod %s events before launch: %s',
@@ -1519,7 +1563,7 @@ class KubeSpawner(Spawner):
             else:
                 raise
         yield exponential_backoff(
-            lambda: self.pod_reflector.pods.get(self.pod_name, None) is None,
+            lambda: self.pod_reflector.pods.get( (self.namespace, self.pod_name), None) is None,
             'pod/%s did not disappear in %s seconds!' % (self.pod_name, self.start_timeout),
             timeout=self.start_timeout
         )
