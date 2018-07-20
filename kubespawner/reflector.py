@@ -6,7 +6,7 @@ import time
 import threading
 
 from traitlets.config import LoggingConfigurable
-from traitlets import Any, Dict, Int, Unicode
+from traitlets import Any, Dict, Int, Unicode, Bool
 from kubernetes import config, watch
 # This is kubernetes client implementation specific, but we need to know
 # whether it was a network or watch timeout.
@@ -75,6 +75,14 @@ class NamespacedResourceReflector(LoggingConfigurable):
         """
     )
 
+    list_method_omit_namespace = Bool(
+        False,
+        help="""
+        If True, our calls to API `list_method_name` will omit a `namespace` argument.
+        Necessary for non-namespaced methods such as `list_pod_for_all_namespaces`
+        """
+    )
+
     api_group_name = Unicode(
         'CoreV1Api',
         help="""
@@ -132,20 +140,33 @@ class NamespacedResourceReflector(LoggingConfigurable):
     def __del__(self):
         self.stop()
 
+    def _create_resource_key(self,resource):
+        """
+        Maps a Kubernetes resource object onto a hashable Dict key; subclass may override
+        if `resource.metadata.name` is insufficiently unique (e.g. pods across multiple namespaces)
+        """
+        return resource.metadata.name
+
     def _list_and_update(self):
         """
         Update current list of resources by doing a full fetch.
 
         Overwrites all current resource info.
         """
-        initial_resources = getattr(self.api, self.list_method_name)(
-            self.namespace,
-            label_selector=self.label_selector,
-            field_selector=self.field_selector,
-            _request_timeout=self.request_timeout,
-        )
+
+        list_args = {
+                    'label_selector': self.label_selector,
+                    'field_selector': self.field_selector,
+                    '_request_timeout': self.request_timeout
+        }
+
+        if not self.list_method_omit_namespace:
+            list_args['namespace'] = self.namespace
+
+        initial_resources = getattr(self.api, self.list_method_name)(**list_args)
+
         # This is an atomic operation on the dictionary!
-        self.resources = {p.metadata.name: p for p in initial_resources.items}
+        self.resources = {self._create_resource_key(p): p for p in initial_resources.items}
         # return the resource version so we can hook up a watch
         return initial_resources.metadata.resource_version
 
@@ -173,7 +194,7 @@ class NamespacedResourceReflector(LoggingConfigurable):
         update' cycle on them), we should be ok!
         """
         cur_delay = 0.1
-        self.log.info("watching for %s with label selector %s / field selector %s in namespace %s", self.kind, self.label_selector, self.field_selector, self.namespace)
+        self.log.info("watching for %s with label selector %s / field selector %s in namespace %s", self.kind, self.label_selector, self.field_selector, ("GLOBAL" if self.list_method_omit_namespace else self.namespace))
         while True:
             w = watch.Watch()
             try:
@@ -182,11 +203,12 @@ class NamespacedResourceReflector(LoggingConfigurable):
                     # signal that we've loaded our initial data
                     self.first_load_future.set_result(None)
                 watch_args = {
-                    'namespace': self.namespace,
                     'label_selector': self.label_selector,
                     'field_selector': self.field_selector,
                     'resource_version': resource_version,
                 }
+                if not self.list_method_omit_namespace:
+                    watch_args['namespace'] = self.namespace
                 if self.request_timeout:
                     # set network receive timeout
                     watch_args['_request_timeout'] = self.request_timeout
@@ -203,10 +225,10 @@ class NamespacedResourceReflector(LoggingConfigurable):
                     resource = ev['object']
                     if ev['type'] == 'DELETED':
                         # This is an atomic delete operation on the dictionary!
-                        self.resources.pop(resource.metadata.name, None)
+                        self.resources.pop(self._create_resource_key(resource), None)
                     else:
                         # This is an atomic operation on the dictionary!
-                        self.resources[resource.metadata.name] = resource
+                        self.resources[self._create_resource_key(resource)] = resource
                     if self._stop_event.is_set():
                         break
             except ReadTimeoutError:
