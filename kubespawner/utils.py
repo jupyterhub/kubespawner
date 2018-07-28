@@ -85,7 +85,8 @@ def _map_dict_keys_to_model_attributes(model, model_dict):
     attribute. This is (always?) the same as converting camelCase to snake_case.
     Note that the function will not influence nested object's keys.
     """
-    for key in model_dict.keys():
+
+    for key in list(model_dict.keys()):
         model_dict[_get_k8s_model_attribute(model, key)] = model_dict.pop(key)
 
     return model_dict
