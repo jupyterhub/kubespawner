@@ -86,13 +86,13 @@ class NamespacedResourceReflector(LoggingConfigurable):
     )
 
     request_timeout = Int(
-        0,
+        60,
         config=True,
         help="""
         Network timeout for kubernetes watch.
 
-        Trigger watch reconnect when no traffic has been received for this time.
-        This can be used to restart the watch periodically.
+        Trigger watch reconnect when a given request is taking too long,
+        which can indicate network issues.
         """
     )
 
@@ -172,9 +172,22 @@ class NamespacedResourceReflector(LoggingConfigurable):
         and as long as we don't try to mutate them (do a 'fetch / modify /
         update' cycle on them), we should be ok!
         """
+        selectors = []
+        log_name = ""
+        if self.label_selector:
+            selectors.append("label selector=%r" % self.label_selector)
+        if self.field_selector:
+            selectors.append("field selector=%r" % self.field_selector)
+        log_selector = ', '.join(selectors)
+
         cur_delay = 0.1
-        self.log.info("watching for %s with label selector %s / field selector %s in namespace %s", self.kind, self.label_selector, self.field_selector, self.namespace)
+
+        self.log.info(
+            "watching for %s with %s in namespace %s",
+            self.kind, log_selector, self.namespace,
+        )
         while True:
+            self.log.debug("Connecting %s watcher", self.kind)
             w = watch.Watch()
             try:
                 resource_version = self._list_and_update()
@@ -208,9 +221,12 @@ class NamespacedResourceReflector(LoggingConfigurable):
                         # This is an atomic operation on the dictionary!
                         self.resources[resource.metadata.name] = resource
                     if self._stop_event.is_set():
+                        self.log.info("%s watcher stopped", self.kind)
                         break
             except ReadTimeoutError:
                 # network read time out, just continue and restart the watch
+                # this could be due to a network problem or just low activity
+                self.log.warning("Read timeout watching %s, reconnecting", self.kind)
                 continue
             except Exception:
                 cur_delay = cur_delay * 2
@@ -222,11 +238,15 @@ class NamespacedResourceReflector(LoggingConfigurable):
                 self.log.exception("Error when watching resources, retrying in %ss", cur_delay)
                 time.sleep(cur_delay)
                 continue
+            else:
+                # no events on watch, reconnect
+                self.log.debug("%s watcher timeout", self.kind)
             finally:
                 w.stop()
                 if self._stop_event.is_set():
                     self.log.info("%s watcher stopped", self.kind)
                     break
+        self.log.warning("%s watcher finished", self.kind)
 
     def start(self):
         """
