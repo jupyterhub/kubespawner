@@ -17,7 +17,7 @@ def test_make_simplest_pod():
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
-        scheduler_name="my-custom-scheduler"
+        scheduler_name='my-custom-scheduler'
     )) == {
         "metadata": {
             "name": "test",

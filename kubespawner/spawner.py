@@ -1225,7 +1225,7 @@ class KubeSpawner(Spawner):
             extra_container_config=self.extra_container_config,
             extra_pod_config=self.extra_pod_config,
             extra_containers=self.extra_containers,
-            scheduler_name=self.scheduler_name
+            scheduler_name=self.scheduler_name,
         )
 
     def get_pvc_manifest(self):
