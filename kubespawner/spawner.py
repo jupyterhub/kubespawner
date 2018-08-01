@@ -95,14 +95,16 @@ class KubeSpawner(Spawner):
         if _mock:
             # initialization for testing
             user = MockObject()
-            setattr(user, "name", "mock_name")
-            setattr(user, "id", "mock_id")
-            hub = MockObject
-            setattr(hub, "public_host", "mock_public_host")
-            setattr(hub, "url", "mock_url")
-            setattr(hub, "base_url", "mock_base_url")
-            setattr(hub, "api_url", "mock_api_url")
+            user.name = 'mock_name'
+            user.id = 'mock_id'
+            user.url = 'mock_url'
             self.user = user
+
+            hub = MockObject()
+            hub.public_host = 'mock_public_host'
+            hub.url = 'mock_url'
+            hub.base_url = 'mock_base_url'
+            hub.api_url = 'mock_api_url'
             self.hub = hub
         else:
             # By now, all the traitlets have been set, so we can use them to compute
