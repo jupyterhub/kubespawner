@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
-from traitlets import Any, Unicode, List, Integer, Union, Dict, Bool, Any, validate
+from traitlets import Any, Unicode, List, Integer, Union, Dict, Bool, Any, validate, default
 from jupyterhub.spawner import Spawner
 from jupyterhub.utils import exponential_backoff
 from jupyterhub.traitlets import Command
@@ -186,6 +186,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    @default('namespace')
     def _namespace_default(self):
         """
         Set namespace default to current namespace if running in a k8s cluster
@@ -334,6 +335,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    @default('hub_connect_port')
     def _hub_connect_port_default(self):
         """
         Set default port on which pods connect to hub to be the hub port
@@ -1788,6 +1790,7 @@ class KubeSpawner(Spawner):
             self._start_watching_pods(replace=True)
             raise
 
+    @default('env_keep')
     def _env_keep_default(self):
         return []
 
@@ -1816,6 +1819,7 @@ class KubeSpawner(Spawner):
         profile_list = yield gen.maybe_future(self.profile_list(current_spawner))
         return self._render_options_form(profile_list)
 
+    @default('options_form')
     def _options_form_default(self):
         '''
         Build the form template according to the `profile_list` setting.
