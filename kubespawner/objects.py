@@ -39,32 +39,32 @@ def make_pod(
     fs_gid=None,
     supplemental_gids=None,
     run_privileged=False,
-    env={},
+    env=None,
     working_dir=None,
-    volumes=[],
-    volume_mounts=[],
-    labels={},
-    annotations={},
+    volumes=None,
+    volume_mounts=None,
+    labels=None,
+    annotations=None,
     cpu_limit=None,
     cpu_guarantee=None,
     mem_limit=None,
     mem_guarantee=None,
     extra_resource_limits=None,
     extra_resource_guarantees=None,
-    lifecycle_hooks={},
-    init_containers=[],
+    lifecycle_hooks=None,
+    init_containers=None,
     service_account=None,
     extra_container_config=None,
     extra_pod_config=None,
-    extra_containers=[],
+    extra_containers=None,
     scheduler_name=None,
-    tolerations=[],
-    node_affinity_preferred=[],
-    node_affinity_required=[],
-    pod_affinity_preferred=[],
-    pod_affinity_required=[],
-    pod_anti_affinity_preferred=[],
-    pod_anti_affinity_required=[],
+    tolerations=None,
+    node_affinity_preferred=None,
+    node_affinity_required=None,
+    pod_affinity_preferred=None,
+    pod_affinity_required=None,
+    pod_anti_affinity_preferred=None,
+    pod_anti_affinity_required=None,
     priority_class_name=None,
     logger=None,
 ):
@@ -216,15 +216,14 @@ def make_pod(
     priority_class_name:
         The name of the PriorityClass to be assigned the pod. This feature is Beta available in K8s 1.11.
     """
-
     pod = V1Pod()
     pod.kind = "Pod"
     pod.api_version = "v1"
 
     pod.metadata = V1ObjectMeta(
         name=name,
-        labels=labels.copy(),
-        annotations=annotations.copy()
+        labels=(labels or {}).copy(),
+        annotations=(annotations or {}).copy()
     )
 
     pod.spec = V1PodSpec(containers=[])
@@ -252,20 +251,18 @@ def make_pod(
 
     if lifecycle_hooks:
         lifecycle_hooks = get_k8s_model(V1Lifecycle, lifecycle_hooks)
-    else:
-        lifecycle_hooks = None
 
     notebook_container = V1Container(
         name='notebook',
         image=image_spec,
         working_dir=working_dir,
         ports=[V1ContainerPort(name='notebook-port', container_port=port)],
-        env=[V1EnvVar(k, v) for k, v in env.items()],
+        env=[V1EnvVar(k, v) for k, v in (env or {}).items()],
         args=cmd,
         image_pull_policy=image_pull_policy,
         lifecycle=lifecycle_hooks,
         resources=V1ResourceRequirements(),
-        volume_mounts=[get_k8s_model(V1VolumeMount, obj) for obj in volume_mounts],
+        volume_mounts=[get_k8s_model(V1VolumeMount, obj) for obj in (volume_mounts or [])],
     )
 
     if service_account is None:
@@ -313,8 +310,9 @@ def make_pod(
     if volumes:
         pod.spec.volumes = [get_k8s_model(V1Volume, obj) for obj in volumes]
     else:
-        # remain backward compatible by not cleaning up generated pod spec.
-        pod.spec.volumes = volumes
+        # Keep behaving exactly like before by not cleaning up generated pod
+        # spec by setting the volumes field even though it is an empty list.
+        pod.spec.volumes = []
     if scheduler_name:
         pod.spec.scheduler_name = scheduler_name
 
@@ -395,8 +393,8 @@ def make_pvc(
     storage_class,
     access_modes,
     storage,
-    labels,
-    annotations={}
+    labels=None,
+    annotations=None
     ):
     """
     Make a k8s pvc specification for running a user notebook.
@@ -419,9 +417,8 @@ def make_pvc(
     pvc.api_version = "v1"
     pvc.metadata = V1ObjectMeta()
     pvc.metadata.name = name
-    pvc.metadata.annotations = annotations
-    pvc.metadata.labels = {}
-    pvc.metadata.labels.update(labels)
+    pvc.metadata.annotations = (annotations or {}).copy()
+    pvc.metadata.labels = (labels or {}).copy()
     pvc.spec = V1PersistentVolumeClaimSpec()
     pvc.spec.access_modes = access_modes
     pvc.spec.resources = V1ResourceRequirements()
