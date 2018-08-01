@@ -989,6 +989,18 @@ class KubeSpawner(Spawner):
         """
     )
 
+    scheduler_name = Unicode(
+        None,
+        config=True,
+        allow_none=True,
+        help="""
+        Set the pod's scheduler explicitly by name.
+
+        See the Kubernetes API documentation for additional details.
+        - https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podspec-v1-core
+        """
+    )
+
     # deprecate redundant and inconsistent singleuser_ and user_ prefixes:
     _deprecated_traits = [
         "singleuser_working_dir",
@@ -1213,6 +1225,7 @@ class KubeSpawner(Spawner):
             extra_container_config=self.extra_container_config,
             extra_pod_config=self.extra_pod_config,
             extra_containers=self.extra_containers,
+            scheduler_name=self.scheduler_name
         )
 
     def get_pvc_manifest(self):
