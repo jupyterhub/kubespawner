@@ -964,6 +964,52 @@ def test_make_pod_with_service_account():
     }
 
 
+def test_make_pod_with_scheduler_name():
+    """
+    Test specification of the simplest possible pod specification with non-default scheduler name
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        scheduler_name='my-custom-scheduler'
+    )) == {
+        "metadata": {
+            "name": "test",
+            "annotations": {},
+            "labels": {},
+        },
+        "spec": {
+            "securityContext": {},
+            'automountServiceAccountToken': False,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            'volumes': [],
+            'schedulerName': 'my-custom-scheduler',
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
 def test_make_pod_with_tolerations():
     """
     Test specification of the simplest possible pod specification with non-empty tolerations
