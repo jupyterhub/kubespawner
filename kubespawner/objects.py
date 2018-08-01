@@ -157,7 +157,7 @@ def make_pod(
     extra_containers:
         Extra containers besides notebook container. Used for some housekeeping jobs (e.g. crontab).
     scheduler_name:
-        A custom scheduler's name.
+        The pod's scheduler explicitly named.
     tolerations:
         Tolerations can allow a pod to schedule or execute on a tainted node. To
         learn more about pod tolerations, see
