@@ -93,7 +93,7 @@ class KubeSpawner(Spawner):
         super().__init__(*args, **kwargs)
 
         if _mock:
-            # initialization for testing
+            # runs during test execution only
             user = MockObject()
             user.name = 'mock_name'
             user.id = 'mock_id'
@@ -107,6 +107,8 @@ class KubeSpawner(Spawner):
             hub.api_url = 'mock_api_url'
             self.hub = hub
         else:
+            # runs during normal execution only
+
             # By now, all the traitlets have been set, so we can use them to compute
             # other attributes
             if self.__class__.executor is None:
@@ -114,37 +116,25 @@ class KubeSpawner(Spawner):
                     max_workers=self.k8s_api_threadpool_workers
                 )
 
-            main_loop = IOLoop.current()
-            def on_reflector_failure():
-                self.log.critical("Pod reflector failed, halting Hub.")
-                main_loop.stop()
-
             # This will start watching in __init__, so it'll start the first
             # time any spawner object is created. Not ideal but works!
-            if self.__class__.pod_reflector is None:
-                self.__class__.pod_reflector = PodReflector(
-                    parent=self, namespace=self.namespace,
-                    on_failure=on_reflector_failure
+            self._start_watching_pods()
+            if self.events_enabled:
+                self._start_watching_events()
+
+            self.api = shared_client('CoreV1Api')
+
+            if self.hub_connect_ip:
+                scheme, netloc, path, params, query, fragment = urlparse(self.hub.api_url)
+                netloc = '{ip}:{port}'.format(
+                    ip=self.hub_connect_ip,
+                    port=self.hub_connect_port,
                 )
+                self.accessible_hub_api_url = urlunparse((scheme, netloc, path, params, query, fragment))
+            else:
+                self.accessible_hub_api_url = self.hub.api_url
 
-        # This will start watching in __init__, so it'll start the first
-        # time any spawner object is created. Not ideal but works!
-        self._start_watching_pods()
-        if self.events_enabled:
-            self._start_watching_events()
-        
-        self.api = shared_client('CoreV1Api')
-
-        if self.hub_connect_ip:
-            scheme, netloc, path, params, query, fragment = urlparse(self.hub.api_url)
-            netloc = '{ip}:{port}'.format(
-                ip=self.hub_connect_ip,
-                port=self.hub_connect_port,
-            )
-            self.accessible_hub_api_url = urlunparse((scheme, netloc, path, params, query, fragment))
-        else:
-            self.accessible_hub_api_url = self.hub.api_url
-
+        # runs during both test and normal execution
         self.pod_name = self._expand_user_properties(self.pod_name_template)
         self.pvc_name = self._expand_user_properties(self.pvc_name_template)
         if self.port == 0:
