@@ -83,7 +83,8 @@ class KubeSpawner(Spawner):
     @property
     def event_reflector(self):
         """alias to reflectors['events']"""
-        return self.reflectors['events']
+        if self.events_enabled:
+            return self.reflectors['events']
 
     def __init__(self, *args, **kwargs):
         _mock = kwargs.pop('_mock', False)
