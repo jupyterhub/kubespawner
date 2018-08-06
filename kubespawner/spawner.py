@@ -1197,6 +1197,9 @@ class KubeSpawner(Spawner):
         labels = self._build_pod_labels(self._expand_all(self.extra_labels))
         annotations = self._build_common_annotations(self._expand_all(self.extra_annotations))
 
+        # Add pod name in meta labels
+        labels.update({"name": self.pod_name})
+
         return make_pod(
             name=self.pod_name,
             cmd=real_cmd,

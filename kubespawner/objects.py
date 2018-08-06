@@ -150,9 +150,6 @@ def make_pod(
     pod.kind = "Pod"
     pod.api_version = "v1"
 
-    # Add pod name in meta labels
-    labels.update({"name": name})
-
     pod.metadata = V1ObjectMeta(
         name=name,
         labels=labels.copy(),
