@@ -150,6 +150,9 @@ def make_pod(
     pod.kind = "Pod"
     pod.api_version = "v1"
 
+    # Add pod name in meta labels
+    labels.update({"name": name})
+
     pod.metadata = V1ObjectMeta(
         name=name,
         labels=labels.copy(),
@@ -251,6 +254,34 @@ def _map_attribute(attribute_map, attribute):
             return key
     else:
         raise ValueError('Attribute must be one of {}'.format(attribute_map.values()))
+
+
+def make_service(
+    name,
+    labels={},
+    annotations={},
+    ):
+
+    target_port = 4040
+    # Make service object
+    service = V1Service(
+        kind='Service',
+        spec=V1ServiceSpec(
+            ports=[V1ServicePort(port=target_port, target_port=target_port, name="sparkui")],
+            selector={"name": name},
+            cluster_ip="None"
+        )
+    )
+
+    labels.update({"name": name})
+
+    service.api_version = "v1"
+    service.metadata = V1ObjectMeta(
+        name=name,
+        labels=labels.copy(),
+        annotations=annotations.copy()
+    )
+    return service
 
 
 def make_pvc(

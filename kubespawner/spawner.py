@@ -27,7 +27,7 @@ from jinja2 import Environment, BaseLoader
 
 from .clients import shared_client
 from kubespawner.traitlets import Callable
-from kubespawner.objects import make_pod, make_pvc
+from kubespawner.objects import make_pod, make_pvc, make_service
 from kubespawner.reflector import NamespacedResourceReflector
 from asyncio import sleep
 from async_generator import async_generator, yield_
@@ -1150,6 +1150,21 @@ class KubeSpawner(Spawner):
         return annotations
 
     @gen.coroutine
+    def get_service_manifest(self):
+        """
+        Make a service manifest that will spawn current user's notebook pod.
+        """
+
+        labels = self._build_pod_labels(self._expand_all(self.extra_labels))
+        annotations = self._build_common_annotations(self._expand_all(self.extra_annotations))
+
+        return make_service(
+            name=self.pod_name,
+            labels=labels,
+            annotations=annotations
+        )
+
+    @gen.coroutine
     def get_pod_manifest(self):
         """
         Make a pod manifest that will spawn current user's notebook pod.
@@ -1555,6 +1570,33 @@ class KubeSpawner(Spawner):
             raise Exception(
                 'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
 
+        # Create associate service
+        service = yield self.get_service_manifest()
+        # pod_hook?
+        if self.modify_pod_hook:
+            service = yield gen.maybe_future(self.modify_pod_hook(self, pod))
+        for i in range(retry_times):
+            try:
+                yield self.asynchronize(
+                    self.api.create_namespaced_service,
+                    self.namespace,
+                    service
+                )
+                break
+            except ApiException as e:
+                if e.status != 409:
+                    # We only want to handle 409 conflict errors
+                    self.log.exception("Failed for %s", pod.to_str())
+                    raise
+                self.log.info('Found existing service %s, attempting to kill', self.pod_name)
+                # TODO: this should show up in events
+                yield self.stop(True)
+
+                self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
+        else:
+            raise Exception(
+                'Can not create user service %s already exists & could not be deleted' % self.pod_name)
+
         # we need a timeout here even though start itself has a timeout
         # in order for this coroutine to finish at some point.
         # using the same start_timeout here
@@ -1613,6 +1655,14 @@ class KubeSpawner(Spawner):
                 namespace=self.namespace,
                 body=delete_options,
                 grace_period_seconds=grace_seconds,
+            )
+            # Delete associate service
+            yield self.asynchronize(
+                self.api.delete_namespaced_service,
+                name=self.pod_name,
+                namespace=self.namespace,
+                body=delete_options,
+                grace_period_seconds=grace_seconds
             )
         except ApiException as e:
             if e.status == 404:
