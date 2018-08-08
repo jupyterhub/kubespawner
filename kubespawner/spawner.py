@@ -83,7 +83,8 @@ class KubeSpawner(Spawner):
     @property
     def event_reflector(self):
         """alias to reflectors['events']"""
-        return self.reflectors['events']
+        if self.events_enabled:
+            return self.reflectors['events']
 
     def __init__(self, *args, **kwargs):
         _mock = kwargs.pop('_mock', False)
@@ -1100,8 +1101,10 @@ class KubeSpawner(Spawner):
         # Set servername based on whether named-server initialised
         if self.name:
             servername = '-{}'.format(self.name)
+            safe_servername = escapism.escape(servername, safe=safe_chars, escape_char='-').lower()
         else:
             servername = ''
+            safe_servername = ''
 
         legacy_escaped_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
         safe_username = escapism.escape(self.user.name, safe=safe_chars, escape_char='-').lower()
@@ -1110,7 +1113,8 @@ class KubeSpawner(Spawner):
             username=safe_username,
             unescaped_username=self.user.name,
             legacy_escape_username=legacy_escaped_username,
-            servername=servername
+            servername=safe_servername,
+            unescaped_servername=servername
             )
 
     def _expand_all(self, src):
