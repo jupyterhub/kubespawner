@@ -4,7 +4,6 @@ Test functions used to create k8s objects
 from kubespawner.objects import make_pod, make_pvc
 from kubernetes.client import ApiClient
 
-
 api_client = ApiClient()
 
 def test_make_simplest_pod():
@@ -360,7 +359,7 @@ def test_run_privileged_container():
                     "ports": [{
                         "name": "notebook-port",
                         "containerPort": 8888
-                    }],                    
+                    }],
                     "resources": {
                         "limits": {},
                         "requests": {}
@@ -675,7 +674,6 @@ def test_make_pod_with_extra_container_config():
         "apiVersion": "v1"
     }
 
-
 def test_make_pod_with_extra_pod_config():
     """
     Test specification of a pod with initContainers
@@ -919,7 +917,7 @@ def test_make_resources_all():
         }
     }
 
-    
+
 def test_make_pod_with_service_account():
     """
     Test specification of the simplest possible pod specification with non-default service account

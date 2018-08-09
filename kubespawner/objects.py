@@ -19,7 +19,7 @@ from kubernetes.client.models import (
     V1Service, V1ServiceSpec, V1ServicePort,
     V1beta1Ingress, V1beta1IngressSpec, V1beta1IngressRule,
     V1beta1HTTPIngressRuleValue, V1beta1HTTPIngressPath,
-    V1beta1IngressBackend
+    V1beta1IngressBackend,
 )
 
 def make_pod(
@@ -53,7 +53,7 @@ def make_pod(
     extra_container_config=None,
     extra_pod_config=None,
     extra_containers=None,
-    scheduler_name=None
+    scheduler_name=None,
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -144,7 +144,7 @@ def make_pod(
     extra_containers:
         Extra containers besides notebook container. Used for some housekeeping jobs (e.g. crontab).
     scheduler_name:
-        A custom scheduler's name.
+        The pod's scheduler explicitly named.
     """
 
     pod = V1Pod()
@@ -201,9 +201,7 @@ def make_pod(
         pod.spec.service_account_name = service_account
 
     if run_privileged:
-        notebook_container.security_context = V1SecurityContext(
-            privileged=True
-        )
+        notebook_container.security_context = V1SecurityContext(privileged=True)
 
     notebook_container.resources.requests = {}
     if cpu_guarantee:
@@ -211,8 +209,7 @@ def make_pod(
     if mem_guarantee:
         notebook_container.resources.requests['memory'] = mem_guarantee
     if extra_resource_guarantees:
-        for k in extra_resource_guarantees:
-            notebook_container.resources.requests[k] = extra_resource_guarantees[k]
+        notebook_container.resources.requests.update(extra_resource_guarantees)
 
     notebook_container.resources.limits = {}
     if cpu_limit:

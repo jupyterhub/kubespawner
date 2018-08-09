@@ -729,10 +729,10 @@ class KubeSpawner(Spawner):
         `Kubernetes doc <https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/>`_ ::
 
             lifecycle:
-            postStart:
+              postStart:
                 exec:
                 command: ["/bin/sh", "-c", "echo Hello from the postStart handler > /usr/share/message"]
-            preStop:
+              preStop:
                 exec:
                 command: ["/usr/sbin/nginx","-s","quit"]
 
@@ -1115,7 +1115,7 @@ class KubeSpawner(Spawner):
             legacy_escape_username=legacy_escaped_username,
             servername=safe_servername,
             unescaped_servername=servername
-            )
+        )
 
     def _expand_all(self, src):
         if isinstance(src, list):
