@@ -51,7 +51,7 @@ def test_update_k8s_models_logger_warning():
     )
     source = {"name": "new_mock_name", "image_pull_policy": "Always"}
     mock_locker = MockLogger()
-    update_k8s_model(target, source, logger=mock_locker, origin="test-runner")
+    update_k8s_model(target, source, logger=mock_locker, target_name="test-runner")
     
     assert mock_locker.most_recent_warning.find("KubeSpawner.test-runner's value 'mock_name' with 'new_mock_name'")
     assert mock_locker.warning_count == 1
