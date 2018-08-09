@@ -235,6 +235,8 @@ def make_pod(
 
     if extra_containers:
         pod.spec.containers.extend([get_k8s_model(V1Container, obj) for obj in extra_containers])
+    if init_containers:
+        pod.spec.init_containers = [get_k8s_model(V1Container, obj) for obj in init_containers]
     if volumes:
         pod.spec.volumes = [get_k8s_model(V1Volume, obj) for obj in volumes]
     else:
