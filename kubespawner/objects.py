@@ -247,15 +247,7 @@ def make_pod(
     return pod
 
 
-def _map_attribute(attribute_map, attribute):
-    if attribute in attribute_map:
-        return attribute
 
-    for key, value in attribute_map.items():
-        if value == attribute:
-            return key
-    else:
-        raise ValueError('Attribute must be one of {}'.format(attribute_map.values()))
     if extra_pod_config:
         pod.spec = update_k8s_model(
             target=pod.spec,
