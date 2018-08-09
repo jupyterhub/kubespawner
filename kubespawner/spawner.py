@@ -63,6 +63,9 @@ class EventReflector(NamespacedResourceReflector):
         )
 
 
+class MockObject(object):
+    pass
+
 class KubeSpawner(Spawner):
     """
     Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
@@ -91,37 +94,50 @@ class KubeSpawner(Spawner):
         super().__init__(*args, **kwargs)
 
         if _mock:
-            # if testing, skip the rest of initialization
-            # FIXME: rework initialization for easier mocking
-            return
+            # runs during test execution only
+            user = MockObject()
+            user.name = 'mock_name'
+            user.id = 'mock_id'
+            user.url = 'mock_url'
+            self.user = user
 
-        # By now, all the traitlets have been set, so we can use them to compute
-        # other attributes
-        if self.__class__.executor is None:
-            self.__class__.executor = ThreadPoolExecutor(
-                max_workers=self.k8s_api_threadpool_workers
-            )
+            hub = MockObject()
+            hub.public_host = 'mock_public_host'
+            hub.url = 'mock_url'
+            hub.base_url = 'mock_base_url'
+            hub.api_url = 'mock_api_url'
+            self.hub = hub
+        else:
+            # runs during normal execution only
 
-        # This will start watching in __init__, so it'll start the first
-        # time any spawner object is created. Not ideal but works!
-        self._start_watching_pods()
-        if self.events_enabled:
-            self._start_watching_events()
+            # By now, all the traitlets have been set, so we can use them to compute
+            # other attributes
+            if self.__class__.executor is None:
+                self.__class__.executor = ThreadPoolExecutor(
+                    max_workers=self.k8s_api_threadpool_workers
+                )
 
-        self.api = shared_client('CoreV1Api')
+            # This will start watching in __init__, so it'll start the first
+            # time any spawner object is created. Not ideal but works!
+            self._start_watching_pods()
+            if self.events_enabled:
+                self._start_watching_events()
 
+            self.api = shared_client('CoreV1Api')
+
+            if self.hub_connect_ip:
+                scheme, netloc, path, params, query, fragment = urlparse(self.hub.api_url)
+                netloc = '{ip}:{port}'.format(
+                    ip=self.hub_connect_ip,
+                    port=self.hub_connect_port,
+                )
+                self.accessible_hub_api_url = urlunparse((scheme, netloc, path, params, query, fragment))
+            else:
+                self.accessible_hub_api_url = self.hub.api_url
+
+        # runs during both test and normal execution
         self.pod_name = self._expand_user_properties(self.pod_name_template)
         self.pvc_name = self._expand_user_properties(self.pvc_name_template)
-        if self.hub_connect_ip:
-            scheme, netloc, path, params, query, fragment = urlparse(self.hub.api_url)
-            netloc = '{ip}:{port}'.format(
-                ip=self.hub_connect_ip,
-                port=self.hub_connect_port,
-            )
-            self.accessible_hub_api_url = urlunparse((scheme, netloc, path, params, query, fragment))
-        else:
-            self.accessible_hub_api_url = self.hub.api_url
-
         if self.port == 0:
             # Our default port is 8888
             self.port = 8888

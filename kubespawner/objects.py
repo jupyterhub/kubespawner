@@ -54,6 +54,7 @@ def make_pod(
     extra_pod_config=None,
     extra_containers=None,
     scheduler_name=None,
+    logger=None,
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -220,22 +221,20 @@ def make_pod(
     if mem_limit:
         notebook_container.resources.limits['memory'] = mem_limit
     if extra_resource_limits:
-        for k in extra_resource_limits:
-            notebook_container.resources.limits[k] = extra_resource_limits[k]
+        notebook_container.resources.limits.update(extra_resource_limits)
+
+    if extra_container_config:
+        notebook_container = update_k8s_model(
+            target=notebook_container,
+            changes=extra_container_config,
+            logger=logger,
+            target_name="extra_container_config",
+        )
 
     pod.spec.containers.append(notebook_container)
 
-    if extra_container_config:
-        for key, value in extra_container_config.items():
-            setattr(notebook_container, _map_attribute(notebook_container.attribute_map, key), value)
-    if extra_pod_config:
-        for key, value in extra_pod_config.items():
-            setattr(pod.spec, _map_attribute(pod.spec.attribute_map, key), value)
     if extra_containers:
-        pod.spec.containers.extend(extra_containers)
-
-    pod.spec.init_containers = init_containers
-
+        pod.spec.containers.extend([get_k8s_model(V1Container, obj) for obj in extra_containers])
     if volumes:
         pod.spec.volumes = [get_k8s_model(V1Volume, obj) for obj in volumes]
     else:
@@ -257,6 +256,14 @@ def _map_attribute(attribute_map, attribute):
             return key
     else:
         raise ValueError('Attribute must be one of {}'.format(attribute_map.values()))
+    if extra_pod_config:
+        pod.spec = update_k8s_model(
+            target=pod.spec,
+            changes=extra_pod_config,
+            logger=logger,
+            target_name="extra_pod_config",
+        )
+
 
 
 def make_pvc(
