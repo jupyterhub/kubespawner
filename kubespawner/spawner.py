@@ -831,6 +831,16 @@ class KubeSpawner(Spawner):
         """
     ).tag(config=True)
 
+    scheduler_name = Unicode(
+        default_value=None,
+        allow_none=True,
+        help="""
+        Set the pod's scheduler explicitly by name.
+        See the Kubernetes API documentation for additional details.
+        - https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podspec-v1-core
+        """
+    ).tag(config=True)
+
     extra_resource_guarantees = Dict(
         default_value={},
         help="""
@@ -1202,6 +1212,8 @@ class KubeSpawner(Spawner):
             extra_container_config=self.extra_container_config,
             extra_pod_config=self.extra_pod_config,
             extra_containers=self.extra_containers,
+            scheduler_name=self.scheduler_name,
+            logger=self.log,
         )
 
     def get_pvc_manifest(self):
