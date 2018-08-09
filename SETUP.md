@@ -124,3 +124,12 @@ directory.
 
 ```sh
 rm -rf .eggs
+```
+
+## Build documentation
+```sh
+cd docs
+conda env update --file environment.yml
+conda activate kubespawner
+make html
+```

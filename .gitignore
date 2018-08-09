@@ -1,3 +1,11 @@
+# JupyterHub running from kubespawner folder for development purposes
+jupyterhub-proxy.pid
+jupyterhub.sqlite
+jupyterhub_cookie_secret
+
+# Editors
+.vscode
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -52,8 +60,8 @@ coverage.xml
 *.log
 
 # Sphinx documentation
-docs/_build/
-docs/source/_build/
+docs/build/
+docs/source/build/
 
 # PyBuilder
 target/
