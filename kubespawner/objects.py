@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 import escapism
 import re
 import string
+from kubespawner.utils import get_k8s_model, update_k8s_model
 
 from kubernetes.client.models import (
     V1Pod, V1PodSpec, V1PodSecurityContext,
@@ -52,7 +53,8 @@ def make_pod(
     extra_container_config=None,
     extra_pod_config=None,
     extra_containers=None,
-    scheduler_name=None
+    scheduler_name=None,
+    logger=None,
 ):
     """
     Make a k8s pod specification for running a user notebook.
@@ -222,35 +224,39 @@ def make_pod(
         for k in extra_resource_limits:
             notebook_container.resources.limits[k] = extra_resource_limits[k]
 
-    pod.spec.containers.append(notebook_container)
 
     if extra_container_config:
-        for key, value in extra_container_config.items():
-            setattr(notebook_container, _map_attribute(notebook_container.attribute_map, key), value)
-    if extra_pod_config:
-        for key, value in extra_pod_config.items():
-            setattr(pod.spec, _map_attribute(pod.spec.attribute_map, key), value)
-    if extra_containers:
-        pod.spec.containers.extend(extra_containers)
+        notebook_container = update_k8s_model(
+            target=notebook_container,
+            changes=extra_container_config,
+            logger=logger,
+            target_name="notebook_container",
+            changes_name="extra_container_config",
+        )
 
     pod.spec.init_containers = init_containers
     pod.spec.volumes = volumes
+    pod.spec.containers.append(notebook_container)
 
+    if extra_containers:
+        pod.spec.containers.extend([get_k8s_model(V1Container, obj) for obj in extra_containers])
     if scheduler_name:
         pod.spec.scheduler_name = scheduler_name
 
+
+
+
+
+    if extra_pod_config:
+        pod.spec = update_k8s_model(
+            target=pod.spec,
+            changes=extra_pod_config,
+            logger=logger,
+            target_name="pod.spec",
+            changes_name="extra_pod_config",
+        )
+
     return pod
-
-
-def _map_attribute(attribute_map, attribute):
-    if attribute in attribute_map:
-        return attribute
-
-    for key, value in attribute_map.items():
-        if value == attribute:
-            return key
-    else:
-        raise ValueError('Attribute must be one of {}'.format(attribute_map.values()))
 
 
 def make_pvc(
