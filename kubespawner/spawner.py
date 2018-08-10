@@ -900,6 +900,79 @@ class KubeSpawner(Spawner):
         """
     )
 
+    node_affinity_preferred = List(
+        config=True,
+        help="""
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "PreferredSchedulingTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#preferredschedulingterm-v1-core
+        """
+    )
+    node_affinity_required = List(
+        config=True,
+        help="""
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "NodeSelectorTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#nodeselectorterm-v1-core
+        """
+    )
+    pod_affinity_preferred = List(
+        config=True,
+        help="""
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "WeightedPodAffinityTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#weightedpodaffinityterm-v1-core
+        """
+    )
+    pod_affinity_required = List(
+        config=True,
+        help="""
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "PodAffinityTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podaffinityterm-v1-core
+        """
+    )
+    pod_anti_affinity_preferred = List(
+        config=True,
+        help="""
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "WeightedPodAffinityTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#weightedpodaffinityterm-v1-core
+        """
+    )
+    pod_anti_affinity_required = List(
+        config=True,
+        help="""
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "PodAffinityTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podaffinityterm-v1-core
+        """
+    )
+
     extra_resource_guarantees = Dict(
         config=True,
         help="""
@@ -1286,6 +1359,12 @@ class KubeSpawner(Spawner):
             extra_containers=self.extra_containers,
             scheduler_name=self.scheduler_name,
             tolerations=self.tolerations,
+            node_affinity_preferred=self.node_affinity_preferred,
+            node_affinity_required=self.node_affinity_required,
+            pod_affinity_preferred=self.pod_affinity_preferred,
+            pod_affinity_required=self.pod_affinity_required,
+            pod_anti_affinity_preferred=self.pod_anti_affinity_preferred,
+            pod_anti_affinity_required=self.pod_anti_affinity_required,
             priority_class_name=self.priority_class_name,
             logger=self.log,
         )
