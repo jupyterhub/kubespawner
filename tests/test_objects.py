@@ -1074,3 +1074,48 @@ def test_make_pod_with_tolerations():
         "apiVersion": "v1"
     }
 
+
+def test_make_pod_with_priority_class_name():
+    """
+    Test specification of the simplest possible pod specification with non-default priorityClassName set
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        priority_class_name='my-custom-priority-class'
+    )) == {
+        "metadata": {
+            "name": "test",
+            "annotations": {},
+            "labels": {},
+        },
+        "spec": {
+            "securityContext": {},
+            'automountServiceAccountToken': False,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            'volumes': [],
+            'priorityClassName': 'my-custom-priority-class',
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }

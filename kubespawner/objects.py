@@ -56,6 +56,7 @@ def make_pod(
     extra_containers=None,
     scheduler_name=None,
     tolerations=None,
+    priority_class_name=None,
     logger=None,
 ):
     """
@@ -155,6 +156,8 @@ def make_pod(
 
         Pass this field an array of "Toleration" objects.*
         * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#nodeselectorterm-v1-core
+    priority_class_name:
+        The name of the PriorityClass to be assigned the pod. This feature is Beta available in K8s 1.11.
     """
 
     pod = V1Pod()
@@ -259,6 +262,8 @@ def make_pod(
 
 
 
+    if priority_class_name:
+        pod.spec.priority_class_name = priority_class_name
 
     if extra_pod_config:
         pod.spec = update_k8s_model(

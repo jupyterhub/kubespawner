@@ -1013,6 +1013,16 @@ class KubeSpawner(Spawner):
         """
     ).tag(config=True)
 
+    priority_class_name = Unicode(
+        default_value=None,
+        allow_none=True,
+        help="""
+        The priority class that the pods will use.
+
+        See https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption for
+        more information on how pod priority works.
+        """
+    ).tag(config=True)
 
     # deprecate redundant and inconsistent singleuser_ and user_ prefixes:
     _deprecated_traits = [
@@ -1243,6 +1253,7 @@ class KubeSpawner(Spawner):
             extra_containers=self.extra_containers,
             scheduler_name=self.scheduler_name,
             tolerations=self.tolerations,
+            priority_class_name=self.priority_class_name,
             logger=self.log,
         )
 
