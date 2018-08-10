@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
-from traitlets import Any, Unicode, List, Integer, Union, Dict, Bool, Any, validate
+from traitlets import Any, Unicode, List, Integer, Union, Dict, Bool, Any, validate, default
 from jupyterhub.spawner import Spawner
 from jupyterhub.utils import exponential_backoff
 from jupyterhub.traitlets import Command
@@ -842,6 +842,16 @@ class KubeSpawner(Spawner):
         """
     )
 
+    scheduler_name = Unicode(
+        default_value=None,
+        allow_none=True,
+        help="""
+        Set the pod's scheduler explicitly by name.
+        See the Kubernetes API documentation for additional details.
+        - https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podspec-v1-core
+        """
+    ).tag(config=True)
+
     extra_resource_guarantees = Dict(
         {},
         config=True,
@@ -1217,6 +1227,7 @@ class KubeSpawner(Spawner):
             extra_container_config=self.extra_container_config,
             extra_pod_config=self.extra_pod_config,
             extra_containers=self.extra_containers,
+            scheduler_name=self.scheduler_name,
             logger=self.log,
         )
 

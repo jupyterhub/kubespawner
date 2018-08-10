@@ -145,7 +145,7 @@ def make_pod(
     extra_containers:
         Extra containers besides notebook container. Used for some housekeeping jobs (e.g. crontab).
     scheduler_name:
-        A custom scheduler's name.
+        The pod's scheduler explicitly named.
     """
 
     pod = V1Pod()
