@@ -816,7 +816,7 @@ class KubeSpawner(Spawner):
     extra_pod_config = Dict(
         config=True,
         help="""
-        Extra configuration (e.g. tolerations) for the pod which is not covered by other attributes.
+        Extra configuration for the pod which is not covered by other attributes.
 
         This dict will be directly merge into pod,so you should use the same structure.
         Each item in the dict is field of pod configuration
@@ -861,6 +861,35 @@ class KubeSpawner(Spawner):
         help="""
         Set the pod's scheduler explicitly by name. See `the Kubernetes documentation <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podspec-v1-core>`_
         for more information.
+        """
+    )
+
+    tolerations = List(
+        config=True,
+        help="""
+        List of tolerations that are to be assigned to the pod in order to be able to schedule the pod
+        on a node with the corresponding taints. See the official Kubernetes documentation for additional details
+        https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+
+        Pass this field an array of "Toleration" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#nodeselectorterm-v1-core
+
+        Example:
+
+            [
+                {
+                    'key': 'key',
+                    'operator': 'Equal',
+                    'value': 'value',
+                    'effect': 'NoSchedule'
+                },
+                {
+                    'key': 'key',
+                    'operator': 'Exists',
+                    'effect': 'NoSchedule'
+                }
+            ]
+
         """
     )
 
@@ -1239,6 +1268,7 @@ class KubeSpawner(Spawner):
             extra_pod_config=self.extra_pod_config,
             extra_containers=self.extra_containers,
             scheduler_name=self.scheduler_name,
+            tolerations=self.tolerations,
             logger=self.log,
         )
 
