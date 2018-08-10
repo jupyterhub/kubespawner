@@ -10,7 +10,7 @@ if v[:2] < (3, 5):
 
 setup(
     name='jupyterhub-kubespawner',
-    version='0.8.1',
+    version='0.9.0-dev',
     install_requires=[
         'jupyterhub>=0.8',
         'pyYAML',
@@ -19,7 +19,7 @@ setup(
         'jinja2',
         'async_generator>=1.8',
     ],
-    python_requires     = ">=3.5",
+    python_requires='>=3.5',
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
     description='JupyterHub Spawner targeting Kubernetes',
