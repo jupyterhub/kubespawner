@@ -37,8 +37,8 @@ def make_pod(
     run_privileged=False,
     env=None,
     working_dir=None,
-    volumes=[],
-    volume_mounts=[],
+    volumes=None,
+    volume_mounts=None,
     labels=None,
     annotations=None,
     cpu_limit=None,
@@ -191,7 +191,7 @@ def make_pod(
         image_pull_policy=image_pull_policy,
         lifecycle=lifecycle_hooks,
         resources=V1ResourceRequirements(),
-        volume_mounts=volume_mounts
+        volume_mounts=[get_k8s_model(V1VolumeMount, obj) for obj in (volume_mounts or [])],
     )
 
     if service_account is None:
@@ -235,11 +235,16 @@ def make_pod(
         )
 
     pod.spec.init_containers = init_containers
-    pod.spec.volumes = volumes
     pod.spec.containers.append(notebook_container)
 
     if extra_containers:
         pod.spec.containers.extend([get_k8s_model(V1Container, obj) for obj in extra_containers])
+    if volumes:
+        pod.spec.volumes = [get_k8s_model(V1Volume, obj) for obj in volumes]
+    else:
+        # Keep behaving exactly like before by not cleaning up generated pod
+        # spec by setting the volumes field even though it is an empty list.
+        pod.spec.volumes = []
     if scheduler_name:
         pod.spec.scheduler_name = scheduler_name
 
