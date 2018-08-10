@@ -685,14 +685,14 @@ def test_make_pod_with_extra_pod_config():
         port=8888,
         image_pull_policy='IfNotPresent',
         extra_pod_config={
-            'tolerations': [
-                {
+            'tolerations': [{
                     'key': 'dedicated',
                     'operator': 'Equal',
                     'value': 'notebook'
-                }
-            ]
-        }
+            }],
+            'dns_policy': 'ClusterFirstWithHostNet',
+            'restartPolicy': 'OnFailure',
+        },
     )) == {
         "metadata": {
             "name": "test",
@@ -723,6 +723,8 @@ def test_make_pod_with_extra_pod_config():
                 }
             ],
             'volumes': [],
+            'dnsPolicy': 'ClusterFirstWithHostNet',
+            'restartPolicy': 'OnFailure',
             'tolerations': [
                 {
                     'key': 'dedicated',
@@ -1007,4 +1009,3 @@ def test_make_pod_with_scheduler_name():
         "kind": "Pod",
         "apiVersion": "v1"
     }
-
