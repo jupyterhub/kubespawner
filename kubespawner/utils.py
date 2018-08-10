@@ -73,7 +73,7 @@ def get_k8s_model(model_type, model_dict):
         return model_dict
     elif isinstance(model_dict, dict):
         # convert the dictionaries camelCase keys to snake_case keys
-        _map_dict_keys_to_model_attributes(model_type, model_dict)
+        model_dict = _map_dict_keys_to_model_attributes(model_type, model_dict)
         # use the dictionary keys to initialize a model of given type
         return model_type(**model_dict)
     else:
@@ -99,12 +99,11 @@ def _map_dict_keys_to_model_attributes(model_type, model_dict):
     Note that the function will not influence nested object's keys.
     """
 
-    # it is important to iterate over a copy of the dictionaries keys, as they
-    # will be updated in the loop
-    for key in list(model_dict.keys()):
-        model_dict[_get_k8s_model_attribute(model_type, key)] = model_dict.pop(key)
+    new_dict = {}
+    for key, value in model_dict.items():
+        new_dict[_get_k8s_model_attribute(model_type, key)] = value
 
-    return model_dict
+    return new_dict
 
 def _get_k8s_model_attribute(model_type, field_name):
     """
