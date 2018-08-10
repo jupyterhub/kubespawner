@@ -269,9 +269,9 @@ def make_pvc(
     storage_class,
     access_modes,
     storage,
-    labels,
-    annotations={}
-    ):
+    labels=None,
+    annotations=None,
+):
     """
     Make a k8s pvc specification for running a user notebook.
 
@@ -293,9 +293,8 @@ def make_pvc(
     pvc.api_version = "v1"
     pvc.metadata = V1ObjectMeta()
     pvc.metadata.name = name
-    pvc.metadata.annotations = annotations
-    pvc.metadata.labels = {}
-    pvc.metadata.labels.update(labels)
+    pvc.metadata.annotations = (annotations or {}).copy()
+    pvc.metadata.labels = (labels or {}).copy()
     pvc.spec = V1PersistentVolumeClaimSpec()
     pvc.spec.access_modes = access_modes
     pvc.spec.resources = V1ResourceRequirements()
