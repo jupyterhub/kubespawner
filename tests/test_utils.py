@@ -51,9 +51,9 @@ def test_update_k8s_models_logger_warning():
     )
     source = {"name": "new_mock_name", "image_pull_policy": "Always"}
     mock_locker = MockLogger()
-    update_k8s_model(target, source, logger=mock_locker, target_name="test-runner")
+    update_k8s_model(target, source, logger=mock_locker, target_name="notebook_container", changes_name="extra_container_config")
     
-    assert mock_locker.most_recent_warning.find("KubeSpawner.test-runner's value 'mock_name' with 'new_mock_name'")
+    assert mock_locker.most_recent_warning.find("'notebook_container.name' current value: 'mock_name' is overridden with 'new_mock_name', which is the value of 'extra_container_config.name'") != -1
     assert mock_locker.warning_count == 1
 
 

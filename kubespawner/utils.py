@@ -29,13 +29,15 @@ def generate_hashed_slug(slug, limit=63, hash_length=6):
     ).lower()
 
 
-def update_k8s_model(target, changes, logger=None, target_name=None):
+def update_k8s_model(target, changes, logger=None, target_name=None, changes_name=None):
     """
     Takes a model instance such as V1PodSpec() and updates it with another
     model, which is allowed to be a dict or another model instance of the same
     type. The logger is used to warn if any truthy value in the target is is
-    overridden. The target_name parameter can for example be "extra_pod_config",
-    allowing the logger to write out something more meaningful to the user.
+    overridden. The target_name parameter can for example be "pod.spec", and
+    changes_name parameter could be "extra_pod_config". These parameters allows
+    the logger to write out something more meaningful to the user whenever
+    something is about to become overridden.
     """
     model_type = type(target)
     if not hasattr(target, 'attribute_map'):
@@ -56,8 +58,16 @@ def update_k8s_model(target, changes, logger=None, target_name=None):
         # falsy, should not use to override the target's values.
         if isinstance(changes, dict) or value:
             if getattr(target, key):
-                if logger and target_name:
-                    logger.warning("Overriding KubeSpawner.{}'s value '{}' with '{}'.".format(target_name, getattr(target, key), value))
+                if logger and changes_name:
+                    warning = "'{}.{}' current value: '{}' is overridden with '{}', which is the value of '{}.{}'.".format(
+                        target_name,
+                        key,
+                        getattr(target, key),
+                        value,
+                        changes_name,
+                        key
+                    )
+                    logger.warning(warning)
             setattr(target, key, value)
 
     return target
