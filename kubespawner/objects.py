@@ -20,6 +20,7 @@ from kubernetes.client.models import (
     V1beta1Ingress, V1beta1IngressSpec, V1beta1IngressRule,
     V1beta1HTTPIngressRuleValue, V1beta1HTTPIngressPath,
     V1beta1IngressBackend,
+    V1Toleration,
 )
 
 def make_pod(
@@ -54,6 +55,7 @@ def make_pod(
     extra_pod_config=None,
     extra_containers=None,
     scheduler_name=None,
+    tolerations=None,
     logger=None,
 ):
     """
@@ -146,6 +148,13 @@ def make_pod(
         Extra containers besides notebook container. Used for some housekeeping jobs (e.g. crontab).
     scheduler_name:
         The pod's scheduler explicitly named.
+    tolerations:
+        Tolerations can allow a pod to schedule or execute on a tainted node. To
+        learn more about pod tolerations, see
+        https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/.
+
+        Pass this field an array of "Toleration" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#nodeselectorterm-v1-core
     """
 
     pod = V1Pod()
@@ -235,6 +244,8 @@ def make_pod(
 
     if extra_containers:
         pod.spec.containers.extend([get_k8s_model(V1Container, obj) for obj in extra_containers])
+    if tolerations:
+        pod.spec.tolerations = [get_k8s_model(V1Toleration, obj) for obj in tolerations]
     if init_containers:
         pod.spec.init_containers = [get_k8s_model(V1Container, obj) for obj in init_containers]
     if volumes:
@@ -246,7 +257,6 @@ def make_pod(
     if scheduler_name:
         pod.spec.scheduler_name = scheduler_name
 
-    return pod
 
 
 
@@ -258,6 +268,7 @@ def make_pod(
             target_name="extra_pod_config",
         )
 
+    return pod
 
 
 def make_pvc(

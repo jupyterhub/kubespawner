@@ -841,6 +841,35 @@ class KubeSpawner(Spawner):
         """
     ).tag(config=True)
 
+    tolerations = List(
+        default_value=[],
+        help="""
+        List of tolerations that are to be assigned to the pod in order to be able to schedule the pod
+        on a node with the corresponding taints. See the official Kubernetes documentation for additional details
+        https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+
+        Pass this field an array of "Toleration" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#nodeselectorterm-v1-core
+
+        Example:
+
+            [
+                {
+                    'key': 'key',
+                    'operator': 'Equal',
+                    'value': 'value',
+                    'effect': 'NoSchedule'
+                },
+                {
+                    'key': 'key',
+                    'operator': 'Exists',
+                    'effect': 'NoSchedule'
+                }
+            ]
+
+        """
+    ).tag(config=True)
+
     extra_resource_guarantees = Dict(
         default_value={},
         help="""
@@ -1213,6 +1242,7 @@ class KubeSpawner(Spawner):
             extra_pod_config=self.extra_pod_config,
             extra_containers=self.extra_containers,
             scheduler_name=self.scheduler_name,
+            tolerations=self.tolerations,
             logger=self.log,
         )
 
