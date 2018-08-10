@@ -39,8 +39,8 @@ def make_pod(
     working_dir=None,
     volumes=[],
     volume_mounts=[],
-    labels={},
-    annotations={},
+    labels=None,
+    annotations=None,
     cpu_limit=None,
     cpu_guarantee=None,
     mem_limit=None,
@@ -154,8 +154,8 @@ def make_pod(
 
     pod.metadata = V1ObjectMeta(
         name=name,
-        labels=labels.copy(),
-        annotations=annotations.copy()
+        labels=(labels or {}).copy(),
+        annotations=(annotations or {}).copy()
     )
 
     pod.spec = V1PodSpec(containers=[])
