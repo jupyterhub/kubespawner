@@ -214,8 +214,7 @@ def make_pod(
     if mem_guarantee:
         notebook_container.resources.requests['memory'] = mem_guarantee
     if extra_resource_guarantees:
-        for k in extra_resource_guarantees:
-            notebook_container.resources.requests[k] = extra_resource_guarantees[k]
+        notebook_container.resources.requests.update(extra_resource_guarantees)
 
     notebook_container.resources.limits = {}
     if cpu_limit:
@@ -223,9 +222,7 @@ def make_pod(
     if mem_limit:
         notebook_container.resources.limits['memory'] = mem_limit
     if extra_resource_limits:
-        for k in extra_resource_limits:
-            notebook_container.resources.limits[k] = extra_resource_limits[k]
-
+        notebook_container.resources.limits.update(extra_resource_limits)
 
     if extra_container_config:
         notebook_container = update_k8s_model(
