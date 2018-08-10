@@ -751,10 +751,10 @@ class KubeSpawner(Spawner):
         `Kubernetes doc <https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/>`_ ::
 
             lifecycle:
-            postStart:
+              postStart:
                 exec:
                 command: ["/bin/sh", "-c", "echo Hello from the postStart handler > /usr/share/message"]
-            preStop:
+              preStop:
                 exec:
                 command: ["/usr/sbin/nginx","-s","quit"]
 
@@ -816,9 +816,9 @@ class KubeSpawner(Spawner):
                 }
             ]
 
-        The key could be either camelcase word (used by Kubernetes yaml, e.g. ``envFrom``)
-        or underscore-separated word (used by kubernetes python client, e.g. ``env_from``).
-
+        The key could be either a camelCase word (used by Kubernetes yaml, e.g.
+        ``envFrom``) or a snake_case word (used by Kubernetes Python client,
+        e.g. ``env_from``).
         """
     )
 
