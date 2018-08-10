@@ -1475,7 +1475,7 @@ class KubeSpawner(Spawner):
         .progress()
         """
         self._start_future = self._start()
-        return self._start()
+        return self._start_future
 
     _last_event = None
 
