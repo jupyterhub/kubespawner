@@ -19,7 +19,7 @@ from kubernetes.client.models import (
     V1Service, V1ServiceSpec, V1ServicePort,
     V1beta1Ingress, V1beta1IngressSpec, V1beta1IngressRule,
     V1beta1HTTPIngressRuleValue, V1beta1HTTPIngressPath,
-    V1beta1IngressBackend
+    V1beta1IngressBackend,
 )
 
 def make_pod(
@@ -204,9 +204,7 @@ def make_pod(
         pod.spec.service_account_name = service_account
 
     if run_privileged:
-        notebook_container.security_context = V1SecurityContext(
-            privileged=True
-        )
+        notebook_container.security_context = V1SecurityContext(privileged=True)
 
     notebook_container.resources.requests = {}
     if cpu_guarantee:
