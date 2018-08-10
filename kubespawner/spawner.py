@@ -755,7 +755,7 @@ class KubeSpawner(Spawner):
 
         This list will be directly added under `initContainers` in the kubernetes pod spec,
         so you should use the same structure. Each item in the list is container configuration
-        which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
+        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#container-v1-core.
 
         One usage is disabling access to metadata service from single-user notebook server with configuration below:
         initContainers:
@@ -786,7 +786,7 @@ class KubeSpawner(Spawner):
 
         This dict will be directly merge into `container` of notebook server,
         so you should use the same structure. Each item in the dict is field of container configuration
-        which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
+        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#container-v1-core.
 
         One usage is set ``envFrom`` on notebook container with configuration below:
 
@@ -814,7 +814,7 @@ class KubeSpawner(Spawner):
 
         This dict will be directly merge into pod,so you should use the same structure.
         Each item in the dict is field of pod configuration
-        which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#podspec-v1-core.
+        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podspec-v1-core.
 
         One usage is set dnsPolicy with configuration below::
 
@@ -833,7 +833,7 @@ class KubeSpawner(Spawner):
 
         This list will be directly appended under `containers` in the kubernetes pod spec,
         so you should use the same structure. Each item in the list is container configuration
-        which follows spec at https://v1-6.docs.kubernetes.io/docs/api-reference/v1.6/#container-v1-core.
+        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#container-v1-core.
 
         One usage is setting crontab in a container to clean sensitive data with configuration below::
 
