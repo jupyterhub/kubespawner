@@ -963,6 +963,7 @@ class KubeSpawner(Spawner):
             List(trait=Dict()),
             Callable()
         ],
+        allow_none=True,
         config=True,
         help="""
         List of profiles to offer for selection by the user.
