@@ -848,7 +848,7 @@ class KubeSpawner(Spawner):
     )
 
     scheduler_name = Unicode(
-        default_value=None,
+        None,
         allow_none=True,
         config=True,
         help="""
