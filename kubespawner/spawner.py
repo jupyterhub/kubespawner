@@ -366,7 +366,7 @@ class KubeSpawner(Spawner):
         kubernetes pods. The keys and values must both be strings that match the kubernetes
         label key / value constraints.
 
-        See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ for more
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`_ for more
         info on what labels are and why you might want to use them!
 
         `{username}` and `{userid}` are expanded to the escaped, dns-label safe
@@ -378,12 +378,12 @@ class KubeSpawner(Spawner):
         {},
         config=True,
         help="""
-        Extra kubernetes annotations to set on the spawned single-user pods.
+        Extra Kubernetes annotations to set on the spawned single-user pods.
 
         The keys and values specified here are added as annotations on the spawned single-user
         kubernetes pods. The keys and values must both be strings.
 
-        See https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/ for more
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>`_ for more
         info on what annotations are and why you might want to use them!
 
         `{username}` and `{userid}` are expanded to the escaped, dns-label safe
@@ -428,8 +428,8 @@ class KubeSpawner(Spawner):
 
         Defaults to `IfNotPresent` which causes the Kubelet to NOT pull the image
         specified in image_spec if it already exists, except if the tag
-        is `:latest`. For more information on image pull policy, refer to
-        https://kubernetes.io/docs/concepts/containers/images/
+        is `:latest`. For more information on image pull policy, refer to `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/>`_.
+        
 
         This configuration is primarily used in development if you are
         actively changing the `image_spec` and would like to pull the image
@@ -447,9 +447,9 @@ class KubeSpawner(Spawner):
         Set this to the name of a Kubernetes secret containing the docker configuration
         required to pull the image specified in `image_spec`.
 
-        https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
-        has more information on when and why this might need to be set, and what it
-        should be set to.
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod>`_
+        for more information on when and why this might need to be set, and what
+        it should be set to.
         """
     )
 
@@ -461,9 +461,9 @@ class KubeSpawner(Spawner):
 
         Default is None and means it will be launched in any available Node.
 
-        For example to match the Nodes that have a label of `disktype: ssd` use::
+        For example to match the Nodes that have a label of `disktye: ssd` use::
 
-            {"disktype": "ssd"}
+           c.KubeSpawner.node_selector = {'disktype': 'ssd'}
         """
     )
 
@@ -547,7 +547,7 @@ class KubeSpawner(Spawner):
         upgrades to break.
 
         You'll *have* to set this if you are using auto-provisioned volumes with most
-        cloud providers. See `fsGroup <https://kubernetes.io/docs/api-reference/v1.9/#podsecuritycontext-v1-core>`_
+        cloud providers. See `fsGroup <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podsecuritycontext-v1-core>`_
         for more details.
         """
     )
@@ -628,7 +628,7 @@ class KubeSpawner(Spawner):
             be an object specifying the various options available for that kind of
             volume.
 
-        See https://kubernetes.io/docs/concepts/storage/volumes for more information on the
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/volumes>`_ for more information on the
         various kinds of volumes available and their options. Your kubernetes cluster
         must already be configured to support the volume types you want to use.
 
@@ -650,7 +650,7 @@ class KubeSpawner(Spawner):
            - `mountPath` The path on the container in which we want to mount the volume.
            - `name` The name of the volume we want to mount, as specified in the `volumes` config.
 
-        See https://kubernetes.io/docs/concepts/storage/volumes for more information on how
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/volumes>`_ for more information on how
         the `volumeMount` item works.
 
         `{username}` and `{userid}` are expanded to the escaped, dns-label safe
@@ -670,14 +670,13 @@ class KubeSpawner(Spawner):
 
         This will be added to the `resources: requests: storage:` in the k8s pod spec.
 
-        See https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims>`_
         for more information on how storage works.
 
         Quantities can be represented externally as unadorned integers, or as fixed-point
         integers with one of these SI suffices (`E, P, T, G, M, K, m`) or their power-of-two
         equivalents (`Ei, Pi, Ti, Gi, Mi, Ki`). For example, the following represent roughly
         the same value: `128974848`, `129e6`, `129M`, `123Mi`.
-        (https://github.com/kubernetes/kubernetes/blob/master/docs/design/resources.md)
         """
     )
 
@@ -691,8 +690,8 @@ class KubeSpawner(Spawner):
         created by kubespawner for the user. Note that these are only set
         when the PVC is created, not later when this setting is updated.
 
-        See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ for more
-        info on what labels are and why you might want to use them!
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`_
+        for more info on what labels are and why you might want to use them!
 
         `{username}` and `{userid}` are expanded to the escaped, dns-label safe
         username & integer user id respectively, wherever they are used.
@@ -715,8 +714,8 @@ class KubeSpawner(Spawner):
         b/c it has a storage class, k8s will dynamically spawn a pv for the pvc to bind to
         and a machine in the cluster for the pv to bind to.
 
-        See https://kubernetes.io/docs/concepts/storage/storage-classes/ for
-        more information on how StorageClasses work.
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/storage-classes/>`_
+        for more information on how StorageClasses work.
 
         """
     )
@@ -733,8 +732,8 @@ class KubeSpawner(Spawner):
             - `ReadOnlyMany` – the volume can be mounted read-only by many nodes
             - `ReadWriteMany` – the volume can be mounted as read-write by many nodes
 
-        See https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes for
-        more information on how access modes work.
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes>`_
+        for more information on how access modes work.
         """
     )
 
@@ -748,18 +747,24 @@ class KubeSpawner(Spawner):
         The values are handler of hook which executes by Kubernetes management system when hook is called.
 
         Below is an sample copied from
-        `Kubernetes doc <https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/>`_ ::
+        `the Kubernetes documentation <https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/>`_::
 
-            lifecycle:
-              postStart:
-                exec:
-                command: ["/bin/sh", "-c", "echo Hello from the postStart handler > /usr/share/message"]
-              preStop:
-                exec:
-                command: ["/usr/sbin/nginx","-s","quit"]
 
-        See https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/ for more
-        info on what lifecycle hooks are and why you might want to use them!
+            c.KubeSpawner.lifecycle_hooks = {
+                "postStart": {
+                    "exec": {
+                        "command": ["/bin/sh", "-c", "echo Hello from the postStart handler > /usr/share/message"]
+                    }
+                },
+                "preStop": {
+                    "exec": {
+                        "command": ["/usr/sbin/nginx", "-s", "quit"]
+                    }
+                }
+            }
+
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/>`_
+        for more info on what lifecycle hooks are and why you might want to use them!
         """
     )
 
@@ -770,25 +775,26 @@ class KubeSpawner(Spawner):
         List of initialization containers belonging to the pod.
 
         This list will be directly added under `initContainers` in the kubernetes pod spec,
-        so you should use the same structure. Each item in the list is container configuration
-        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#container-v1-core.
+        so you should use the same structure. Each item in the dict must a field
+        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#container-v1-core>`_.
 
-        One usage is disabling access to metadata service from single-user notebook server with configuration below:
-        initContainers:
+        One usage is disabling access to metadata service from single-user
+        notebook server with configuration below::
 
-        .. code::yaml
+            c.KubeSpawner.init_containers = [{
+                "name": "init-iptables",
+                "image": "<image with iptables installed>",
+                "command": ["iptables", "-A", "OUTPUT", "-p", "tcp", "--dport", "80", "-d", "169.254.169.254", "-j", "DROP"],
+                "securityContext": {
+                    "capabilities": {
+                        "add": ["NET_ADMIN"]
+                    }
+                }
+            }]
 
-            - name: init-iptables
-              image: <image with iptables installed>
-              command: ["iptables", "-A", "OUTPUT", "-p", "tcp", "--dport", "80", "-d", "169.254.169.254", "-j", "DROP"]
-              securityContext:
-                capabilities:
-                  add:
-                  - NET_ADMIN
 
-
-        See https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ for more
-        info on what init containers are and why you might want to use them!
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/workloads/pods/init-containers/>`_
+        for more info on what init containers are and why you might want to use them!
 
         To user this feature, Kubernetes version must greater than 1.6.
         """
@@ -801,20 +807,18 @@ class KubeSpawner(Spawner):
         Extra configuration (e.g. ``envFrom``) for notebook container which is not covered by other attributes.
 
         This dict will be directly merge into `container` of notebook server,
-        so you should use the same structure. Each item in the dict is field of container configuration
-        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#container-v1-core.
+        so you should use the same structure. Each item in the dict must a field
+        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#container-v1-core>`_.
 
-        One usage is set ``envFrom`` on notebook container with configuration below:
+        One usage is set ``envFrom`` on notebook container with configuration below::
 
-        .. code::yaml
-
-            envFrom: [
-                {
-                    configMapRef: {
-                        name: special-config
+            c.KubeSpawner.extra_container_config = {
+                "envFrom": [{
+                    "configMapRef": {
+                        "name": "special-config"
                     }
-                }
-            ]
+                }]
+            }
 
         The key could be either a camelCase word (used by Kubernetes yaml, e.g.
         ``envFrom``) or a snake_case word (used by Kubernetes Python client,
@@ -835,8 +839,8 @@ class KubeSpawner(Spawner):
         One usage is set restartPolicy and dnsPolicy with configuration below::
 
             c.KubeSpawner.extra_pod_config = {
-                'restartPolicy': 'OnFailure',
-                'dns_policy': 'ClusterFirstWithHostNet'
+                "restartPolicy": "OnFailure",
+                "dns_policy": "ClusterFirstWithHostNet"
             }
 
         The `key` could be either a camelCase word (used by Kubernetes yaml,
@@ -857,14 +861,11 @@ class KubeSpawner(Spawner):
 
         One usage is setting crontab in a container to clean sensitive data with configuration below::
 
-            [
-                {
-                    'name': 'crontab',
-                    'image': 'supercronic',
-                    'command': ['/usr/local/bin/supercronic', '/etc/crontab']
-                }
-            ]
-
+            c.KubeSpawner.extra_containers = [{
+                "name": "crontab",
+                "image": "supercronic",
+                "command": ["/usr/local/bin/supercronic", "/etc/crontab"]
+            }]
         """
     )
 
@@ -873,9 +874,8 @@ class KubeSpawner(Spawner):
         allow_none=True,
         config=True,
         help="""
-        Set the pod's scheduler explicitly by name.
-        See the Kubernetes API documentation for additional details.
-        - https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podspec-v1-core
+        Set the pod's scheduler explicitly by name. See `the Kubernetes documentation <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podspec-v1-core>`_
+        for more information.
         """
     )
 
@@ -885,9 +885,9 @@ class KubeSpawner(Spawner):
         help="""
         The dictionary used to request arbitrary resources.
         Default is None and means no additional resources are requested.
-        For example, to request 3 Nvidia GPUs::
+        For example, to request 1 Nvidia GPUs::
 
-            {"nvidia.com/gpu": "3"}
+            c.KubeSpawner.extra_resource_guarantees = {"nvidia.com/gpu": "1"}
         """
     )
 
@@ -899,7 +899,7 @@ class KubeSpawner(Spawner):
         Default is None and means no additional resources are limited.
         For example, to add a limit of 3 Nvidia GPUs::
 
-            {"nvidia.com/gpu": "3"}
+            c.KubeSpawner.extra_resource_limits = {"nvidia.com/gpu": "3"}
         """
     )
 
@@ -967,14 +967,14 @@ class KubeSpawner(Spawner):
         help="""
         List of profiles to offer for selection by the user.
 
-        Signature is: List(Dict()), where each item is a dictionary that has two keys:
+        Signature is: `List(Dict())`, where each item is a dictionary that has two keys:
 
-        - 'display_name': the human readable display name (should be HTML safe)
-        - 'description': Optional description of this profile displayed to the user.
-        - 'kubespawner_override': a dictionary with overrides to apply to the KubeSpawner
+        - `display_name`: the human readable display name (should be HTML safe)
+        - `description`: Optional description of this profile displayed to the user.
+        - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
           settings. Each value can be either the final value to change or a callable that
           take the `KubeSpawner` instance as parameter and return the final value.
-        - 'default': (optional Bool) True if this is the default selected option
+        - `default`: (optional Bool) True if this is the default selected option
 
         Example::
 
