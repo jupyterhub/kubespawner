@@ -451,7 +451,7 @@ class KubeSpawner(Spawner):
     )
 
     uid = Union(
-        [
+        trait_types=[
             Integer(),
             Callable(),
         ],
@@ -476,7 +476,7 @@ class KubeSpawner(Spawner):
     )
 
     gid = Union(
-        [
+        trait_types=[
             Integer(),
             Callable(),
         ],
@@ -501,7 +501,7 @@ class KubeSpawner(Spawner):
     )
 
     fs_gid = Union(
-        [
+        trait_types=[
             Integer(),
             Callable(),
         ],
@@ -536,7 +536,7 @@ class KubeSpawner(Spawner):
     )
 
     supplemental_gids = Union(
-        [
+        trait_types=[
             List(),
             Callable(),
         ],
@@ -937,7 +937,8 @@ class KubeSpawner(Spawner):
         """
     )
 
-    profile_list = Union([
+    profile_list = Union(
+        trait_types=[
             List(trait=Dict()),
             Callable()
         ],
