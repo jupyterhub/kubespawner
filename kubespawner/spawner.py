@@ -149,7 +149,7 @@ class KubeSpawner(Spawner):
         Disable if these events are not desirable
         or to save some performance cost.
         """
-        )
+    )
 
     namespace = Unicode(
         config=True,
@@ -176,18 +176,20 @@ class KubeSpawner(Spawner):
         return 'default'
 
     ip = Unicode('0.0.0.0',
+        config=True,
         help="""
         The IP address (or hostname) the single-user server should listen on.
 
         We override this from the parent so we can set a more sane default for
         the Kubernetes setup.
         """
-    ).tag(config=True)
+    )
 
     cmd = Command(
         None,
         allow_none=True,
         minlen=0,
+        config=True,
         help="""
         The command used for starting the single-user server.
 
@@ -202,16 +204,17 @@ class KubeSpawner(Spawner):
 
         If set to `None`, Kubernetes will start the `CMD` that is specified in the Docker image being started.
         """
-    ).tag(config=True)
+    )
 
     working_dir = Unicode(
         None,
         allow_none=True,
+        config=True,
         help="""
         The working directory where the Notebook server will be started inside the container.
         Defaults to `None` so the working directory will be the one defined in the Dockerfile.
         """
-    ).tag(config=True)
+    )
 
     service_account = Unicode(
         None,
@@ -274,8 +277,8 @@ class KubeSpawner(Spawner):
 
     hub_connect_ip = Unicode(
         None,
-        config=True,
         allow_none=True,
+        config=True,
         help="""
         IP/DNS hostname to be used by pods to reach out to the hub API.
 
@@ -847,12 +850,13 @@ class KubeSpawner(Spawner):
     scheduler_name = Unicode(
         default_value=None,
         allow_none=True,
+        config=True,
         help="""
         Set the pod's scheduler explicitly by name.
         See the Kubernetes API documentation for additional details.
         - https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podspec-v1-core
         """
-    ).tag(config=True)
+    )
 
     extra_resource_guarantees = Dict(
         {},
@@ -886,7 +890,7 @@ class KubeSpawner(Spawner):
         Set to False to leave stopped pods in the completed state,
         allowing for easier debugging of why they may have stopped.
         """
-        )
+    )
 
     profile_form_template = Unicode(
         """
@@ -1127,7 +1131,7 @@ class KubeSpawner(Spawner):
             legacy_escape_username=legacy_escaped_username,
             servername=safe_servername,
             unescaped_servername=servername
-            )
+        )
 
     def _expand_all(self, src):
         if isinstance(src, list):
