@@ -175,7 +175,8 @@ class KubeSpawner(Spawner):
                 return f.read().strip()
         return 'default'
 
-    ip = Unicode('0.0.0.0',
+    ip = Unicode(
+        '0.0.0.0',
         config=True,
         help="""
         The IP address (or hostname) the single-user server should listen on.
@@ -747,7 +748,7 @@ class KubeSpawner(Spawner):
     )
 
     init_containers = List(
-        None,
+        [],
         config=True,
         help="""
         List of initialization containers belonging to the pod.
@@ -778,7 +779,7 @@ class KubeSpawner(Spawner):
     )
 
     extra_container_config = Dict(
-        None,
+        {},
         config=True,
         help="""
         Extra configuration (e.g. ``envFrom``) for notebook container which is not covered by other attributes.
@@ -806,7 +807,7 @@ class KubeSpawner(Spawner):
     )
 
     extra_pod_config = Dict(
-        None,
+        {},
         config=True,
         help="""
         Extra configuration (e.g. tolerations) for the pod which is not covered by other attributes.
@@ -825,7 +826,7 @@ class KubeSpawner(Spawner):
     )
 
     extra_containers = List(
-        None,
+        [],
         config=True,
         help="""
         List of containers belonging to the pod which besides to the container generated for notebook server.
