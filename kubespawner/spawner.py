@@ -357,7 +357,6 @@ class KubeSpawner(Spawner):
     )
 
     extra_labels = Dict(
-        {},
         config=True,
         help="""
         Extra kubernetes labels to set on the spawned single-user pods.
@@ -375,7 +374,6 @@ class KubeSpawner(Spawner):
     )
 
     extra_annotations = Dict(
-        {},
         config=True,
         help="""
         Extra Kubernetes annotations to set on the spawned single-user pods.
@@ -454,7 +452,6 @@ class KubeSpawner(Spawner):
     )
 
     node_selector = Dict(
-        {},
         config=True,
         help="""
         The dictionary Selector labels used to match the Nodes where Pods will be launched.
@@ -610,7 +607,6 @@ class KubeSpawner(Spawner):
     )
 
     volumes = List(
-        [],
         config=True,
         help="""
         List of Kubernetes Volume specifications that will be mounted in the user pod.
@@ -638,7 +634,6 @@ class KubeSpawner(Spawner):
     )
 
     volume_mounts = List(
-        [],
         config=True,
         help="""
         List of paths on which to mount volumes in the user notebook's pod.
@@ -681,7 +676,6 @@ class KubeSpawner(Spawner):
     )
 
     storage_extra_labels = Dict(
-        {},
         config=True,
         help="""
         Extra kubernetes labels to set on the user PVCs.
@@ -738,7 +732,6 @@ class KubeSpawner(Spawner):
     )
 
     lifecycle_hooks = Dict(
-        {},
         config=True,
         help="""
         Kubernetes lifecycle hooks to set on the spawned single-user pods.
@@ -769,7 +762,6 @@ class KubeSpawner(Spawner):
     )
 
     init_containers = List(
-        [],
         config=True,
         help="""
         List of initialization containers belonging to the pod.
@@ -801,7 +793,6 @@ class KubeSpawner(Spawner):
     )
 
     extra_container_config = Dict(
-        {},
         config=True,
         help="""
         Extra configuration (e.g. ``envFrom``) for notebook container which is not covered by other attributes.
@@ -827,7 +818,6 @@ class KubeSpawner(Spawner):
     )
 
     extra_pod_config = Dict(
-        {},
         config=True,
         help="""
         Extra configuration (e.g. tolerations) for the pod which is not covered by other attributes.
@@ -850,7 +840,6 @@ class KubeSpawner(Spawner):
     )
 
     extra_containers = List(
-        [],
         config=True,
         help="""
         List of containers belonging to the pod which besides to the container generated for notebook server.
@@ -880,7 +869,6 @@ class KubeSpawner(Spawner):
     )
 
     extra_resource_guarantees = Dict(
-        {},
         config=True,
         help="""
         The dictionary used to request arbitrary resources.
@@ -892,7 +880,6 @@ class KubeSpawner(Spawner):
     )
 
     extra_resource_limits = Dict(
-        {},
         config=True,
         help="""
         The dictionary used to limit arbitrary resources.
