@@ -469,7 +469,6 @@ class KubeSpawner(Spawner):
             Integer(),
             Callable(),
         ],
-        allow_none=True,
         config=True,
         help="""
         The UID to run the single-user server containers as.
@@ -494,7 +493,6 @@ class KubeSpawner(Spawner):
             Integer(),
             Callable(),
         ],
-        allow_none=True,
         config=True,
         help="""
         The GID to run the single-user server containers as.
@@ -519,7 +517,6 @@ class KubeSpawner(Spawner):
             Integer(),
             Callable(),
         ],
-        allow_none=True,
         config=True,
         help="""
         The GID of the group that should own any volumes that are created & mounted.
@@ -554,7 +551,6 @@ class KubeSpawner(Spawner):
             List(),
             Callable(),
         ],
-        allow_none=True,
         config=True,
         help="""
         A list of GIDs that should be set as additional supplemental groups to the
@@ -950,7 +946,6 @@ class KubeSpawner(Spawner):
             List(trait=Dict()),
             Callable()
         ],
-        allow_none=True,
         config=True,
         help="""
         List of profiles to offer for selection by the user.
