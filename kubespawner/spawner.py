@@ -458,7 +458,7 @@ class KubeSpawner(Spawner):
 
         Default is None and means it will be launched in any available Node.
 
-        For example to match the Nodes that have a label of `disktye: ssd` use::
+        For example to match the Nodes that have a label of `disktype: ssd` use::
 
            c.KubeSpawner.node_selector = {'disktype': 'ssd'}
         """
