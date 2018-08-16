@@ -1,5 +1,6 @@
 language: python
-sudo: false
+sudo: required
+dist: xenial
 python:
   - nightly
   - 3.6
@@ -8,6 +9,8 @@ python:
 # install dependencies
 install:
   - pip install --pre -e ".[test]"
+  - source ci/minikube.env
+  - ./ci/install-kube.sh
 
 # command to run tests
 script:
