@@ -1,5 +1,19 @@
+from unittest.mock import Mock
+
+from jupyterhub.objects import Hub, Server
+import pytest
 from traitlets.config import Config
+
 from kubespawner import KubeSpawner
+
+
+class MockUser(Mock):
+    name = 'fake'
+    server = Server()
+
+    @property
+    def url(self):
+        return self.server.url
 
 
 def test_deprecated_config():
@@ -28,3 +42,33 @@ def test_deprecated_runtime_access():
     spawner.uid = 20
     assert spawner.uid == 20
     assert spawner.singleuser_uid == 20
+
+
+@pytest.mark.asyncio
+async def test_spawn(kube_ns, kube_client, config):
+    spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=config)
+    # empty spawner isn't running
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+    # start the spawner
+    await spawner.start()
+    # verify the pod exists
+    pods = kube_client.list_namespaced_pod(kube_ns).items
+    pod_names = [p.metadata.name for p in pods]
+    assert "jupyter-%s" % spawner.user.name in pod_names
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = kube_client.list_namespaced_pod(kube_ns).items
+    pod_names = [p.metadata.name for p in pods]
+    assert "jupyter-%s" % spawner.user.name not in pod_names
+
+    # verify exit status
+    status = await spawner.poll()
+    assert isinstance(status, int)
+

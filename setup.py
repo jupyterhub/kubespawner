@@ -24,6 +24,7 @@ setup(
         'test': [
             'pytest>=3.3',
             'pytest-cov',
+            'pytest-asyncio',
         ]
     },
     description='JupyterHub Spawner targeting Kubernetes',
