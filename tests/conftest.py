@@ -15,6 +15,7 @@ def kube_ns():
     """Fixture for the kubernetes namespace"""
     return os.environ.get("KUBESPAWNER_TEST_NAMESPACE") or "kubespawner-test"
 
+
 @pytest.fixture
 def config(kube_ns):
     """Return a traitlets Config object
@@ -28,7 +29,7 @@ def config(kube_ns):
 
 
 @pytest.fixture(scope="session")
-def kube_client(kube_ns):
+def kube_client(request, kube_ns):
     """fixture for the Kubernetes client object.
 
     skips test that require kubernetes if kubernetes cannot be contacted
@@ -44,4 +45,6 @@ def kube_client(kube_ns):
         client.create_namespace(V1Namespace(metadata=dict(name=kube_ns)))
     else:
         print("Using existing namespace %s" % kube_ns)
+    # delete the test namespace when we finish
+    request.addfinalizer(lambda: client.delete_namespace(kube_ns, {}))
     return client
