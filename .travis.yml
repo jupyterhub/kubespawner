@@ -7,11 +7,14 @@ python:
 
 # install dependencies
 install:
-  - pip install --no-cache-dir -e .
+  - pip install --pre -e ".[test]"
 
 # command to run tests
 script:
-  - python setup.py test
+  - pytest --cov kubespawner -v
+after_success:
+  - pip install codecov
+  - codecov
 
 matrix:
   fast_finish: true
