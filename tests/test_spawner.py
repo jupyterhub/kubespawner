@@ -72,3 +72,26 @@ async def test_spawn(kube_ns, kube_client, config):
     status = await spawner.poll()
     assert isinstance(status, int)
 
+
+@pytest.mark.asyncio
+async def test_spawn_progress(kube_ns, kube_client, config):
+    spawner = KubeSpawner(hub=Hub(), user=MockUser(name="progress"), config=config)
+    # empty spawner isn't running
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+    # start the spawner
+    start_future = spawner.start()
+    # check progress events
+    messages = []
+    async for event in spawner.progress():
+        assert 'progress' in event
+        assert isinstance(event['progress'], int)
+        assert 'message' in event
+        assert isinstance(event['message'], str)
+        messages.append(event['message'])
+    assert 'Started container' in '\n'.join(messages)
+
+    await start_future
+    # stop the pod
+    await spawner.stop()
