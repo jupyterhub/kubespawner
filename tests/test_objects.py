@@ -4,7 +4,6 @@ Test functions used to create k8s objects
 from kubespawner.objects import make_pod, make_pvc
 from kubernetes.client import ApiClient
 
-
 api_client = ApiClient()
 
 def test_make_simplest_pod():
@@ -360,7 +359,7 @@ def test_run_privileged_container():
                     "ports": [{
                         "name": "notebook-port",
                         "containerPort": 8888
-                    }],                    
+                    }],
                     "resources": {
                         "limits": {},
                         "requests": {}
@@ -675,7 +674,6 @@ def test_make_pod_with_extra_container_config():
         "apiVersion": "v1"
     }
 
-
 def test_make_pod_with_extra_pod_config():
     """
     Test specification of a pod with initContainers
@@ -687,14 +685,14 @@ def test_make_pod_with_extra_pod_config():
         port=8888,
         image_pull_policy='IfNotPresent',
         extra_pod_config={
-            'tolerations': [
-                {
+            'tolerations': [{
                     'key': 'dedicated',
                     'operator': 'Equal',
                     'value': 'notebook'
-                }
-            ]
-        }
+            }],
+            'dns_policy': 'ClusterFirstWithHostNet',
+            'restartPolicy': 'OnFailure',
+        },
     )) == {
         "metadata": {
             "name": "test",
@@ -725,6 +723,8 @@ def test_make_pod_with_extra_pod_config():
                 }
             ],
             'volumes': [],
+            'dnsPolicy': 'ClusterFirstWithHostNet',
+            'restartPolicy': 'OnFailure',
             'tolerations': [
                 {
                     'key': 'dedicated',
@@ -919,7 +919,7 @@ def test_make_resources_all():
         }
     }
 
-    
+
 def test_make_pod_with_service_account():
     """
     Test specification of the simplest possible pod specification with non-default service account
@@ -959,6 +959,52 @@ def test_make_pod_with_service_account():
             ],
             'volumes': [],
             'serviceAccountName': 'test'
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
+def test_make_pod_with_scheduler_name():
+    """
+    Test specification of the simplest possible pod specification with non-default scheduler name
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        scheduler_name='my-custom-scheduler'
+    )) == {
+        "metadata": {
+            "name": "test",
+            "annotations": {},
+            "labels": {},
+        },
+        "spec": {
+            "securityContext": {},
+            'automountServiceAccountToken': False,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            'volumes': [],
+            'schedulerName': 'my-custom-scheduler',
         },
         "kind": "Pod",
         "apiVersion": "v1"
