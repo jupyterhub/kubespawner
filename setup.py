@@ -20,8 +20,13 @@ setup(
         'async_generator>=1.8',
     ],
     python_requires='>=3.5',
-    setup_requires=['pytest-runner'],
-    tests_require=['pytest'],
+    extras_require={
+        'test': [
+            'pytest>=3.3',
+            'pytest-cov',
+            'pytest-asyncio',
+        ]
+    },
     description='JupyterHub Spawner targeting Kubernetes',
     url='http://github.com/jupyterhub/kubespawner',
     author='Yuvi Panda',
