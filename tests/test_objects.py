@@ -684,14 +684,19 @@ def test_make_pod_with_extra_pod_config():
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
+        tolerations=[{
+            'key': 'wrong_toleration',
+            'operator': 'Equal',
+            'value': 'wrong_value'
+        }],
         extra_pod_config={
-            'tolerations': [{
-                    'key': 'dedicated',
-                    'operator': 'Equal',
-                    'value': 'notebook'
-            }],
             'dns_policy': 'ClusterFirstWithHostNet',
             'restartPolicy': 'OnFailure',
+            'tolerations': [{
+                'key': 'correct_toleration',
+                'operator': 'Equal',
+                'value': 'correct_value'
+            }],
         },
     )) == {
         "metadata": {
@@ -727,9 +732,9 @@ def test_make_pod_with_extra_pod_config():
             'restartPolicy': 'OnFailure',
             'tolerations': [
                 {
-                    'key': 'dedicated',
+                    'key': 'correct_toleration',
                     'operator': 'Equal',
-                    'value': 'notebook'
+                    'value': 'correct_value'
                 }
             ]
         },
@@ -1005,6 +1010,65 @@ def test_make_pod_with_scheduler_name():
             ],
             'volumes': [],
             'schedulerName': 'my-custom-scheduler',
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
+def test_make_pod_with_tolerations():
+    """
+    Test specification of the simplest possible pod specification with non-empty tolerations
+    """
+    tolerations = [
+        {
+            'key': 'hub.jupyter.org/dedicated',
+            'operator': 'Equal',
+            'value': 'user',
+            'effect': 'NoSchedule'
+        },
+        {
+            'key': 'key',
+            'operator': 'Exists',
+            'effect': 'NoSchedule'
+        }
+    ]
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        tolerations=tolerations
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+            "annotations": {}
+        },
+        "spec": {
+            "automountServiceAccountToken": False,
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            'volumes': [],
+            'tolerations': tolerations
         },
         "kind": "Pod",
         "apiVersion": "v1"
