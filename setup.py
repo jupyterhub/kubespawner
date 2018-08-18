@@ -27,10 +27,17 @@ setup(
             'pytest-asyncio',
         ]
     },
-    description='JupyterHub Spawner targeting Kubernetes',
+    description='JupyterHub Spawner for Kubernetes',
     url='http://github.com/jupyterhub/kubespawner',
-    author='Yuvi Panda',
-    author_email='yuvipanda@gmail.com',
+    author='Jupyter Contributors',
+    author_email='jupyter@googlegroups.com',
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
     license='BSD',
     packages=find_packages(),
+    project_urls={
+        'Documentation': 'https://jupyterhub-kubespawner.readthedocs.io',
+        'Source': 'https://github.com/jupyterhub/kubespawner',
+        'Tracker': 'https://github.com/jupyterhub/kubespawner/issues',
+    },
 )
