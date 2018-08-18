@@ -223,6 +223,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     working_dir = Unicode(
         None,
         allow_none=True,
@@ -233,6 +234,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     service_account = Unicode(
         None,
         allow_none=True,
@@ -292,6 +294,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     hub_connect_ip = Unicode(
         None,
         allow_none=True,
@@ -435,6 +438,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     image_pull_secrets = Unicode(
         None,
         allow_none=True,
@@ -649,6 +653,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     storage_capacity = Unicode(
         None,
         config=True,
@@ -688,6 +693,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     storage_class = Unicode(
         None,
         config=True,
@@ -854,6 +860,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     scheduler_name = Unicode(
         None,
         allow_none=True,
@@ -1037,6 +1044,16 @@ class KubeSpawner(Spawner):
         a list. Note that the interface of the spawner class is not deemed stable
         across versions, so using this functionality might cause your JupyterHub
         or kubespawner upgrades to break.
+        """
+    )
+
+    priority_class_name = Unicode(
+        config=True,
+        help="""
+        The priority class that the pods will use.
+
+        See https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption for
+        more information on how pod priority works.
         """
     )
 
@@ -1269,6 +1286,7 @@ class KubeSpawner(Spawner):
             extra_containers=self.extra_containers,
             scheduler_name=self.scheduler_name,
             tolerations=self.tolerations,
+            priority_class_name=self.priority_class_name,
             logger=self.log,
         )
 
