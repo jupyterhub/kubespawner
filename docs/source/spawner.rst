@@ -1,14 +1,7 @@
 ==============
-   Spawners
+   KubeSpawner
 ==============
 
-
-Module: :mod:`kubespawner.spawner`
-----------------------------------
-
-.. automodule:: kubespawner.spawner
-
-:class:`KubeSpawner`
---------------------
+.. automodule:: kubespawner
 
 .. autoconfigurable:: KubeSpawner
