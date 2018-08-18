@@ -50,7 +50,7 @@ and you can use all of them along with this spawner.
 
 ### Kubernetes ###
 
-Everything should work from Kubernetes v1.2+.
+Everything should work from Kubernetes v1.6+.
 
 The [Kube DNS addon](https://kubernetes.io/docs/concepts/services-networking/connect-applications-service/#dns)
 is not strictly required - the spawner uses
