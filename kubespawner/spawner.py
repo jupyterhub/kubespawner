@@ -223,6 +223,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     working_dir = Unicode(
         None,
         allow_none=True,
@@ -233,6 +234,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     service_account = Unicode(
         None,
         allow_none=True,
@@ -292,6 +294,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     hub_connect_ip = Unicode(
         None,
         allow_none=True,
@@ -435,6 +438,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     image_pull_secrets = Unicode(
         None,
         allow_none=True,
@@ -649,6 +653,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     storage_capacity = Unicode(
         None,
         config=True,
@@ -688,6 +693,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     storage_class = Unicode(
         None,
         config=True,
@@ -854,6 +860,7 @@ class KubeSpawner(Spawner):
         """
     )
 
+    # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     scheduler_name = Unicode(
         None,
         allow_none=True,
@@ -1041,8 +1048,6 @@ class KubeSpawner(Spawner):
     )
 
     priority_class_name = Unicode(
-        None,
-        allow_none=True,
         config=True,
         help="""
         The priority class that the pods will use.
