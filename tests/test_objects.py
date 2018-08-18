@@ -1075,6 +1075,371 @@ def test_make_pod_with_tolerations():
     }
 
 
+def test_make_pod_with_node_affinity_preferred():
+    """
+    Test specification of the simplest possible pod specification with non-empty node_affinity_preferred
+    """
+    node_affinity_preferred = [{
+        "weight": 1,
+        "preference": {
+            "matchExpressions": [{
+                "key": "hub.jupyter.org/node-purpose",
+                "operator": "In",
+                "values": ["user"],
+            }],
+        }
+    }]
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        node_affinity_preferred=node_affinity_preferred
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+            "annotations": {}
+        },
+        "spec": {
+            "automountServiceAccountToken": False,
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            "volumes": [],
+            "affinity": {
+                "nodeAffinity": {
+                    "preferredDuringSchedulingIgnoredDuringExecution": node_affinity_preferred
+                }
+            }
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
+def test_make_pod_with_node_affinity_required():
+    """
+    Test specification of the simplest possible pod specification with non-empty node_affinity_required
+    """
+    node_affinity_required = [{
+        "matchExpressions": [{
+            "key": "hub.jupyter.org/node-purpose",
+            "operator": "In",
+            "values": ["user"],
+        }]
+    }]
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        node_affinity_required=node_affinity_required
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+            "annotations": {}
+        },
+        "spec": {
+            "automountServiceAccountToken": False,
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            "volumes": [],
+            "affinity": {
+                "nodeAffinity": {
+                    "requiredDuringSchedulingIgnoredDuringExecution": {
+                        "nodeSelectorTerms": node_affinity_required
+                    }
+                }
+            }
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
+def test_make_pod_with_pod_affinity_preferred():
+    """
+    Test specification of the simplest possible pod specification with non-empty pod_affinity_preferred
+    """
+    pod_affinity_preferred = [{
+        "weight": 100,
+        "podAffinityTerm": {
+            "labelSelector": {
+                "matchExpressions": [{
+                    "key": "hub.jupyter.org/pod-kind",
+                    "operator": "In",
+                    "values": ["user"],
+                }]
+            },
+            "topologyKey": "kubernetes.io/hostname"
+        }
+    }]
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        pod_affinity_preferred=pod_affinity_preferred
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+            "annotations": {}
+        },
+        "spec": {
+            "automountServiceAccountToken": False,
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            "volumes": [],
+            "affinity": {
+                "podAffinity": {
+                    "preferredDuringSchedulingIgnoredDuringExecution": pod_affinity_preferred
+                }
+            }
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
+def test_make_pod_with_pod_affinity_required():
+    """
+    Test specification of the simplest possible pod specification with non-empty pod_affinity_required
+    """
+    pod_affinity_required = [{
+        "labelSelector": {
+            "matchExpressions": [{
+                "key": "security",
+                "operator": "In",
+                "values": ["S1"],
+            }]
+        },
+        "topologyKey": "failure-domain.beta.kubernetes.io/zone"
+    }]
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        pod_affinity_required=pod_affinity_required
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+            "annotations": {}
+        },
+        "spec": {
+            "automountServiceAccountToken": False,
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            "volumes": [],
+            "affinity": {
+                "podAffinity": {
+                    "requiredDuringSchedulingIgnoredDuringExecution": pod_affinity_required
+                }
+            }
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
+def test_make_pod_with_pod_anti_affinity_preferred():
+    """
+    Test specification of the simplest possible pod specification with non-empty pod_anti_affinity_preferred
+    """
+    pod_anti_affinity_preferred = [{
+        "weight": 100,
+        "podAffinityTerm": {
+            "labelSelector": {
+                "matchExpressions": [{
+                    "key": "hub.jupyter.org/pod-kind",
+                    "operator": "In",
+                    "values": ["user"],
+                }]
+            },
+            "topologyKey": "kubernetes.io/hostname"
+        }
+    }]
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        pod_anti_affinity_preferred=pod_anti_affinity_preferred
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+            "annotations": {}
+        },
+        "spec": {
+            "automountServiceAccountToken": False,
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            "volumes": [],
+            "affinity": {
+                "podAntiAffinity": {
+                    "preferredDuringSchedulingIgnoredDuringExecution": pod_anti_affinity_preferred
+                }
+            }
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
+def test_make_pod_with_pod_anti_affinity_required():
+    """
+    Test specification of the simplest possible pod specification with non-empty pod_anti_affinity_required
+    """
+    pod_anti_affinity_required = [{
+        "labelSelector": {
+            "matchExpressions": [{
+                "key": "security",
+                "operator": "In",
+                "values": ["S1"],
+            }]
+        },
+        "topologyKey": "failure-domain.beta.kubernetes.io/zone"
+    }]
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image_spec='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        pod_anti_affinity_required=pod_anti_affinity_required
+    )) == {
+        "metadata": {
+            "name": "test",
+            "labels": {},
+            "annotations": {}
+        },
+        "spec": {
+            "automountServiceAccountToken": False,
+            "securityContext": {},
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            "volumes": [],
+            "affinity": {
+                "podAntiAffinity": {
+                    "requiredDuringSchedulingIgnoredDuringExecution": pod_anti_affinity_required
+                }
+            }
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
 def test_make_pod_with_priority_class_name():
     """
     Test specification of the simplest possible pod specification with non-default priorityClassName set

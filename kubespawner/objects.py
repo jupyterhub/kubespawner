@@ -21,6 +21,9 @@ from kubernetes.client.models import (
     V1beta1HTTPIngressRuleValue, V1beta1HTTPIngressPath,
     V1beta1IngressBackend,
     V1Toleration,
+    V1Affinity,
+    V1NodeAffinity, V1NodeSelector, V1NodeSelectorTerm, V1PreferredSchedulingTerm, V1NodeSelectorRequirement,
+    V1PodAffinity, V1PodAntiAffinity, V1WeightedPodAffinityTerm, V1PodAffinityTerm,
 )
 
 def make_pod(
@@ -56,6 +59,12 @@ def make_pod(
     extra_containers=None,
     scheduler_name=None,
     tolerations=None,
+    node_affinity_preferred=None,
+    node_affinity_required=None,
+    pod_affinity_preferred=None,
+    pod_affinity_required=None,
+    pod_anti_affinity_preferred=None,
+    pod_anti_affinity_required=None,
     priority_class_name=None,
     logger=None,
 ):
@@ -156,6 +165,54 @@ def make_pod(
 
         Pass this field an array of "Toleration" objects.*
         * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#nodeselectorterm-v1-core
+    node_affinity_preferred:
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "PreferredSchedulingTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#preferredschedulingterm-v1-core
+    node_affinity_required:
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "NodeSelectorTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#nodeselectorterm-v1-core
+    pod_affinity_preferred:
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "WeightedPodAffinityTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#weightedpodaffinityterm-v1-core
+    pod_affinity_required:
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "PodAffinityTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#podaffinityterm-v1-core
+    pod_anti_affinity_preferred:
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "WeightedPodAffinityTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#weightedpodaffinityterm-v1-core
+    pod_anti_affinity_required:
+        Affinities describe where pods prefer or require to be scheduled, they
+        may prefer or require a node to have a certain label or be in proximity
+        / remoteness to another pod. To learn more visit
+        https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+
+        Pass this field an array of "PodAffinityTerm" objects.*
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#podaffinityterm-v1-core
     priority_class_name:
         The name of the PriorityClass to be assigned the pod. This feature is Beta available in K8s 1.11.
     """
@@ -260,8 +317,63 @@ def make_pod(
     if scheduler_name:
         pod.spec.scheduler_name = scheduler_name
 
+    node_affinity = None
+    if node_affinity_preferred or node_affinity_required:
+        node_selector = None
+        if node_affinity_required:
+            node_selector = V1NodeSelector(
+                node_selector_terms=[get_k8s_model(V1NodeSelectorTerm, obj) for obj in node_affinity_required],
+            )
 
+        preferred_scheduling_terms = None
+        if node_affinity_preferred:
+            preferred_scheduling_terms = [get_k8s_model(V1PreferredSchedulingTerm, obj) for obj in node_affinity_preferred]
 
+        node_affinity = V1NodeAffinity(
+            preferred_during_scheduling_ignored_during_execution=preferred_scheduling_terms,
+            required_during_scheduling_ignored_during_execution=node_selector,
+        )
+
+    pod_affinity = None
+    if pod_affinity_preferred or pod_affinity_required:
+        weighted_pod_affinity_terms = None
+        if pod_affinity_preferred:
+            weighted_pod_affinity_terms = [get_k8s_model(V1WeightedPodAffinityTerm, obj) for obj in pod_affinity_preferred]
+
+        pod_affinity_terms = None
+        if pod_affinity_required:
+            pod_affinity_terms = [get_k8s_model(V1PodAffinityTerm, obj) for obj in pod_affinity_required]
+
+        pod_affinity = V1PodAffinity(
+            preferred_during_scheduling_ignored_during_execution=weighted_pod_affinity_terms,
+            required_during_scheduling_ignored_during_execution=pod_affinity_terms,
+        )
+
+    pod_anti_affinity = None
+    if pod_anti_affinity_preferred or pod_anti_affinity_required:
+        weighted_pod_affinity_terms = None
+        if pod_anti_affinity_preferred:
+            weighted_pod_affinity_terms = [get_k8s_model(V1WeightedPodAffinityTerm, obj) for obj in pod_anti_affinity_preferred]
+
+        pod_affinity_terms = None
+        if pod_anti_affinity_required:
+            pod_affinity_terms = [get_k8s_model(V1PodAffinityTerm, obj) for obj in pod_anti_affinity_required]
+
+        pod_anti_affinity = V1PodAffinity(
+            preferred_during_scheduling_ignored_during_execution=weighted_pod_affinity_terms,
+            required_during_scheduling_ignored_during_execution=pod_affinity_terms,
+        )
+
+    affinity = None
+    if (node_affinity or pod_affinity or pod_anti_affinity):
+        affinity = V1Affinity(
+            node_affinity=node_affinity,
+            pod_affinity=pod_affinity,
+            pod_anti_affinity=pod_anti_affinity,
+        )
+
+    if affinity:
+        pod.spec.affinity = affinity
 
     if priority_class_name:
         pod.spec.priority_class_name = priority_class_name
