@@ -368,8 +368,8 @@ class KubeSpawner(Spawner):
         kubernetes pods. The keys and values must both be strings that match the kubernetes
         label key / value constraints.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`_ for more
-        info on what labels are and why you might want to use them!
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
+        for more info on what labels are and why you might want to use them!
 
         `{username}` and `{userid}` are expanded to the escaped, dns-label safe
         username & integer user id respectively, wherever they are used.
@@ -384,8 +384,8 @@ class KubeSpawner(Spawner):
         The keys and values specified here are added as annotations on the spawned single-user
         kubernetes pods. The keys and values must both be strings.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>`_ for more
-        info on what annotations are and why you might want to use them!
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>`__
+        for more info on what annotations are and why you might want to use them!
 
         `{username}` and `{userid}` are expanded to the escaped, dns-label safe
         username & integer user id respectively, wherever they are used.
@@ -429,7 +429,8 @@ class KubeSpawner(Spawner):
 
         Defaults to `IfNotPresent` which causes the Kubelet to NOT pull the image
         specified in image_spec if it already exists, except if the tag
-        is `:latest`. For more information on image pull policy, refer to `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/>`_.
+        is `:latest`. For more information on image pull policy,
+        refer to `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/>`__.
         
 
         This configuration is primarily used in development if you are
@@ -449,7 +450,7 @@ class KubeSpawner(Spawner):
         Set this to the name of a Kubernetes secret containing the docker configuration
         required to pull the image specified in `image_spec`.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod>`__
         for more information on when and why this might need to be set, and what
         it should be set to.
         """
@@ -624,9 +625,9 @@ class KubeSpawner(Spawner):
             be an object specifying the various options available for that kind of
             volume.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/volumes>`_ for more information on the
-        various kinds of volumes available and their options. Your kubernetes cluster
-        must already be configured to support the volume types you want to use.
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/volumes>`__
+        for more information on the various kinds of volumes available and their options.
+        Your kubernetes cluster must already be configured to support the volume types you want to use.
 
         `{username}` and `{userid}` are expanded to the escaped, dns-label safe
         username & integer user id respectively, wherever they are used.
@@ -645,8 +646,8 @@ class KubeSpawner(Spawner):
            - `mountPath` The path on the container in which we want to mount the volume.
            - `name` The name of the volume we want to mount, as specified in the `volumes` config.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/volumes>`_ for more information on how
-        the `volumeMount` item works.
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/volumes>`__
+        for more information on how the `volumeMount` item works.
 
         `{username}` and `{userid}` are expanded to the escaped, dns-label safe
         username & integer user id respectively, wherever they are used.
@@ -666,7 +667,7 @@ class KubeSpawner(Spawner):
 
         This will be added to the `resources: requests: storage:` in the k8s pod spec.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims>`__
         for more information on how storage works.
 
         Quantities can be represented externally as unadorned integers, or as fixed-point
@@ -685,7 +686,7 @@ class KubeSpawner(Spawner):
         created by kubespawner for the user. Note that these are only set
         when the PVC is created, not later when this setting is updated.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
         for more info on what labels are and why you might want to use them!
 
         `{username}` and `{userid}` are expanded to the escaped, dns-label safe
@@ -710,7 +711,7 @@ class KubeSpawner(Spawner):
         b/c it has a storage class, k8s will dynamically spawn a pv for the pvc to bind to
         and a machine in the cluster for the pv to bind to.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/storage-classes/>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/storage-classes/>`__
         for more information on how StorageClasses work.
 
         """
@@ -728,7 +729,7 @@ class KubeSpawner(Spawner):
             - `ReadOnlyMany` – the volume can be mounted read-only by many nodes
             - `ReadWriteMany` – the volume can be mounted as read-write by many nodes
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes>`__
         for more information on how access modes work.
         """
     )
@@ -742,7 +743,7 @@ class KubeSpawner(Spawner):
         The values are handler of hook which executes by Kubernetes management system when hook is called.
 
         Below is an sample copied from
-        `the Kubernetes documentation <https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/>`_::
+        `the Kubernetes documentation <https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/>`__::
 
 
             c.KubeSpawner.lifecycle_hooks = {
@@ -758,7 +759,7 @@ class KubeSpawner(Spawner):
                 }
             }
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/>`__
         for more info on what lifecycle hooks are and why you might want to use them!
         """
     )
@@ -787,7 +788,7 @@ class KubeSpawner(Spawner):
             }]
 
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/workloads/pods/init-containers/>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/workloads/pods/init-containers/>`__
         for more info on what init containers are and why you might want to use them!
 
         To user this feature, Kubernetes version must greater than 1.6.
@@ -866,7 +867,7 @@ class KubeSpawner(Spawner):
         allow_none=True,
         config=True,
         help="""
-        Set the pod's scheduler explicitly by name. See `the Kubernetes documentation <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podspec-v1-core>`_
+        Set the pod's scheduler explicitly by name. See `the Kubernetes documentation <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podspec-v1-core>`__
         for more information.
         """
     )
@@ -878,10 +879,10 @@ class KubeSpawner(Spawner):
         on a node with the corresponding taints. See the official Kubernetes documentation for additional details
         https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
 
-        Pass this field an array of "Toleration" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#nodeselectorterm-v1-core
+        Pass this field an array of `"Toleration" objects
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#nodeselectorterm-v1-core>`__
 
-        Example:
+        Example::
 
             [
                 {

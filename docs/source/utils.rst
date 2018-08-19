@@ -1,9 +1,6 @@
-=====
-Utils
-=====
-
-Module: :mod:`kubespawner.utils`
---------------------------------
+=========
+Utilities
+=========
 
 .. automodule:: kubespawner.utils
 

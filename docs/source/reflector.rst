@@ -1,9 +1,6 @@
-=========
-Reflector
-=========
-
-Module: :mod:`kubespawner.reflector`
-------------------------------------
+==========
+Reflectors
+==========
 
 .. automodule:: kubespawner.reflector
 

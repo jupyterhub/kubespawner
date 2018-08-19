@@ -1,10 +1,10 @@
-# kubespawner (jupyterhub-kubernetes-spawner) #
+# Overview
 
 The *kubespawner* (also known as JupyterHub Kubernetes Spawner) enables JupyterHub to spawn
 single-user notebook servers on a [Kubernetes](https://kubernetes.io/)
 cluster.
 
-## Features ##
+## Features
 
 Kubernetes is an open-source system for automating deployment, scaling, and
 management of containerized applications. If you want to run a JupyterHub
@@ -46,11 +46,11 @@ simultaneous users), Kubernetes is a wonderful way to do it. Features include:
 In general, Kubernetes provides a ton of well thought out, useful features -
 and you can use all of them along with this spawner.
 
-## Requirements ##
+## Requirements
 
-### Kubernetes ###
+### Kubernetes
 
-Everything should work from Kubernetes v1.2+.
+Everything should work from Kubernetes v1.6+.
 
 The [Kube DNS addon](https://kubernetes.io/docs/concepts/services-networking/connect-applications-service/#dns)
 is not strictly required - the spawner uses
