@@ -37,6 +37,7 @@ def test_make_simplest_pod():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
+                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
@@ -691,7 +692,7 @@ def test_make_pod_with_extra_pod_config():
         }],
         extra_pod_config={
             'dns_policy': 'ClusterFirstWithHostNet',
-            'restartPolicy': 'OnFailure',
+            'restartPolicy': 'Always',
             'tolerations': [{
                 'key': 'correct_toleration',
                 'operator': 'Equal',
@@ -729,7 +730,7 @@ def test_make_pod_with_extra_pod_config():
             ],
             'volumes': [],
             'dnsPolicy': 'ClusterFirstWithHostNet',
-            'restartPolicy': 'OnFailure',
+            'restartPolicy': 'Always',
             'tolerations': [
                 {
                     'key': 'correct_toleration',
