@@ -108,6 +108,18 @@ class NamespacedResourceReflector(LoggingConfigurable):
         """
     )
 
+    restart_seconds = Int(
+        30,
+        config=True,
+        help="""
+        Maximum time before restarting a watch.
+
+        The watch will be restarted at least this often,
+        even if events are still arriving.
+        Avoids trusting kubernetes watch to yield all events,
+        which seems to not be a safe assumption.
+        """)
+
     on_failure = Any(help="""Function to be called when the reflector gives up.""")
 
     def __init__(self, *args, **kwargs):
@@ -188,6 +200,7 @@ class NamespacedResourceReflector(LoggingConfigurable):
         )
         while True:
             self.log.debug("Connecting %s watcher", self.kind)
+            start = time.monotonic()
             w = watch.Watch()
             try:
                 resource_version = self._list_and_update()
@@ -222,6 +235,13 @@ class NamespacedResourceReflector(LoggingConfigurable):
                         self.resources[resource.metadata.name] = resource
                     if self._stop_event.is_set():
                         self.log.info("%s watcher stopped", self.kind)
+                        break
+                    watch_duration = time.monotonic() - start
+                    if watch_duration >= self.restart_seconds:
+                        self.log.debug(
+                            "Restarting %s watcher after %i seconds",
+                            self.kind, watch_duration,
+                        )
                         break
             except ReadTimeoutError:
                 # network read time out, just continue and restart the watch
