@@ -1524,6 +1524,7 @@ class KubeSpawner(Spawner):
         pod_id = None
         first_run = True
         start_future = self._start_future
+        progress = 0
         while first_run or not start_future.done():
             # run at least once, so we get events that are already waiting,
             # even if we've stopped waiting for new events
@@ -1538,8 +1539,14 @@ class KubeSpawner(Spawner):
                 pod_id = events[-1].involved_object.uid
                 for i in range(next_event, len_events):
                     event = events[i]
+                    # move the progress bar.
+                    # Since we don't know how many events we will get,
+                    # asymptotically approach 90% completion with each event.
+                    # each event gets 33% closer to 90%:
+                    # 30 50 63 72 78 82 84 86 87 88 88 89
+                    progress += (90 - progress) / 3
                     await yield_({
-                        'progress': 50,
+                        'progress': int(progress),
                         'message':  "%s [%s] %s" % (
                             event.last_timestamp,
                             event.type,
