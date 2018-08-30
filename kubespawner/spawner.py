@@ -138,6 +138,7 @@ class KubeSpawner(Spawner):
         # runs during both test and normal execution
         self.pod_name = self._expand_user_properties(self.pod_name_template)
         self.pvc_name = self._expand_user_properties(self.pvc_name_template)
+        self.working_dir = self._expand_user_properties(self.working_dir)
         if self.port == 0:
             # Our default port is 8888
             self.port = 8888
@@ -231,6 +232,9 @@ class KubeSpawner(Spawner):
         help="""
         The working directory where the Notebook server will be started inside the container.
         Defaults to `None` so the working directory will be the one defined in the Dockerfile.
+
+        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
+        username & integer user id respectively.
         """
     )
 
@@ -402,7 +406,7 @@ class KubeSpawner(Spawner):
         specified in image_spec if it already exists, except if the tag
         is `:latest`. For more information on image pull policy,
         refer to `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/>`__.
-        
+
 
         This configuration is primarily used in development if you are
         actively changing the `image_spec` and would like to pull the image
