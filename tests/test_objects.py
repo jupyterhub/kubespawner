@@ -36,7 +36,6 @@ def test_make_simplest_pod():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'restartPolicy': 'OnFailure',
                     'volumeMounts': [],
                     "resources": {
                         "limits": {},
@@ -44,6 +43,7 @@ def test_make_simplest_pod():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -82,13 +82,13 @@ def test_make_labeled_pod():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -127,13 +127,13 @@ def test_make_annotated_pod():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -175,13 +175,13 @@ def test_make_pod_with_image_pull_secrets():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -225,13 +225,13 @@ def test_set_pod_uid_and_gid():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -274,13 +274,13 @@ def test_set_pod_uid_fs_gid():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -323,13 +323,13 @@ def test_set_pod_supplemental_gids():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -367,7 +367,6 @@ def test_run_privileged_container():
                         "name": "notebook-port",
                         "containerPort": 8888
                     }],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
@@ -378,6 +377,7 @@ def test_run_privileged_container():
                     'volumeMounts': [],
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -423,7 +423,6 @@ def test_make_pod_resources_all():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {
                             "cpu": 2,
@@ -436,6 +435,7 @@ def test_make_pod_resources_all():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -477,7 +477,6 @@ def test_make_pod_with_env():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {
                         },
@@ -486,6 +485,7 @@ def test_make_pod_with_env():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -530,7 +530,6 @@ def test_make_pod_with_lifecycle():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {
                         },
@@ -546,6 +545,7 @@ def test_make_pod_with_lifecycle():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -596,7 +596,6 @@ def test_make_pod_with_init_containers():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {
                         },
@@ -618,6 +617,7 @@ def test_make_pod_with_init_containers():
                     "command": ["sh", "-c", "until nslookup mydb; do echo waiting for mydb; sleep 2; done;"]
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -665,7 +665,6 @@ def test_make_pod_with_extra_container_config():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {
                         },
@@ -681,6 +680,7 @@ def test_make_pod_with_extra_container_config():
                     ]
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -732,7 +732,6 @@ def test_make_pod_with_extra_pod_config():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {
                         },
@@ -795,7 +794,6 @@ def test_make_pod_with_extra_containers():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {
                         },
@@ -809,6 +807,7 @@ def test_make_pod_with_extra_containers():
                     'command': ['/usr/local/bin/supercronic', '/etc/crontab']
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -856,7 +855,6 @@ def test_make_pod_with_extra_resources():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {
                             "cpu": 2,
@@ -872,6 +870,7 @@ def test_make_pod_with_extra_resources():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -972,13 +971,13 @@ def test_make_pod_with_service_account():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
             'serviceAccountName': 'test'
         },
@@ -1019,13 +1018,13 @@ def test_make_pod_with_scheduler_name():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
             'schedulerName': 'my-custom-scheduler',
         },
@@ -1079,13 +1078,13 @@ def test_make_pod_with_tolerations():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
             'tolerations': tolerations
         },
@@ -1136,13 +1135,13 @@ def test_make_pod_with_node_affinity_preferred():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
                 "nodeAffinity": {
@@ -1194,13 +1193,13 @@ def test_make_pod_with_node_affinity_required():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
                 "nodeAffinity": {
@@ -1260,13 +1259,13 @@ def test_make_pod_with_pod_affinity_preferred():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
                 "podAffinity": {
@@ -1321,13 +1320,13 @@ def test_make_pod_with_pod_affinity_required():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
                 "podAffinity": {
@@ -1385,13 +1384,13 @@ def test_make_pod_with_pod_anti_affinity_preferred():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
                 "podAntiAffinity": {
@@ -1446,13 +1445,13 @@ def test_make_pod_with_pod_anti_affinity_required():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
                 "podAntiAffinity": {
@@ -1497,13 +1496,13 @@ def test_make_pod_with_priority_class_name():
                         "containerPort": 8888
                     }],
                     'volumeMounts': [],
-                    'restartPolicy': 'OnFailure',
                     "resources": {
                         "limits": {},
                         "requests": {}
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
             'priorityClassName': 'my-custom-priority-class',
         },
