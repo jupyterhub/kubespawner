@@ -1324,6 +1324,9 @@ class KubeSpawner(Spawner):
         else:
             real_cmd = None
 
+        # JupyterHub user options via REST
+        self.image_spec = self.user_options.get("image_spec", self.image_spec)
+
         labels = self._build_pod_labels(self._expand_all(self.extra_labels))
         annotations = self._build_common_annotations(self._expand_all(self.extra_annotations))
 
