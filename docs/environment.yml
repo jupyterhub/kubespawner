@@ -2,10 +2,11 @@ name: kubespawner
 channels:
   - conda-forge
 dependencies:
-- python=3.5
-- sphinx>=1.7
-- sphinx_rtd_theme
+  - python=3.5
+  - sphinx>=1.7
+  - sphinx_rtd_theme
+  - traitlets>=4.1
 - pip:
-    - recommonmark==0.4.0
-    - pyyaml
-    - sphinx-copybutton
+  - recommonmark==0.4.0
+  - pyyaml
+  - sphinx-copybutton
