@@ -14,7 +14,7 @@ setup(
     install_requires=[
         'jupyterhub>=0.8',
         'pyYAML',
-        'kubernetes==6.*',
+        'kubernetes>=7',
         'escapism',
         'jinja2',
         'async_generator>=1.8',
