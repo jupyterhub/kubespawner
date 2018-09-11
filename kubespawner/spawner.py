@@ -9,14 +9,24 @@ from functools import partial  # noqa
 import os
 import sys
 import string
-from urllib.parse import urlparse, urlunparse
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
+import warnings
 
 from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
-from traitlets import Any, Unicode, List, Integer, Union, Dict, Bool, Any, validate, default
+from traitlets import (
+    Bool,
+    Dict,
+    Integer,
+    List,
+    Unicode,
+    Union,
+    default,
+    observe,
+    validate,
+)
 from jupyterhub.spawner import Spawner
 from jupyterhub.utils import exponential_backoff
 from jupyterhub.traitlets import Command
@@ -124,16 +134,6 @@ class KubeSpawner(Spawner):
                 self._start_watching_events()
 
             self.api = shared_client('CoreV1Api')
-
-            if self.hub_connect_ip:
-                scheme, netloc, path, params, query, fragment = urlparse(self.hub.api_url)
-                netloc = '{ip}:{port}'.format(
-                    ip=self.hub_connect_ip,
-                    port=self.hub_connect_port,
-                )
-                self.accessible_hub_api_url = urlunparse((scheme, netloc, path, params, query, fragment))
-            else:
-                self.accessible_hub_api_url = self.hub.api_url
 
         # runs during both test and normal execution
         self.pod_name = self._expand_user_properties(self.pod_name_template)
@@ -296,53 +296,24 @@ class KubeSpawner(Spawner):
 
     # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     hub_connect_ip = Unicode(
-        None,
         allow_none=True,
         config=True,
-        help="""
-        IP/DNS hostname to be used by pods to reach out to the hub API.
-
-        Defaults to `None`, in which case the `hub_ip` config is used.
-
-        In kubernetes contexts, this is often not the same as `hub_ip`,
-        since the hub runs in a pod which is fronted by a service. This IP
-        should be something that pods can access to reach the hub process.
-        This can also be through the proxy - API access is authenticated
-        with a token that is passed only to the hub, so security is fine.
-
-        Usually set to the service IP / DNS name of the service that fronts
-        the hub pod (deployment/replicationcontroller/replicaset)
-
-        Used together with `hub_connect_port` configuration.
-        """
+        help="""DEPRECATED. Use c.JupyterHub.hub_connect_ip"""
     )
 
     hub_connect_port = Integer(
         config=True,
-        help="""
-        Port to use by pods to reach out to the hub API.
-
-        Defaults to be the same as `hub_port`.
-
-        In kubernetes contexts, this is often not the same as `hub_port`,
-        since the hub runs in a pod which is fronted by a service. This
-        allows easy port mapping, and some systems take advantage of it.
-
-        This should be set to the `port` attribute of a service that is
-        fronting the hub pod.
-        """
+        help="""DEPRECATED. Use c.JupyterHub.hub_connect_url"""
     )
 
-    @default('hub_connect_port')
-    def _hub_connect_port_default(self):
-        """
-        Set default port on which pods connect to hub to be the hub port
-
-        The hub needs to be accessible to the pods at this port. We default
-        to the port the hub is listening on. This would be overriden in case
-        some amount of port mapping is happening.
-        """
-        return self.hub.server.port
+    @observe('hub_connect_ip', 'hub_connect_port')
+    def _deprecated_changed(self, change):
+        warnings.warn("""
+            KubeSpawner.{0} is deprecated with JupyterHub >= 0.8.
+            Use JupyterHub.{0}
+            """.format(change.name),
+            DeprecationWarning)
+        setattr(self.hub, change.name, change.value)
 
     common_labels = Dict(
         {
@@ -1798,21 +1769,6 @@ class KubeSpawner(Spawner):
     @default('env_keep')
     def _env_keep_default(self):
         return []
-
-    def get_args(self):
-        args = super(KubeSpawner, self).get_args()
-
-        # HACK: we wanna replace --hub-api-url=self.hub.api_url with
-        # self.accessible_hub_api_url. This is required in situations where
-        # the IP the hub is listening on (such as 0.0.0.0) is not the IP where
-        # it can be reached by the pods (such as the service IP used for the hub!)
-        # FIXME: Make this better?
-        to_replace = '--hub-api-url="%s"' % (self.hub.api_url)
-        for i in range(len(args)):
-            if args[i] == to_replace:
-                args[i] = '--hub-api-url="%s"' % (self.accessible_hub_api_url)
-                break
-        return args
 
     def _render_options_form(self, profile_list):
         self._profile_list = profile_list
