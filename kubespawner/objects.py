@@ -228,7 +228,7 @@ def make_pod(
     )
 
     pod.spec = V1PodSpec(containers=[])
-    pod.spec.restartPolicy = 'Never'
+    pod.spec.restart_policy = 'OnFailure'
 
     security_context = V1PodSecurityContext()
     if fs_gid is not None:

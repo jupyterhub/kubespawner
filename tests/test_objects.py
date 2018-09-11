@@ -43,6 +43,7 @@ def test_make_simplest_pod():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -87,6 +88,7 @@ def test_make_labeled_pod():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -131,6 +133,7 @@ def test_make_annotated_pod():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -178,6 +181,7 @@ def test_make_pod_with_image_pull_secrets():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -227,6 +231,7 @@ def test_set_pod_uid_and_gid():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -275,6 +280,7 @@ def test_set_pod_uid_fs_gid():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -323,6 +329,7 @@ def test_set_pod_supplemental_gids():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -370,6 +377,7 @@ def test_run_privileged_container():
                     'volumeMounts': [],
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -427,6 +435,7 @@ def test_make_pod_resources_all():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -476,6 +485,7 @@ def test_make_pod_with_env():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -535,6 +545,7 @@ def test_make_pod_with_lifecycle():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -606,6 +617,7 @@ def test_make_pod_with_init_containers():
                     "command": ["sh", "-c", "until nslookup mydb; do echo waiting for mydb; sleep 2; done;"]
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -668,6 +680,7 @@ def test_make_pod_with_extra_container_config():
                     ]
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -691,7 +704,7 @@ def test_make_pod_with_extra_pod_config():
         }],
         extra_pod_config={
             'dns_policy': 'ClusterFirstWithHostNet',
-            'restartPolicy': 'OnFailure',
+            'restartPolicy': 'Always',
             'tolerations': [{
                 'key': 'correct_toleration',
                 'operator': 'Equal',
@@ -729,7 +742,7 @@ def test_make_pod_with_extra_pod_config():
             ],
             'volumes': [],
             'dnsPolicy': 'ClusterFirstWithHostNet',
-            'restartPolicy': 'OnFailure',
+            'restartPolicy': 'Always',
             'tolerations': [
                 {
                     'key': 'correct_toleration',
@@ -794,6 +807,7 @@ def test_make_pod_with_extra_containers():
                     'command': ['/usr/local/bin/supercronic', '/etc/crontab']
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -856,6 +870,7 @@ def test_make_pod_with_extra_resources():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
         },
         "kind": "Pod",
@@ -962,6 +977,7 @@ def test_make_pod_with_service_account():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
             'serviceAccountName': 'test'
         },
@@ -1008,6 +1024,7 @@ def test_make_pod_with_scheduler_name():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
             'schedulerName': 'my-custom-scheduler',
         },
@@ -1067,6 +1084,7 @@ def test_make_pod_with_tolerations():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
             'tolerations': tolerations
         },
@@ -1123,6 +1141,7 @@ def test_make_pod_with_node_affinity_preferred():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
                 "nodeAffinity": {
@@ -1180,6 +1199,7 @@ def test_make_pod_with_node_affinity_required():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
                 "nodeAffinity": {
@@ -1245,6 +1265,7 @@ def test_make_pod_with_pod_affinity_preferred():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
                 "podAffinity": {
@@ -1305,6 +1326,7 @@ def test_make_pod_with_pod_affinity_required():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
                 "podAffinity": {
@@ -1368,6 +1390,7 @@ def test_make_pod_with_pod_anti_affinity_preferred():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
                 "podAntiAffinity": {
@@ -1428,6 +1451,7 @@ def test_make_pod_with_pod_anti_affinity_required():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
                 "podAntiAffinity": {
@@ -1478,6 +1502,7 @@ def test_make_pod_with_priority_class_name():
                     }
                 }
             ],
+            'restartPolicy': 'OnFailure',
             'volumes': [],
             'priorityClassName': 'my-custom-priority-class',
         },
