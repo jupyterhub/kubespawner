@@ -138,7 +138,8 @@ class KubeSpawner(Spawner):
         # runs during both test and normal execution
         self.pod_name = self._expand_user_properties(self.pod_name_template)
         self.pvc_name = self._expand_user_properties(self.pvc_name_template)
-        self.working_dir = self._expand_user_properties(self.working_dir)
+        if self.working_dir:
+            self.working_dir = self._expand_user_properties(self.working_dir)
         if self.port == 0:
             # Our default port is 8888
             self.port = 8888
