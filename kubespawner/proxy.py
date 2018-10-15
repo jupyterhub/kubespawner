@@ -58,6 +58,8 @@ class EndpointsReflector(NamespacedResourceReflector):
         return self.resources
 
 class KubeIngressProxy(Proxy):
+    should_start = False
+
     namespace = Unicode(
         config=True,
         help="""
