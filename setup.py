@@ -9,8 +9,8 @@ if v[:2] < (3, 5):
     sys.exit(1)
 
 setup(
-    name='jupyterhub-kubespawner',
-    version='0.10.0.dev',
+    name='v3io-jupyterhub-kubespawner',
+    version='0.10.1',
     install_requires=[
         'jupyterhub>=0.8',
         'pyYAML',
@@ -27,8 +27,8 @@ setup(
             'pytest-asyncio',
         ]
     },
-    description='JupyterHub Spawner for Kubernetes',
-    url='http://github.com/jupyterhub/kubespawner',
+    description='JupyterHub Spawner for Kubernetes with V3IO',
+    url='http://github.com/v3io/kubespawner',
     author='Jupyter Contributors',
     author_email='jupyter@googlegroups.com',
     long_description=open("README.md").read(),
