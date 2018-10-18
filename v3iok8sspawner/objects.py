@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 import escapism
 import re
 import string
-from kubespawner.utils import get_k8s_model, update_k8s_model
+from v3iok8sspawner.utils import get_k8s_model, update_k8s_model
 
 from kubernetes.client.models import (
     V1Pod, V1PodSpec, V1PodSecurityContext,
