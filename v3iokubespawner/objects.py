@@ -12,7 +12,7 @@ from kubernetes.client.models import (
     V1Pod, V1PodSpec, V1PodSecurityContext,
     V1ObjectMeta,
     V1LocalObjectReference,
-    V1Volume, V1VolumeMount,
+    V1Volume, V1VolumeMount, V1EnvVarSource, V1ObjectFieldSelector,
     V1Container, V1ContainerPort, V1SecurityContext, V1EnvVar, V1ResourceRequirements, V1Lifecycle,
     V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec,
     V1Endpoints, V1EndpointSubset, V1EndpointAddress, V1EndpointPort,
@@ -257,7 +257,10 @@ def make_pod(
         image=image_spec,
         working_dir=working_dir,
         ports=[V1ContainerPort(name='notebook-port', container_port=port)],
-        env=[V1EnvVar(k, v) for k, v in (env or {}).items()],
+        env=[V1EnvVar(k, v) for k, v in (env or {}).items()] + [V1EnvVar('CURRENT_NODE_IP',
+                                                                         value_from=V1EnvVarSource(
+                                                                             field_ref=V1ObjectFieldSelector(
+                                                                                 field_path='status.hostIP')))],
         args=cmd,
         image_pull_policy=image_pull_policy,
         lifecycle=lifecycle_hooks,
