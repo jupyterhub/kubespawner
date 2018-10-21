@@ -9,12 +9,12 @@ if v[:2] < (3, 5):
     sys.exit(1)
 
 setup(
-    name='jupyterhub-kubespawner',
-    version='0.9.0',
+    name='v3io-jupyterhub-kubespawner',
+    version='0.10.1',
     install_requires=[
         'jupyterhub>=0.8',
         'pyYAML',
-        'kubernetes==6.*',
+        'kubernetes>=7',
         'escapism',
         'jinja2',
         'async_generator>=1.8',
@@ -27,17 +27,17 @@ setup(
             'pytest-asyncio',
         ]
     },
-    description='JupyterHub Spawner for Kubernetes',
-    url='http://github.com/jupyterhub/kubespawner',
-    author='Jupyter Contributors',
-    author_email='jupyter@googlegroups.com',
+    description='JupyterHub Spawner for Kubernetes with V3IO',
+    url='http://github.com/v3io/kubespawner',
+    author='Iguazio',
+    author_email='authors@iguazio.com',
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     license='BSD',
     packages=find_packages(),
     project_urls={
         'Documentation': 'https://jupyterhub-kubespawner.readthedocs.io',
-        'Source': 'https://github.com/jupyterhub/kubespawner',
-        'Tracker': 'https://github.com/jupyterhub/kubespawner/issues',
+        'Source': 'https://github.com/v3io/kubespawner',
+        'Tracker': 'https://github.com/v3io/kubespawner/issues',
     },
 )
