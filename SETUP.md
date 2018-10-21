@@ -64,10 +64,10 @@ development fairly easily on your host machine.
 1. Clone this repository
    ```sh
    # Clone over HTTPS
-   https://github.com/jupyterhub/kubespawner.git
+   https://github.com/v3io/kubespawner.git
 
    # Clone over SSH
-   git clone git@github.com:jupyterhub/kubespawner.git
+   git clone git@github.com:v3io/kubespawner.git
    ```
 
 2. Setup a virtualenv

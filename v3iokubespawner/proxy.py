@@ -8,9 +8,9 @@ from kubernetes import client
 from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
 
-from kubespawner.objects import make_ingress
-from kubespawner.utils import generate_hashed_slug
-from kubespawner.reflector import NamespacedResourceReflector
+from v3iokubespawner.objects import make_ingress
+from v3iokubespawner.utils import generate_hashed_slug
+from v3iokubespawner.reflector import NamespacedResourceReflector
 from .clients import shared_client
 from traitlets import Unicode
 from tornado import gen

@@ -12,6 +12,6 @@ in your `jupyterhub_config.py` file.
 # Users can simply import kubespawner.KubeSpawner in their applications
 # instead of the more verbose import kubespawner.spawner.KubeSpawner.
 
-from kubespawner.spawner import KubeSpawner
+from v3iokubespawner.spawner import KubeSpawner
 
 __all__ = [KubeSpawner]

@@ -26,9 +26,9 @@ import escapism
 from jinja2 import Environment, BaseLoader
 
 from .clients import shared_client
-from kubespawner.traitlets import Callable
-from kubespawner.objects import make_pod, make_pvc
-from kubespawner.reflector import NamespacedResourceReflector
+from v3iokubespawner.traitlets import Callable
+from v3iokubespawner.objects import make_pod, make_pvc
+from v3iokubespawner.reflector import NamespacedResourceReflector
 from asyncio import sleep
 from async_generator import async_generator, yield_
 

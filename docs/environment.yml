@@ -1,4 +1,4 @@
-name: kubespawner
+name: v3iokubespawner
 channels:
   - conda-forge
 dependencies:

@@ -2,7 +2,7 @@ import os
 import socket
 
 
-c.JupyterHub.spawner_class = 'kubespawner.KubeSpawner'
+c.JupyterHub.spawner_class = 'v3iokubespawner.KubeSpawner'
 
 c.JupyterHub.ip = '0.0.0.0'
 c.JupyterHub.hub_ip = '0.0.0.0'

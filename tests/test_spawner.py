@@ -4,7 +4,7 @@ from jupyterhub.objects import Hub, Server
 import pytest
 from traitlets.config import Config
 from asyncio import get_event_loop
-from kubespawner import KubeSpawner
+from v3iokubespawner import KubeSpawner
 from kubernetes.client.models import (
     V1SecurityContext, V1Container, V1Capabilities, V1Pod
 )

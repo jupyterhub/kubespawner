@@ -7,7 +7,7 @@ from kubernetes.config import load_kube_config
 import pytest
 from traitlets.config import Config
 
-from kubespawner.clients import shared_client
+from v3iokubespawner.clients import shared_client
 
 
 @pytest.fixture(scope="session")

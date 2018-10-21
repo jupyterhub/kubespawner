@@ -1,5 +1,5 @@
 import copy
-from kubespawner.utils import get_k8s_model, update_k8s_model, _get_k8s_model_attribute
+from v3iokubespawner.utils import get_k8s_model, update_k8s_model, _get_k8s_model_attribute
 from kubernetes.client.models import (
     V1PodSpec, V1SecurityContext, V1Container, V1Capabilities, V1Lifecycle
 )
