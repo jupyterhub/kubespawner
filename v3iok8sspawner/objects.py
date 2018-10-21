@@ -6,13 +6,13 @@ from urllib.parse import urlparse
 import escapism
 import re
 import string
-from kubespawner.utils import get_k8s_model, update_k8s_model
+from v3iok8sspawner.utils import get_k8s_model, update_k8s_model
 
 from kubernetes.client.models import (
     V1Pod, V1PodSpec, V1PodSecurityContext,
     V1ObjectMeta,
     V1LocalObjectReference,
-    V1Volume, V1VolumeMount,
+    V1Volume, V1VolumeMount, V1EnvVarSource, V1ObjectFieldSelector,
     V1Container, V1ContainerPort, V1SecurityContext, V1EnvVar, V1ResourceRequirements, V1Lifecycle,
     V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec,
     V1Endpoints, V1EndpointSubset, V1EndpointAddress, V1EndpointPort,
@@ -228,7 +228,7 @@ def make_pod(
     )
 
     pod.spec = V1PodSpec(containers=[])
-    pod.spec.restartPolicy = 'Never'
+    pod.spec.restart_policy = 'OnFailure'
 
     security_context = V1PodSecurityContext()
     if fs_gid is not None:
@@ -257,7 +257,10 @@ def make_pod(
         image=image_spec,
         working_dir=working_dir,
         ports=[V1ContainerPort(name='notebook-port', container_port=port)],
-        env=[V1EnvVar(k, v) for k, v in (env or {}).items()],
+        env=[V1EnvVar(k, v) for k, v in (env or {}).items()] + [V1EnvVar('CURRENT_NODE_IP',
+                                                                         value_from=V1EnvVarSource(
+                                                                             field_ref=V1ObjectFieldSelector(
+                                                                                 field_path='status.hostIP')))],
         args=cmd,
         image_pull_policy=image_pull_policy,
         lifecycle=lifecycle_hooks,
