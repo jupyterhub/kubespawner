@@ -1340,7 +1340,7 @@ class KubeSpawner(Spawner):
             fs_gid=fs_gid,
             supplemental_gids=supplemental_gids,
             run_privileged=self.privileged,
-            env=self.get_env(),
+            env=self._expand_all(self.get_env()),
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),
             working_dir=self.working_dir,
