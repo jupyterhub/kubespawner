@@ -1343,7 +1343,7 @@ class KubeSpawner(Spawner):
             env=self._expand_all(self.get_env()),
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),
-            working_dir=self.working_dir,
+            working_dir=self._expand_all(self.working_dir),
             labels=labels,
             annotations=annotations,
             cpu_limit=self.cpu_limit,
