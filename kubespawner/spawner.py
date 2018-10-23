@@ -397,8 +397,9 @@ class KubeSpawner(Spawner):
     )
 
     image_pull_policy = Unicode(
-        'IfNotPresent',
+        None,
         config=True,
+        allow_none=True,
         help="""
         The image pull policy of the docker container specified in
         `image_spec`.
