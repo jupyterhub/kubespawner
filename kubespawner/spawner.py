@@ -234,8 +234,7 @@ class KubeSpawner(Spawner):
         The working directory where the Notebook server will be started inside the container.
         Defaults to `None` so the working directory will be the one defined in the Dockerfile.
 
-        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
-        username & integer user id respectively.
+        `{username}` is expanded to the escaped, dns-label safe username.
         """
     )
 
@@ -264,8 +263,7 @@ class KubeSpawner(Spawner):
         help="""
         Template to use to form the name of user's pods.
 
-        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
-        username & integer user id respectively.
+        `{username}` is expanded to the escaped, dns-label safe username.
 
         This must be unique within the namespace the pods are being spawned
         in, so if you are running multiple jupyterhubs spawning in the
@@ -290,8 +288,7 @@ class KubeSpawner(Spawner):
         help="""
         Template to use to form the name of user's pvc.
 
-        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
-        username & integer user id respectively.
+        `{username}` is expanded to the escaped, dns-label safe username.
 
         This must be unique within the namespace the pvc are being spawned
         in, so if you are running multiple jupyterhubs spawning in the
@@ -347,8 +344,7 @@ class KubeSpawner(Spawner):
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
         for more info on what labels are and why you might want to use them!
 
-        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
-        username & integer user id respectively, wherever they are used.
+        `{username}` is expanded to the escaped, dns-label safe username.
         """
     )
 
@@ -363,8 +359,7 @@ class KubeSpawner(Spawner):
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>`__
         for more info on what annotations are and why you might want to use them!
 
-        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
-        username & integer user id respectively, wherever they are used.
+        `{username}` is expanded to the escaped, dns-label safe username.
         """
     )
 
@@ -605,8 +600,7 @@ class KubeSpawner(Spawner):
         for more information on the various kinds of volumes available and their options.
         Your kubernetes cluster must already be configured to support the volume types you want to use.
 
-        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
-        username & integer user id respectively, wherever they are used.
+        `{username}` is expanded to the escaped, dns-label safe username.
         """
     )
 
@@ -625,8 +619,7 @@ class KubeSpawner(Spawner):
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/volumes>`__
         for more information on how the `volumeMount` item works.
 
-        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
-        username & integer user id respectively, wherever they are used.
+        `{username}` is expanded to the escaped, dns-label safe username.
         """
     )
 
@@ -665,8 +658,7 @@ class KubeSpawner(Spawner):
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
         for more info on what labels are and why you might want to use them!
 
-        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
-        username & integer user id respectively, wherever they are used.
+        `{username}` is expanded to the escaped, dns-label safe username.
         """
     )
 
@@ -835,8 +827,7 @@ class KubeSpawner(Spawner):
                 "command": ["/usr/local/bin/supercronic", "/etc/crontab"]
             }]
 
-        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
-        username & integer user id respectively, wherever they are used.
+        `{username}` is expanded to the escaped, dns-label safe username.
         """
     )
 
