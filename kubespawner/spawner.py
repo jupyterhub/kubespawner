@@ -834,6 +834,9 @@ class KubeSpawner(Spawner):
                 "image": "supercronic",
                 "command": ["/usr/local/bin/supercronic", "/etc/crontab"]
             }]
+
+        `{username}` and `{userid}` are expanded to the escaped, dns-label safe
+        username & integer user id respectively, wherever they are used.
         """
     )
 
@@ -1333,7 +1336,7 @@ class KubeSpawner(Spawner):
             service_account=self.service_account,
             extra_container_config=self.extra_container_config,
             extra_pod_config=self.extra_pod_config,
-            extra_containers=self.extra_containers,
+            extra_containers=self._expand_all(self.extra_containers),
             scheduler_name=self.scheduler_name,
             tolerations=self.tolerations,
             node_affinity_preferred=self.node_affinity_preferred,
