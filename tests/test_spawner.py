@@ -32,12 +32,14 @@ def test_deprecated_config():
     c.KubeSpawner.fs_gid = 10
     # only deprecated set, should still work
     c.KubeSpawner.singleuser_extra_pod_config = extra_pod_config = {"key": "value"}
+    c.KubeSpawner.image_spec = 'abc:123'
     spawner = KubeSpawner(config=c, _mock=True)
     assert spawner.fs_gid == 10
     assert spawner.extra_pod_config == extra_pod_config
     # deprecated access gets the right values, too
     assert spawner.singleuser_fs_gid == spawner.fs_gid
     assert spawner.singleuser_extra_pod_config == spawner.extra_pod_config
+    assert spawner.image == 'abc:123'
 
 
 def test_deprecated_runtime_access():
@@ -49,6 +51,12 @@ def test_deprecated_runtime_access():
     spawner.uid = 20
     assert spawner.uid == 20
     assert spawner.singleuser_uid == 20
+    spawner.image_spec = 'abc:latest'
+    assert spawner.image_spec == 'abc:latest'
+    assert spawner.image == 'abc:latest'
+    spawner.image = 'abc:123'
+    assert spawner.image_spec == 'abc:123'
+    assert spawner.image == 'abc:123'
 
 
 @pytest.mark.asyncio

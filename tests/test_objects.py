@@ -12,7 +12,7 @@ def test_make_simplest_pod():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent'
@@ -56,7 +56,7 @@ def test_make_labeled_pod():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -101,7 +101,7 @@ def test_make_annotated_pod():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -146,7 +146,7 @@ def test_make_pod_with_image_pull_secrets():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -195,7 +195,7 @@ def test_set_pod_uid_and_gid():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         run_as_uid=1000,
@@ -244,7 +244,7 @@ def test_set_pod_uid_fs_gid():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         run_as_uid=1000,
@@ -293,7 +293,7 @@ def test_set_pod_supplemental_gids():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         run_as_uid=1000,
@@ -342,7 +342,7 @@ def test_run_privileged_container():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         run_privileged=True,
@@ -390,7 +390,7 @@ def test_make_pod_resources_all():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cpu_limit=2,
         cpu_guarantee=1,
         cmd=['jupyterhub-singleuser'],
@@ -449,7 +449,7 @@ def test_make_pod_with_env():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         env={
             'TEST_KEY': 'TEST_VALUE'
         },
@@ -498,7 +498,7 @@ def test_make_pod_with_lifecycle():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -559,7 +559,7 @@ def test_make_pod_with_init_containers():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -631,7 +631,7 @@ def test_make_pod_with_extra_container_config():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -693,7 +693,7 @@ def test_make_pod_with_extra_pod_config():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -762,7 +762,7 @@ def test_make_pod_with_extra_containers():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -820,7 +820,7 @@ def test_make_pod_with_extra_resources():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cpu_limit=2,
         cpu_guarantee=1,
         extra_resource_limits={"nvidia.com/gpu": "5", "k8s.io/new-resource": "1"},
@@ -946,7 +946,7 @@ def test_make_pod_with_service_account():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -992,7 +992,7 @@ def test_make_pod_with_scheduler_name():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1052,7 +1052,7 @@ def test_make_pod_with_tolerations():
     ]
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1109,7 +1109,7 @@ def test_make_pod_with_node_affinity_preferred():
     }]
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1167,7 +1167,7 @@ def test_make_pod_with_node_affinity_required():
     }]
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1233,7 +1233,7 @@ def test_make_pod_with_pod_affinity_preferred():
     }]
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1294,7 +1294,7 @@ def test_make_pod_with_pod_affinity_required():
     }]
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1358,7 +1358,7 @@ def test_make_pod_with_pod_anti_affinity_preferred():
     }]
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1419,7 +1419,7 @@ def test_make_pod_with_pod_anti_affinity_required():
     }]
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1470,7 +1470,7 @@ def test_make_pod_with_priority_class_name():
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
-        image_spec='jupyter/singleuser:latest',
+        image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
