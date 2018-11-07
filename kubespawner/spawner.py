@@ -363,11 +363,11 @@ class KubeSpawner(Spawner):
         """
     )
 
-    image_spec = Unicode(
+    image = Unicode(
         'jupyterhub/singleuser:latest',
         config=True,
         help="""
-        Docker image spec to use for spawning user's containers.
+        Docker image to use for spawning user's containers.
 
         Defaults to `jupyterhub/singleuser:latest`
 
@@ -380,13 +380,13 @@ class KubeSpawner(Spawner):
         of the image is first pulled on the node will be used, thus possibly
         leading to inconsistent images on different nodes. For all these
         reasons, it is recommended to specify a specific immutable tag
-        for the imagespec.
+        for the image.
 
         If your image is very large, you might need to increase the timeout
         for starting the single user container from the default. You can
         set this with::
 
-           c.KubeSpawner.start_timeout = 60 * 5  # Upto 5 minutes
+           c.KubeSpawner.start_timeout = 60 * 5  # Up to 5 minutes
 
         """
     )
@@ -396,10 +396,10 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         The image pull policy of the docker container specified in
-        `image_spec`.
+        `image`.
 
         Defaults to `IfNotPresent` which causes the Kubelet to NOT pull the image
-        specified in image_spec if it already exists, except if the tag
+        specified in KubeSpawner.image if it already exists, except if the tag
         is `:latest`. For more information on image pull policy,
         refer to `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/>`__.
 
@@ -419,7 +419,7 @@ class KubeSpawner(Spawner):
         The kubernetes secret to use for pulling images from private repository.
 
         Set this to the name of a Kubernetes secret containing the docker configuration
-        required to pull the image specified in `image_spec`.
+        required to pull the image.
 
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod>`__
         for more information on when and why this might need to be set, and what
@@ -1046,35 +1046,35 @@ class KubeSpawner(Spawner):
                     'display_name': 'Training Env - Python',
                     'default': True,
                     'kubespawner_override': {
-                        'image_spec': 'training/python:label',
+                        'image': 'training/python:label',
                         'cpu_limit': 1,
                         'mem_limit': '512M',
                     }
                 }, {
                     'display_name': 'Training Env - Datascience',
                     'kubespawner_override': {
-                        'image_spec': 'training/datascience:label',
+                        'image': 'training/datascience:label',
                         'cpu_limit': 4,
                         'mem_limit': '8G',
                     }
                 }, {
                     'display_name': 'DataScience - Small instance',
                     'kubespawner_override': {
-                        'image_spec': 'datascience/small:label',
+                        'image': 'datascience/small:label',
                         'cpu_limit': 10,
                         'mem_limit': '16G',
                     }
                 }, {
                     'display_name': 'DataScience - Medium instance',
                     'kubespawner_override': {
-                        'image_spec': 'datascience/medium:label',
+                        'image': 'datascience/medium:label',
                         'cpu_limit': 48,
                         'mem_limit': '96G',
                     }
                 }, {
                     'display_name': 'DataScience - Medium instance (GPUx2)',
                     'kubespawner_override': {
-                        'image_spec': 'datascience/medium:label',
+                        'image': 'datascience/medium:label',
                         'cpu_limit': 48,
                         'mem_limit': '96G',
                         'extra_resource_guarantees': {"nvidia.com/gpu": "2"},
@@ -1102,7 +1102,7 @@ class KubeSpawner(Spawner):
     )
 
     # deprecate redundant and inconsistent singleuser_ and user_ prefixes:
-    _deprecated_traits = [
+    _deprecated_traits_09 = [
         "singleuser_working_dir",
         "singleuser_service_account",
         "singleuser_extra_labels",
@@ -1126,6 +1126,14 @@ class KubeSpawner(Spawner):
         "user_storage_extra_labels",
         "user_storage_access_modes",
     ]
+    # other general deprecations:
+    _deprecated_traits = {
+        'image_spec': ('image', '0.10'),
+    }
+    # add the bulk deprecations from 0.9
+    for _deprecated_name in _deprecated_traits_09:
+        _new_name = _deprecated_name.split('_', 1)[1]
+        _deprecated_traits[_deprecated_name] = (_new_name, '0.9')
 
     @validate('config')
     def _handle_deprecated_config(self, proposal):
@@ -1133,9 +1141,8 @@ class KubeSpawner(Spawner):
         if 'KubeSpawner' not in config:
             # nothing to check
             return config
-        for _deprecated_name in self._deprecated_traits:
+        for _deprecated_name, (_new_name, version) in self._deprecated_traits.items():
             # for any `singleuser_name` deprecate in favor of `name`
-            _new_name = _deprecated_name.split('_', 1)[1]
             if _deprecated_name not in config.KubeSpawner:
                 # nothing to do
                 continue
@@ -1143,8 +1150,9 @@ class KubeSpawner(Spawner):
             # remove deprecated value from config
             _deprecated_value = config.KubeSpawner.pop(_deprecated_name)
             self.log.warning(
-                "KubeSpawner.%s is deprecated in 0.9. Use KubeSpawner.%s instead",
+                "KubeSpawner.%s is deprecated in %s. Use KubeSpawner.%s instead",
                 _deprecated_name,
+                version,
                 _new_name,
             )
             if _new_name in config.KubeSpawner:
@@ -1176,30 +1184,36 @@ class KubeSpawner(Spawner):
     # functools.partial(f, name) so name is passed as the first arg
     # before self.
 
-    def _get_deprecated(name, self):
-        _new_name = name.split('_', 1)[1]
+    def _get_deprecated(name, new_name, version, self):
         # warn about the deprecated name
         self.log.warning(
-            "KubeSpawner.%s is deprecated in 0.9. Use KubeSpawner.%s", name, _new_name
+            "KubeSpawner.%s is deprecated in %s. Use KubeSpawner.%s",
+            name,
+            version,
+            new_name,
         )
-        return getattr(self, _new_name)
+        return getattr(self, new_name)
 
-    def _set_deprecated(name, self, value):
-        _new_name = name.split('_', 1)[1]
+    def _set_deprecated(name, new_name, version, self, value):
         # warn about the deprecated name
         self.log.warning(
-            "KubeSpawner.%s is deprecated in 0.9. Use KubeSpawner.%s", name, _new_name
+            "KubeSpawner.%s is deprecated in %s. Use KubeSpawner.%s",
+            name,
+            version,
+            new_name,
         )
-        return setattr(self, _new_name, value)
+        return setattr(self, new_name, value)
 
-    for _deprecated_name in _deprecated_traits:
+    for _deprecated_name, (_new_name, _version) in _deprecated_traits.items():
         exec(
-            """{} = property(
-                partial(_get_deprecated, _deprecated_name),
-                partial(_set_deprecated, _deprecated_name),
+            """{0} = property(
+                partial(_get_deprecated, '{0}', '{1}', '{2}'),
+                partial(_set_deprecated, '{0}', '{1}', '{2}'),
             )
             """.format(
-                _deprecated_name
+                _deprecated_name,
+                _new_name,
+                _version,
             )
         )
     del _deprecated_name
@@ -1301,7 +1315,7 @@ class KubeSpawner(Spawner):
             name=self.pod_name,
             cmd=real_cmd,
             port=self.port,
-            image_spec=self.image_spec,
+            image=self.image,
             image_pull_policy=self.image_pull_policy,
             image_pull_secret=self.image_pull_secrets,
             node_selector=self.node_selector,
@@ -1398,7 +1412,9 @@ class KubeSpawner(Spawner):
         """
 
         env = super(KubeSpawner, self).get_env()
-        env['JUPYTER_IMAGE_SPEC'] = self.image_spec
+        # deprecate image
+        env['JUPYTER_IMAGE_SPEC'] = self.image
+        env['JUPYTER_IMAGE'] = self.image
 
         return env
 

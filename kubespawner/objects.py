@@ -30,7 +30,7 @@ def make_pod(
     name,
     cmd,
     port,
-    image_spec,
+    image,
     image_pull_policy,
     image_pull_secret=None,
     node_selector=None,
@@ -76,7 +76,7 @@ def make_pod(
     name:
         Name of pod. Must be unique within the namespace the object is
         going to be created in. Must be a valid DNS label.
-    image_spec:
+    image:
         Image specification - usually a image name and tag in the form
         of image_name:tag. Same thing you would use with docker commandline
         arguments
@@ -254,7 +254,7 @@ def make_pod(
         lifecycle_hooks = get_k8s_model(V1Lifecycle, lifecycle_hooks)
     notebook_container = V1Container(
         name='notebook',
-        image=image_spec,
+        image=image,
         working_dir=working_dir,
         ports=[V1ContainerPort(name='notebook-port', container_port=port)],
         env=[V1EnvVar(k, v) for k, v in (env or {}).items()],
