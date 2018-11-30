@@ -1046,35 +1046,35 @@ class KubeSpawner(Spawner):
                     'display_name': 'Training Env - Python',
                     'default': True,
                     'kubespawner_override': {
-                        'image': 'training/python:label',
+                        'image_spec': 'training/python:label',
                         'cpu_limit': 1,
                         'mem_limit': '512M',
                     }
                 }, {
                     'display_name': 'Training Env - Datascience',
                     'kubespawner_override': {
-                        'image': 'training/datascience:label',
+                        'image_spec': 'training/datascience:label',
                         'cpu_limit': 4,
                         'mem_limit': '8G',
                     }
                 }, {
                     'display_name': 'DataScience - Small instance',
                     'kubespawner_override': {
-                        'image': 'datascience/small:label',
+                        'image_spec': 'datascience/small:label',
                         'cpu_limit': 10,
                         'mem_limit': '16G',
                     }
                 }, {
                     'display_name': 'DataScience - Medium instance',
                     'kubespawner_override': {
-                        'image': 'datascience/medium:label',
+                        'image_spec': 'datascience/medium:label',
                         'cpu_limit': 48,
                         'mem_limit': '96G',
                     }
                 }, {
                     'display_name': 'DataScience - Medium instance (GPUx2)',
                     'kubespawner_override': {
-                        'image': 'datascience/medium:label',
+                        'image_spec': 'datascience/medium:label',
                         'cpu_limit': 48,
                         'mem_limit': '96G',
                         'extra_resource_guarantees': {"nvidia.com/gpu": "2"},
