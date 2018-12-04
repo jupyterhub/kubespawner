@@ -11,6 +11,7 @@ KubeSpawner 0.10
 
 0.10 is a small release, with minor changes and fixes.
 
+- Deprecate `KubeSpawner.image_spec` configuration in favor of standard `KubeSpawner.image`. `image_spec` continues to work with deprecation warnings
 - Stop pinning an exact kubernetes client version;
   instead, require kubernetes client >= 7.
   If desired, pinning should be done in images/installations
