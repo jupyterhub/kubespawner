@@ -15,7 +15,7 @@ KubeSpawner 0.10
   instead, require kubernetes client >= 7.
   If desired, pinning should be done in images/installations
 - Expand username template variables in extra_containers
-- Set pod restart policy to OnFailure, so that notebook servers that crash restart automatically
+- Set pod restart policy to OnFailure, so that notebook servers that terminate themselves cleanly do not restart automatically
 - Formally deprecate ``KubeSpawner.hub_connect_ip`` and ``KubeSpawner.hub_connect_ip``
   in favor of ``JupyterHub.hub_connect_ip``,
   available in jupyterhub >= 0.8
