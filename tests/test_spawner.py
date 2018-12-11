@@ -31,9 +31,11 @@ def test_deprecated_config():
     c.KubeSpawner.singleuser_fs_gid = 5
     c.KubeSpawner.fs_gid = 10
     # only deprecated set, should still work
+    c.KubeSpawner.hub_connect_ip = '10.0.1.1'
     c.KubeSpawner.singleuser_extra_pod_config = extra_pod_config = {"key": "value"}
     c.KubeSpawner.image_spec = 'abc:123'
-    spawner = KubeSpawner(config=c, _mock=True)
+    spawner = KubeSpawner(hub=Hub(), config=c, _mock=True)
+    assert spawner.hub.connect_ip == '10.0.1.1'
     assert spawner.fs_gid == 10
     assert spawner.extra_pod_config == extra_pod_config
     # deprecated access gets the right values, too
