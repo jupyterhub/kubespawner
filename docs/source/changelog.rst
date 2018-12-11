@@ -9,6 +9,12 @@ Changes in KubeSpawner
 KubeSpawner 0.10
 ================
 
+0.10.1 is a tiny bugfix release, fixing regressions in 0.10.0.
+
+- Fix deprecation of `KubeSpawner.hub_connect_ip`,
+  which caused errors in 0.10 when the deprecated config was used.
+
+
 0.10 is a small release, with minor changes and fixes.
 
 - Deprecate `KubeSpawner.image_spec` configuration in favor of standard `KubeSpawner.image`. `image_spec` continues to work with deprecation warnings

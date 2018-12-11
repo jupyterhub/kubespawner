@@ -105,18 +105,20 @@ class KubeSpawner(Spawner):
 
         if _mock:
             # runs during test execution only
-            user = MockObject()
-            user.name = 'mock_name'
-            user.id = 'mock_id'
-            user.url = 'mock_url'
-            self.user = user
+            if 'user' not in kwargs:
+                user = MockObject()
+                user.name = 'mock_name'
+                user.id = 'mock_id'
+                user.url = 'mock_url'
+                self.user = user
 
-            hub = MockObject()
-            hub.public_host = 'mock_public_host'
-            hub.url = 'mock_url'
-            hub.base_url = 'mock_base_url'
-            hub.api_url = 'mock_api_url'
-            self.hub = hub
+            if 'hub' not in kwargs:
+                hub = MockObject()
+                hub.public_host = 'mock_public_host'
+                hub.url = 'mock_url'
+                hub.base_url = 'mock_base_url'
+                hub.api_url = 'mock_api_url'
+                self.hub = hub
         else:
             # runs during normal execution only
 
@@ -315,7 +317,7 @@ class KubeSpawner(Spawner):
             Use JupyterHub.{0}
             """.format(change.name),
             DeprecationWarning)
-        setattr(self.hub, change.name, change.value)
+        setattr(self.hub, change.name.split('_', 1)[1], change.new)
 
     common_labels = Dict(
         {
