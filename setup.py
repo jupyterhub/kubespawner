@@ -10,7 +10,7 @@ if v[:2] < (3, 5):
 
 setup(
     name='jupyterhub-kubespawner',
-    version='0.10.1',
+    version='0.10.2.dev',
     install_requires=[
         'jupyterhub>=0.8',
         'pyYAML',
