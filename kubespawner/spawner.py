@@ -1620,6 +1620,13 @@ class KubeSpawner(Spawner):
         start returns, which we can use to terminate
         .progress()
         """
+        for k, v in self.user_options.items():
+            if callable(v):
+                v = v(self)
+                self.log.debug(".. overriding KubeSpawner value %s=%s (callable result)", k, v)
+            else:
+                self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
+            setattr(self, k, v)
         self._start_future = self._start()
         return self._start_future
 
@@ -1841,12 +1848,4 @@ class KubeSpawner(Spawner):
         selected_profile = int(formdata.get('profile', [0])[0])
         options = self._profile_list[selected_profile]
         self.log.debug("Applying KubeSpawner override for profile '%s'", options['display_name'])
-        kubespawner_override = options.get('kubespawner_override', {})
-        for k, v in kubespawner_override.items():
-            if callable(v):
-                v = v(self)
-                self.log.debug(".. overriding KubeSpawner value %s=%s (callable result)", k, v)
-            else:
-                self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
-            setattr(self, k, v)
-        return options
+        self.user_options = options.get('kubespawner_override', {})
