@@ -148,3 +148,40 @@ def test_get_pod_manifest_tolerates_mixed_input():
     assert isinstance(manifest, V1Pod)
     assert isinstance(manifest.spec.init_containers[0], V1Container)
     assert isinstance(manifest.spec.init_containers[1], V1Container)
+
+
+@pytest.mark.asyncio
+async def test_user_options_set_from_form():
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = [
+        {
+            'display_name': 'Training Env - Python',
+            'default': True,
+            'kubespawner_override': {
+                'image': 'training/python:label',
+                'cpu_limit': 1,
+                'mem_limit': '512M',
+                }
+        },
+        {
+            'display_name': 'Training Env - Datascience',
+            'kubespawner_override': {
+                'image': 'training/datascience:label',
+                'cpu_limit': 4,
+                'mem_limit': '8G',
+                }
+        }
+    ]
+    # we don't process options unless _profile_list is set
+    spawner._render_options_form(spawner.profile_list)
+    assert spawner.cpu_limit is None
+    spawner.options_from_form({'profile': [1]})
+    assert spawner.user_options == {
+        'image': 'training/datascience:label',
+        'cpu_limit': 4,
+        'mem_limit': '8G',
+    }
+    # mock this so we don't do anything real
+    spawner._start = lambda : True
+    spawner.start()
+    assert spawner.cpu_limit == 4
