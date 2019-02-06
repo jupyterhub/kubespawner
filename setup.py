@@ -12,12 +12,12 @@ setup(
     name='jupyterhub-kubespawner',
     version='0.10.2.dev',
     install_requires=[
-        'jupyterhub>=0.8',
-        'pyYAML',
-        'kubernetes==8.0.*',
+        'async_generator>=1.8',
         'escapism',
         'jinja2',
-        'async_generator>=1.8',
+        'jupyterhub>=0.8',
+        'kubernetes==8.0.*',
+        'pyYAML',
     ],
     python_requires='>=3.5',
     extras_require={
