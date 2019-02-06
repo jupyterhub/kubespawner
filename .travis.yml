@@ -10,7 +10,9 @@ python:
 # install dependencies
 install:
   - pip install --upgrade setuptools pip
-  - pip install --pre -e ".[test]"
+  # add --pre so that we test with prereleases of dependencies
+  # to catch compatibility issues before they enter final releases
+  - pip install --upgrade --pre -e ".[test]"
   - |
     # install pinned kubernetes
     if [[ ! -z "$KUBE_PY" ]]; then
