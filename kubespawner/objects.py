@@ -3,28 +3,170 @@ Helper methods for generating k8s API objects.
 """
 import json
 from urllib.parse import urlparse
-import escapism
 import re
-import string
 from kubespawner.utils import get_k8s_model, update_k8s_model
 
 from kubernetes.client.models import (
-    V1Pod, V1PodSpec, V1PodSecurityContext,
-    V1ObjectMeta,
-    V1LocalObjectReference,
-    V1Volume, V1VolumeMount,
-    V1Container, V1ContainerPort, V1SecurityContext, V1EnvVar, V1ResourceRequirements, V1Lifecycle,
-    V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec,
-    V1Endpoints, V1EndpointSubset, V1EndpointAddress, V1EndpointPort,
-    V1Service, V1ServiceSpec, V1ServicePort,
-    V1beta1Ingress, V1beta1IngressSpec, V1beta1IngressRule,
-    V1beta1HTTPIngressRuleValue, V1beta1HTTPIngressPath,
-    V1beta1IngressBackend,
-    V1Toleration,
     V1Affinity,
-    V1NodeAffinity, V1NodeSelector, V1NodeSelectorTerm, V1PreferredSchedulingTerm, V1NodeSelectorRequirement,
-    V1PodAffinity, V1PodAntiAffinity, V1WeightedPodAffinityTerm, V1PodAffinityTerm,
+    V1beta1HTTPIngressPath,
+    V1beta1HTTPIngressRuleValue,
+    V1beta1Ingress,
+    V1beta1IngressBackend,
+    V1beta1IngressRule,
+    V1beta1IngressSpec,
+    V1ClusterRole,
+    V1ClusterRoleBinding,
+    V1Container,
+    V1ContainerPort,
+    V1EndpointAddress,
+    V1EndpointPort,
+    V1Endpoints,
+    V1EndpointSubset,
+    V1EnvVar,
+    V1Lifecycle,
+    V1LocalObjectReference,
+    V1Namespace,
+    V1NodeAffinity,
+    V1NodeSelector,
+    V1NodeSelectorTerm,
+    V1ObjectMeta,
+    V1PersistentVolumeClaim,
+    V1PersistentVolumeClaimSpec,
+    V1Pod,
+    V1PodAffinity,
+    V1PodAffinityTerm,
+    V1PodSecurityContext,
+    V1PodSpec,
+    V1PolicyRule,
+    V1PreferredSchedulingTerm,
+    V1ResourceRequirements,
+    V1Role,
+    V1RoleBinding,
+    V1RoleRef,
+    V1SecurityContext,
+    V1Service,
+    V1ServiceAccount,
+    V1ServicePort,
+    V1ServiceSpec,
+    V1Subject,
+    V1Toleration,
+    V1Volume,
+    V1VolumeMount,
+    V1WeightedPodAffinityTerm,
 )
+
+
+def make_namespace(name):
+    """
+    Make a k8s namespace specification for launching pods
+    :param name: namespace name
+    """
+    namespace_metadata = V1ObjectMeta(name=name)
+
+    return V1Namespace(metadata=namespace_metadata)
+
+
+def make_service_account(name):
+    """
+    Make a k8s service account specification
+    :param name: service account name
+    """
+    service_account_metadata = V1ObjectMeta(name=name)
+    return V1ServiceAccount(metadata=service_account_metadata)
+
+
+def make_cluster_role(name):
+    """
+    Make a k8s role specification
+    :param name: role name
+    :return:
+    """
+
+    role_metadata = V1ObjectMeta(name=name)
+
+    rules = [
+        V1PolicyRule([''],
+                     resources=['events'],
+                     verbs=['get', 'list', 'watch']),
+        V1PolicyRule([''],
+                     resources=['pods', 'persistentvolumnes', 'persistentvolumeclaims'],
+                     verbs=['get', 'list', 'watch']),
+    ]
+
+    return V1ClusterRole(metadata=role_metadata, rules=rules)
+
+
+def make_cluster_role_binding(namespace, name, service_account):
+    """
+    Make a k8s role binding specification
+    :param namespace: namespace where the role will be created
+    :param name: role binding name
+    :param service_account: service account name
+    """
+    role_binding_name = name
+    role_binding_metadata = V1ObjectMeta(name=role_binding_name)
+    role_binding_role_ref = V1RoleRef(api_group='', kind='ClusterRole', name=name)
+    role_binding_subjects = V1Subject(api_group='', kind='ServiceAccount', namespace=namespace, name=name)
+
+    return V1ClusterRoleBinding(kind='ClusterRoleBinding',
+                         metadata=role_binding_metadata,
+                         role_ref=role_binding_role_ref,
+                         subjects=[role_binding_subjects])
+
+
+def make_user_rules():
+    """
+    Make RBAC rules for user
+    """
+
+    return [
+        V1PolicyRule([''],
+                     resources=['events'],
+                     verbs=['get', 'list', 'watch']),
+        V1PolicyRule([''],
+                     resources=['pods', 'persistentvolumnes', 'persistentvolumeclaims'],
+                     verbs=['get', 'list', 'watch']),
+    ]
+
+
+def make_user_role(name):
+    """
+    Make RBAC user role
+    :param name:
+    """
+    role_metadata = V1ObjectMeta(name=name)
+    rules = make_user_rules()
+
+    return V1Role(metadata=role_metadata, rules=rules)
+
+
+def make_role(name, rules):
+    """
+    Make a k8s role specification
+    :param name: role name
+    """
+
+    role_metadata = V1ObjectMeta(name=name)
+
+    return V1Role(metadata=role_metadata, rules=rules)
+
+
+def make_role_binding(namespace, name, service_account):
+    """
+    Make a k8s role binding specification
+    :param namespace: namespace where the role will be created
+    :param name: role binding name
+    :param service_account: service account name
+    """
+    role_binding_name = name
+    role_binding_metadata = V1ObjectMeta(name=role_binding_name)
+    role_binding_role_ref = V1RoleRef(api_group='', kind='Role', name=name)
+    role_binding_subjects = V1Subject(api_group='', kind='ServiceAccount', namespace=namespace, name=service_account)
+
+    return V1RoleBinding(kind='RoleBinding',
+                         metadata=role_binding_metadata,
+                         role_ref=role_binding_role_ref,
+                         subjects=[role_binding_subjects])
 
 def make_pod(
     name,

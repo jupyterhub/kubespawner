@@ -1,5 +1,6 @@
 # specifically use concurrent.futures for threadsafety
 # asyncio Futures cannot be used across threads
+
 from concurrent.futures import Future
 
 import time
@@ -14,7 +15,7 @@ from urllib3.exceptions import ReadTimeoutError
 
 from .clients import shared_client
 
-class NamespacedResourceReflector(LoggingConfigurable):
+class ResourceReflector(LoggingConfigurable):
     """
     Base class for keeping a local up-to-date copy of a set of kubernetes resources.
 
@@ -33,14 +34,6 @@ class NamespacedResourceReflector(LoggingConfigurable):
         config=True,
         help="""
         Fields to restrict the reflected objects
-        """
-    )
-
-    namespace = Unicode(
-        None,
-        allow_none=True,
-        help="""
-        Namespace to watch for resources in
         """
     )
 
@@ -66,10 +59,6 @@ class NamespacedResourceReflector(LoggingConfigurable):
         "",
         help="""
         Name of function (on apigroup respresented by `api_group_name`) that is to be called to list resources.
-
-        This will be passed a namespace & a label selector. You most likely want something
-        of the form list_namespaced_<resource> - for example, `list_namespaced_pod` will
-        give you a PodReflector.
 
         This must be set by a subclass.
         """
@@ -150,12 +139,16 @@ class NamespacedResourceReflector(LoggingConfigurable):
 
         Overwrites all current resource info.
         """
-        initial_resources = getattr(self.api, self.list_method_name)(
-            self.namespace,
-            label_selector=self.label_selector,
-            field_selector=self.field_selector,
-            _request_timeout=self.request_timeout,
-        )
+        list_args = {
+            'label_selector': self.label_selector,
+            'field_selector': self.field_selector,
+            '_request_timeout': self.request_timeout
+        }
+
+        print(list_args)
+
+        initial_resources = getattr(self.api, self.list_method_name)(**list_args)
+
         # This is an atomic operation on the dictionary!
         self.resources = {p.metadata.name: p for p in initial_resources.items}
         # return the resource version so we can hook up a watch
@@ -195,8 +188,8 @@ class NamespacedResourceReflector(LoggingConfigurable):
         cur_delay = 0.1
 
         self.log.info(
-            "watching for %s with %s in namespace %s",
-            self.kind, log_selector, self.namespace,
+            "watching for %s with %s in ALL Namespaces",
+            self.kind, log_selector,
         )
         while True:
             self.log.debug("Connecting %s watcher", self.kind)
@@ -208,7 +201,6 @@ class NamespacedResourceReflector(LoggingConfigurable):
                     # signal that we've loaded our initial data
                     self.first_load_future.set_result(None)
                 watch_args = {
-                    'namespace': self.namespace,
                     'label_selector': self.label_selector,
                     'field_selector': self.field_selector,
                     'resource_version': resource_version,

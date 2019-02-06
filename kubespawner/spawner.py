@@ -18,13 +18,13 @@ from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
 from traitlets import (
     Bool,
+    default,
     Dict,
     Integer,
     List,
+    observe,
     Unicode,
     Union,
-    default,
-    observe,
     validate,
 )
 from jupyterhub.spawner import Spawner
@@ -37,13 +37,20 @@ from jinja2 import Environment, BaseLoader
 
 from .clients import shared_client
 from kubespawner.traitlets import Callable
-from kubespawner.objects import make_pod, make_pvc
-from kubespawner.reflector import NamespacedResourceReflector
+from kubespawner.objects import (
+    make_cluster_role_binding,
+    make_namespace,
+    make_pod, make_pvc,
+    make_role_binding,
+    make_service_account,
+    make_user_role,
+)
+from kubespawner.reflector import ResourceReflector
 from asyncio import sleep
 from async_generator import async_generator, yield_
 
 
-class PodReflector(NamespacedResourceReflector):
+class PodReflector(ResourceReflector):
     kind = 'pods'
     # FUTURE: These labels are the selection labels for the PodReflector. We
     # might want to support multiple deployments in the same namespace, so we
@@ -53,17 +60,17 @@ class PodReflector(NamespacedResourceReflector):
         'component': 'singleuser-server',
     }
 
-    list_method_name = 'list_namespaced_pod'
+    list_method_name = 'list_pod_for_all_namespaces'
 
     @property
     def pods(self):
         return self.resources
 
 
-class EventReflector(NamespacedResourceReflector):
+class EventReflector(ResourceReflector):
     kind = 'events'
 
-    list_method_name = 'list_namespaced_event'
+    list_method_name = 'list_event_for_all_namespaces'
 
     @property
     def events(self):
@@ -138,6 +145,15 @@ class KubeSpawner(Spawner):
             self.api = shared_client('CoreV1Api')
 
         # runs during both test and normal execution
+
+        # check if using user based namespace
+        if self.namespace_name_template:
+            if callable(self.namespace_name_template):
+                # Warning - function call must be a quick transformation to avoid
+                # stalling Tornado (Futures not usable in constructors.)
+                self.namespace = self.namespace_name_template(self);
+            else:
+                self.namespace = self._expand_user_properties(self.namespace_name_template)
         self.pod_name = self._expand_user_properties(self.pod_name_template)
         self.pvc_name = self._expand_user_properties(self.pvc_name_template)
         if self.working_dir:
@@ -258,6 +274,24 @@ class KubeSpawner(Spawner):
         give arbitrary users root over your entire cluster.
         """
     )
+
+    namespace_name_template = Union(
+        [
+            Unicode(),
+            Callable(),
+        ],
+        default_value=None,
+        allow_none=True,
+        help="""
+        Template to form the namespace destination for a user's pods & pvcs.
+          
+        `{username}` is expanded to the escaped, dns-label safe username.
+        
+        If it is a callable instead of a template string, it will be
+        called with one parameter (the spawner instance), and should return a
+        string fairly quickly (no blocking operations please!).
+        """
+    ).tag(config=True)
 
     pod_name_template = Unicode(
         'jupyter-{username}{servername}',
@@ -1313,6 +1347,11 @@ class KubeSpawner(Spawner):
         else:
             real_cmd = None
 
+        if self.namespace_name_template:
+            service_account = self.namespace
+        else:
+            service_account = self.service_account
+
         labels = self._build_pod_labels(self._expand_all(self.extra_labels))
         annotations = self._build_common_annotations(self._expand_all(self.extra_annotations))
 
@@ -1343,7 +1382,7 @@ class KubeSpawner(Spawner):
             extra_resource_guarantees=self.extra_resource_guarantees,
             lifecycle_hooks=self.lifecycle_hooks,
             init_containers=self._expand_all(self.init_containers),
-            service_account=self.service_account,
+            service_account=service_account,
             extra_container_config=self.extra_container_config,
             extra_pod_config=self.extra_pod_config,
             extra_containers=self._expand_all(self.extra_containers),
@@ -1378,6 +1417,118 @@ class KubeSpawner(Spawner):
             labels=labels,
             annotations=annotations
         )
+
+    def has_service_account(self, name):
+        accounts = client.CoreV1Api().list_service_account_for_all_namespaces()
+        for n in accounts.items:
+            if n.metadata.name == name:
+                return True
+
+        return False
+
+    def get_namespace_manifest(self):
+        """
+        Make a namespace manifest for pod creation
+        :return:
+        """
+        return make_namespace(name=self.namespace)
+
+    def _has_namespace(self, name):
+        """
+        Check if the given namespace exists
+        :param namespace: the namespace to be checked
+        """
+        namespaces = client.CoreV1Api().list_namespace()
+        for n in namespaces.items:
+            if n.metadata.name == name:
+                return True
+
+        return False
+
+    def _create_and_configure_namespace(self):
+        """
+        Create the user specific namespace to spawn user pods
+        and other artifacts. The namespace will be configured
+        using based on the provided template, and will also
+        have a service account, role and role binding with the
+        same name for any operations inside the sandbox.
+        :return:
+        """
+        # create the namespace
+        self.log.debug('Creating user namespace {}'.format(self.namespace))
+        namespace_metadata = make_namespace(name=self.namespace)
+        try:
+            client.CoreV1Api().create_namespace(body=namespace_metadata)
+        except ApiException as e:
+            if e.status == 409:
+                # ignore when resource already exists
+                pass
+            else:
+                self.log.debug('Error creating namespace {}'.format(self.namespace))
+                raise e
+        self.log.debug('Namespace created.')
+
+        # bind the hub service account to the user namespace
+        self.log.debug("Creating ClusterRoleBinding '{}' for hub service account".format('hub'))
+        role_binding_metadata = make_cluster_role_binding(namespace='hub', name='hub', service_account='hub')
+        try:
+            client.RbacAuthorizationV1Api().create_namespaced_role_binding(namespace=self.namespace, body=role_binding_metadata)
+        except ApiException as e:
+            if e.status == 409:
+                # ignore when resource already exists
+                pass
+            else:
+                self.log.debug("Error creating cluster role binding '{}'".format('hub'))
+                raise e
+        self.log.debug('ClusterRoleBinding for hub service account created.')
+
+        # create a new service account on the user namespace
+        self.log.debug("Creating user service account '{}' ".format(self.namespace))
+        service_account = self.namespace
+        service_account_metadata = make_service_account(name=service_account)
+        try:
+            client.CoreV1Api().create_namespaced_service_account(namespace=self.namespace, body=service_account_metadata)
+        except ApiException as e:
+            if e.status == 409:
+                # ignore when resource already exists
+                pass
+            else:
+                self.log.debug("Error creating service account '{}' for namespace {}".format(service_account, self.namespace))
+                raise e
+        self.log.debug('User service account created.'.format())
+
+        # create user role
+        user_role_name = self.namespace
+        self.log.debug("Creating user Role '{}' ".format(user_role_name))
+        role_metadata = make_user_role(name=user_role_name)
+        try:
+            client.RbacAuthorizationV1Api().create_namespaced_role(namespace=self.namespace, body=role_metadata)
+        except ApiException as e:
+            if e.status == 409:
+                # ignore when resource already exists
+                pass
+            else:
+                self.log.debug("Error creating role '{}' for namespace '{}'".format(user_role_name, self.namespace))
+                raise e
+        self.log.debug('Role created.'.format())
+
+        # Bind the new user role to new Service Account
+        self.log.debug("Creating user RoleBinding '{}'".format(self.namespace))
+        user_role_binding = self.namespace
+        role_binding_metadata = make_role_binding(namespace=self.namespace, name=user_role_binding, service_account=service_account)
+        try:
+            client.RbacAuthorizationV1Api().create_namespaced_role_binding(namespace=self.namespace, body=role_binding_metadata)
+        except ApiException as e:
+            if e.status == 409:
+                # ignore when resource already exists
+                pass
+            else:
+                self.log.debug("Error creating user RoleBinding '{}'".format(user_role_binding))
+                raise e
+        self.log.debug('User RoleBinding created.')
+
+        self.log.debug("Namespace '{}' created and configured with service account: '{}', role '{}' and role-binding '{}'".format(
+            self.namespace, service_account, user_role_name, user_role_binding))
 
     def is_pod_running(self, pod):
         """
@@ -1574,7 +1725,6 @@ class KubeSpawner(Spawner):
         if replace or not previous_reflector:
             self.__class__.reflectors[key] = ReflectorClass(
                 parent=self,
-                namespace=self.namespace,
                 on_failure=on_reflector_failure,
                 **kwargs,
             )
@@ -1639,6 +1789,9 @@ class KubeSpawner(Spawner):
         events = self.events
         if events:
             self._last_event = events[-1].metadata.uid
+
+        if not self._has_namespace(self.namespace):
+            self._create_and_configure_namespace()
 
         if self.storage_pvc_ensure:
             # Try and create the pvc. If it succeeds we are good. If

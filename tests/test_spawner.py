@@ -1,7 +1,7 @@
-from unittest.mock import Mock
-
-from jupyterhub.objects import Hub, Server
 import pytest
+
+from unittest.mock import Mock
+from jupyterhub.objects import Hub, Server
 from traitlets.config import Config
 from asyncio import get_event_loop
 from kubespawner import KubeSpawner
@@ -59,6 +59,14 @@ def test_deprecated_runtime_access():
     spawner.image = 'abc:123'
     assert spawner.image_spec == 'abc:123'
     assert spawner.image == 'abc:123'
+
+@pytest.fixture
+def test_expand_user_properties():
+    c = Config()
+    c.KubeSpawner.namespace = 'hub-{username}'
+
+    spawner = KubeSpawner(hub=Hub(), config=c, _mock=True)
+    assert spawner._expand_user_properties(spawner.namespace) == 'hub-mock-5fname'
 
 
 def test_spawner_values():

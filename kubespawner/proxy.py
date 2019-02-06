@@ -10,14 +10,14 @@ from jupyterhub.utils import exponential_backoff
 
 from kubespawner.objects import make_ingress
 from kubespawner.utils import generate_hashed_slug
-from kubespawner.reflector import NamespacedResourceReflector
+from kubespawner.reflector import ResourceReflector
 from .clients import shared_client
 from traitlets import Unicode
 from tornado import gen
 from tornado.concurrent import run_on_executor
 
 
-class IngressReflector(NamespacedResourceReflector):
+class IngressReflector(ResourceReflector):
     kind = 'ingresses'
     labels = {
         'component': 'singleuser-server',
@@ -31,7 +31,7 @@ class IngressReflector(NamespacedResourceReflector):
     def ingresses(self):
         return self.resources
 
-class ServiceReflector(NamespacedResourceReflector):
+class ServiceReflector(ResourceReflector):
     kind = 'services'
     labels = {
         'component': 'singleuser-server',
@@ -44,7 +44,7 @@ class ServiceReflector(NamespacedResourceReflector):
     def services(self):
         return self.resources
 
-class EndpointsReflector(NamespacedResourceReflector):
+class EndpointsReflector(ResourceReflector):
     kind = 'endpoints'
     labels = {
         'component': 'singleuser-server',
