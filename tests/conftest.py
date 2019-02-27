@@ -46,5 +46,5 @@ def kube_client(request, kube_ns):
     else:
         print("Using existing namespace %s" % kube_ns)
     # delete the test namespace when we finish
-    request.addfinalizer(lambda: client.delete_namespace(kube_ns, {}))
+    request.addfinalizer(lambda: client.delete_namespace(kube_ns, body={}))
     return client
