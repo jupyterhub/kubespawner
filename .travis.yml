@@ -3,14 +3,24 @@ sudo: required
 dist: xenial
 python:
   - nightly
+  - 3.7
   - 3.6
   - 3.5
 
 # install dependencies
 install:
-  - pip install --pre -e ".[test]"
+  - pip install --upgrade setuptools pip
+  # add --pre so that we test with prereleases of dependencies
+  # to catch compatibility issues before they enter final releases
+  - pip install --upgrade --pre -e ".[test]"
+  - |
+    # install pinned kubernetes
+    if [[ ! -z "$KUBE_PY" ]]; then
+      pip install "kubernetes==$KUBE_PY.*"
+    fi
   - source ci/minikube.env
   - ./ci/install-kube.sh
+  - pip freeze
 
 # command to run tests
 script:
@@ -23,3 +33,8 @@ matrix:
   fast_finish: true
   allow_failures:
     - python: nightly
+  include:
+    - python: 3.6
+      env: KUBE_PY=7
+    - python: 3.7
+      env: KUBE_PY=8
