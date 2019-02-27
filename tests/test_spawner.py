@@ -150,38 +150,65 @@ def test_get_pod_manifest_tolerates_mixed_input():
     assert isinstance(manifest.spec.init_containers[1], V1Container)
 
 
+_test_profiles = [
+    {
+        'display_name': 'Training Env - Python',
+        'default': True,
+        'kubespawner_override': {
+            'image': 'training/python:label',
+            'cpu_limit': 1,
+            'mem_limit': 512 * 1024 * 1024,
+            }
+    },
+    {
+        'display_name': 'Training Env - Datascience',
+        'kubespawner_override': {
+            'image': 'training/datascience:label',
+            'cpu_limit': 4,
+            'mem_limit': 8 * 1024 * 1024 * 1024,
+            }
+    },
+]
+
+
 @pytest.mark.asyncio
 async def test_user_options_set_from_form():
     spawner = KubeSpawner(_mock=True)
-    spawner.profile_list = [
-        {
-            'display_name': 'Training Env - Python',
-            'default': True,
-            'kubespawner_override': {
-                'image': 'training/python:label',
-                'cpu_limit': 1,
-                'mem_limit': '512M',
-                }
-        },
-        {
-            'display_name': 'Training Env - Datascience',
-            'kubespawner_override': {
-                'image': 'training/datascience:label',
-                'cpu_limit': 4,
-                'mem_limit': '8G',
-                }
-        }
-    ]
-    # we don't process options unless _profile_list is set
-    spawner._render_options_form(spawner.profile_list)
-    assert spawner.cpu_limit is None
-    spawner.options_from_form({'profile': [1]})
+    spawner.profile_list = _test_profiles
+    # render the form
+    await spawner.get_options_form()
+    spawner.user_options = spawner.options_from_form({'profile': [1]})
     assert spawner.user_options == {
-        'image': 'training/datascience:label',
-        'cpu_limit': 4,
-        'mem_limit': '8G',
+        'profile': _test_profiles[1]['display_name'],
     }
-    # mock this so we don't do anything real
-    spawner._start = lambda : True
-    spawner.start()
-    assert spawner.cpu_limit == 4
+    # nothing should be loaded yet
+    assert spawner.cpu_limit is None
+    await spawner.load_user_options()
+    for key, value in _test_profiles[1]['kubespawner_override'].items():
+        assert getattr(spawner, key) == value
+
+
+@pytest.mark.asyncio
+async def test_user_options_api():
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    # set user_options directly (e.g. via api)
+    spawner.user_options = {'profile': _test_profiles[1]['display_name']}
+
+    # nothing should be loaded yet
+    assert spawner.cpu_limit is None
+    await spawner.load_user_options()
+    for key, value in _test_profiles[1]['kubespawner_override'].items():
+        assert getattr(spawner, key) == value
+
+
+@pytest.mark.asyncio
+async def test_default_profile():
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    spawner.user_options = {}
+    # nothing should be loaded yet
+    assert spawner.cpu_limit is None
+    await spawner.load_user_options()
+    for key, value in _test_profiles[0]['kubespawner_override'].items():
+        assert getattr(spawner, key) == value

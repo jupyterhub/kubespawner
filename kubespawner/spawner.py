@@ -16,6 +16,7 @@ import warnings
 from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
+from tornado import web
 from traitlets import (
     Bool,
     Dict,
@@ -1620,13 +1621,6 @@ class KubeSpawner(Spawner):
         start returns, which we can use to terminate
         .progress()
         """
-        for k, v in self.user_options.items():
-            if callable(v):
-                v = v(self)
-                self.log.debug(".. overriding KubeSpawner value %s=%s (callable result)", k, v)
-            else:
-                self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
-            setattr(self, k, v)
         self._start_future = self._start()
         return self._start_future
 
@@ -1635,6 +1629,10 @@ class KubeSpawner(Spawner):
     @gen.coroutine
     def _start(self):
         """Start the user's pod"""
+
+        # load user options (including profile)
+        yield self.load_user_options()
+
         # record latest event so we don't include old
         # events from previous pods in self.events
         # track by order and name instead of uid
@@ -1794,6 +1792,8 @@ class KubeSpawner(Spawner):
     def _env_keep_default(self):
         return []
 
+    _profile_list = None
+
     def _render_options_form(self, profile_list):
         self._profile_list = profile_list
         profile_form_template = Environment(loader=BaseLoader).from_string(self.profile_form_template)
@@ -1823,8 +1823,9 @@ class KubeSpawner(Spawner):
     def options_from_form(self, formdata):
         """get the option selected by the user on the form
 
-        It actually reset the settings of kubespawner to each item found in the selected profile
-        (`kubespawner_override`).
+        This only constructs the user_options dict,
+        it should not actually load any options.
+        That is done later in `.load_user_options()`
 
         Args:
             formdata: user selection returned by the form
@@ -1840,12 +1841,70 @@ class KubeSpawner(Spawner):
             </select>
 
         Returns:
-            the selected user option
+            user_options (dict): the selected profile in the user_options form,
+                e.g. ``{"profile": "8 CPUs"}``
         """
-        if not self.profile_list or not hasattr(self, '_profile_list'):
+        if not self.profile_list or self._profile_list is None:
             return formdata
         # Default to first profile if somehow none is provided
-        selected_profile = int(formdata.get('profile', [0])[0])
-        options = self._profile_list[selected_profile]
-        self.log.debug("Applying KubeSpawner override for profile '%s'", options['display_name'])
-        self.user_options = options.get('kubespawner_override', {})
+        try:
+            selected_profile = int(formdata.get('profile', [0])[0])
+            options = self._profile_list[selected_profile]
+        except (TypeError, IndexError, ValueError):
+            raise web.HTTPError(400, "No such profile: %i", formdata.get('profile', None))
+        return {
+            'profile': options['display_name']
+        }
+
+    @gen.coroutine
+    def _load_profile(self, profile_name):
+        """Load a profile by name
+
+        Called by load_user_options
+        """
+
+        # find the profile
+        default_profile = self._profile_list[0]
+        for profile in self._profile_list:
+            if profile.get('default', False):
+                # explicit default, not the first
+                default_profile = profile
+
+            if profile['display_name'] == profile_name:
+                break
+        else:
+            if profile_name:
+                # name specified, but not found
+                raise ValueError("No such profile: %s. Options include: %s" % (
+                    profile_name, ', '.join(p['display_name'] for p in self._profile_list)
+                ))
+            else:
+                # no name specified, use the default
+                profile = default_profile
+
+        self.log.debug("Applying KubeSpawner override for profile '%s'", profile['display_name'])
+        kubespawner_override = profile.get('kubespawner_override', {})
+        for k, v in kubespawner_override.items():
+            if callable(v):
+                v = v(self)
+                self.log.debug(".. overriding KubeSpawner value %s=%s (callable result)", k, v)
+            else:
+                self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
+            setattr(self, k, v)
+
+    @gen.coroutine
+    def load_user_options(self):
+        """Load user options from self.user_options dict
+
+        This can be set via POST to the API or via options_from_form
+
+        Only supported argument by default is 'profile'.
+        Override in subclasses to support other options.
+        """
+        if self._profile_list is None:
+            if callable(self.profile_list):
+                self._profile_list = yield gen.maybe_future(self.profile_list(self))
+            else:
+                self._profile_list = self.profile_list
+        if self._profile_list:
+            yield self._load_profile(self.user_options.get('profile', None))
