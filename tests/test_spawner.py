@@ -61,6 +61,35 @@ def test_deprecated_runtime_access():
     assert spawner.image == 'abc:123'
 
 
+def test_spawner_values():
+    """Spawner values are set correctly"""
+    spawner = KubeSpawner(_mock=True)
+
+    def set_id(spawner):
+        return 1
+
+    spawner.uid = 10
+    assert spawner.uid == 10
+    spawner.uid = set_id
+    assert spawner.uid == set_id
+    spawner.uid = None
+    assert spawner.uid == None
+
+    spawner.gid = 20
+    assert spawner.gid == 20
+    spawner.gid = set_id
+    assert spawner.gid == set_id
+    spawner.gid = None
+    assert spawner.gid == None
+
+    spawner.fs_gid = 30
+    assert spawner.fs_gid == 30
+    spawner.fs_gid = set_id
+    assert spawner.fs_gid == set_id
+    spawner.fs_gid = None
+    assert spawner.fs_gid == None
+
+
 @pytest.mark.asyncio
 async def test_spawn(kube_ns, kube_client, config):
     spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=config)
