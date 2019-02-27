@@ -99,6 +99,10 @@ def make_pod(
     run_as_gid:
         The GID used to run single-user pods. The default is to run as the primary
         group of the user specified in the Dockerfile, if this is set to None.
+        Setting this parameter requires that *feature-gate* **RunAsGroup** be enabled,
+        otherwise the effective GID of the pod will be 0 (root).  In addition, not
+        setting `run_as_gid` once feature-gate RunAsGroup is enabled will also
+        result in an effective GID of 0 (root).
     fs_gid
         The gid that will own any fresh volumes mounted into this pod, if using
         volume types that support this (such as GCE). This should be a group that
