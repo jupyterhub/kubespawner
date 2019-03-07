@@ -145,8 +145,6 @@ class ResourceReflector(LoggingConfigurable):
             '_request_timeout': self.request_timeout
         }
 
-        print(list_args)
-
         initial_resources = getattr(self.api, self.list_method_name)(**list_args)
 
         # This is an atomic operation on the dictionary!

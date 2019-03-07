@@ -124,7 +124,7 @@ def make_user_rules():
                      resources=['events'],
                      verbs=['get', 'list', 'watch']),
         V1PolicyRule([''],
-                     resources=['pods', 'persistentvolumnes', 'persistentvolumeclaims'],
+                     resources=['pods', 'persistentvolumes', 'persistentvolumeclaims'],
                      verbs=['get', 'list', 'watch']),
     ]
 

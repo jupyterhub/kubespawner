@@ -1433,6 +1433,12 @@ class KubeSpawner(Spawner):
         """
         return make_namespace(name=self.namespace)
 
+    def _is_using_personal_namespaces(self):
+        if self.namespace_name_template:
+            return True
+        else:
+            return False
+
     def _has_namespace(self, name):
         """
         Check if the given namespace exists
@@ -1510,7 +1516,7 @@ class KubeSpawner(Spawner):
             else:
                 self.log.debug("Error creating role '{}' for namespace '{}'".format(user_role_name, self.namespace))
                 raise e
-        self.log.debug('Role created.'.format())
+        self.log.debug("User Role '{}' created.".format(user_role_name))
 
         # Bind the new user role to new Service Account
         self.log.debug("Creating user RoleBinding '{}'".format(self.namespace))
@@ -1525,10 +1531,10 @@ class KubeSpawner(Spawner):
             else:
                 self.log.debug("Error creating user RoleBinding '{}'".format(user_role_binding))
                 raise e
-        self.log.debug('User RoleBinding created.')
+        self.log.debug("User RoleBinding '{}' created.".format(user_role_binding))
 
-        self.log.debug("Namespace '{}' created and configured with service account: '{}', role '{}' and role-binding '{}'".format(
-            self.namespace, service_account, user_role_name, user_role_binding))
+        self.log.debug("Namespace '{}' created and configured with service account: '{}', role '{}' and role-binding '{}'"
+            .format(self.namespace, service_account, user_role_name, user_role_binding))
 
     def is_pod_running(self, pod):
         """
@@ -1790,8 +1796,9 @@ class KubeSpawner(Spawner):
         if events:
             self._last_event = events[-1].metadata.uid
 
-        if not self._has_namespace(self.namespace):
-            self._create_and_configure_namespace()
+        if self._is_using_personal_namespaces():
+            if not self._has_namespace(self.namespace):
+                self._create_and_configure_namespace()
 
         if self.storage_pvc_ensure:
             # Try and create the pvc. If it succeeds we are good. If
