@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 
 from jupyterhub.objects import Hub, Server
+from jupyterhub.orm import Spawner
 import pytest
 from traitlets.config import Config
 from asyncio import get_event_loop
@@ -245,3 +246,61 @@ async def test_default_profile():
     await spawner.load_user_options()
     for key, value in _test_profiles[0]['kubespawner_override'].items():
         assert getattr(spawner, key) == value
+
+
+def test_pod_name_no_named_servers():
+    c = Config()
+    c.JupyterHub.allow_named_servers = False
+
+    user = Config()
+    user.name = "user"
+
+    orm_spawner = Spawner()
+
+    spawner = KubeSpawner(config=c, user=user, orm_spawner=orm_spawner, _mock=True)
+
+    assert spawner.pod_name == "jupyter-user"
+
+
+def test_pod_name_named_servers():
+    c = Config()
+    c.JupyterHub.allow_named_servers = True
+
+    user = Config()
+    user.name = "user"
+
+    orm_spawner = Spawner()
+    orm_spawner.name = "server"
+
+    spawner = KubeSpawner(config=c, user=user, orm_spawner=orm_spawner, _mock=True)
+
+    assert spawner.pod_name == "jupyter-user-server"
+
+
+def test_pod_name_escaping():
+    c = Config()
+    c.JupyterHub.allow_named_servers = True
+
+    user = Config()
+    user.name = "some_user"
+
+    orm_spawner = Spawner()
+    orm_spawner.name = "test-server!"
+
+    spawner = KubeSpawner(config=c, user=user, orm_spawner=orm_spawner, _mock=True)
+
+    assert spawner.pod_name == "jupyter-some-5fuser-test-2dserver-21"
+
+
+def test_pod_name_custom_template():
+    c = Config()
+    c.JupyterHub.allow_named_servers = False
+
+    user = Config()
+    user.name = "some_user"
+
+    pod_name_template = "prefix-{username}-suffix"
+
+    spawner = KubeSpawner(config=c, user=user, pod_name_template=pod_name_template, _mock=True)
+
+    assert spawner.pod_name == "prefix-some-5fuser-suffix"
