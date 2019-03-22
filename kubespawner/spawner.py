@@ -1247,7 +1247,7 @@ class KubeSpawner(Spawner):
         # Set servername based on whether named-server initialised
         if self.name:
             servername = '-{}'.format(self.name)
-            safe_servername = escapism.escape(servername, safe=safe_chars, escape_char='-').lower()
+            safe_servername = '-{}'.format(escapism.escape(self.name, safe=safe_chars, escape_char='-').lower())
         else:
             servername = ''
             safe_servername = ''
