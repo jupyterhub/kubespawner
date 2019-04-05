@@ -1,5 +1,7 @@
 # kubespawner (jupyterhub-kubespawner) #
 
+[![codecov](https://codecov.io/gh/jupyterhub/kubespawner/branch/master/graph/badge.svg)](https://codecov.io/gh/jupyterhub/kubespawner) [![Documentation Status](http://readthedocs.org/projects/jupyterhub-kubespawner/badge/?version=latest)](https://jupyterhub-kubespawner.readthedocs.io/en/latest/?badge=latest)
+
 The *kubespawner* (also known as JupyterHub Kubernetes Spawner) enables JupyterHub to spawn
 single-user notebook servers on a [Kubernetes](https://kubernetes.io/)
 cluster.
