@@ -1106,7 +1106,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    termination_grace_period = Integer(
+    delete_grace_period = Integer(
         1,
         config=True,
         help="""
@@ -1768,7 +1768,7 @@ class KubeSpawner(Spawner):
         if now:
             grace_seconds = 0
         else:
-            grace_seconds = self.termination_grace_period
+            grace_seconds = self.delete_grace_period
 
         delete_options.grace_period_seconds = grace_seconds
         self.log.info("Deleting pod %s", self.pod_name)
