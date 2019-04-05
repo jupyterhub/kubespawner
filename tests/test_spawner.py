@@ -20,6 +20,10 @@ class MockUser(Mock):
     server = Server()
 
     @property
+    def escaped_name(self):
+        return self.name
+
+    @property
     def url(self):
         return self.server.url
 
