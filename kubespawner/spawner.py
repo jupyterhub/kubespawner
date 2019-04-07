@@ -1107,6 +1107,21 @@ class KubeSpawner(Spawner):
         """
     )
 
+    delete_grace_period = Integer(
+        1,
+        config=True,
+        help="""
+        Time in seconds for the pod to be in `terminating` state before is forcefully killed.
+        
+        Increase this if you need more time to execute a `preStop` lifecycle hook.
+
+        See https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods for
+        more information on how pod termination works.
+
+        Defaults to `1`.
+        """
+    )
+
     # deprecate redundant and inconsistent singleuser_ and user_ prefixes:
     _deprecated_traits_09 = [
         "singleuser_working_dir",
@@ -1758,9 +1773,7 @@ class KubeSpawner(Spawner):
         if now:
             grace_seconds = 0
         else:
-            # Give it some time, but not the default (which is 30s!)
-            # FIXME: Move this into pod creation maybe?
-            grace_seconds = 1
+            grace_seconds = self.delete_grace_period
 
         delete_options.grace_period_seconds = grace_seconds
         self.log.info("Deleting pod %s", self.pod_name)
