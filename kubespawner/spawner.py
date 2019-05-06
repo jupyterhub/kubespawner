@@ -1361,7 +1361,7 @@ class KubeSpawner(Spawner):
             init_containers=self._expand_all(self.init_containers),
             service_account=self.service_account,
             extra_container_config=self.extra_container_config,
-            extra_pod_config=self.extra_pod_config,
+            extra_pod_config=self._expand_all(self.extra_pod_config),
             extra_containers=self._expand_all(self.extra_containers),
             scheduler_name=self.scheduler_name,
             tolerations=self.tolerations,
