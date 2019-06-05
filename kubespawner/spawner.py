@@ -1424,6 +1424,7 @@ class KubeSpawner(Spawner):
         """
         state = super().get_state()
         state['pod_name'] = self.pod_name
+        state['image'] = self.image
         return state
 
     def get_env(self):
