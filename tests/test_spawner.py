@@ -289,7 +289,7 @@ def test_pod_name_escaping():
 
     spawner = KubeSpawner(config=c, user=user, orm_spawner=orm_spawner, _mock=True)
 
-    assert spawner.pod_name == "jupyter-some-5fuser-test-2dserver-21"
+    assert spawner.pod_name == "jupyter-some-5fuser-test-server-21"
 
 
 def test_pod_name_custom_template():

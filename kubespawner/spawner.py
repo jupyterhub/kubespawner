@@ -1241,19 +1241,20 @@ class KubeSpawner(Spawner):
 
     def _expand_user_properties(self, template):
         # Make sure username and servername match the restrictions for DNS labels
-        # Note: '-' is not in safe_chars, as it is being used as escape character
-        safe_chars = set(string.ascii_lowercase + string.digits)
+        safe_chars = set(string.ascii_letters + string.digits)
 
         # Set servername based on whether named-server initialised
         if self.name:
             servername = '-{}'.format(self.name)
-            safe_servername = '-{}'.format(escapism.escape(self.name, safe=safe_chars, escape_char='-').lower())
+            safe_servername = '-{}'.format(
+                escapism.escape(self.name, safe=safe_chars, escape_char='-', allow_collisions=True).lower()
+            )
         else:
             servername = ''
             safe_servername = ''
 
         legacy_escaped_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
-        safe_username = escapism.escape(self.user.name, safe=safe_chars, escape_char='-').lower()
+        safe_username = escapism.escape(self.user.name, safe=safe_chars, escape_char='-', allow_collisions=True).lower()
         return template.format(
             userid=self.user.id,
             username=safe_username,
