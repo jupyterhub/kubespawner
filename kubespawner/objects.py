@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from kubespawner.utils import get_k8s_model, update_k8s_model
 
 from kubernetes.client.models import (
-    V1Pod, V1PodSpec, V1PodSecurityContext,
+    V1Pod, V1PodSpec,
     V1ObjectMeta,
     V1LocalObjectReference,
     V1Volume, V1VolumeMount,
@@ -230,17 +230,6 @@ def make_pod(
     pod.spec = V1PodSpec(containers=[])
     pod.spec.restart_policy = 'OnFailure'
 
-    security_context = V1PodSecurityContext()
-    if fs_gid is not None:
-        security_context.fs_group = int(fs_gid)
-    if supplemental_gids is not None and supplemental_gids:
-        security_context.supplemental_groups = [int(gid) for gid in supplemental_gids]
-    if run_as_uid is not None:
-        security_context.run_as_user = int(run_as_uid)
-    if run_as_gid is not None:
-        security_context.run_as_group = int(run_as_gid)
-    pod.spec.security_context = security_context
-
     if image_pull_secret is not None:
         pod.spec.image_pull_secrets = []
         image_secret = V1LocalObjectReference()
@@ -252,6 +241,19 @@ def make_pod(
 
     if lifecycle_hooks:
         lifecycle_hooks = get_k8s_model(V1Lifecycle, lifecycle_hooks)
+
+    security_context = V1SecurityContext()
+    if fs_gid is not None:
+        security_context.fs_group = int(fs_gid)
+    if supplemental_gids is not None and supplemental_gids:
+        security_context.supplemental_groups = [int(gid) for gid in supplemental_gids]
+    if run_as_uid is not None:
+        security_context.run_as_user = int(run_as_uid)
+    if run_as_gid is not None:
+        security_context.run_as_group = int(run_as_gid)
+    if run_privileged:
+        security_context.privileged = True
+
     notebook_container = V1Container(
         name='notebook',
         image=image,
@@ -263,6 +265,7 @@ def make_pod(
         lifecycle=lifecycle_hooks,
         resources=V1ResourceRequirements(),
         volume_mounts=[get_k8s_model(V1VolumeMount, obj) for obj in (volume_mounts or [])],
+        security_context=security_context,
     )
 
     if service_account is None:
@@ -272,8 +275,6 @@ def make_pod(
     else:
         pod.spec.service_account_name = service_account
 
-    if run_privileged:
-        notebook_container.security_context = V1SecurityContext(privileged=True)
 
     notebook_container.resources.requests = {}
     if cpu_guarantee:
