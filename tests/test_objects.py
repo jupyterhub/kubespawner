@@ -886,6 +886,7 @@ def test_make_pvc_simple():
         storage_class='',
         access_modes=[],
         storage=None,
+        selector=None,
         labels={}
     )) == {
         'kind': 'PersistentVolumeClaim',
@@ -914,6 +915,7 @@ def test_make_resources_all():
         name='test',
         storage_class='gce-standard-storage',
         access_modes=['ReadWriteOnce'],
+        selector={'matchLabels':{'content': 'jupyter'}},
         storage='10Gi',
         labels={'key': 'value'}
     )) == {
@@ -931,6 +933,11 @@ def test_make_resources_all():
         'spec': {
             'storageClassName': 'gce-standard-storage',
             'accessModes': ['ReadWriteOnce'],
+            'selector': {
+                'matchLabels': {
+                    'content': 'jupyter'
+                }
+            },
             'resources': {
                 'requests': {
                     'storage': '10Gi'

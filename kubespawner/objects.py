@@ -394,6 +394,7 @@ def make_pvc(
     name,
     storage_class,
     access_modes,
+    selector,
     storage,
     labels=None,
     annotations=None,
@@ -410,6 +411,8 @@ def make_pvc(
         String of the name of the k8s Storage Class to use.
     access_modes:
         A list of specifying what access mode the pod should have towards the pvc
+    selector:
+        Dictionary Selector to match pvc to pv.
     storage:
         The ammount of storage needed for the pvc
 
@@ -429,6 +432,9 @@ def make_pvc(
     if storage_class:
         pvc.metadata.annotations.update({"volume.beta.kubernetes.io/storage-class": storage_class})
         pvc.spec.storage_class_name = storage_class
+
+    if selector:
+        pvc.spec.selector = selector
 
     return pvc
 
