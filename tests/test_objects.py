@@ -885,8 +885,8 @@ def test_make_pvc_simple():
         name='test',
         storage_class='',
         access_modes=[],
-        storage=None,
         selector=None,
+        storage=None,
         labels={}
     )) == {
         'kind': 'PersistentVolumeClaim',
