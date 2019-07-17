@@ -883,7 +883,7 @@ def test_make_pvc_simple():
     """
     assert api_client.sanitize_for_serialization(make_pvc(
         name='test',
-        storage_class='',
+        storage_class=None,
         access_modes=[],
         storage=None,
         labels={}
@@ -902,6 +902,38 @@ def test_make_pvc_simple():
                     'storage': None
                 }
             }
+        }
+    }
+
+
+def test_make_pvc_empty_storage_class():
+    """
+    Test specification of pvc with empty storage class
+    """
+    assert api_client.sanitize_for_serialization(make_pvc(
+        name='test',
+        storage_class='',
+        access_modes=[],
+        storage=None,
+        labels={}
+    )) == {
+        'kind': 'PersistentVolumeClaim',
+        'apiVersion': 'v1',
+        'metadata': {
+            'name': 'test',
+            'annotations': {
+                'volume.beta.kubernetes.io/storage-class': ''
+            },
+            'labels': {}
+        },
+        'spec': {
+            'accessModes': [],
+            'resources': {
+                'requests': {
+                    'storage': None
+                }
+            },
+            'storageClassName': ''
         }
     }
 
