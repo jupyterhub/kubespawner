@@ -23,7 +23,6 @@ def test_make_simplest_pod():
             "annotations": {}
         },
         "spec": {
-            "securityContext": {},
             'automountServiceAccountToken': False,
             "containers": [
                 {
@@ -68,7 +67,6 @@ def test_make_labeled_pod():
             "annotations": {}
         },
         "spec": {
-            "securityContext": {},
             'automountServiceAccountToken': False,
             "containers": [
                 {
@@ -113,7 +111,6 @@ def test_make_annotated_pod():
             "labels": {},
         },
         "spec": {
-            "securityContext": {},
             'automountServiceAccountToken': False,
             "containers": [
                 {
@@ -158,7 +155,6 @@ def test_make_pod_with_image_pull_secrets():
             "labels": {},
         },
         "spec": {
-            "securityContext": {},
             'automountServiceAccountToken': False,
             "imagePullSecrets": [
                 {'name': 'super-sekrit'}
@@ -208,13 +204,13 @@ def test_set_pod_uid_and_gid():
             "labels": {},
         },
         "spec": {
-            "securityContext": {
-                "runAsUser": 1000,
-                "runAsGroup": 2000
-            },
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "securityContext": {
+                        "runAsUser": 1000,
+                        "runAsGroup": 2000
+                    },
                     "env": [],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -257,13 +253,12 @@ def test_set_pod_uid_fs_gid():
             "labels": {},
         },
         "spec": {
-            "securityContext": {
-                "runAsUser": 1000,
-                "fsGroup": 1000
-            },
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "securityContext": {
+                        "runAsUser": 1000,
+                    },
                     "env": [],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -306,13 +301,12 @@ def test_set_pod_supplemental_gids():
             "labels": {},
         },
         "spec": {
-            "securityContext": {
-                "runAsUser": 1000,
-                "supplementalGroups": [100]
-            },
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "securityContext": {
+                        "runAsUser": 1000,
+                    },
                     "env": [],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -354,7 +348,6 @@ def test_run_privileged_container():
             "labels": {},
         },
         "spec": {
-            "securityContext": {},
             'automountServiceAccountToken': False,
             "containers": [
                 {
@@ -407,7 +400,6 @@ def test_make_pod_resources_all():
             "labels": {},
         },
         "spec": {
-            "securityContext": {},
             'automountServiceAccountToken': False,
             "imagePullSecrets": [{"name": "myregistrykey"}],
             "nodeSelector": {"disk": "ssd"},
@@ -464,7 +456,6 @@ def test_make_pod_with_env():
         },
         "spec": {
             'automountServiceAccountToken': False,
-            "securityContext": {},
             "containers": [
                 {
                     "env": [{'name': 'TEST_KEY', 'value': 'TEST_VALUE'}],
@@ -516,7 +507,6 @@ def test_make_pod_with_lifecycle():
             "labels": {},
         },
         "spec": {
-            "securityContext": {},
             'automountServiceAccountToken': False,
             "containers": [
                 {
@@ -583,7 +573,6 @@ def test_make_pod_with_init_containers():
         },
         "spec": {
             'automountServiceAccountToken': False,
-            "securityContext": {},
             "containers": [
                 {
                     "env": [],
@@ -652,7 +641,6 @@ def test_make_pod_with_extra_container_config():
         },
         "spec": {
             'automountServiceAccountToken': False,
-            "securityContext": {},
             "containers": [
                 {
                     "env": [],
@@ -719,7 +707,6 @@ def test_make_pod_with_extra_pod_config():
         },
         "spec": {
             'automountServiceAccountToken': False,
-            "securityContext": {},
             "containers": [
                 {
                     "env": [],
@@ -781,7 +768,6 @@ def test_make_pod_with_extra_containers():
         },
         "spec": {
             'automountServiceAccountToken': False,
-            "securityContext": {},
             "containers": [
                 {
                     "env": [],
@@ -840,7 +826,6 @@ def test_make_pod_with_extra_resources():
         },
         "spec": {
             'automountServiceAccountToken': False,
-            "securityContext": {},
             "imagePullSecrets": [{"name": "myregistrykey"}],
             "nodeSelector": {"disk": "ssd"},
             "containers": [
@@ -990,7 +975,6 @@ def test_make_pod_with_service_account():
             "annotations": {}
         },
         "spec": {
-            "securityContext": {},
             "containers": [
                 {
                     "env": [],
@@ -1036,7 +1020,6 @@ def test_make_pod_with_scheduler_name():
             "labels": {},
         },
         "spec": {
-            "securityContext": {},
             'automountServiceAccountToken': False,
             "containers": [
                 {
@@ -1097,7 +1080,6 @@ def test_make_pod_with_tolerations():
         },
         "spec": {
             "automountServiceAccountToken": False,
-            "securityContext": {},
             "containers": [
                 {
                     "env": [],
@@ -1154,7 +1136,6 @@ def test_make_pod_with_node_affinity_preferred():
         },
         "spec": {
             "automountServiceAccountToken": False,
-            "securityContext": {},
             "containers": [
                 {
                     "env": [],
@@ -1212,7 +1193,6 @@ def test_make_pod_with_node_affinity_required():
         },
         "spec": {
             "automountServiceAccountToken": False,
-            "securityContext": {},
             "containers": [
                 {
                     "env": [],
@@ -1278,7 +1258,6 @@ def test_make_pod_with_pod_affinity_preferred():
         },
         "spec": {
             "automountServiceAccountToken": False,
-            "securityContext": {},
             "containers": [
                 {
                     "env": [],
@@ -1339,7 +1318,6 @@ def test_make_pod_with_pod_affinity_required():
         },
         "spec": {
             "automountServiceAccountToken": False,
-            "securityContext": {},
             "containers": [
                 {
                     "env": [],
@@ -1403,7 +1381,6 @@ def test_make_pod_with_pod_anti_affinity_preferred():
         },
         "spec": {
             "automountServiceAccountToken": False,
-            "securityContext": {},
             "containers": [
                 {
                     "env": [],
@@ -1464,7 +1441,6 @@ def test_make_pod_with_pod_anti_affinity_required():
         },
         "spec": {
             "automountServiceAccountToken": False,
-            "securityContext": {},
             "containers": [
                 {
                     "env": [],
@@ -1514,7 +1490,6 @@ def test_make_pod_with_priority_class_name():
             "labels": {},
         },
         "spec": {
-            "securityContext": {},
             'automountServiceAccountToken': False,
             "containers": [
                 {
