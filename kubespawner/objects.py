@@ -243,16 +243,22 @@ def make_pod(
         lifecycle_hooks = get_k8s_model(V1Lifecycle, lifecycle_hooks)
 
     security_context = V1SecurityContext()
-    if fs_gid is not None:
-        security_context.fs_group = int(fs_gid)
-    if supplemental_gids is not None and supplemental_gids:
-        security_context.supplemental_groups = [int(gid) for gid in supplemental_gids]
+
+    # this is a pod-only parameter
+    # if fs_gid is not None:
+    #    security_context.fs_group = int(fs_gid)
+    # this is a pod-only parameter
+    # if supplemental_gids is not None and supplemental_gids:
+    #    security_context.supplemental_groups = [int(gid) for gid in supplemental_gids]
     if run_as_uid is not None:
         security_context.run_as_user = int(run_as_uid)
     if run_as_gid is not None:
         security_context.run_as_group = int(run_as_gid)
     if run_privileged:
         security_context.privileged = True
+    # Clean output to prevent empty dictionaries from needlessly appearing in tests
+    if all([e is None for e in security_context.to_dict().values()]):
+        security_context = None
 
     notebook_container = V1Container(
         name='notebook',
