@@ -674,8 +674,7 @@ class KubeSpawner(Spawner):
         config=True,
         allow_none=True,
         help="""
-        The storage class that the pvc will use. If left blank, the kubespawner will not
-        create a pvc for the pod.
+        The storage class that the pvc will use.
 
         This will be added to the `annotations: volume.beta.kubernetes.io/storage-class:`
         in the pvc metadata.
@@ -684,6 +683,9 @@ class KubeSpawner(Spawner):
         that matches the criteria of the StorageClass, the pvc will mount to that. Otherwise,
         b/c it has a storage class, k8s will dynamically spawn a pv for the pvc to bind to
         and a machine in the cluster for the pv to bind to.
+
+        Note that an empty string is a valid value and is always interpreted to be
+        requesting a pv with no class.
 
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/storage-classes/>`__
         for more information on how StorageClasses work.

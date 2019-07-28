@@ -429,7 +429,7 @@ def make_pvc(
     pvc.spec.resources = V1ResourceRequirements()
     pvc.spec.resources.requests = {"storage": storage}
 
-    if storage_class:
+    if storage_class is not None:
         pvc.metadata.annotations.update({"volume.beta.kubernetes.io/storage-class": storage_class})
         pvc.spec.storage_class_name = storage_class
 
