@@ -906,6 +906,7 @@ def test_make_pvc_empty_storage_class():
         name='test',
         storage_class='',
         access_modes=[],
+        selector=None,
         storage=None,
         labels={}
     )) == {
