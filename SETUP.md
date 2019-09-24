@@ -84,9 +84,11 @@ development fairly easily on your host machine.
    pip install -e .
    ```
 
-4. Install the nodejs configurable HTTP proxy:
+4. Install the nodejs configurable HTTP proxy, and make it accessible to JupyterHub:
+
    ```sh
-   sudo npm install -g configurable-http-proxy
+   npm install configurable-http-proxy
+   export PATH=$(pwd)/node_modules/.bin:$PATH
    ```
 
 5. Ensure user pods can communicate with the hub:
