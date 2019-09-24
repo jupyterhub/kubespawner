@@ -105,7 +105,7 @@ development fairly easily on your host machine.
    ```sh
    # Make sure jupyterhub finds the provided jupyterhub_config.py and run this
    # from the repo's root directory.
-   jupyterhub --no-ssl
+   jupyterhub
    ```
 
    The `jupyterhub_config.py` file that ships in this repo will read that environment variable to figure out what IP the pods should connect to the JupyterHub on. Replace `vboxnet4` with whatever interface name you used in step 4 of the previous section.
