@@ -15,7 +15,7 @@ c.JupyterHub.cleanup_servers = False
 c.KubeSpawner.start_timeout = 60 * 5
 
 # Our simplest user image! Optimized to just... start, and be small!
-c.KubeSpawner.image_spec = 'jupyterhub/singleuser:0.8'
+c.KubeSpawner.image = 'jupyterhub/singleuser:1.0'
 
 # Find the IP of the machine that minikube is most likely able to talk to
 # Graciously used from https://stackoverflow.com/a/166589
@@ -34,22 +34,3 @@ c.JupyterHub.authenticator_class = 'dummyauthenticator.DummyAuthenticator'
 c.KubeSpawner.storage_pvc_ensure = False
 
 c.JupyterHub.allow_named_servers = True
-
-c.KubeSpawner.profile_list = [
-    {
-        'display_name': 'Training Env - Python',
-        'default': True,
-        'kubespawner_override': {
-            'image_spec': 'training/python:label',
-            'cpu_limit': 0.5,
-        },
-        'description': 'Something description of what is going on here, maybe a <a href="#">link too!</a>'
-    }, {
-        'display_name': 'Training Env - Datascience',
-        'kubespawner_override': {
-            'image_spec': 'training/datascience:label',
-            'cpu_limit': 0.2,
-        },
-        'description': 'Something description of how this is different, maybe a <a href="#">link too!</a>'
-    }
-]

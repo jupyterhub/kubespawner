@@ -84,9 +84,11 @@ development fairly easily on your host machine.
    pip install -e .
    ```
 
-4. Install the nodejs configurable HTTP proxy:
+4. Install the nodejs configurable HTTP proxy, and make it accessible to JupyterHub:
+
    ```sh
-   sudo npm install -g configurable-http-proxy
+   npm install configurable-http-proxy
+   export PATH=$(pwd)/node_modules/.bin:$PATH
    ```
 
 5. Ensure user pods can communicate with the hub:
@@ -105,7 +107,7 @@ development fairly easily on your host machine.
    ```sh
    # Make sure jupyterhub finds the provided jupyterhub_config.py and run this
    # from the repo's root directory.
-   jupyterhub --no-ssl
+   jupyterhub
    ```
 
    The `jupyterhub_config.py` file that ships in this repo will read that environment variable to figure out what IP the pods should connect to the JupyterHub on. Replace `vboxnet4` with whatever interface name you used in step 4 of the previous section.
