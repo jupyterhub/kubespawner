@@ -70,7 +70,7 @@ class EventReflector(NamespacedResourceReflector):
     def events(self):
         return sorted(
             self.resources.values(),
-            key=lambda x: x.last_timestamp,
+            key=lambda x: x.last_timestamp and x.last_timestamp.timestamp() or 0.,
         )
 
 
