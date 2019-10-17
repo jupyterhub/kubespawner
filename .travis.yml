@@ -38,3 +38,7 @@ matrix:
       env: KUBE_PY=7
     - python: 3.7
       env: KUBE_PY=8
+    - python: 3.7
+      env: KUBE_PY=9
+    - python: 3.7
+      env: KUBE_PY=10
