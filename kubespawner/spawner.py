@@ -1554,6 +1554,7 @@ class KubeSpawner(Spawner):
                     progress += (90 - progress) / 3
                     await yield_({
                         'progress': int(progress),
+                        'raw_event': event,
                         'message':  "%s [%s] %s" % (
                             event.last_timestamp,
                             event.type,
