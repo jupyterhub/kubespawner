@@ -26,14 +26,26 @@ after_success:
   - codecov
 
 matrix:
-  fast_finish: true
   allow_failures:
     - python: nightly
+  fast_finish: true
   include:
-    - python: nightly
-    - python: 3.5
+    # Test the oldest supported python on
+    # the latest supported kubernetes-client,
+    # and use the latest supported kubernetes
+    # version along for the kubernetes-client.
+    - python: 3.8
       env: KUBE_PY=7
-    - python: 3.6
-      env: KUBE_PY=7
+      # env: KUBE_PY=7 KUBE_VERSION=1.11.*
     - python: 3.7
       env: KUBE_PY=8
+      # env: KUBE_PY=8 KUBE_VERSION=1.12.*
+    - python: 3.6
+      env: KUBE_PY=9
+      # env: KUBE_PY=9 KUBE_VERSION=1.13.*
+    - python: 3.5
+      env: KUBE_PY=10
+      # env: KUBE_PY=10 KUBE_VERSION=1.14.*
+    - python: nightly
+      env: KUBE_PY=11
+      # env: KUBE_PY=11 KUBE_VERSION=1.15.*
