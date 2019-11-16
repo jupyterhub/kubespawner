@@ -6,6 +6,7 @@ implementation that should be used by JupyterHub.
 """
 
 from functools import partial  # noqa
+from datetime import datetime, timezone
 import os
 import sys
 import string
@@ -68,9 +69,12 @@ class EventReflector(NamespacedResourceReflector):
 
     @property
     def events(self):
+        # FIXME: We are giving events with null timestamps a zero-like value.
+        # What we want to do is not obvious. Ideas include filter these events
+        # out or not sorting them at all.
         return sorted(
             self.resources.values(),
-            key=lambda x: x.last_timestamp if x.last_timestamp is not None else 0.,
+            key=lambda x: x.last_timestamp or datetime.fromtimestamp(0, tz=timezone.utc),
         )
 
 
