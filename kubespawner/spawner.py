@@ -69,13 +69,7 @@ class EventReflector(NamespacedResourceReflector):
 
     @property
     def events(self):
-        # FIXME: we are giving events with null timestamps a zero-like value,
-        # while we may in reality want to let them stay put in a sorting
-        # process. Do we really want to sort at all here?
-        return sorted(
-            self.resources.values(),
-            key=lambda x: x.last_timestamp or datetime.fromtimestamp(0, tz=timezone.utc),
-        )
+        return self.resources.values()
 
 
 class MockObject(object):
