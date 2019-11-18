@@ -5,18 +5,16 @@ dist: xenial
 # install dependencies
 install:
   - pip install --upgrade setuptools pip
-  - |
-    if [[ ! -z "$KUBE_PY" ]]; then
-      # install pinned kubernetes
-      pip install -e ".[test]" "kubernetes==$KUBE_PY.*"
-    else
-      # add --pre so that we test with prereleases of dependencies
-      # to catch compatibility issues before they enter final releases
-      pip install --upgrade --pre -e ".[test]"
-    fi
+  # Only add the --pre flag if $PRE_RELEASES is specified to test pre-releases
+  # of dependencies, and only pin kubernetes if $KUBE_PY is specified.
+  - pip install -e ".[test]" ${PRE_RELEASES:+--pre} ${KUBE_PY:+kubernetes==${KUBE_PY}}
+  - pip freeze
+  # flake8 runs a very quick code analysis
+  # without running any of the code it analyses
+  - flake8 kubespawner
+  # install kubectl, minikube and start minikube
   - source ci/minikube.env
   - ./ci/install-kube.sh
-  - pip freeze
 
 # command to run tests
 script:
@@ -26,26 +24,38 @@ after_success:
   - codecov
 
 matrix:
-  allow_failures:
-    - python: nightly
-  fast_finish: true
   include:
     # Test the oldest supported python on
     # the latest supported kubernetes-client,
     # and use the latest supported kubernetes
     # version along for the kubernetes-client.
     - python: 3.8
-      env: KUBE_PY=7
-      # env: KUBE_PY=7 KUBE_VERSION=1.11.*
+      env: KUBE_PY=7 KUBE_VERSION=1.11.10
     - python: 3.7
-      env: KUBE_PY=8
-      # env: KUBE_PY=8 KUBE_VERSION=1.12.*
+      env: KUBE_PY=8 KUBE_VERSION=1.12.10
     - python: 3.6
-      env: KUBE_PY=9
-      # env: KUBE_PY=9 KUBE_VERSION=1.13.*
+      env: KUBE_PY=9 KUBE_VERSION=1.13.12
     - python: 3.5
-      env: KUBE_PY=10
-      # env: KUBE_PY=10 KUBE_VERSION=1.14.*
-    - python: nightly
-      env: KUBE_PY=11
-      # env: KUBE_PY=11 KUBE_VERSION=1.15.*
+      env: &latest_supported KUBE_PY=10 KUBE_VERSION=1.14.9
+    # We make some tests that are allowed to fail
+    # 1. Test with pre-releases of kubernetes-client/python
+    #    and other dependencies
+    # 2. Test with kubernetes-client/python used with a
+    #    Kubernetes cluster of a higher version than it is
+    #    declared to have support for.
+    # 3. Test with a nightly python build using latest known
+    #    supported configuration.
+    - &allowed_failure_1
+      python: 3.8
+      env: PRE_RELEASES=TRUE KUBE_VERSION=1.14.9
+    - &allowed_failure_2
+      python: 3.8
+      env: KUBE_PY=10 KUBE_VERSION=1.16.3
+    - &allowed_failure_3
+      python: nightly
+      env: *latest_supported
+  allow_failures:
+    - *allowed_failure_1
+    - *allowed_failure_2
+    - *allowed_failure_3
+  fast_finish: true
