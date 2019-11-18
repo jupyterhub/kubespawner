@@ -22,6 +22,7 @@ setup(
     python_requires='>=3.5',
     extras_require={
         'test': [
+            'flake8',
             'pytest>=3.3',
             'pytest-cov',
             'pytest-asyncio',
