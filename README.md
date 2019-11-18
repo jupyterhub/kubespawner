@@ -1,6 +1,9 @@
-# kubespawner (jupyterhub-kubespawner) #
+# [kubespawner](https://github.com/jupyterhub/kubespawner) (jupyterhub-kubespawner @ PyPI)
 
-[![codecov](https://codecov.io/gh/jupyterhub/kubespawner/branch/master/graph/badge.svg)](https://codecov.io/gh/jupyterhub/kubespawner) [![Documentation Status](http://readthedocs.org/projects/jupyterhub-kubespawner/badge/?version=latest)](https://jupyterhub-kubespawner.readthedocs.io/en/latest/?badge=latest)
+[![Documentation status](https://img.shields.io/readthedocs/jupyterhub-kubespawner?logo=read-the-docs)](https://jupyterhub-kubespawner.readthedocs.io/en/latest/?badge=latest)
+[![TravisCI Build status](https://img.shields.io/travis/jupyterhub/kubespawner/master.svg?logo=travis)](https://travis-ci.org/jupyterhub/kubespawner)
+[![Code coverage](https://codecov.io/gh/jupyterhub/kubespawner/branch/master/graph/badge.svg)](https://codecov.io/gh/jupyterhub/kubespawner)
+[![](https://img.shields.io/pypi/v/jupyterhub-kubespawner.svg?logo=pypi)](https://pypi.python.org/pypi/jupyterhub-kubespawner)
 
 The *kubespawner* (also known as JupyterHub Kubernetes Spawner) enables JupyterHub to spawn
 single-user notebook servers on a [Kubernetes](https://kubernetes.io/)
@@ -9,7 +12,7 @@ cluster.
 See the [KubeSpawner documentation](https://jupyterhub-kubespawner.readthedocs.io) for more
 information about features and usage. In particular, here is [a list of all the spawner options](https://jupyterhub-kubespawner.readthedocs.io/en/latest/spawner.html#module-kubespawner.spawner).
 
-## Features ##
+## Features
 
 Kubernetes is an open-source system for automating deployment, scaling, and
 management of containerized applications. If you want to run a JupyterHub
@@ -50,9 +53,9 @@ simultaneous users), Kubernetes is a wonderful way to do it. Features include:
 In general, Kubernetes provides a ton of well thought out, useful features -
 and you can use all of them along with this spawner.
 
-## Requirements ##
+## Requirements
 
-### Kubernetes ###
+### Kubernetes
 
 Everything should work from Kubernetes v1.6+.
 
@@ -67,14 +70,14 @@ If you are just getting started and want a kubernetes cluster to play with,
 probably the nicest option. For AWS/Azure,
 [kops](https://github.com/kubernetes/kops) is probably the way to go.
 
-## Getting help ##
+## Getting help
 
 We encourage you to ask questions on the
 [Jupyter mailing list](https://groups.google.com/forum/#!forum/jupyter).
 You can also participate in development discussions or get live help on
 [Gitter](https://gitter.im/jupyterhub/jupyterhub).
 
-## License ##
+## License
 
 We use a shared copyright model that enables all contributors to maintain the
 copyright on their contributions.
