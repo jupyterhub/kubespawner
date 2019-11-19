@@ -221,13 +221,20 @@ class NamespacedResourceReflector(LoggingConfigurable):
                     watch_args['timeout_seconds'] = self.timeout_seconds
                 # in case of timeout_seconds, the w.stream just exits (no exception thrown)
                 # -> we stop the watcher and start a new one
-                for ev in w.stream(
-                        getattr(self.api, self.list_method_name),
-                        **watch_args
+                for watch_event in w.stream(
+                    getattr(self.api, self.list_method_name),
+                    **watch_args
                 ):
+                    # Remember that these events are k8s api related WatchEvents
+                    # objects, not k8s Event or Pod representations, they will
+                    # reside in the WatchEvent's object field depending on what
+                    # kind of resource is watched.
+                    #
+                    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#watchevent-v1-meta
+                    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#event-v1-core
                     cur_delay = 0.1
-                    resource = ev['object']
-                    if ev['type'] == 'DELETED':
+                    resource = watch_event['object']
+                    if watch_event['type'] == 'DELETED':
                         # This is an atomic delete operation on the dictionary!
                         self.resources.pop(resource.metadata.name, None)
                     else:

@@ -59,6 +59,9 @@ class PodReflector(NamespacedResourceReflector):
 
     @property
     def pods(self):
+        # A list of the python kubernetes client's representation of pods for
+        # the namespace.
+        # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#pod-v1-core
         return self.resources
 
 
@@ -69,12 +72,26 @@ class EventReflector(NamespacedResourceReflector):
 
     @property
     def events(self):
-        # FIXME: We are giving events with null timestamps a zero-like value.
-        # What we want to do is not obvious. Ideas include filter these events
-        # out or not sorting them at all.
+        """
+        Returns list of the python kubernetes client's representation of k8s
+        events within the namespace, sorted by the latest event.
+
+        ref:
+        https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#event-v1-core
+        """
+
+        # NOTE: self.resources is a dictionary with keys mapping to unique ids,
+        # updated by NamespacedResourceReflector. self.resources will builds up
+        # with incoming k8s events, but can also suddenly refreshes itself
+        # entirely. We should not assume a call to this dictionary's values will
+        # remain in the same order, so we sort it.
+        # FIXME: event.last_timestamp is a low resolution timestamp, but
+        # sometimes we instead get a high resolution timestamp within
+        # event.event_time. I'm not sure that the sorting will be done correctly
+        # when we got some of both.
         return sorted(
             self.resources.values(),
-            key=lambda x: x.last_timestamp or datetime.fromtimestamp(0, tz=timezone.utc),
+            key=lambda event: event.last_timestamp or event.event_time,
         )
 
 
@@ -1503,7 +1520,7 @@ class KubeSpawner(Spawner):
 
     @property
     def events(self):
-        """Filter event-reflector to just our events
+        """Filter event-reflector to just this pods events
 
         Returns list of all events that match our pod_name
         since our ._last_event (if defined).
@@ -1532,6 +1549,10 @@ class KubeSpawner(Spawner):
         """
         This function is reporting back the progress of spawning a pod until
         self._start_future has fired.
+
+        This is working with events parsed by the python kubernetes client,
+        and here is the specification of events that is relevant to understand:
+        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#event-v1-core
         """
         if not self.events_enabled:
             return
@@ -1542,10 +1563,14 @@ class KubeSpawner(Spawner):
         progress = 0
         next_event = 0
 
+        break_while_loop = False
         while True:
-            # run at least once, so we get events that are already waiting,
-            # even if we've stopped waiting for new events
+            # Ensure we always capture events following the start_future
+            # signal has fired.
+            if start_future.done():
+                break_while_loop = True
             events = self.events
+
             len_events = len(events)
             if next_event < len_events:
                 # only show messages for the 'current' pod
@@ -1565,14 +1590,14 @@ class KubeSpawner(Spawner):
                         'progress': int(progress),
                         'raw_event': event,
                         'message':  "%s [%s] %s" % (
-                            event.last_timestamp,
+                            event.last_timestamp or event.event_time,
                             event.type,
                             event.message,
                         )
                     })
                 next_event = len_events
 
-            if start_future.done():
+            if break_while_loop:
                 break
             await sleep(1)
 
@@ -1772,7 +1797,7 @@ class KubeSpawner(Spawner):
                 self.pod_name,
                 "\n".join(
                     [
-                        "%s [%s] %s" % (event.last_timestamp, event.type, event.message)
+                        "%s [%s] %s" % (event.last_timestamp or event.event_time, event.type, event.message)
                         for event in self.events
                     ]
                 ),

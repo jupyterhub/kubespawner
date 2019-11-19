@@ -135,12 +135,12 @@ async def test_spawn_progress(kube_ns, kube_client, config):
     start_future = spawner.start()
     # check progress events
     messages = []
-    async for event in spawner.progress():
-        assert 'progress' in event
-        assert isinstance(event['progress'], int)
-        assert 'message' in event
-        assert isinstance(event['message'], str)
-        messages.append(event['message'])
+    async for progress in spawner.progress():
+        assert 'progress' in progress
+        assert isinstance(progress['progress'], int)
+        assert 'message' in progress
+        assert isinstance(progress['message'], str)
+        messages.append(progress['message'])
     assert 'Started container' in '\n'.join(messages)
 
     await start_future
