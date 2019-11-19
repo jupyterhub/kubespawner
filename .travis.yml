@@ -24,33 +24,38 @@ after_success:
   - codecov
 
 matrix:
+  # NOTE: We may end up updating these set versions with time, when doing that,
+  # these links are relevant.
+  #
+  # ref: KUBE_VERSION's valid values
+  #      https://github.com/kubernetes/kubernetes/tags
+  # ref: KUBE_PY's valid values
+  #      https://github.com/kubernetes-client/python#compatibility
   include:
     # Test the oldest supported python on
     # the latest supported kubernetes-client,
     # and use the latest supported kubernetes
     # version along for the kubernetes-client.
     - python: 3.8
-      env: KUBE_PY=7 KUBE_VERSION=1.11.10
-    - python: 3.7
       env: KUBE_PY=8 KUBE_VERSION=1.12.10
     - python: 3.6
       env: KUBE_PY=9 KUBE_VERSION=1.13.12
     - python: 3.5
       env: &latest_supported KUBE_PY=10 KUBE_VERSION=1.14.9
-    # We make some tests that are allowed to fail
-    # 1. Test with pre-releases of kubernetes-client/python
-    #    and other dependencies
-    # 2. Test with kubernetes-client/python used with a
-    #    Kubernetes cluster of a higher version than it is
-    #    declared to have support for.
-    # 3. Test with a nightly python build using latest known
-    #    supported configuration.
+    # Allowed failure tests:
+    # ----------------------
+    # 1. Test with pre-releases of kubernetes-client/python and other
+    #    dependencies
     - &allowed_failure_1
       python: 3.8
-      env: PRE_RELEASES=TRUE KUBE_VERSION=1.14.9
+      env: PRE_RELEASES=TRUE KUBE_VERSION=1.15.3
+    # 2. Test with latest stable kubernetes client along with the latest
+    #    kubernetes cluster version
     - &allowed_failure_2
       python: 3.8
       env: KUBE_PY=10 KUBE_VERSION=1.16.3
+    # 3. Test with a nightly python build using latest known
+    #    supported configuration.
     - &allowed_failure_3
       python: nightly
       env: *latest_supported
