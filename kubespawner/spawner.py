@@ -1529,19 +1529,22 @@ class KubeSpawner(Spawner):
 
     @async_generator
     async def progress(self):
+        """
+        This function is reporting back the progress of spawning a pod until
+        self._start_future has fired.
+        """
         if not self.events_enabled:
             return
-        next_event = 0
-        self.log.debug('progress generator: %s', self.pod_name)
 
-        pod_id = None
-        first_run = True
+        self.log.debug('progress generator: %s', self.pod_name)
         start_future = self._start_future
+        pod_id = None
         progress = 0
-        while first_run or not start_future.done():
+        next_event = 0
+
+        while True:
             # run at least once, so we get events that are already waiting,
             # even if we've stopped waiting for new events
-            first_run = False
             events = self.events
             len_events = len(events)
             if next_event < len_events:
@@ -1568,6 +1571,9 @@ class KubeSpawner(Spawner):
                         )
                     })
                 next_event = len_events
+
+            if start_future.done():
+                break
             await sleep(1)
 
     def _start_reflector(self, key, ReflectorClass, replace=False, **kwargs):
