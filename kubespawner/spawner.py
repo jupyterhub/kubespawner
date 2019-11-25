@@ -46,7 +46,14 @@ from async_generator import async_generator, yield_
 
 
 class PodReflector(NamespacedResourceReflector):
+    """
+    PodReflector is merely a configured NamespacedResourceReflector. It exposes
+    the pods property, which is simply mapping to self.resources where the
+    NamespacedResourceReflector keeps an updated list of the resource defined by
+    the `kind` field and the `list_method_name` field.
+    """
     kind = 'pods'
+    list_method_name = 'list_namespaced_pod'
     # FUTURE: These labels are the selection labels for the PodReflector. We
     # might want to support multiple deployments in the same namespace, so we
     # would need to select based on additional labels such as `app` and
@@ -55,19 +62,26 @@ class PodReflector(NamespacedResourceReflector):
         'component': 'singleuser-server',
     }
 
-    list_method_name = 'list_namespaced_pod'
-
     @property
     def pods(self):
-        # A list of the python kubernetes client's representation of pods for
-        # the namespace.
-        # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#pod-v1-core
+        """
+        A dictionary of the python kubernetes client's representation of pods
+        for the namespace. The dictionary keys are the pod ids and the values
+        are the actual pod resource representations.
+
+        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#pod-v1-core
+        """
         return self.resources
 
 
 class EventReflector(NamespacedResourceReflector):
+    """
+    EventsReflector is merely a configured NamespacedResourceReflector. It
+    exposes the events property, which is simply mapping to self.resources where
+    the NamespacedResourceReflector keeps an updated list of the resource
+    defined by the `kind` field and the `list_method_name` field.
+    """
     kind = 'events'
-
     list_method_name = 'list_namespaced_event'
 
     @property
@@ -76,19 +90,19 @@ class EventReflector(NamespacedResourceReflector):
         Returns list of the python kubernetes client's representation of k8s
         events within the namespace, sorted by the latest event.
 
-        ref:
-        https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#event-v1-core
+        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#event-v1-core
         """
 
-        # NOTE: self.resources is a dictionary with keys mapping to unique ids,
-        # updated by NamespacedResourceReflector. self.resources will builds up
-        # with incoming k8s events, but can also suddenly refreshes itself
-        # entirely. We should not assume a call to this dictionary's values will
-        # remain in the same order, so we sort it.
-        # FIXME: event.last_timestamp is a low resolution timestamp, but
-        # sometimes we instead get a high resolution timestamp within
-        # event.event_time. I'm not sure that the sorting will be done correctly
-        # when we got some of both.
+        # NOTE:
+        # - self.resources is a dictionary with keys mapping unique ids of
+        #   Kubernetes Event resources, updated by NamespacedResourceReflector.
+        #   self.resources will builds up with incoming k8s events, but can also
+        #   suddenly refreshes itself entirely. We should not assume a call to
+        #   this dictionary's values will result in a consistently ordered list,
+        #   so we sort it to get it somewhat more structured.
+        # - We either seem to get only event.last_timestamp or event.event_time,
+        #   both fields serve the same role but the former is a low resolution
+        #   timestamp without and the other is a higher resolution timestamp.
         return sorted(
             self.resources.values(),
             key=lambda event: event.last_timestamp or event.event_time,
@@ -100,26 +114,36 @@ class MockObject(object):
 
 class KubeSpawner(Spawner):
     """
-    Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
+    A JupyterHub spawner that spawn pods in a Kubernetes Cluster. Each server
+    spawned by a user will have its own KubeSpawner instance.
     """
 
-    # We want to have one threadpool executor that is shared across all spawner objects
-    # This is initialized by the first spawner that is created
+    # We want to have one single threadpool executor that is shared across all
+    # KubeSpawner instances, so we apply a Singleton pattern. We initialize this
+    # class variable from the first KubeSpawner instance that is created and
+    # then reference it from all instances. The same goes for the PodReflector
+    # and EventReflector.
     executor = None
-
-    # We also want only one reflector per type per application
-    reflectors = {}
+    reflectors = {
+        "pods": None,
+        "events": None,
+    }
 
     @property
     def pod_reflector(self):
-        """alias to reflectors['pods']"""
-        return self.reflectors['pods']
+        """
+        A convinience alias to the class variable reflectors['pods'].
+        """
+        return self.__class__.reflectors['pods']
 
     @property
     def event_reflector(self):
-        """alias to reflectors['events']"""
+        """
+        A convninience alias to the class variable reflectors['events'] if the
+        spawner instance has events_enabled.
+        """
         if self.events_enabled:
-            return self.reflectors['events']
+            return self.__class__.reflectors['events']
 
     def __init__(self, *args, **kwargs):
         _mock = kwargs.pop('_mock', False)
