@@ -28,25 +28,25 @@ class MockUser(Mock):
     def url(self):
         return self.server.url
 
-
 def test_deprecated_config():
     """Deprecated config is handled correctly"""
-    c = Config()
-    # both set, non-deprecated wins
-    c.KubeSpawner.singleuser_fs_gid = 5
-    c.KubeSpawner.fs_gid = 10
-    # only deprecated set, should still work
-    c.KubeSpawner.hub_connect_ip = '10.0.1.1'
-    c.KubeSpawner.singleuser_extra_pod_config = extra_pod_config = {"key": "value"}
-    c.KubeSpawner.image_spec = 'abc:123'
-    spawner = KubeSpawner(hub=Hub(), config=c, _mock=True)
-    assert spawner.hub.connect_ip == '10.0.1.1'
-    assert spawner.fs_gid == 10
-    assert spawner.extra_pod_config == extra_pod_config
-    # deprecated access gets the right values, too
-    assert spawner.singleuser_fs_gid == spawner.fs_gid
-    assert spawner.singleuser_extra_pod_config == spawner.extra_pod_config
-    assert spawner.image == 'abc:123'
+    with pytest.warns(DeprecationWarning):
+        c = Config()
+        # both set, non-deprecated wins
+        c.KubeSpawner.singleuser_fs_gid = 5
+        c.KubeSpawner.fs_gid = 10
+        # only deprecated set, should still work
+        c.KubeSpawner.hub_connect_ip = '10.0.1.1'
+        c.KubeSpawner.singleuser_extra_pod_config = extra_pod_config = {"key": "value"}
+        c.KubeSpawner.image_spec = 'abc:123'
+        spawner = KubeSpawner(hub=Hub(), config=c, _mock=True)
+        assert spawner.hub.connect_ip == '10.0.1.1'
+        assert spawner.fs_gid == 10
+        assert spawner.extra_pod_config == extra_pod_config
+        # deprecated access gets the right values, too
+        assert spawner.singleuser_fs_gid == spawner.fs_gid
+        assert spawner.singleuser_extra_pod_config == spawner.extra_pod_config
+        assert spawner.image == 'abc:123'
 
 
 def test_deprecated_runtime_access():
