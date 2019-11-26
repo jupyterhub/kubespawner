@@ -28,25 +28,25 @@ class MockUser(Mock):
     def url(self):
         return self.server.url
 
-
 def test_deprecated_config():
     """Deprecated config is handled correctly"""
-    c = Config()
-    # both set, non-deprecated wins
-    c.KubeSpawner.singleuser_fs_gid = 5
-    c.KubeSpawner.fs_gid = 10
-    # only deprecated set, should still work
-    c.KubeSpawner.hub_connect_ip = '10.0.1.1'
-    c.KubeSpawner.singleuser_extra_pod_config = extra_pod_config = {"key": "value"}
-    c.KubeSpawner.image_spec = 'abc:123'
-    spawner = KubeSpawner(hub=Hub(), config=c, _mock=True)
-    assert spawner.hub.connect_ip == '10.0.1.1'
-    assert spawner.fs_gid == 10
-    assert spawner.extra_pod_config == extra_pod_config
-    # deprecated access gets the right values, too
-    assert spawner.singleuser_fs_gid == spawner.fs_gid
-    assert spawner.singleuser_extra_pod_config == spawner.extra_pod_config
-    assert spawner.image == 'abc:123'
+    with pytest.warns(DeprecationWarning):
+        c = Config()
+        # both set, non-deprecated wins
+        c.KubeSpawner.singleuser_fs_gid = 5
+        c.KubeSpawner.fs_gid = 10
+        # only deprecated set, should still work
+        c.KubeSpawner.hub_connect_ip = '10.0.1.1'
+        c.KubeSpawner.singleuser_extra_pod_config = extra_pod_config = {"key": "value"}
+        c.KubeSpawner.image_spec = 'abc:123'
+        spawner = KubeSpawner(hub=Hub(), config=c, _mock=True)
+        assert spawner.hub.connect_ip == '10.0.1.1'
+        assert spawner.fs_gid == 10
+        assert spawner.extra_pod_config == extra_pod_config
+        # deprecated access gets the right values, too
+        assert spawner.singleuser_fs_gid == spawner.fs_gid
+        assert spawner.singleuser_extra_pod_config == spawner.extra_pod_config
+        assert spawner.image == 'abc:123'
 
 
 def test_deprecated_runtime_access():
@@ -135,12 +135,12 @@ async def test_spawn_progress(kube_ns, kube_client, config):
     start_future = spawner.start()
     # check progress events
     messages = []
-    async for event in spawner.progress():
-        assert 'progress' in event
-        assert isinstance(event['progress'], int)
-        assert 'message' in event
-        assert isinstance(event['message'], str)
-        messages.append(event['message'])
+    async for progress in spawner.progress():
+        assert 'progress' in progress
+        assert isinstance(progress['progress'], int)
+        assert 'message' in progress
+        assert isinstance(progress['message'], str)
+        messages.append(progress['message'])
     assert 'Started container' in '\n'.join(messages)
 
     await start_future

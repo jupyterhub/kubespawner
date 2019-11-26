@@ -24,7 +24,7 @@ s.connect(("8.8.8.8", 80))
 host_ip = s.getsockname()[0]
 s.close()
 
-c.KubeSpawner.hub_connect_ip = host_ip
+c.JupyterHub.hub_connect_ip = host_ip
 c.JupyterHub.hub_connect_ip = c.KubeSpawner.hub_connect_ip
 
 c.KubeSpawner.service_account = 'default'

@@ -46,7 +46,14 @@ from async_generator import async_generator, yield_
 
 
 class PodReflector(NamespacedResourceReflector):
+    """
+    PodReflector is merely a configured NamespacedResourceReflector. It exposes
+    the pods property, which is simply mapping to self.resources where the
+    NamespacedResourceReflector keeps an updated list of the resource defined by
+    the `kind` field and the `list_method_name` field.
+    """
     kind = 'pods'
+    list_method_name = 'list_namespaced_pod'
     # FUTURE: These labels are the selection labels for the PodReflector. We
     # might want to support multiple deployments in the same namespace, so we
     # would need to select based on additional labels such as `app` and
@@ -55,26 +62,50 @@ class PodReflector(NamespacedResourceReflector):
         'component': 'singleuser-server',
     }
 
-    list_method_name = 'list_namespaced_pod'
-
     @property
     def pods(self):
+        """
+        A dictionary of the python kubernetes client's representation of pods
+        for the namespace. The dictionary keys are the pod ids and the values
+        are the actual pod resource representations.
+
+        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#pod-v1-core
+        """
         return self.resources
 
 
 class EventReflector(NamespacedResourceReflector):
+    """
+    EventsReflector is merely a configured NamespacedResourceReflector. It
+    exposes the events property, which is simply mapping to self.resources where
+    the NamespacedResourceReflector keeps an updated list of the resource
+    defined by the `kind` field and the `list_method_name` field.
+    """
     kind = 'events'
-
     list_method_name = 'list_namespaced_event'
 
     @property
     def events(self):
-        # FIXME: We are giving events with null timestamps a zero-like value.
-        # What we want to do is not obvious. Ideas include filter these events
-        # out or not sorting them at all.
+        """
+        Returns list of the python kubernetes client's representation of k8s
+        events within the namespace, sorted by the latest event.
+
+        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#event-v1-core
+        """
+
+        # NOTE:
+        # - self.resources is a dictionary with keys mapping unique ids of
+        #   Kubernetes Event resources, updated by NamespacedResourceReflector.
+        #   self.resources will builds up with incoming k8s events, but can also
+        #   suddenly refreshes itself entirely. We should not assume a call to
+        #   this dictionary's values will result in a consistently ordered list,
+        #   so we sort it to get it somewhat more structured.
+        # - We either seem to get only event.last_timestamp or event.event_time,
+        #   both fields serve the same role but the former is a low resolution
+        #   timestamp without and the other is a higher resolution timestamp.
         return sorted(
             self.resources.values(),
-            key=lambda x: x.last_timestamp or datetime.fromtimestamp(0, tz=timezone.utc),
+            key=lambda event: event.last_timestamp or event.event_time,
         )
 
 
@@ -83,26 +114,36 @@ class MockObject(object):
 
 class KubeSpawner(Spawner):
     """
-    Implement a JupyterHub spawner to spawn pods in a Kubernetes Cluster.
+    A JupyterHub spawner that spawn pods in a Kubernetes Cluster. Each server
+    spawned by a user will have its own KubeSpawner instance.
     """
 
-    # We want to have one threadpool executor that is shared across all spawner objects
-    # This is initialized by the first spawner that is created
+    # We want to have one single threadpool executor that is shared across all
+    # KubeSpawner instances, so we apply a Singleton pattern. We initialize this
+    # class variable from the first KubeSpawner instance that is created and
+    # then reference it from all instances. The same goes for the PodReflector
+    # and EventReflector.
     executor = None
-
-    # We also want only one reflector per type per application
-    reflectors = {}
+    reflectors = {
+        "pods": None,
+        "events": None,
+    }
 
     @property
     def pod_reflector(self):
-        """alias to reflectors['pods']"""
-        return self.reflectors['pods']
+        """
+        A convinience alias to the class variable reflectors['pods'].
+        """
+        return self.__class__.reflectors['pods']
 
     @property
     def event_reflector(self):
-        """alias to reflectors['events']"""
+        """
+        A convninience alias to the class variable reflectors['events'] if the
+        spawner instance has events_enabled.
+        """
         if self.events_enabled:
-            return self.reflectors['events']
+            return self.__class__.reflectors['events']
 
     def __init__(self, *args, **kwargs):
         _mock = kwargs.pop('_mock', False)
@@ -1503,7 +1544,7 @@ class KubeSpawner(Spawner):
 
     @property
     def events(self):
-        """Filter event-reflector to just our events
+        """Filter event-reflector to just this pods events
 
         Returns list of all events that match our pod_name
         since our ._last_event (if defined).
@@ -1529,20 +1570,31 @@ class KubeSpawner(Spawner):
 
     @async_generator
     async def progress(self):
+        """
+        This function is reporting back the progress of spawning a pod until
+        self._start_future has fired.
+
+        This is working with events parsed by the python kubernetes client,
+        and here is the specification of events that is relevant to understand:
+        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#event-v1-core
+        """
         if not self.events_enabled:
             return
-        next_event = 0
-        self.log.debug('progress generator: %s', self.pod_name)
 
-        pod_id = None
-        first_run = True
+        self.log.debug('progress generator: %s', self.pod_name)
         start_future = self._start_future
+        pod_id = None
         progress = 0
-        while first_run or not start_future.done():
-            # run at least once, so we get events that are already waiting,
-            # even if we've stopped waiting for new events
-            first_run = False
+        next_event = 0
+
+        break_while_loop = False
+        while True:
+            # Ensure we always capture events following the start_future
+            # signal has fired.
+            if start_future.done():
+                break_while_loop = True
             events = self.events
+
             len_events = len(events)
             if next_event < len_events:
                 # only show messages for the 'current' pod
@@ -1562,12 +1614,15 @@ class KubeSpawner(Spawner):
                         'progress': int(progress),
                         'raw_event': event,
                         'message':  "%s [%s] %s" % (
-                            event.last_timestamp,
+                            event.last_timestamp or event.event_time,
                             event.type,
                             event.message,
                         )
                     })
                 next_event = len_events
+
+            if break_while_loop:
+                break
             await sleep(1)
 
     def _start_reflector(self, key, ReflectorClass, replace=False, **kwargs):
@@ -1766,7 +1821,7 @@ class KubeSpawner(Spawner):
                 self.pod_name,
                 "\n".join(
                     [
-                        "%s [%s] %s" % (event.last_timestamp, event.type, event.message)
+                        "%s [%s] %s" % (event.last_timestamp or event.event_time, event.type, event.message)
                         for event in self.events
                     ]
                 ),

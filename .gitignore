@@ -1,3 +1,12 @@
+# Artifacts from running kubespawner tests with minikube
+bin/
+lib64
+minikube-linux-amd64
+node_modules/
+package-lock.json
+pyvenv.cfg
+share/
+
 # JupyterHub running from kubespawner folder for development purposes
 jupyterhub-proxy.pid
 jupyterhub.sqlite
