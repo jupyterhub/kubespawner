@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from kubespawner.utils import get_k8s_model, update_k8s_model
 
 from kubernetes.client.models import (
-    V1Pod, V1PodSpec,
+    V1Pod, V1PodSpec, V1PodSecurityContext,
     V1ObjectMeta,
     V1LocalObjectReference,
     V1Volume, V1VolumeMount,
@@ -242,23 +242,35 @@ def make_pod(
     if lifecycle_hooks:
         lifecycle_hooks = get_k8s_model(V1Lifecycle, lifecycle_hooks)
 
-    security_context = V1SecurityContext()
+    # There are security contexts both on the Pod level or the Container level.
+    # The security settings that you specify for a Pod apply to all Containers
+    # in the Pod, but settings on the container level can override them.
+    #
+    # We configure the pod to be spawned on the container level unless the
+    # option is only available on the pod level, such as for those relating to
+    # the volumes as compared to the running user of the container. Volumes
+    # belong to the pod and are only mounted by containers after all.
+    #
+    # ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#securitycontext-v1-core (container)
+    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#podsecuritycontext-v1-core (pod)
+    pod_security_context = V1PodSecurityContext()
+    if fs_gid is not None:
+       pod_security_context.fs_group = int(fs_gid)
+    if supplemental_gids is not None and supplemental_gids:
+       pod_security_context.supplemental_groups = [int(gid) for gid in supplemental_gids]
+    pod.spec.security_context = pod_security_context
 
-    # this is a pod-only parameter
-    # if fs_gid is not None:
-    #    security_context.fs_group = int(fs_gid)
-    # this is a pod-only parameter
-    # if supplemental_gids is not None and supplemental_gids:
-    #    security_context.supplemental_groups = [int(gid) for gid in supplemental_gids]
+    container_security_context = V1SecurityContext()
     if run_as_uid is not None:
-        security_context.run_as_user = int(run_as_uid)
+        container_security_context.run_as_user = int(run_as_uid)
     if run_as_gid is not None:
-        security_context.run_as_group = int(run_as_gid)
+        container_security_context.run_as_group = int(run_as_gid)
     if run_privileged:
-        security_context.privileged = True
+        container_security_context.privileged = True
     # Clean output to prevent empty dictionaries from needlessly appearing in tests
-    if all([e is None for e in security_context.to_dict().values()]):
-        security_context = None
+    if all([e is None for e in container_security_context.to_dict().values()]):
+        container_security_context = None
 
     notebook_container = V1Container(
         name='notebook',
@@ -271,7 +283,7 @@ def make_pod(
         lifecycle=lifecycle_hooks,
         resources=V1ResourceRequirements(),
         volume_mounts=[get_k8s_model(V1VolumeMount, obj) for obj in (volume_mounts or [])],
-        security_context=security_context,
+        security_context=container_security_context,
     )
 
     if service_account is None:
