@@ -25,7 +25,6 @@ host_ip = s.getsockname()[0]
 s.close()
 
 c.JupyterHub.hub_connect_ip = host_ip
-c.JupyterHub.hub_connect_ip = c.KubeSpawner.hub_connect_ip
 
 c.KubeSpawner.service_account = 'default'
 # Do not use any authentication at all - any username / password will work.

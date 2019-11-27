@@ -6,6 +6,7 @@ node_modules/
 package-lock.json
 pyvenv.cfg
 share/
+pip-selfcheck.json
 
 # JupyterHub running from kubespawner folder for development purposes
 jupyterhub-proxy.pid
