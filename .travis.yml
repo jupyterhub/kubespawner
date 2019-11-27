@@ -64,6 +64,21 @@ matrix:
       python: nightly
       env: *latest_supported
 
+    # Only deploy if all test jobs passed
+    - stage: deploy
+      python: 3.7
+      if: tag IS present
+      deploy:
+        provider: pypi
+        user: __token__
+        # password: set by TravisCI's environment variable PYPI_PASSWORD
+        # ref: https://travis-ci.org/jupyterhub/kubespawner/settings
+        distributions: sdist bdist_wheel
+        on:
+          # Without this we get the note about:
+          # Skipping a deployment with the pypi provider because this branch is not permitted: <tag>
+          tags: true
+
   allow_failures:
     - *allowed_failure_1
     - *allowed_failure_2

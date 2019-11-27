@@ -5,8 +5,6 @@ PyPI](https://pypi.org/project/jupyterhub-kubespawner/). These are instructions
 on how to make a release on PyPI.
 
 For you to follow along according to these instructions, you need:
-- To be a maintainer of the [PyPI jupyterhub-kubespawner
-  project](https://pypi.org/project/jupyterhub-kubespawner/).
 - To have push rights to the [kubespawner GitHub
   repository](https://github.com/jupyterhub/kubespawner).
 
@@ -33,18 +31,6 @@ For you to follow along according to these instructions, you need:
    bump2version --tag --new-version $VERSION -
    ```
 
-1. Package the release
-
-   ```bash
-   python3 setup.py sdist bdist_wheel
-   ```
-
-1. Upload it to PyPI
-
-   ```bash
-   twine upload dist/*
-   ```
-
 1. Reset the version to the next development version with `bump2version`
 
    ```bash
@@ -52,7 +38,8 @@ For you to follow along according to these instructions, you need:
    ```
 
 1. Push your two commits to master along with the annotated tags referencing
-   commits on master.
+   commits on master. TravisCI will trigger automatic deployment of the pushed
+   tag.
 
    ```
    git push --follow-tags $ORIGIN master
