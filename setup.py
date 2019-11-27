@@ -22,6 +22,7 @@ setup(
     python_requires='>=3.6',
     extras_require={
         'test': [
+            'jupyterhub-dummyauthenticator',
             'flake8',
             'pytest>=3.3',
             'pytest-cov',
