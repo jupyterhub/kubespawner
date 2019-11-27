@@ -6,21 +6,24 @@ tricky, since normally you'd run JupyterHub in a container in the Kubernetes
 cluster itself. But the dev cycle for that is longer than comfortable, since
 you've to rebuild the container and redeploy.
 
-There is an easier way, with minikube and some networking tricks. Only tested on
-Linux at this time, but should work for OS X too.
+There is an easier way, with minikube and some networking tricks. We can run
+JupyterHub locally on your computer, using an editable installation of
+kubespawner, that interacts with pods in a kubernetes cluster!
 
-1.  Install [minikube](http://kubernetes.io/docs/getting-started-guides/minikube/). Use the
-    [VirtualBox](https://virtualbox.org) provider. This will set up a kubernetes cluster inside
-    a VM on your machine.
+1.  Install VirtualBox by [downloading and running an
+    installer](https://www.virtualbox.org/wiki/Downloads).
 
-2.  Run `minikube start`. This will start your kubernetes cluster if it isn't
+2.  Install
+    [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/).
+
+3.  Run `minikube start`. This will start your kubernetes cluster if it isn't
     already up. Run `kubectl get node` to make sure it is.
     
     Note that the `minikube start` command will also setup `kubectl` on your
     host machine to interact with the kubernetes cluster along with a
     `~/.kube/config` file with credentials for connecting to this cluster. 
 
-3.  Make it possible for your host to talk to the pods on minikube.
+4.  Make it possible for your host to talk to the pods on minikube.
 
     ```bash
     # Linux
@@ -63,11 +66,7 @@ development fairly easily on your host machine.
 
 1. Clone this repository
    ```sh
-   # Clone over HTTPS
-   https://github.com/jupyterhub/kubespawner.git
-
-   # Clone over SSH
-   git clone git@github.com:jupyterhub/kubespawner.git
+   git clone https://github.com/jupyterhub/kubespawner.git
    ```
 
 2. Setup a virtualenv
@@ -78,46 +77,41 @@ development fairly easily on your host machine.
    source bin/activate
    ```
 
-3. Setup a development installation of the Kubernetes spawner:
+3. Install a locally editable version of kubespawner and dependencies for
+   running it and testing it.
    ```sh
-   pip install jupyterhub jupyterhub-dummyauthenticator
-   pip install -e .
+   pip install -e .[test]
    ```
 
-4. Install the nodejs configurable HTTP proxy, and make it accessible to JupyterHub:
+4. Install the nodejs based [Configurable HTTP Proxy
+   (CHP)](https://github.com/jupyterhub/configurable-http-proxy), and make it
+   accessible to JupyterHub.
 
    ```sh
    npm install configurable-http-proxy
    export PATH=$(pwd)/node_modules/.bin:$PATH
    ```
 
-5. Ensure user pods can communicate with the hub:
+6. Start JupyterHub
    ```sh
-   # LINUX:
-   export HUB_CONNECT_IP=`ip addr show vboxnet0 | grep 'scope global' | awk '{ print $2; }' | sed 's/\/.*$//'`
-
-   # MACOS:
-   export HUB_CONNECT_IP=`ifconfig vboxnet0 | grep inet | awk '{ print $2; }' | sed 's/\/.*$//'`
-   ```
-
-   JupyterHub will read that environment variable and use it to tell the spawned
-   user pods to connect to communicate with JupyterHub on that address.
-
-6. Start JupyterHub and start spawning user pods your Kubernetes cluster:
-   ```sh
-   # Make sure jupyterhub finds the provided jupyterhub_config.py and run this
-   # from the repo's root directory.
+   # Run this from the repo's root directory where the preconfigured
+   # jupyterhub_config.py file resides!
    jupyterhub
    ```
 
-   The `jupyterhub_config.py` file that ships in this repo will read that environment variable to figure out what IP the pods should connect to the JupyterHub on. Replace `vboxnet4` with whatever interface name you used in step 4 of the previous section.
+7. Try visit [http://localhost:8000/](http://localhost:8000/)!
 
-   This will give you a running JupyterHub that spawns nodes inside the minikube VM! It'll be setup with [DummyAuthenticator](http://github.com/yuvipanda/jupyterhub-dummy-authenticator), so any user + password combo will allow you to log in. You can make changes to the spawner and restart jupyterhub, and rapidly iterate :)
+You should now have a JupyterHub running directly on your computer outside of
+the Kubernetes cluster, using a locally editable kubespawner code base. It'll is
+setup with
+[DummyAuthenticator](http://github.com/yuvipanda/jupyterhub-dummy-authenticator),
+so any user + password combo will allow you to log in. You can make changes to
+the spawner and restart jupyterhub, and rapidly iterate :)
 
 ## Running tests
 
 ```sh
-python setup.py test
+pytest
 ```
 
 ### Troubleshooting
