@@ -755,6 +755,20 @@ class KubeSpawner(Spawner):
         """
     )
 
+    storage_selector = Dict(
+        config=True,
+        help="""
+        The dictionary Selector labels used to match a PersistentVolumeClaim to
+        a PersistentVolume.
+
+        Default is None and means it will match based only on other storage criteria.
+
+        For example to match the Nodes that have a label of `content: jupyter` use::
+
+           c.KubeSpawner.storage_selector = {'matchLabels':{'content': 'jupyter'}}
+        """
+    )
+
     lifecycle_hooks = Dict(
         config=True,
         help="""
@@ -1437,6 +1451,7 @@ class KubeSpawner(Spawner):
             name=self.pvc_name,
             storage_class=self.storage_class,
             access_modes=self.storage_access_modes,
+            selector=self.storage_selector,
             storage=self.storage_capacity,
             labels=labels,
             annotations=annotations

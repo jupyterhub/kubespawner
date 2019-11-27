@@ -876,6 +876,7 @@ def test_make_pvc_simple():
         name='test',
         storage_class=None,
         access_modes=[],
+        selector=None,
         storage=None,
         labels={}
     )) == {
@@ -905,6 +906,7 @@ def test_make_pvc_empty_storage_class():
         name='test',
         storage_class='',
         access_modes=[],
+        selector=None,
         storage=None,
         labels={}
     )) == {
@@ -937,6 +939,7 @@ def test_make_resources_all():
         name='test',
         storage_class='gce-standard-storage',
         access_modes=['ReadWriteOnce'],
+        selector={'matchLabels':{'content': 'jupyter'}},
         storage='10Gi',
         labels={'key': 'value'}
     )) == {
@@ -954,6 +957,11 @@ def test_make_resources_all():
         'spec': {
             'storageClassName': 'gce-standard-storage',
             'accessModes': ['ReadWriteOnce'],
+            'selector': {
+                'matchLabels': {
+                    'content': 'jupyter'
+                }
+            },
             'resources': {
                 'requests': {
                     'storage': '10Gi'
