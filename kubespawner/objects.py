@@ -259,7 +259,9 @@ def make_pod(
        pod_security_context.fs_group = int(fs_gid)
     if supplemental_gids is not None and supplemental_gids:
        pod_security_context.supplemental_groups = [int(gid) for gid in supplemental_gids]
-    pod.spec.security_context = pod_security_context
+    # Only clutter pod spec with actual content
+    if not all([e is None for e in pod_security_context.to_dict().values()]):
+        pod.spec.security_context = pod_security_context
 
     container_security_context = V1SecurityContext()
     if run_as_uid is not None:
@@ -268,7 +270,7 @@ def make_pod(
         container_security_context.run_as_group = int(run_as_gid)
     if run_privileged:
         container_security_context.privileged = True
-    # Clean output to prevent empty dictionaries from needlessly appearing in tests
+    # Only clutter container spec with actual content
     if all([e is None for e in container_security_context.to_dict().values()]):
         container_security_context = None
 

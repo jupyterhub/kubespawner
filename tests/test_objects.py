@@ -185,7 +185,7 @@ def test_make_pod_with_image_pull_secrets():
     }
 
 
-def test_set_pod_uid_and_gid():
+def test_set_container_uid_and_gid():
     """
     Test specification of the simplest possible pod specification
     """
@@ -234,7 +234,7 @@ def test_set_pod_uid_and_gid():
         "apiVersion": "v1"
     }
 
-def test_set_pod_uid_fs_gid():
+def test_set_container_uid_and_pod_fs_gid():
     """
     Test specification of the simplest possible pod specification
     """
@@ -276,6 +276,9 @@ def test_set_pod_uid_fs_gid():
                 }
             ],
             'restartPolicy': 'OnFailure',
+            'securityContext': {
+                'fsGroup': 1000,
+            },
             'volumes': [],
         },
         "kind": "Pod",
@@ -324,6 +327,9 @@ def test_set_pod_supplemental_gids():
                 }
             ],
             'restartPolicy': 'OnFailure',
+            'securityContext': {
+                'supplementalGroups': [100],
+            },
             'volumes': [],
         },
         "kind": "Pod",
