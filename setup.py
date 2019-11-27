@@ -8,15 +8,9 @@ if v[:2] < (3, 6):
     print(error, file=sys.stderr)
     sys.exit(1)
 
-with open('kubespawner/spawner.py') as f:
-    for line in f:
-        if line.startswith('__version__'):
-            __version__ = eval(line.split('=', 1)[1])
-            break
-
 setup(
     name='jupyterhub-kubespawner',
-    version=__version__,
+    version='0.10.2.dev',
     install_requires=[
         'jupyterhub>=0.8',
         'pyYAML',
