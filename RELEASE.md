@@ -24,7 +24,7 @@ For you to follow along according to these instructions, you need:
    git clean -xfd
    ```
 
-1. Update the version with `bump2version` (can be installed with `pip install -r dev-requirements.txt`)
+1. Update the version with `bump2version`.
 
    ```bash
    VERSION=...  # e.g. 1.2.3
