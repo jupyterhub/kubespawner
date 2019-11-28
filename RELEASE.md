@@ -24,23 +24,34 @@ For you to follow along according to these instructions, you need:
    git clean -xfd
    ```
 
-1. Update the version with `bump2version`.
+1. Update version and tag, and return to a dev version, with `bump2version`.
 
    ```bash
    VERSION=...  # e.g. 1.2.3
    bump2version --tag --new-version $VERSION -
-   ```
-
-1. Reset the version to the next development version with `bump2version`
-
-   ```bash
    bump2version --no-tag patch
+
+   # verify tags, commits, and version tagged
+   git log
    ```
 
 1. Push your two commits to master along with the annotated tags referencing
    commits on master. TravisCI will trigger automatic deployment of the pushed
    tag.
 
-   ```
+   ```bash
+   # pushing the commits standalone allows you to
+   # ensure you don't end up only pushing the tag
+   # because the commit were rejected but the tag
+   # wasn't
+   git push $ORIGIN master
+
+   # if you could push the commits without issues
+   # go ahead and push the tag also
    git push --follow-tags $ORIGIN master
    ```
+
+1. Verify that the [build succeed on
+   TravisCI](https://travis-ci.org/jupyterhub/kubespawner/builds) and that that
+   PyPI received a [new
+   release](https://pypi.org/project/jupyterhub-kubespawner/)
