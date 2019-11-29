@@ -45,7 +45,7 @@ from kubespawner.reflector import NamespacedResourceReflector
 from asyncio import sleep
 from async_generator import async_generator, yield_
 
-__version__ = '0.11.1.dev'
+__version__ = '0.11.1'
 
 class PodReflector(NamespacedResourceReflector):
     """
