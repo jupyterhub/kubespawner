@@ -7,6 +7,8 @@ from kubernetes.client.models import (
 from kubespawner import KubeSpawner
 from traitlets.config import Config
 from unittest.mock import Mock
+import json
+import os
 import pytest
 
 def sync_wait(future):
@@ -140,6 +142,10 @@ async def test_spawn_progress(kube_ns, kube_client, config):
         assert 'message' in progress
         assert isinstance(progress['message'], str)
         messages.append(progress['message'])
+
+        # ensure we can serialize whatever we return
+        with open(os.devnull, "w") as devnull:
+            json.dump(progress, devnull)
     assert 'Started container' in '\n'.join(messages)
 
     await start_future
