@@ -1,14 +1,13 @@
-from unittest.mock import Mock
-
+from asyncio import get_event_loop
 from jupyterhub.objects import Hub, Server
 from jupyterhub.orm import Spawner
-import pytest
-from traitlets.config import Config
-from asyncio import get_event_loop
-from kubespawner import KubeSpawner
 from kubernetes.client.models import (
     V1SecurityContext, V1Container, V1Capabilities, V1Pod
 )
+from kubespawner import KubeSpawner
+from traitlets.config import Config
+from unittest.mock import Mock
+import pytest
 
 def sync_wait(future):
     loop = get_event_loop()
