@@ -2,6 +2,18 @@
 
 ## [0.11]
 
+### [0.11.1] - 2019-11-29
+
+0.11.1 consists of a small bugfix that made the progress reporting break.
+
+#### Fixes
+
+- Fix spawn progress events now showing up due to failure to serialize [#381](https://github.com/jupyterhub/kubespawner/pull/381) ([@consideRatio](https://github.com/consideRatio))
+
+#### Maintenance
+
+- Don't require deploy job to also run tests [#379](https://github.com/jupyterhub/kubespawner/pull/379) ([@consideRatio](https://github.com/consideRatio))
+
 ### [0.11.0] - 2019-11-28
 
 0.11.0 features minor feature additions, compatebility measures, and fixes.
