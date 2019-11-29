@@ -66,8 +66,10 @@ matrix:
 
     # Only deploy if all test jobs passed
     - stage: deploy
-      python: 3.7
       if: tag IS present
+      python: 3.7
+      script: []
+      after_success: []
       deploy:
         provider: pypi
         user: __token__
