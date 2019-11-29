@@ -6,7 +6,8 @@ implementation that should be used by JupyterHub.
 """
 
 from functools import partial  # noqa
-from datetime import datetime, timezone
+from datetime import datetime
+import json
 import os
 import sys
 import string
@@ -1626,9 +1627,17 @@ class KubeSpawner(Spawner):
                     # each event gets 33% closer to 90%:
                     # 30 50 63 72 78 82 84 86 87 88 88 89
                     progress += (90 - progress) / 3
+
+                    # V1Event isn't serializable, and neither is the datetime
+                    # objects within it, and we need what we pass back to be
+                    # serializable to it can be sent back from JupyterHub to
+                    # a browser wanting to display progress.
+                    serializable_event = json.loads(
+                        json.dumps(event.to_dict(), default=datetime.isoformat)
+                    )
                     await yield_({
                         'progress': int(progress),
-                        'raw_event': event.to_dict(),  # V1Event isn't serializable
+                        'raw_event': serializable_event,
                         'message':  "%s [%s] %s" % (
                             event.last_timestamp or event.event_time,
                             event.type,
