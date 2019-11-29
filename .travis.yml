@@ -8,6 +8,11 @@ install:
   # Only add the --pre flag if $PRE_RELEASES is specified to test pre-releases
   # of dependencies, and only pin kubernetes if $KUBE_PY is specified.
   - pip install -e ".[test]" ${PRE_RELEASES:+--pre} ${KUBE_PY:+kubernetes==${KUBE_PY}}
+  # Allow for testing against the jupyterhub master branch as well
+  - |
+      if [ "$JUPYTERHUB_MASTER" == "TRUE" ]; then
+        pip install https://github.com/jupyterhub/jupyterhub/archive/master.zip
+      fi
   - pip freeze
   # flake8 runs a very quick code analysis
   # without running any of the code it analyses
@@ -42,6 +47,8 @@ matrix:
       env: KUBE_PY=9 KUBE_VERSION=1.13.12
     - python: 3.6
       env: &latest_supported KUBE_PY=10 KUBE_VERSION=1.14.9
+    - python: 3.6
+      env: KUBE_PY=10 KUBE_VERSION=1.14.9 JUPYTERHUB_MASTER=TRUE
 
     # Allowed failure tests:
     # ----------------------
