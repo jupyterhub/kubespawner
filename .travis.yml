@@ -9,16 +9,18 @@ install:
   # of dependencies, and only pin kubernetes if $KUBE_PY is specified.
   - pip install -e ".[test]" ${PRE_RELEASES:+--pre} ${KUBE_PY:+kubernetes==${KUBE_PY}}
   - pip freeze
+
+# run tests
+script:
   # flake8 runs a very quick code analysis
   # without running any of the code it analyses
   - flake8 kubespawner
   # install kubectl, minikube and start minikube
   - source ci/minikube.env
   - ./ci/install-kube.sh
-
-# command to run tests
-script:
   - pytest --cov kubespawner -v
+
+# followup
 after_success:
   - pip install codecov
   - codecov
@@ -68,8 +70,11 @@ matrix:
     - stage: deploy
       if: tag IS present
       python: 3.7
-      script: []
-      after_success: []
+      # FIXME: We don't want to run tests again here, but I got
+      # the following issue when these were commented out...
+      # https://travis-ci.org/mapbox/vtvalidate/jobs/492280599
+      #script: []
+      #after_success: []
       deploy:
         provider: pypi
         user: __token__
