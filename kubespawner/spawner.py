@@ -113,6 +113,7 @@ class EventReflector(NamespacedResourceReflector):
 class MockObject(object):
     pass
 
+
 class KubeSpawner(Spawner):
     """
     A JupyterHub spawner that spawn pods in a Kubernetes Cluster. Each server
@@ -133,14 +134,14 @@ class KubeSpawner(Spawner):
     @property
     def pod_reflector(self):
         """
-        A convinience alias to the class variable reflectors['pods'].
+        A convenience alias to the class variable reflectors['pods'].
         """
         return self.__class__.reflectors['pods']
 
     @property
     def event_reflector(self):
         """
-        A convninience alias to the class variable reflectors['events'] if the
+        A convenience alias to the class variable reflectors['events'] if the
         spawner instance has events_enabled.
         """
         if self.events_enabled:
@@ -155,6 +156,7 @@ class KubeSpawner(Spawner):
             if 'user' not in kwargs:
                 user = MockObject()
                 user.name = 'mock_name'
+                user.escaped_name = user.name
                 user.id = 'mock_id'
                 user.url = 'mock_url'
                 self.user = user
@@ -169,18 +171,18 @@ class KubeSpawner(Spawner):
         else:
             # runs during normal execution only
 
-            # By now, all the traitlets have been set, so we can use them to compute
-            # other attributes
+            # By now, all the traitlets have been set, so we can use them
+            # to compute other attributes
             if self.__class__.executor is None:
                 self.__class__.executor = ThreadPoolExecutor(
                     max_workers=self.k8s_api_threadpool_workers
                 )
 
-            # This will start watching in __init__, so it'll start the first
-            # time any spawner object is created. Not ideal but works!
-            self._start_watching_pods()
-            if self.events_enabled:
-                self._start_watching_events()
+            # Defer watching pods until after initialization; otherwise
+            #  you can end up in situations where you need user.spawner but
+            #  the spawner object hasn't been created yet.
+            #
+            # auth_state_hook works for a place to start it.
 
             self.api = shared_client('CoreV1Api')
 
@@ -363,7 +365,7 @@ class KubeSpawner(Spawner):
             KubeSpawner.{0} is deprecated with JupyterHub >= 0.8.
             Use JupyterHub.{0}
             """.format(change.name),
-            DeprecationWarning)
+                      DeprecationWarning)
         setattr(self.hub, change.name.split('_', 1)[1], change.new)
 
     common_labels = Dict(
@@ -1301,6 +1303,14 @@ class KubeSpawner(Spawner):
         )
     del _deprecated_name
 
+    def auth_state_hook(self, auth_state):
+        '''Start or restart pod/event watchers.  Spawner has been initialized
+        and we know who our user is, so using user.spawner is safe.
+        '''
+        self._start_watching_pods(replace=True)
+        if self.events_enabled:
+            self._start_watching_events(replace=True)
+
     def _expand_user_properties(self, template):
         # Make sure username and servername match the restrictions for DNS labels
         # Note: '-' is not in safe_chars, as it is being used as escape character
@@ -1309,13 +1319,16 @@ class KubeSpawner(Spawner):
         # Set servername based on whether named-server initialised
         if self.name:
             servername = '-{}'.format(self.name)
-            safe_servername = '-{}'.format(escapism.escape(self.name, safe=safe_chars, escape_char='-').lower())
+            safe_servername = '-{}'.format(escapism.escape(
+                self.name, safe=safe_chars, escape_char='-').lower())
         else:
             servername = ''
             safe_servername = ''
 
-        legacy_escaped_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
-        safe_username = escapism.escape(self.user.name, safe=safe_chars, escape_char='-').lower()
+        legacy_escaped_username = ''.join(
+            [s if s in safe_chars else '-' for s in self.user.name.lower()])
+        safe_username = escapism.escape(
+            self.user.name, safe=safe_chars, escape_char='-').lower()
         return template.format(
             userid=self.user.id,
             username=safe_username,
@@ -1392,7 +1405,8 @@ class KubeSpawner(Spawner):
             real_cmd = None
 
         labels = self._build_pod_labels(self._expand_all(self.extra_labels))
-        annotations = self._build_common_annotations(self._expand_all(self.extra_annotations))
+        annotations = self._build_common_annotations(
+            self._expand_all(self.extra_annotations))
 
         return make_pod(
             name=self.pod_name,
@@ -1441,7 +1455,8 @@ class KubeSpawner(Spawner):
         """
         Make a pvc manifest that will spawn current user's pvc.
         """
-        labels = self._build_common_labels(self._expand_all(self.storage_extra_labels))
+        labels = self._build_common_labels(
+            self._expand_all(self.storage_extra_labels))
         labels.update({
             'component': 'singleuser-storage'
         })
@@ -1664,6 +1679,7 @@ class KubeSpawner(Spawner):
         and a new one started (for recovering from possible errors).
         """
         main_loop = IOLoop.current()
+
         def on_reflector_failure():
             self.log.critical(
                 "%s reflector failed, halting Hub.",
@@ -1687,7 +1703,6 @@ class KubeSpawner(Spawner):
 
         # return the current reflector
         return self.__class__.reflectors[key]
-
 
     def _start_watching_events(self, replace=False):
         """Start the events reflector
@@ -1765,7 +1780,8 @@ class KubeSpawner(Spawner):
                 )
             except ApiException as e:
                 if e.status == 409:
-                    self.log.info("PVC " + self.pvc_name + " already exists, so did not create new pvc.")
+                    self.log.info("PVC " + self.pvc_name +
+                                  " already exists, so did not create new pvc.")
 
                 elif e.status == 403:
                     t, v, tb = sys.exc_info()
@@ -1779,7 +1795,8 @@ class KubeSpawner(Spawner):
                     except ApiException as e:
                         raise v.with_traceback(tb)
 
-                    self.log.info("PVC " + self.pvc_name + " already exists, possibly have reached quota though.")
+                    self.log.info(
+                        "PVC " + self.pvc_name + " already exists, possibly have reached quota though.")
 
                 else:
                     raise
@@ -1805,11 +1822,13 @@ class KubeSpawner(Spawner):
                     # We only want to handle 409 conflict errors
                     self.log.exception("Failed for %s", pod.to_str())
                     raise
-                self.log.info('Found existing pod %s, attempting to kill', self.pod_name)
+                self.log.info(
+                    'Found existing pod %s, attempting to kill', self.pod_name)
                 # TODO: this should show up in events
                 yield self.stop(True)
 
-                self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
+                self.log.info(
+                    'Killed pod %s, will try starting singleuser pod again', self.pod_name)
         else:
             raise Exception(
                 'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
@@ -1822,8 +1841,10 @@ class KubeSpawner(Spawner):
         # start_timeout, starting from a slightly earlier point.
         try:
             yield exponential_backoff(
-                lambda: self.is_pod_running(self.pod_reflector.pods.get(self.pod_name, None)),
-                'pod/%s did not start in %s seconds!' % (self.pod_name, self.start_timeout),
+                lambda: self.is_pod_running(
+                    self.pod_reflector.pods.get(self.pod_name, None)),
+                'pod/%s did not start in %s seconds!' % (
+                    self.pod_name, self.start_timeout),
                 timeout=self.start_timeout,
             )
         except TimeoutError:
@@ -1845,7 +1866,8 @@ class KubeSpawner(Spawner):
                 self.pod_name,
                 "\n".join(
                     [
-                        "%s [%s] %s" % (event.last_timestamp or event.event_time, event.type, event.message)
+                        "%s [%s] %s" % (
+                            event.last_timestamp or event.event_time, event.type, event.message)
                         for event in self.events
                     ]
                 ),
@@ -1881,12 +1903,15 @@ class KubeSpawner(Spawner):
                 raise
         try:
             yield exponential_backoff(
-                lambda: self.pod_reflector.pods.get(self.pod_name, None) is None,
-                'pod/%s did not disappear in %s seconds!' % (self.pod_name, self.start_timeout),
+                lambda: self.pod_reflector.pods.get(
+                    self.pod_name, None) is None,
+                'pod/%s did not disappear in %s seconds!' % (
+                    self.pod_name, self.start_timeout),
                 timeout=self.start_timeout,
             )
         except TimeoutError:
-            self.log.error("Pod %s did not disappear, restarting pod reflector", self.pod_name)
+            self.log.error(
+                "Pod %s did not disappear, restarting pod reflector", self.pod_name)
             self._start_watching_pods(replace=True)
             raise
 
@@ -1898,7 +1923,8 @@ class KubeSpawner(Spawner):
 
     def _render_options_form(self, profile_list):
         self._profile_list = profile_list
-        profile_form_template = Environment(loader=BaseLoader).from_string(self.profile_form_template)
+        profile_form_template = Environment(
+            loader=BaseLoader).from_string(self.profile_form_template)
         return profile_form_template.render(profile_list=profile_list)
 
     @gen.coroutine
@@ -1953,7 +1979,8 @@ class KubeSpawner(Spawner):
             selected_profile = int(formdata.get('profile', [0])[0])
             options = self._profile_list[selected_profile]
         except (TypeError, IndexError, ValueError):
-            raise web.HTTPError(400, "No such profile: %i", formdata.get('profile', None))
+            raise web.HTTPError(400, "No such profile: %i",
+                                formdata.get('profile', None))
         return {
             'profile': options['display_name']
         }
@@ -1978,18 +2005,21 @@ class KubeSpawner(Spawner):
             if profile_name:
                 # name specified, but not found
                 raise ValueError("No such profile: %s. Options include: %s" % (
-                    profile_name, ', '.join(p['display_name'] for p in self._profile_list)
+                    profile_name, ', '.join(p['display_name']
+                                            for p in self._profile_list)
                 ))
             else:
                 # no name specified, use the default
                 profile = default_profile
 
-        self.log.debug("Applying KubeSpawner override for profile '%s'", profile['display_name'])
+        self.log.debug(
+            "Applying KubeSpawner override for profile '%s'", profile['display_name'])
         kubespawner_override = profile.get('kubespawner_override', {})
         for k, v in kubespawner_override.items():
             if callable(v):
                 v = v(self)
-                self.log.debug(".. overriding KubeSpawner value %s=%s (callable result)", k, v)
+                self.log.debug(
+                    ".. overriding KubeSpawner value %s=%s (callable result)", k, v)
             else:
                 self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
             setattr(self, k, v)
