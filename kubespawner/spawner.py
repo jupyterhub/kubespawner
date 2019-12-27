@@ -49,7 +49,6 @@ from .traitlets import Callable
 
 
 
-
 class PodReflector(NamespacedResourceReflector):
     """
     PodReflector is merely a configured NamespacedResourceReflector. It exposes
@@ -440,6 +439,14 @@ class KubeSpawner(Spawner):
         """
     )
 
+    dns_name_template = Unicode(
+        '{service}.{namespace}.svc.cluster.local',
+        config=True,
+        help="""
+        Template to use to form the dns name for the pod.
+        """
+    )
+
     pod_name_template = Unicode(
         'jupyter-{username}--{servername}',
         config=True,
@@ -538,6 +545,29 @@ class KubeSpawner(Spawner):
         in, so if you are running multiple jupyterhubs spawning in the
         same namespace, consider setting this to be something more unique.
         """,
+    )
+
+    secret_mount_path = Unicode(
+        "/etc/jupyterhub/ssl/",
+        allow_none=False,
+        config=True,
+        help="""
+        Location to mount the spawned pod's certificates needed for internal_ssl functionality.
+        """
+    )
+
+    secret_name_template = Unicode(
+        'jupyter-{username}{servername}',
+        config=True,
+        help="""
+        Template to use to form the name of user's secret.
+
+        `{username}` is expanded to the escaped, dns-label safe username.
+
+        This must be unique within the namespace the pvc are being spawned
+        in, so if you are running multiple jupyterhubs spawning in the
+        same namespace, consider setting this to be something more unique.
+        """
     )
 
     secret_mount_path = Unicode(
@@ -1607,9 +1637,7 @@ class KubeSpawner(Spawner):
         # Default set of labels, picked up from
         # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
         labels = {
-            'hub.jupyter.org/username': escapism.escape(
-                self.user.name, safe=self.safe_chars, escape_char='-'
-            ).lower()
+            'hub.jupyter.org/username': escapism.escape(self.user.name, safe=self.safe_chars, escape_char='-').lower()
         }
         labels.update(extra_labels)
         labels.update(self.common_labels)
@@ -1721,7 +1749,7 @@ class KubeSpawner(Spawner):
         if self.cmd:
             real_cmd = self.cmd + self.get_args()
         else:
-            real_cmd = None
+            real_cmd = self.get_args()
 
         labels = self._build_pod_labels(self._expand_all(self.extra_labels))
         annotations = self._build_common_annotations(
@@ -1772,6 +1800,7 @@ class KubeSpawner(Spawner):
             ssl_secret_mount_path=self.secret_mount_path,
             logger=self.log,
         )
+
 
     def get_secret_manifest(self, owner_reference):
         """
@@ -1853,16 +1882,14 @@ class KubeSpawner(Spawner):
         )
         return is_running
 
-    def pod_has_uid(self, pod):
+    def is_pod_creating(self, pod):
         """
         Check if the given pod exists and has a UID
 
         pod must be a dictionary representing a Pod kubernetes API object.
         """
 
-        return bool(
-            pod and pod.get("metadata") and pod["metadata"].get("uid") is not None
-        )
+        return pod and pod.metadata and pod.metadata.uid
 
     def get_state(self):
         """
@@ -2111,6 +2138,15 @@ class KubeSpawner(Spawner):
         """
         self._start_future = asyncio.ensure_future(self._start())
         return self._start_future
+
+    def create_certs(self):
+        """Overrides the base class Spawner's function to set the DNS names the
+        certificate should be valid for before they are created."""
+        self.secret_name = self._expand_user_properties(self.secret_name_template)
+        self.ssl_alt_names.append("DNS:"+self.dns_name)
+        self.ssl_alt_names_include_local=False
+
+        return super().create_certs()
 
     _last_event = None
 
@@ -2367,6 +2403,7 @@ class KubeSpawner(Spawner):
                 await self.stop(True)
                 raise
 
+
         # we need a timeout here even though start itself has a timeout
         # in order for this coroutine to finish at some point.
         # using the same start_timeout here
@@ -2408,7 +2445,13 @@ class KubeSpawner(Spawner):
                 ),
             )
 
-        return self._get_pod_url(pod)
+        if self.pod_connect_ip:
+            # Strip trailing `-` of empty server names in each domain level.
+            ip = ".".join([s.rstrip("-") for s in self._expand_user_properties(self.pod_connect_ip).split(".")])
+        else:
+            ip = pod["status"]["podIP"]
+
+        return (self.dns_name, self.port)
 
     async def _make_delete_pod_request(self, pod_name, delete_options, grace_seconds, request_timeout):
         """

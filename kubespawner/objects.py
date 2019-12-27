@@ -19,6 +19,7 @@ from kubernetes.client.models import (
     V1LabelSelector,
     V1Lifecycle,
     V1LocalObjectReference,
+    V1Namespace,
     V1NodeAffinity,
     V1NodeSelector,
     V1NodeSelectorRequirement,
@@ -666,7 +667,6 @@ def make_ingress(
 
     return endpoint, service, ingress
 
-
 def make_owner_reference(name, uid):
     """
     Returns a owner reference object for garbage collection.
@@ -802,4 +802,124 @@ def make_namespace(name, labels=None, annotations=None):
     )
 
     return V1Namespace(metadata=metadata)
+
+def make_owner_reference(name, uid):
+    """
+    Returns a owner reference object for garbage collection.
+    """
+    return V1OwnerReference(
+            api_version="v1",
+            kind="Pod",
+            name=name,
+            uid=uid,
+            block_owner_deletion=True,
+            controller=False
+           )
+
+def make_secret(
+    name,
+    username,
+    cert_paths,
+    hub_ca,
+    owner_references,
+    labels=None,
+    annotations=None,
+):
+    """
+    Make a k8s secret specification using pre-existing ssl credentials for a given user.
+
+    Parameters
+    ----------
+    name:
+        Name of the secret. Must be unique within the namespace the object is
+        going to be created in.
+    username:
+        The name of the user notebook.
+    cert_paths:
+        JupyterHub spawners cert_paths dictionary container certificate path references
+    hub_ca:
+        Path to the hub certificate authority
+    labels:
+        Labels to add to the secret.
+    annotations:
+        Annotations to add to the secret.
+    """
+
+    secret = V1Secret()
+    secret.kind = "Secret"
+    secret.api_version = "v1"
+    secret.metadata = V1ObjectMeta()
+    secret.metadata.name = name
+    secret.metadata.annotations = (annotations or {}).copy()
+    secret.metadata.labels = (labels or {}).copy()
+    secret.metadata.owner_references=owner_references
+
+    secret.data = {}
+
+    with open(cert_paths['keyfile'], 'r') as file:
+        encoded = base64.b64encode(file.read().encode("utf-8"))
+        secret.data['ssl.key'] = encoded.decode("utf-8")
+
+    with open(cert_paths['certfile'], 'r') as file:
+        encoded = base64.b64encode(file.read().encode("utf-8"))
+        secret.data['ssl.crt'] = encoded.decode("utf-8")
+
+    with open(cert_paths['cafile'], 'r') as file:
+        encoded = base64.b64encode(file.read().encode("utf-8"))
+        secret.data["notebooks-ca_trust.crt"] = encoded.decode("utf-8")
+
+    with open(hub_ca, 'r') as file:
+        encoded = base64.b64encode(file.read().encode("utf-8"))
+        secret.data["notebooks-ca_trust.crt"] = secret.data["notebooks-ca_trust.crt"] + encoded.decode("utf-8")
+
+    return secret
+
+
+def make_service(
+    name,
+    port,
+    servername,
+    owner_references,
+    labels=None,
+    annotations=None,
+):
+    """
+    Make a k8s service specification for using dns to communicate with the notebook.
+
+    Parameters
+    ----------
+    name:
+        Name of the service. Must be unique within the namespace the object is
+        going to be created in.
+    env:
+        Dictionary of environment variables.
+    labels:
+        Labels to add to the service.
+    annotations:
+        Annotations to add to the service.
+
+    """
+
+    metadata = V1ObjectMeta(
+        name=name,
+        annotations=(annotations or {}).copy(),
+        labels=(labels or {}).copy(),
+        owner_references=owner_references,
+    )
+
+    service = V1Service(
+        kind='Service',
+        metadata=metadata,
+        spec=V1ServiceSpec(
+            type='ClusterIP',
+            ports=[V1ServicePort(port=port, target_port=port)],
+            selector={
+                'component': 'singleuser-server',
+                'hub.jupyter.org/servername': servername,
+                'hub.jupyter.org/username': metadata.labels['hub.jupyter.org/username']
+            }
+        )
+    )
+
+    return service
 

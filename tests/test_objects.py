@@ -1855,4 +1855,70 @@ def test_make_namespace():
             },
             'name': 'test-namespace',
         },
+
+def test_make_pod_with_ssl():
+    """
+    Test specification of a pod with ssl enabled
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='ssl',
+        image='jupyter/singleuser:latest',
+        env={
+            'JUPYTERHUB_SSL_KEYFILE': 'TEST_VALUE',
+            'JUPYTERHUB_SSL_CERTFILE': 'TEST',
+            'JUPYTERHUB_USER': 'TEST',
+        },
+        working_dir='/',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        ssl_secret_name='ssl',
+        ssl_secret_mount_path="/etc/jupyterhub/ssl/"
+    )) == {
+        "metadata": {
+            "name": "ssl",
+            "annotations": {},
+            "labels": {},
+        },
+        "spec": {
+            'automountServiceAccountToken': False,
+            "containers": [
+                {
+                    "env": [
+                        {'name': 'JUPYTERHUB_SSL_KEYFILE', 'value': '/etc/jupyterhub/ssl/ssl.key'},
+                        {'name': 'JUPYTERHUB_SSL_CERTFILE', 'value': '/etc/jupyterhub/ssl/ssl.crt'},
+                        {'name': 'JUPYTERHUB_USER', 'value': 'TEST'},
+                        {'name': 'JUPYTERHUB_SSL_CLIENT_CA', 'value': '/etc/jupyterhub/ssl/notebooks-ca_trust.crt'},
+                    ],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [
+                        {'mountPath': '/etc/jupyterhub/ssl/', 'name': 'jupyterhub-internal-certs'}
+                    ],
+                    'workingDir': '/',
+                    "resources": {
+                        "limits": {
+                        },
+                        "requests": {
+                        }
+                    }
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [
+                {'name': 'jupyterhub-internal-certs',
+                'secret': {
+                    'defaultMode': 511,
+                    'secretName': 'ssl'
+                }}
+            ],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
     }
