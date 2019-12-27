@@ -1,8 +1,12 @@
 """
 Test functions used to create k8s objects
 """
-from kubespawner.objects import make_pod, make_pvc, make_ingress
+<<<<<<< HEAD
 from kubernetes.client import ApiClient
+from kubespawner.objects import make_ingress, make_pod, make_pvc
+
+=======
+>>>>>>> 4f76f0d... add support for internal_ssl jupyterhub configuration to support ssl
 
 api_client = ApiClient()
 
@@ -1606,3 +1610,69 @@ def test_make_ingress():
                 }]
             }
         }
+
+def test_make_pod_with_ssl():
+    """
+    Test specification of a pod with ssl enabled
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='ssl',
+        image='jupyter/singleuser:latest',
+        env={
+            'JUPYTERHUB_SSL_KEYFILE': 'TEST_VALUE',
+            'JUPYTERHUB_SSL_CERTFILE': 'TEST',
+            'JUPYTERHUB_USER': 'TEST',
+        },
+        working_dir='/',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        ssl_secret_name='ssl'
+    )) == {
+        "metadata": {
+            "name": "ssl",
+            "annotations": {},
+            "labels": {},
+        },
+        "spec": {
+            'automountServiceAccountToken': False,
+            "containers": [
+                {
+                    "env": [
+                        {'name': 'JUPYTERHUB_SSL_KEYFILE', 'value': '/etc/jupyterhub/ssl/ssl.key'},
+                        {'name': 'JUPYTERHUB_SSL_CERTFILE', 'value': '/etc/jupyterhub/ssl/ssl.crt'},
+                        {'name': 'JUPYTERHUB_USER', 'value': 'TEST'},
+                        {'name': 'JUPYTERHUB_SSL_CLIENT_CA', 'value': '/etc/jupyterhub/ssl/notebooks-ca_trust.crt'},
+                    ],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [
+                        {'mountPath': '/etc/jupyterhub/ssl/', 'name': 'jupyterhub-internal-certs'}
+                    ],
+                    'workingDir': '/',
+                    "resources": {
+                        "limits": {
+                        },
+                        "requests": {
+                        }
+                    }
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [
+                {'name': 'jupyterhub-internal-certs',
+                'secret': {
+                    'defaultMode': 511,
+                    'secretName': 'ssl'
+                }}
+            ],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }

@@ -5,45 +5,36 @@ This module exports `KubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
 
-from functools import partial  # noqa
-from datetime import datetime
 import json
-import os
-import sys
-import string
 import multiprocessing
-from concurrent.futures import ThreadPoolExecutor
+import os
+import string
+import sys
 import warnings
+from asyncio import sleep
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from functools import partial  # noqa
 
-from tornado import gen
-from tornado.ioloop import IOLoop
+from jinja2 import BaseLoader, Environment
+from tornado import gen, web
 from tornado.concurrent import run_on_executor
-from tornado import web
-from traitlets import (
-    Bool,
-    Dict,
-    Integer,
-    List,
-    Unicode,
-    Union,
-    default,
-    observe,
-    validate,
-)
-from jupyterhub.spawner import Spawner
-from jupyterhub.utils import exponential_backoff
-from jupyterhub.traitlets import Command
-from kubernetes.client.rest import ApiException
-from kubernetes import client
+from tornado.ioloop import IOLoop
+
 import escapism
-from jinja2 import Environment, BaseLoader
+from async_generator import async_generator, yield_
+from jupyterhub.spawner import Spawner
+from jupyterhub.traitlets import Command
+from jupyterhub.utils import exponential_backoff
+from kubernetes import client
+from kubernetes.client.rest import ApiException
+from kubespawner.objects import make_pod, make_pvc, make_secret, make_service
+from kubespawner.reflector import NamespacedResourceReflector
+from kubespawner.traitlets import Callable
+from traitlets import (Bool, Dict, Integer, List, Unicode, Union, default,
+                       observe, validate)
 
 from .clients import shared_client
-from kubespawner.traitlets import Callable
-from kubespawner.objects import make_pod, make_pvc
-from kubespawner.reflector import NamespacedResourceReflector
-from asyncio import sleep
-from async_generator import async_generator, yield_
 
 
 class PodReflector(NamespacedResourceReflector):
@@ -130,6 +121,10 @@ class KubeSpawner(Spawner):
         "events": None,
     }
 
+    # Characters as defined by safe for DNS
+    # Note: '-' is not in safe_chars, as it is being used as escape character
+    safe_chars = set(string.ascii_lowercase + string.digits)
+
     @property
     def pod_reflector(self):
         """
@@ -186,6 +181,14 @@ class KubeSpawner(Spawner):
 
         # runs during both test and normal execution
         self.pod_name = self._expand_user_properties(self.pod_name_template)
+        self.dns_name = self.dns_name_template.format(namespace=self.namespace, service=self.pod_name)
+
+        self.secret_name = None
+        if self.internal_ssl_directory:
+            self.secret_name = self._expand_user_properties(self.secret_name_template)
+            self.ssl_alt_names.append("DNS:"+self.dns_name)
+            self.ssl_alt_names_include_local=False
+
         self.pvc_name = self._expand_user_properties(self.pvc_name_template)
         if self.working_dir:
             self.working_dir = self._expand_user_properties(self.working_dir)
@@ -247,7 +250,6 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         The IP address (or hostname) the single-user server should listen on.
-
         We override this from the parent so we can set a more sane default for
         the Kubernetes setup.
         """
@@ -306,6 +308,14 @@ class KubeSpawner(Spawner):
         """
     )
 
+    dns_name_template = Unicode(
+        '{service}.{namespace}.svc.cluster.local',
+        config=True,
+        help="""
+        Template to use to form the dns name for the pod.
+        """
+    )
+
     pod_name_template = Unicode(
         'jupyter-{username}{servername}',
         config=True,
@@ -342,6 +352,30 @@ class KubeSpawner(Spawner):
         This must be unique within the namespace the pvc are being spawned
         in, so if you are running multiple jupyterhubs spawning in the
         same namespace, consider setting this to be something more unique.
+        """
+    )
+
+    secret_name_template = Unicode(
+        'jupyter-{username}{servername}',
+        config=True,
+        help="""
+        Template to use to form the name of user's secret.
+
+        `{username}` is expanded to the escaped, dns-label safe username.
+
+        This must be unique within the namespace the pvc are being spawned
+        in, so if you are running multiple jupyterhubs spawning in the
+        same namespace, consider setting this to be something more unique.
+        """
+    )
+
+    internal_ssl_directory = Unicode(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        Location of JupyterHub's internal_ssl directory.  This directory is managed by JupyterHub itself.  
+        See https://jupyterhub.readthedocs.io/en/stable/api/app.html
         """
     )
 
@@ -1174,7 +1208,7 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         Time in seconds for the pod to be in `terminating` state before is forcefully killed.
-        
+
         Increase this if you need more time to execute a `preStop` lifecycle hook.
 
         See https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods for
@@ -1302,20 +1336,16 @@ class KubeSpawner(Spawner):
     del _deprecated_name
 
     def _expand_user_properties(self, template):
-        # Make sure username and servername match the restrictions for DNS labels
-        # Note: '-' is not in safe_chars, as it is being used as escape character
-        safe_chars = set(string.ascii_lowercase + string.digits)
-
         # Set servername based on whether named-server initialised
         if self.name:
             servername = '-{}'.format(self.name)
-            safe_servername = '-{}'.format(escapism.escape(self.name, safe=safe_chars, escape_char='-').lower())
+            safe_servername = '-{}'.format(escapism.escape(self.name, safe=self.safe_chars, escape_char='-').lower())
         else:
             servername = ''
             safe_servername = ''
 
-        legacy_escaped_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
-        safe_username = escapism.escape(self.user.name, safe=safe_chars, escape_char='-').lower()
+        legacy_escaped_username = ''.join([s if s in self.safe_chars else '-' for s in self.user.name.lower()])
+        safe_username = escapism.escape(self.user.name, safe=self.safe_chars, escape_char='-').lower()
         return template.format(
             userid=self.user.id,
             username=safe_username,
@@ -1338,7 +1368,9 @@ class KubeSpawner(Spawner):
     def _build_common_labels(self, extra_labels):
         # Default set of labels, picked up from
         # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
-        labels = {}
+        labels = {
+            'hub.jupyter.org/username': escapism.escape(self.user.name, safe=self.safe_chars, escape_char='-').lower()
+        }
         labels.update(extra_labels)
         labels.update(self.common_labels)
         return labels
@@ -1346,7 +1378,8 @@ class KubeSpawner(Spawner):
     def _build_pod_labels(self, extra_labels):
         labels = self._build_common_labels(extra_labels)
         labels.update({
-            'component': 'singleuser-server'
+            'component': 'singleuser-server',
+            'hub.jupyter.org/servername': self.name,
         })
         return labels
 
@@ -1389,7 +1422,7 @@ class KubeSpawner(Spawner):
         if self.cmd:
             real_cmd = self.cmd + self.get_args()
         else:
-            real_cmd = None
+            real_cmd = self.get_args()
 
         labels = self._build_pod_labels(self._expand_all(self.extra_labels))
         annotations = self._build_common_annotations(self._expand_all(self.extra_annotations))
@@ -1434,7 +1467,42 @@ class KubeSpawner(Spawner):
             pod_anti_affinity_preferred=self.pod_anti_affinity_preferred,
             pod_anti_affinity_required=self.pod_anti_affinity_required,
             priority_class_name=self.priority_class_name,
+            ssl_secret_name=self.secret_name,
             logger=self.log,
+        )
+
+
+    def get_secret_manifest(self):
+        """
+        Make a secret manifest that contains the ssl certificates.
+        """
+
+        labels = self._build_common_labels(self._expand_all(self.extra_labels))
+        annotations = self._build_common_annotations(self._expand_all(self.extra_annotations))
+
+        return make_secret(
+            name=self.secret_name,
+            username=self.user.name,
+            ssl_directory=self.internal_ssl_directory,
+            labels=labels,
+            annotations=annotations,
+        )
+
+
+    def get_service_manifest(self):
+        """
+        Make a service manifest for dns.
+        """
+
+        labels = self._build_common_labels(self._expand_all(self.extra_labels))
+        annotations = self._build_common_annotations(self._expand_all(self.extra_annotations))
+
+        return make_service(
+            name=self.pod_name,
+            port=self.port,
+            servername=self.name,
+            labels=labels,
+            annotations=annotations,
         )
 
     def get_pvc_manifest(self):
@@ -1784,6 +1852,35 @@ class KubeSpawner(Spawner):
                 else:
                     raise
 
+        if self.internal_ssl_directory:
+            secret = self.get_secret_manifest()
+            if secret:
+                try:
+                    yield self.asynchronize(
+                        self.api.create_namespaced_secret,
+                        namespace=self.namespace,
+                        body=secret
+                    )
+                except ApiException as e:
+                    if e.status == 409:
+                        self.log.info("Secret " + self.secret_name + " already exists, so did not create new secret.")
+                    else:
+                        raise
+
+            service = self.get_service_manifest()
+            if service:
+                try:
+                    yield self.asynchronize(
+                        self.api.create_namespaced_service,
+                        namespace=self.namespace,
+                        body=service
+                    )
+                except ApiException as e:
+                    if e.status == 409:
+                        self.log.info("Service " + self.pod_name + " already exists, so did not create new service.")
+                    else:
+                        raise
+
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
         # try again. We try 4 times, and if it still fails we give up.
@@ -1850,7 +1947,8 @@ class KubeSpawner(Spawner):
                     ]
                 ),
             )
-        return (pod.status.pod_ip, self.port)
+
+        return (self.dns_name, self.port)
 
     @gen.coroutine
     def stop(self, now=False):
@@ -1889,6 +1987,41 @@ class KubeSpawner(Spawner):
             self.log.error("Pod %s did not disappear, restarting pod reflector", self.pod_name)
             self._start_watching_pods(replace=True)
             raise
+
+
+        self.log.info("shall we delete")
+        if self.internal_ssl_directory:
+            self.log.info("Deleting secret %s", self.secret_name)
+            try:
+                yield self.asynchronize(
+                    self.api.delete_namespaced_secret,
+                    name=self.secret_name,
+                    namespace=self.namespace
+                )
+            except ApiException as e:
+                if e.status == 404:
+                    self.log.warning(
+                        "No secret %s to delete. Assuming already deleted.",
+                        self.secret_name,
+                    )
+                else:
+                    raise
+
+            self.log.info("Deleting service %s", self.pod_name)
+            try:
+                yield self.asynchronize(
+                    self.api.delete_namespaced_service,
+                    name=self.pod_name,
+                    namespace=self.namespace
+                )
+            except ApiException as e:
+                if e.status == 404:
+                    self.log.warning(
+                        "No service %s to delete. Assuming already deleted.",
+                        self.pod_name,
+                    )
+                else:
+                    raise
 
     @default('env_keep')
     def _env_keep_default(self):
