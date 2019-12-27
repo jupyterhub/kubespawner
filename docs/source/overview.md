@@ -43,6 +43,8 @@ simultaneous users), Kubernetes is a wonderful way to do it. Features include:
   lock-in. You can even spread out your cluster across
   [multiple clouds at the same time](https://kubernetes.io/docs/concepts/cluster-administration/federation/).
 
+* Internal SSL configuration supported
+
 In general, Kubernetes provides a ton of well thought out, useful features -
 and you can use all of them along with this spawner.
 
