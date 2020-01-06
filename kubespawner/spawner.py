@@ -106,12 +106,13 @@ class EventReflector(NamespacedResourceReflector):
         #   timestamp without and the other is a higher resolution timestamp.
         return sorted(
             self.resources.values(),
-            key=lambda event: event.last_timestamp or event.event_time,
+            key=lambda event: (event.last_timestamp or event.event_time,)
         )
 
 
 class MockObject(object):
     pass
+
 
 class KubeSpawner(Spawner):
     """
@@ -155,6 +156,7 @@ class KubeSpawner(Spawner):
             if 'user' not in kwargs:
                 user = MockObject()
                 user.name = 'mock_name'
+                user.escaped_name = 'mock_name'
                 user.id = 'mock_id'
                 user.url = 'mock_url'
                 self.user = user
@@ -363,7 +365,7 @@ class KubeSpawner(Spawner):
             KubeSpawner.{0} is deprecated with JupyterHub >= 0.8.
             Use JupyterHub.{0}
             """.format(change.name),
-            DeprecationWarning)
+                      DeprecationWarning)
         setattr(self.hub, change.name.split('_', 1)[1], change.new)
 
     common_labels = Dict(
@@ -470,7 +472,8 @@ class KubeSpawner(Spawner):
         Set this to the name of a Kubernetes secret containing the docker configuration
         required to pull the image.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod>`__
+        #specifying-imagepullsecrets-on-a-pod>`__
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/
         for more information on when and why this might need to be set, and what
         it should be set to.
         """
@@ -569,7 +572,8 @@ class KubeSpawner(Spawner):
         upgrades to break.
 
         You'll *have* to set this if you are using auto-provisioned volumes with most
-        cloud providers. See `fsGroup <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podsecuritycontext-v1-core>`_
+        #podsecuritycontext-v1-core>`_
+        cloud providers. See `fsGroup <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/
         for more details.
         """
     )
@@ -688,7 +692,8 @@ class KubeSpawner(Spawner):
 
         This will be added to the `resources: requests: storage:` in the k8s pod spec.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims>`__
+        #persistentvolumeclaims>`__
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/persistent-volumes/
         for more information on how storage works.
 
         Quantities can be represented externally as unadorned integers, or as fixed-point
@@ -766,7 +771,8 @@ class KubeSpawner(Spawner):
 
         For example to match the Nodes that have a label of `content: jupyter` use::
 
-           c.KubeSpawner.storage_selector = {'matchLabels':{'content': 'jupyter'}}
+           c.KubeSpawner.storage_selector = {
+               'matchLabels':{'content': 'jupyter'}}
         """
     )
 
@@ -807,7 +813,8 @@ class KubeSpawner(Spawner):
 
         This list will be directly added under `initContainers` in the kubernetes pod spec,
         so you should use the same structure. Each item in the dict must a field
-        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#container-v1-core>`_.
+        #container-v1-core>`_.
+        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/
 
         One usage is disabling access to metadata service from single-user
         notebook server with configuration below::
@@ -838,7 +845,8 @@ class KubeSpawner(Spawner):
 
         This dict will be directly merge into `container` of notebook server,
         so you should use the same structure. Each item in the dict must a field
-        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#container-v1-core>`_.
+        #container-v1-core>`_.
+        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/
 
         One usage is set ``envFrom`` on notebook container with configuration below::
 
@@ -863,7 +871,8 @@ class KubeSpawner(Spawner):
 
         This dict will be directly merge into pod,so you should use the same structure.
         Each item in the dict is field of pod configuration
-        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podspec-v1-core.
+        #podspec-v1-core.
+        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/
 
         One usage is set restartPolicy and dnsPolicy with configuration below::
 
@@ -885,7 +894,8 @@ class KubeSpawner(Spawner):
 
         This list will be directly appended under `containers` in the kubernetes pod spec,
         so you should use the same structure. Each item in the list is container configuration
-        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#container-v1-core.
+        #container-v1-core.
+        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/
 
         One usage is setting crontab in a container to clean sensitive data with configuration below::
 
@@ -948,7 +958,8 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "PreferredSchedulingTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#preferredschedulingterm-v1-core
+        #preferredschedulingterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/
         """
     )
     node_affinity_required = List(
@@ -960,7 +971,8 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "NodeSelectorTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#nodeselectorterm-v1-core
+        #nodeselectorterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/
         """
     )
     pod_affinity_preferred = List(
@@ -972,7 +984,8 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "WeightedPodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#weightedpodaffinityterm-v1-core
+        #weightedpodaffinityterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/
         """
     )
     pod_affinity_required = List(
@@ -984,7 +997,8 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "PodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podaffinityterm-v1-core
+        #podaffinityterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/
         """
     )
     pod_anti_affinity_preferred = List(
@@ -996,7 +1010,8 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "WeightedPodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#weightedpodaffinityterm-v1-core
+        #weightedpodaffinityterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/
         """
     )
     pod_anti_affinity_required = List(
@@ -1008,7 +1023,8 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "PodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podaffinityterm-v1-core
+        #podaffinityterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/
         """
     )
 
@@ -1055,7 +1071,7 @@ class KubeSpawner(Spawner):
         </script>
         <style>
         /* The profile description should not be bold, even though it is inside the <label> tag */
-        #kubespawner-profiles-list label p {
+        # kubespawner-profiles-list label p {
             font-weight: normal;
         }
         </style>
@@ -1174,7 +1190,7 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         Time in seconds for the pod to be in `terminating` state before is forcefully killed.
-        
+
         Increase this if you need more time to execute a `preStop` lifecycle hook.
 
         See https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods for
@@ -1309,13 +1325,16 @@ class KubeSpawner(Spawner):
         # Set servername based on whether named-server initialised
         if self.name:
             servername = '-{}'.format(self.name)
-            safe_servername = '-{}'.format(escapism.escape(self.name, safe=safe_chars, escape_char='-').lower())
+            safe_servername = '-{}'.format(escapism.escape(
+                self.name, safe=safe_chars, escape_char='-').lower())
         else:
             servername = ''
             safe_servername = ''
 
-        legacy_escaped_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
-        safe_username = escapism.escape(self.user.name, safe=safe_chars, escape_char='-').lower()
+        legacy_escaped_username = ''.join(
+            [s if s in safe_chars else '-' for s in self.user.name.lower()])
+        safe_username = escapism.escape(
+            self.user.name, safe=safe_chars, escape_char='-').lower()
         return template.format(
             userid=self.user.id,
             username=safe_username,
@@ -1392,7 +1411,8 @@ class KubeSpawner(Spawner):
             real_cmd = None
 
         labels = self._build_pod_labels(self._expand_all(self.extra_labels))
-        annotations = self._build_common_annotations(self._expand_all(self.extra_annotations))
+        annotations = self._build_common_annotations(
+            self._expand_all(self.extra_annotations))
 
         return make_pod(
             name=self.pod_name,
@@ -1441,7 +1461,8 @@ class KubeSpawner(Spawner):
         """
         Make a pvc manifest that will spawn current user's pvc.
         """
-        labels = self._build_common_labels(self._expand_all(self.storage_extra_labels))
+        labels = self._build_common_labels(
+            self._expand_all(self.storage_extra_labels))
         labels.update({
             'component': 'singleuser-storage'
         })
@@ -1664,6 +1685,7 @@ class KubeSpawner(Spawner):
         and a new one started (for recovering from possible errors).
         """
         main_loop = IOLoop.current()
+
         def on_reflector_failure():
             self.log.critical(
                 "%s reflector failed, halting Hub.",
@@ -1687,7 +1709,6 @@ class KubeSpawner(Spawner):
 
         # return the current reflector
         return self.__class__.reflectors[key]
-
 
     def _start_watching_events(self, replace=False):
         """Start the events reflector
@@ -1765,7 +1786,8 @@ class KubeSpawner(Spawner):
                 )
             except ApiException as e:
                 if e.status == 409:
-                    self.log.info("PVC " + self.pvc_name + " already exists, so did not create new pvc.")
+                    self.log.info("PVC " + self.pvc_name +
+                                  " already exists, so did not create new pvc.")
 
                 elif e.status == 403:
                     t, v, tb = sys.exc_info()
@@ -1779,7 +1801,8 @@ class KubeSpawner(Spawner):
                     except ApiException as e:
                         raise v.with_traceback(tb)
 
-                    self.log.info("PVC " + self.pvc_name + " already exists, possibly have reached quota though.")
+                    self.log.info(
+                        "PVC " + self.pvc_name + " already exists, possibly have reached quota though.")
 
                 else:
                     raise
@@ -1805,11 +1828,13 @@ class KubeSpawner(Spawner):
                     # We only want to handle 409 conflict errors
                     self.log.exception("Failed for %s", pod.to_str())
                     raise
-                self.log.info('Found existing pod %s, attempting to kill', self.pod_name)
+                self.log.info(
+                    'Found existing pod %s, attempting to kill', self.pod_name)
                 # TODO: this should show up in events
                 yield self.stop(True)
 
-                self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
+                self.log.info(
+                    'Killed pod %s, will try starting singleuser pod again', self.pod_name)
         else:
             raise Exception(
                 'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
@@ -1822,8 +1847,10 @@ class KubeSpawner(Spawner):
         # start_timeout, starting from a slightly earlier point.
         try:
             yield exponential_backoff(
-                lambda: self.is_pod_running(self.pod_reflector.pods.get(self.pod_name, None)),
-                'pod/%s did not start in %s seconds!' % (self.pod_name, self.start_timeout),
+                lambda: self.is_pod_running(
+                    self.pod_reflector.pods.get(self.pod_name, None)),
+                'pod/%s did not start in %s seconds!' % (
+                    self.pod_name, self.start_timeout),
                 timeout=self.start_timeout,
             )
         except TimeoutError:
@@ -1845,7 +1872,8 @@ class KubeSpawner(Spawner):
                 self.pod_name,
                 "\n".join(
                     [
-                        "%s [%s] %s" % (event.last_timestamp or event.event_time, event.type, event.message)
+                        "%s [%s] %s" % (
+                            event.last_timestamp or event.event_time, event.type, event.message)
                         for event in self.events
                     ]
                 ),
@@ -1881,12 +1909,15 @@ class KubeSpawner(Spawner):
                 raise
         try:
             yield exponential_backoff(
-                lambda: self.pod_reflector.pods.get(self.pod_name, None) is None,
-                'pod/%s did not disappear in %s seconds!' % (self.pod_name, self.start_timeout),
+                lambda: self.pod_reflector.pods.get(
+                    self.pod_name, None) is None,
+                'pod/%s did not disappear in %s seconds!' % (
+                    self.pod_name, self.start_timeout),
                 timeout=self.start_timeout,
             )
         except TimeoutError:
-            self.log.error("Pod %s did not disappear, restarting pod reflector", self.pod_name)
+            self.log.error(
+                "Pod %s did not disappear, restarting pod reflector", self.pod_name)
             self._start_watching_pods(replace=True)
             raise
 
@@ -1898,7 +1929,8 @@ class KubeSpawner(Spawner):
 
     def _render_options_form(self, profile_list):
         self._profile_list = profile_list
-        profile_form_template = Environment(loader=BaseLoader).from_string(self.profile_form_template)
+        profile_form_template = Environment(
+            loader=BaseLoader).from_string(self.profile_form_template)
         return profile_form_template.render(profile_list=profile_list)
 
     @gen.coroutine
@@ -1953,7 +1985,8 @@ class KubeSpawner(Spawner):
             selected_profile = int(formdata.get('profile', [0])[0])
             options = self._profile_list[selected_profile]
         except (TypeError, IndexError, ValueError):
-            raise web.HTTPError(400, "No such profile: %i", formdata.get('profile', None))
+            raise web.HTTPError(400, "No such profile: %i",
+                                formdata.get('profile', None))
         return {
             'profile': options['display_name']
         }
@@ -1978,18 +2011,21 @@ class KubeSpawner(Spawner):
             if profile_name:
                 # name specified, but not found
                 raise ValueError("No such profile: %s. Options include: %s" % (
-                    profile_name, ', '.join(p['display_name'] for p in self._profile_list)
+                    profile_name, ', '.join(p['display_name']
+                                            for p in self._profile_list)
                 ))
             else:
                 # no name specified, use the default
                 profile = default_profile
 
-        self.log.debug("Applying KubeSpawner override for profile '%s'", profile['display_name'])
+        self.log.debug(
+            "Applying KubeSpawner override for profile '%s'", profile['display_name'])
         kubespawner_override = profile.get('kubespawner_override', {})
         for k, v in kubespawner_override.items():
             if callable(v):
                 v = v(self)
-                self.log.debug(".. overriding KubeSpawner value %s=%s (callable result)", k, v)
+                self.log.debug(
+                    ".. overriding KubeSpawner value %s=%s (callable result)", k, v)
             else:
                 self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
             setattr(self, k, v)
