@@ -771,8 +771,7 @@ class KubeSpawner(Spawner):
 
         For example to match the Nodes that have a label of `content: jupyter` use::
 
-           c.KubeSpawner.storage_selector = {
-               'matchLabels':{'content': 'jupyter'}}
+           c.KubeSpawner.storage_selector = {'matchLabels':{'content': 'jupyter'}}
         """
     )
 
