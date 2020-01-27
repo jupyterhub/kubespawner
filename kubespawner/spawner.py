@@ -1992,6 +1992,10 @@ class KubeSpawner(Spawner):
                 self.log.debug(".. overriding KubeSpawner value %s=%s (callable result)", k, v)
             else:
                 self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
+                if (k == "environment"):
+                    if self.environment:
+                        self.log.debug(".. joining Spawner environment with KubeSpawner environment")
+                        v = {**self.environment, **v}
             setattr(self, k, v)
 
     # set of recognised user option keys
