@@ -66,7 +66,7 @@ To work on kubespawner's code you can run JupyterHub locally on your computer,
 using an editable installation of kubespawner, that interacts with pods in a
 local kubernetes cluster!
 
-You need to have a a local kubernetes cluster and be able to edit networking
+You need to have a local kubernetes cluster and be able to edit networking
 rules on your computer. We will now walk you through the steps to get going:
 
 1.  Install VirtualBox by [downloading and running an
@@ -82,7 +82,8 @@ rules on your computer. We will now walk you through the steps to get going:
     host machine to interact with the kubernetes cluster along with a
     `~/.kube/config` file with credentials for connecting to this cluster.
 
-1.  Setup a networking route so that a program your host to talk to the pods inside minikube.
+1.  Setup a networking route so that a program on your host can talk to the
+    pods inside minikube.
 
     ```bash
     # Linux
