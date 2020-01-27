@@ -681,8 +681,8 @@ class KubeSpawner(Spawner):
         config=True,
         allow_none=True,
         help="""
-        The ammount of storage space to request from the volume that the pvc will
-        mount to. This ammount will be the ammount of storage space the user has
+        The amount of storage space to request from the volume that the pvc will
+        mount to. This amount will be the amount of storage space the user has
         to work with on their notebook. If left blank, the kubespawner will not
         create a pvc for the pod.
 
