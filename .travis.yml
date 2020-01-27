@@ -41,6 +41,7 @@ matrix:
     - python: 3.8
       env: KUBE_PY=8 KUBE_VERSION=1.12.10
     - python: 3.7
+      dist: xenial
       env: KUBE_PY=9 KUBE_VERSION=1.13.12
     - python: 3.6
       env: &latest_supported KUBE_PY=10 KUBE_VERSION=1.14.9
@@ -52,13 +53,13 @@ matrix:
     #    python dependencies
     - &allowed_failure_1
       python: 3.8
-      env: PRE_RELEASES=TRUE KUBE_VERSION=1.15.3
+      env: PRE_RELEASES=TRUE KUBE_VERSION=1.15.9
 
     # 2. Test with latest stable kubernetes client along with the latest
     #    kubernetes cluster version
     - &allowed_failure_2
       python: 3.8
-      env: KUBE_PY=10 KUBE_VERSION=1.16.3
+      env: KUBE_PY=10 KUBE_VERSION=1.17.2
 
     # 3. Test with a nightly python build using latest known
     #    supported configuration.
