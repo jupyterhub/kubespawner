@@ -1995,9 +1995,10 @@ class KubeSpawner(Spawner):
             # if the override value is a dict and a similar dict exists in spawner do a shallow copy with 
             # kubespawner values overriding values for existing keys in spawner. 
             if isinstance(v,dict): 
+                self.log.debug(".. The value is a dict so we will do shallow copy")
                 if (hasattr(self,k)):
-                    self.log.debug("... shallow copy of KubeSpawner key %s values %s over spawner %s", k,**self.k, **v)
-                    v = {**self.k, **v}
+                    self.log.debug("... shallow copy of KubeSpawner key %s values %s over spawner %s", k,**self[k], **v)
+                    v = {**self[k], **v}
             setattr(self, k, v)
 
     # set of recognised user option keys
