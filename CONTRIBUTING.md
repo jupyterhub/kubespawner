@@ -88,10 +88,12 @@ rules on your computer. We will now walk you through the steps to get going:
     ```bash
     # Linux
     sudo ip route add 172.17.0.0/16 via $(minikube ip)
+    # later on you can undo this with
+    sudo ip route del 172.17.0.0/16
 
     # MACOS
     sudo route -n add -net 172.17.0.0/16 $(minikube ip)
-    # later on you can undo this it with
+    # later on you can undo this with
     sudo route delete -net 172.17.0.0
     ```
 
