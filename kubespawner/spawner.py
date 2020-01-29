@@ -1993,7 +1993,7 @@ class KubeSpawner(Spawner):
             else:
                 self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
             # if the override value is a dict and a similar dict exists in spawner do a shallow copy with 
-            # kubespawner key/value overriding simlar key in spawner.  This is important for example if you
+            # kubespawner key/value overriding similar key in spawner.  This is important for example if you
             # have set environment key/values in pre_spawn_start to prevent them from being removed.
             if isinstance(v,dict): 
                 self.log.debug(".. The value for key %s is a dict so we check if similar dict exists on spawner", k)
