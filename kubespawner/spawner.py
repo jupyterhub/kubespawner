@@ -1997,8 +1997,8 @@ class KubeSpawner(Spawner):
             if isinstance(v,dict): 
                 self.log.debug(".. The value is a dict so we will do shallow copy")
                 if (hasattr(self,k)):
-                    self.log.debug("... shallow copy of KubeSpawner key %s values %s over spawner %s", k,**self[k], **v)
-                    v = {**self[k], **v}
+                    self.log.debug("... shallow copy of KubeSpawner key %s values %s over spawner %s", k,getattr(self,k), v)
+                    v = {**getattr(self,k), **v}
             setattr(self, k, v)
 
     # set of recognised user option keys
