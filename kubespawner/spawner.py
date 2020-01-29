@@ -1992,10 +1992,12 @@ class KubeSpawner(Spawner):
                 self.log.debug(".. overriding KubeSpawner value %s=%s (callable result)", k, v)
             else:
                 self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
-                if (k == "environment"):
-                    if self.environment:
-                        self.log.debug(".. joining Spawner environment with KubeSpawner environment")
-                        v = {**self.environment, **v}
+            # if the override value is a dict and a similar dict exists in spawner do a shallow copy with 
+            # kubespawner values overriding values for existing keys in spawner. 
+            if isinstance(v,dict): 
+                if (hasattr(self,k)):
+                    self.log.debug("... shallow copy of KubeSpawner key %s values %s over spawner %s", k,**self.k, **v)
+                    v = {**self.k, **v}
             setattr(self, k, v)
 
     # set of recognised user option keys
