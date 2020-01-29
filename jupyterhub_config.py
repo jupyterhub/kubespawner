@@ -4,8 +4,8 @@ import socket
 
 c.JupyterHub.spawner_class = 'kubespawner.KubeSpawner'
 
-c.JupyterHub.ip = '0.0.0.0'
-c.JupyterHub.hub_ip = '0.0.0.0'
+c.JupyterHub.ip = '127.0.0.1'
+c.JupyterHub.hub_ip = '127.0.0.1'
 
 # Don't try to cleanup servers on exit - since in general for k8s, we want
 # the hub to be able to restart without losing user containers
