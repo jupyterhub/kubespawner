@@ -8,7 +8,7 @@ implementation that should be used by JupyterHub.
 
 import time
 from jupyterhub.utils import exponential_backoff
-from kubernetes import client, config
+from kubernetes import config
 from kubernetes.client.rest import ApiException
 from kubernetes.config.config_exception import ConfigException
 from tornado import gen
@@ -16,6 +16,13 @@ from tornado.ioloop import IOLoop
 from traitlets import Bool
 from . import KubeSpawner
 from .clients import shared_client
+from .multiobjects import (
+    make_namespace,
+    make_namespaced_account_objects,
+    make_delete_options,
+    make_quota,
+    make_quota_spec
+)
 from .multireflector import (
     MultiNamespacePodReflector, MultiNamespaceEventReflector)
 
@@ -243,7 +250,7 @@ class MultiNamespacedKubeSpawner(KubeSpawner):
 
     @gen.coroutine
     def stop(self, now=False):
-        delete_options = client.V1DeleteOptions()
+        delete_options = yield self.asynchronize(make_delete_options())
 
         if now:
             grace_seconds = 0
@@ -302,8 +309,7 @@ class MultiNamespacedKubeSpawner(KubeSpawner):
         if not namespace or namespace == "default":
             raise ValueError("Will not use default namespace!")
         api = self.api
-        ns = client.V1Namespace(
-            metadata=client.V1ObjectMeta(name=namespace))
+        ns = yield self.asynchronize(make_namespace(name=namespace))
         try:
             self.log.info("Attempting to create namespace '%s'" % namespace)
             api.create_namespace(ns)
@@ -321,7 +327,7 @@ class MultiNamespacedKubeSpawner(KubeSpawner):
             self.log.debug("Ensuring namespaced service account.")
             _ = yield self._ensure_namespaced_service_account()
         if self.enable_namespace_quotas:
-            quotaspec = yield self._determine_quota()
+            quotaspec = yield self.asynchronize(make_quota_spec)
             _ = yield self._ensure_namespaced_resource_quota(quotaspec)
         self.log.debug("Namespace resources ensured.")
 
@@ -331,11 +337,13 @@ class MultiNamespacedKubeSpawner(KubeSpawner):
         #  to manipulate pods in the namespace.
         self.log.info("Ensuring namespaced service account.")
         namespace = self.namespace
+        username = self.user.escaped_name
         api = self.api
         rbac_api = self.rbac_api
-        svcacct, role, rolebinding = yield \
-            self._define_namespaced_account_objects()
-        account = self.service_account
+        svcacct, role, rolebinding = yield self.asynchronize(
+            make_namespaced_account_objects(namespace, username)
+        self.service_account=svcacct.metadata.name
+        account=self.service_account
         try:
             self.log.info("Attempting to create service account.")
             api.create_namespaced_service_account(
@@ -382,13 +390,13 @@ class MultiNamespacedKubeSpawner(KubeSpawner):
     @gen.coroutine
     def _wait_for_namespace(self, timeout=30):
         '''Wait for namespace to be created.'''
-        namespace = self.namespace
+        namespace=self.namespace
         for dl in range(timeout):
             self.log.debug("Checking for namespace " +
                            "{} [{}/{}]".format(namespace, dl, timeout))
-            nl = self.api.list_namespace(timeout_seconds=1)
+            nl=self.api.list_namespace(timeout_seconds=1)
             for ns in nl.items:
-                nsname = ns.metadata.name
+                nsname=ns.metadata.name
                 if nsname == namespace:
                     self.log.debug("Namespace {} found.".format(namespace))
                     return
@@ -399,77 +407,18 @@ class MultiNamespacedKubeSpawner(KubeSpawner):
             "Namespace '{}' was not created in {} seconds!".format(namespace,
                                                                    timeout))
 
-    @gen.coroutine
-    def _define_namespaced_account_objects(self):
-        namespace = self.namespace
-        username = self.user.escaped_name
-        # FIXME: probably something a little more sophisticated is called for.
-        account = "{}-{}".format(username, "svcacct")
-        self.service_account = account
-        md = client.V1ObjectMeta(name=account)
-        svcacct = client.V1ServiceAccount(metadata=md)
-        # These rules are suitable for spawning Dask pods.  You will need to
-        #  modify them for spawning other things, such as Argo Workflows.
-        rules = [
-            client.V1PolicyRule(
-                api_groups=[""],
-                resources=["pods", "services"],
-                verbs=["get", "list", "watch", "create", "delete"]
-            ),
-            client.V1PolicyRule(
-                api_groups=[""],
-                resources=["pods/log", "serviceaccounts"],
-                verbs=["get", "list"]
-            ),
-        ]
-        role = client.V1Role(
-            rules=rules,
-            metadata=md)
-        rolebinding = client.V1RoleBinding(
-            metadata=md,
-            role_ref=client.V1RoleRef(api_group="rbac.authorization.k8s.io",
-                                      kind="Role",
-                                      name=account),
-            subjects=[client.V1Subject(
-                kind="ServiceAccount",
-                name=account,
-                namespace=namespace)]
-        )
-
-        return svcacct, role, rolebinding
-
-    @gen.coroutine
-    def _determine_quota(self):
-        '''This is something you will probably want to override in a subclass.
-
-        You could do different quotas by user group membership, or size
-        based on things you determine from the environment.  This
-        implementation is just a stub that returns defaults appropriate for
-        smallish environments, assuming 2G per core.
-        '''
-        cpu = '100'
-        memory = '200Gi'
-        qs = client.V1ResourceQuotaSpec(
-            hard={"limits.cpu": cpu,
-                  "limits.memory": memory})
-        return qs
 
     @gen.coroutine
     def _ensure_namespaced_resource_quota(self, quotaspec):
         '''Create K8s quota object if necessary.
         '''
         self.log.debug("Entering ensure_namespaced_resource_quota()")
-        namespace = self.namespace
-        api = self.api
+        namespace=self.namespace
+        api=self.api
         if namespace == "default":
             self.log.error("Will not create quota for default namespace!")
             return
-        quota = client.V1ResourceQuota(
-            metadata=client.V1ObjectMeta(
-                name="quota",
-            ),
-            spec=quotaspec
-        )
+        quota=await self.asynchronize(make_quota, spec=quotaspec)
         try:
             api.create_namespaced_resource_quota(namespace, quota)
         except ApiException as e:
@@ -491,15 +440,15 @@ class MultiNamespacedKubeSpawner(KubeSpawner):
 
         This requires a cluster role that can delete namespaces.'''
         self.log.debug("Attempting to delete namespace.")
-        api = self.api
-        namespace = self.namespace
+        api=self.api
+        namespace=self.namespace
         if not namespace or namespace == "default":
             raise RuntimeError("Cannot delete default namespace!")
             return
-        podlist = api.list_namespaced_pod(namespace)
-        clear_to_delete = True
+        podlist=api.list_namespaced_pod(namespace)
+        clear_to_delete=True
         if podlist and podlist.items:
-            clear_to_delete = yield self._check_pods(podlist.items)
+            clear_to_delete=yield self._check_pods(podlist.items)
         if not clear_to_delete:
             self.log.info("Not deleting namespace '%s'" % namespace)
             return False
@@ -516,10 +465,10 @@ class MultiNamespacedKubeSpawner(KubeSpawner):
         # You might want to, for instance, allow deletion of namespaces even
         #  if there are running dask pods, on the grounds that without a
         #  head node to report back to, they're pretty useless.
-        namespace = self.namespace
+        namespace=self.namespace
         for i in items:
             if i and i.status:
-                phase = i.status.phase
+                phase=i.status.phase
                 if (phase == "Running" or phase == "Unknown"
                         or phase == "Pending"):
                     self.log.warning(("Pod in phase '{}'; cannot delete " +
