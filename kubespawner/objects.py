@@ -15,6 +15,7 @@ from kubernetes.client.models import (V1Affinity, V1Container, V1ContainerPort,
                                       V1NodeSelector,
                                       V1NodeSelectorRequirement,
                                       V1NodeSelectorTerm, V1ObjectMeta,
+                                      V1OwnerReference,
                                       V1PersistentVolumeClaim,
                                       V1PersistentVolumeClaimSpec, V1Pod,
                                       V1PodAffinity, V1PodAffinityTerm,
@@ -69,7 +70,7 @@ def make_pod(
     pod_anti_affinity_required=None,
     priority_class_name=None,
     ssl_secret_name=None,
-    username=None,
+    ssl_secret_mount_path=None,
     logger=None,
 ):
     """
@@ -225,6 +226,8 @@ def make_pod(
         The name of the PriorityClass to be assigned the pod. This feature is Beta available in K8s 1.11.
     ssl_secret_name:
         Specifies the name of the ssl secret
+    ssl_secret_mount_path:
+        Specifies the name of the ssl secret mount path for the pod
     """
 
     pod = V1Pod()
@@ -257,14 +260,13 @@ def make_pod(
             }
         })
 
-        ssl_path = '/etc/jupyterhub/ssl/'
-        env['JUPYTERHUB_SSL_KEYFILE'] = ssl_path + "ssl.key"
-        env['JUPYTERHUB_SSL_CERTFILE'] = ssl_path + "ssl.crt"
-        env['JUPYTERHUB_SSL_CLIENT_CA'] = ssl_path + "notebooks-ca_trust.crt"
+        env['JUPYTERHUB_SSL_KEYFILE'] = ssl_secret_mount_path + "ssl.key"
+        env['JUPYTERHUB_SSL_CERTFILE'] = ssl_secret_mount_path + "ssl.crt"
+        env['JUPYTERHUB_SSL_CLIENT_CA'] = ssl_secret_mount_path + "notebooks-ca_trust.crt"
 
         if not volume_mounts:
             volume_mounts = []
-        volume_mounts.append({'name': 'jupyterhub-internal-certs', 'mountPath': ssl_path})
+        volume_mounts.append({'name': 'jupyterhub-internal-certs', 'mountPath': ssl_secret_mount_path})
 
     if node_selector:
         pod.spec.node_selector = node_selector
@@ -609,11 +611,25 @@ def make_ingress(
 
     return endpoint, service, ingress
 
+def make_owner_reference(name, uid):
+    """
+    Returns a owner reference object for garbage collection.
+    """
+    return V1OwnerReference(
+            api_version="v1",
+            kind="Pod",
+            name=name,
+            uid=uid,
+            block_owner_deletion=True,
+            controller=False
+           )
 
 def make_secret(
     name,
     username,
-    ssl_directory,
+    cert_paths,
+    hub_ca,
+    owner,
     labels=None,
     annotations=None,
 ):
@@ -627,8 +643,10 @@ def make_secret(
         going to be created in.
     username:
         The name of the user notebook.
-    ssl_directory:
+    cert_paths:
         Path to a directory containing all users certificates and keys.
+    hub_ca:
+        Path to the hub certificate authority
     labels:
         Labels to add to the secret.
     annotations:
@@ -642,25 +660,23 @@ def make_secret(
     secret.metadata.name = name
     secret.metadata.annotations = (annotations or {}).copy()
     secret.metadata.labels = (labels or {}).copy()
+    secret.metadata.owner_references=[owner]
 
     secret.data = {}
-    user_ssl_key = "{}/user-{}/user-{}.key".format(ssl_directory, username, username)
-    with open(user_ssl_key, 'r') as file:
+
+    with open(cert_paths['keyfile'], 'r') as file:
         encoded = base64.b64encode(file.read().encode("utf-8"))
         secret.data['ssl.key'] = encoded.decode("utf-8")
 
-    user_ssl_crt = "{}/user-{}/user-{}.crt".format(ssl_directory, username, username)
-    with open(user_ssl_crt, 'r') as file:
+    with open(cert_paths['certfile'], 'r') as file:
         encoded = base64.b64encode(file.read().encode("utf-8"))
         secret.data['ssl.crt'] = encoded.decode("utf-8")
 
-    notebook_ca = "{}/notebooks-ca/notebooks-ca.crt".format(ssl_directory)
-    with open(notebook_ca, 'r') as file:
+    with open(cert_paths['cafile'], 'r') as file:
         encoded = base64.b64encode(file.read().encode("utf-8"))
         secret.data["notebooks-ca_trust.crt"] = encoded.decode("utf-8")
 
-    hub_ca_trust = "{}/hub-ca_trust.crt".format(ssl_directory)
-    with open(hub_ca_trust, 'r') as file:
+    with open(hub_ca, 'r') as file:
         encoded = base64.b64encode(file.read().encode("utf-8"))
         secret.data["notebooks-ca_trust.crt"] = secret.data["notebooks-ca_trust.crt"] + encoded.decode("utf-8")
 
@@ -671,6 +687,7 @@ def make_service(
     name,
     port,
     servername,
+    owner,
     labels=None,
     annotations=None,
 ):
@@ -694,7 +711,8 @@ def make_service(
     metadata = V1ObjectMeta(
         name=name,
         annotations=(annotations or {}).copy(),
-        labels=(labels or {}).copy()
+        labels=(labels or {}).copy(),
+        owner_references=[owner],
     )
 
     service = V1Service(

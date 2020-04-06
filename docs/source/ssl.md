@@ -10,5 +10,4 @@ Kubespawner can mount the internal_ssl certificates as Kubernetes secrets into t
 c.JupyterHub.internal_ssl = True
 
 c.JupyterHub.spawner_class = 'kubespawner.KubeSpawner'
-c.KubeSpawner.internal_ssl_directory = '/srv/jupyterhub/internal-ssl/'
 ```
