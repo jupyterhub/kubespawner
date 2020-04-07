@@ -1903,7 +1903,9 @@ class KubeSpawner(Spawner):
 
 
         if self.cert_paths:
-            print(created_pod)
+            self.log.info("hmm")
+            self.log.info(created_pod)
+            self.log.info(created_pod.metadata)
             yield exponential_backoff(
                 lambda: self.is_pod_creating(self.pod_reflector.pods.get(self.pod_name, None)),
                 'pod/%s does not exist!' % (self.pod_name),
@@ -1911,29 +1913,38 @@ class KubeSpawner(Spawner):
 
             pod = self.pod_reflector.pods[self.pod_name]
             owner_reference = make_owner_reference(self.pod_name, pod.metadata.uid)
-            try:
-                yield self.asynchronize(
-                    self.api.create_namespaced_secret,
-                    namespace=self.namespace,
-                    body=self.get_secret_manifest(owner_reference)
-                )
-            except ApiException as e:
-                if e.status == 409:
-                    self.log.info("Secret " + self.secret_name + " already exists, so did not create new secret.")
-                else:
-                    raise
+            for i in range(retry_times):
+                try:
+                    yield self.asynchronize(
+                        self.api.create_namespaced_secret,
+                        namespace=self.namespace,
+                        body=self.get_secret_manifest(owner_reference)
+                    )
+                except ApiException as e:
+                    if e.status == 409:
+                        self.log.info("Secret " + self.secret_name + " already exists, so did not create new secret.")
+                    else:
+                        raise
+            else:
+                raise Exception(
+                    'Can not create user secret %s already exists & could not be deleted' % self.secret_name)
 
-            try:
-                yield self.asynchronize(
-                    self.api.create_namespaced_service,
-                    namespace=self.namespace,
-                    body=self.get_service_manifest(owner_reference)
-                )
-            except ApiException as e:
-                if e.status == 409:
-                    self.log.info("Service " + self.pod_name + " already exists, so did not create new service.")
-                else:
-                    raise
+            for i in range(retry_times):
+                try:
+                    yield self.asynchronize(
+                        self.api.create_namespaced_service,
+                        namespace=self.namespace,
+                        body=self.get_service_manifest(owner_reference)
+                    )
+                except ApiException as e:
+                    if e.status == 409:
+                        self.log.info("Service " + self.pod_name + " already exists, so did not create new service.")
+                    else:
+                        raise
+            else:
+                raise Exception(
+                    'Can not create user service %s already exists & could not be deleted' % self.pod_name)
+
 
         # we need a timeout here even though start itself has a timeout
         # in order for this coroutine to finish at some point.
