@@ -371,7 +371,7 @@ class KubeSpawner(Spawner):
         allow_none=False,
         config=True,
         help="""
-        Location of the Spawned pod's ssl directory when JupyterHub has internal_ssl enabled.
+        Location to mount the spawned pod's certificates needed for internal_ssl functionality.
         """
     )
 
