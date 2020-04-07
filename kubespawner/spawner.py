@@ -1880,11 +1880,12 @@ class KubeSpawner(Spawner):
             pod = yield gen.maybe_future(self.modify_pod_hook(self, pod))
         for i in range(retry_times):
             try:
-                yield self.asynchronize(
+                created_pod = yield self.asynchronize(
                     self.api.create_namespaced_pod,
                     self.namespace,
                     pod,
                 )
+
                 break
             except ApiException as e:
                 if e.status != 409:
@@ -1902,6 +1903,7 @@ class KubeSpawner(Spawner):
 
 
         if self.cert_paths:
+            print(created_pod)
             yield exponential_backoff(
                 lambda: self.is_pod_creating(self.pod_reflector.pods.get(self.pod_name, None)),
                 'pod/%s does not exist!' % (self.pod_name),
