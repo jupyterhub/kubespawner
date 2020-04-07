@@ -629,7 +629,7 @@ def make_secret(
     username,
     cert_paths,
     hub_ca,
-    owner,
+    owner_references,
     labels=None,
     annotations=None,
 ):
@@ -644,7 +644,7 @@ def make_secret(
     username:
         The name of the user notebook.
     cert_paths:
-        Path to a directory containing all users certificates and keys.
+        JupyterHub spawners cert_paths dictionary container certificate path references
     hub_ca:
         Path to the hub certificate authority
     labels:
@@ -660,7 +660,7 @@ def make_secret(
     secret.metadata.name = name
     secret.metadata.annotations = (annotations or {}).copy()
     secret.metadata.labels = (labels or {}).copy()
-    secret.metadata.owner_references=[owner]
+    secret.metadata.owner_references=owner_references
 
     secret.data = {}
 
@@ -687,7 +687,7 @@ def make_service(
     name,
     port,
     servername,
-    owner,
+    owner_references,
     labels=None,
     annotations=None,
 ):
@@ -712,7 +712,7 @@ def make_service(
         name=name,
         annotations=(annotations or {}).copy(),
         labels=(labels or {}).copy(),
-        owner_references=[owner],
+        owner_references=owner_references,
     )
 
     service = V1Service(

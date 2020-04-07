@@ -1469,7 +1469,7 @@ class KubeSpawner(Spawner):
         )
 
 
-    def get_secret_manifest(self, owner):
+    def get_secret_manifest(self, owner_reference):
         """
         Make a secret manifest that contains the ssl certificates.
         """
@@ -1482,13 +1482,13 @@ class KubeSpawner(Spawner):
             username=self.user.name,
             cert_paths=self.cert_paths,
             hub_ca=self.internal_trust_bundles['hub-ca'],
-            owner=owner,
+            owner_references=[owner_reference],
             labels=labels,
             annotations=annotations,
         )
 
 
-    def get_service_manifest(self, owner):
+    def get_service_manifest(self, owner_reference):
         """
         Make a service manifest for dns.
         """
@@ -1500,7 +1500,7 @@ class KubeSpawner(Spawner):
             name=self.pod_name,
             port=self.port,
             servername=self.name,
-            owner=owner,
+            owner_references=[owner_reference],
             labels=labels,
             annotations=annotations,
         )
@@ -1908,15 +1908,14 @@ class KubeSpawner(Spawner):
             )
 
             pod = self.pod_reflector.pods[self.pod_name]
-            owner = make_owner_reference(self.pod_name, pod.metadata.uid)
+            owner_reference = make_owner_reference(self.pod_name, pod.metadata.uid)
             try:
                 yield self.asynchronize(
                     self.api.create_namespaced_secret,
                     namespace=self.namespace,
-                    body=self.get_secret_manifest(owner)
+                    body=self.get_secret_manifest(owner_reference)
                 )
             except ApiException as e:
-                self.log.info(e)
                 if e.status == 409:
                     self.log.info("Secret " + self.secret_name + " already exists, so did not create new secret.")
                 else:
@@ -1926,7 +1925,7 @@ class KubeSpawner(Spawner):
                 yield self.asynchronize(
                     self.api.create_namespaced_service,
                     namespace=self.namespace,
-                    body=self.get_service_manifest(owner)
+                    body=self.get_service_manifest(owner_reference)
                 )
             except ApiException as e:
                 if e.status == 409:
