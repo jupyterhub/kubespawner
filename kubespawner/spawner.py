@@ -1806,7 +1806,8 @@ class KubeSpawner(Spawner):
         return self._start_future
 
     def create_certs(self):
-        """Set DNS alt name prior to cert creation"""
+        """Overrides the base class Spawner's function to set the DNS names the
+        certificate should be valid for before they are created."""
         self.secret_name = self._expand_user_properties(self.secret_name_template)
         self.ssl_alt_names.append("DNS:"+self.dns_name)
         self.ssl_alt_names_include_local=False
