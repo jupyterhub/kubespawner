@@ -1957,7 +1957,7 @@ class KubeSpawner(Spawner):
         if not self.profile_list or self._profile_list is None:
             return formdata
         return {
-            'profile': formdata.get('profile',[None])[0]
+            'profile': formdata.get('profile', [None])[0]
         }
 
     @gen.coroutine

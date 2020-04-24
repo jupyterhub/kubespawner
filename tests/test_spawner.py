@@ -203,6 +203,7 @@ _test_profiles = [
     },
     {
         'display_name': 'Training Env - Datascience',
+        'slug': 'training-datascience',
         'kubespawner_override': {
             'image': 'training/datascience:label',
             'cpu_limit': 4,
