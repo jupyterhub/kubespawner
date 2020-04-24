@@ -16,7 +16,7 @@ setup(
         'escapism',
         'jupyterhub>=0.8',
         'jinja2',
-        'kubernetes>=8.0',
+        'kubernetes>=10.1.0',
         'pyYAML',
     ],
     python_requires='>=3.6',
