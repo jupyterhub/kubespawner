@@ -1,7 +1,7 @@
 """
 Test functions used to create k8s objects
 """
-from kubespawner.objects import make_pod, make_pvc
+from kubespawner.objects import make_pod, make_pvc, make_ingress
 from kubernetes.client import ApiClient
 
 api_client = ApiClient()
@@ -1530,3 +1530,79 @@ def test_make_pod_with_priority_class_name():
         "kind": "Pod",
         "apiVersion": "v1"
     }
+
+def test_make_ingress():
+    """
+    Test specification of the ingress objects
+    """
+    endpoint, service, ingress = api_client.sanitize_for_serialization(make_ingress(
+        name='jupyter-test',
+        routespec='/my-path',
+        target='http://192.168.1.10:9000',
+        data={"mykey": "myvalue"}
+    ))
+
+    assert endpoint == {
+        'kind': 'Endpoints',
+        'metadata': {
+            'annotations': {
+                'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
+                'hub.jupyter.org/proxy-routespec': '/my-path',
+                'hub.jupyter.org/proxy-target': 'http://192.168.1.10:9000'},
+            'labels': {
+                'component': 'singleuser-server',
+                'heritage': 'jupyterhub',
+                'hub.jupyter.org/proxy-route': 'true'},
+            'name': 'jupyter-test'
+        },
+        'subsets': [
+            {'addresses': [{'ip': '192.168.1.10'}
+        ],
+        'ports': [{'port': 9000}]}]
+    }
+
+    assert service == {
+        'kind': 'Service',
+        'metadata': {
+            'annotations': {
+                'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
+                'hub.jupyter.org/proxy-routespec': '/my-path',
+                'hub.jupyter.org/proxy-target': 'http://192.168.1.10:9000'},
+            'labels': {
+                'component': 'singleuser-server',
+                'heritage': 'jupyterhub',
+                'hub.jupyter.org/proxy-route': 'true'},
+            'name': 'jupyter-test'
+        },
+        'spec': {
+            'externalName': '',
+            'ports': [{'port': 9000, 'targetPort': 9000}],
+            'type': 'ClusterIP'
+        }
+    }
+    assert ingress ==  {
+        'kind': 'Ingress',
+        'metadata': {
+            'annotations': {
+                'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
+                'hub.jupyter.org/proxy-routespec': '/my-path',
+                'hub.jupyter.org/proxy-target': 'http://192.168.1.10:9000'},
+            'labels': {
+                'component': 'singleuser-server',
+                'heritage': 'jupyterhub',
+                'hub.jupyter.org/proxy-route': 'true'},
+            'name': 'jupyter-test'},
+        'spec': {
+            'rules': [
+                {'http': {
+                    'paths': [
+                        {
+                            'backend': {
+                                'serviceName': 'jupyter-test',
+                                'servicePort': 9000},
+                            'path': '/my-path'
+                        }
+                    ]}
+                }]
+            }
+        }
