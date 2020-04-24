@@ -25,9 +25,9 @@ setup(
             'bump2version',
             'flake8',
             'jupyterhub-dummyauthenticator',
-            'pytest>=3.3',
+            'pytest>=5.4',
             'pytest-cov',
-            'pytest-asyncio',
+            'pytest-asyncio>=0.11.0',
         ]
     },
     description='JupyterHub Spawner for Kubernetes',
