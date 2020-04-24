@@ -473,9 +473,9 @@ def make_ingress(
     # which are more sensitive to kubernetes version
     # and will change when they move out of beta
     from kubernetes.client.models import (
-        NetworkingV1beta1Ingress, NetworkingV1beta1IngressSpec, NetworkingV1beta1IngressRule,
-        NetworkingV1beta1HTTPIngressRuleValue, NetworkingV1beta1HTTPIngressPath,
-        NetworkingV1beta1IngressBackend,
+        ExtensionsV1beta1Ingress, ExtensionsV1beta1IngressSpec, ExtensionsV1beta1IngressRule,
+        ExtensionsV1beta1HTTPIngressRuleValue, ExtensionsV1beta1HTTPIngressPath,
+        ExtensionsV1beta1IngressBackend,
     )
 
     meta = V1ObjectMeta(
@@ -544,17 +544,17 @@ def make_ingress(
         )
 
     # Make Ingress object
-    ingress = NetworkingV1beta1Ingress(
+    ingress = ExtensionsV1beta1Ingress(
         kind='Ingress',
         metadata=meta,
-        spec=NetworkingV1beta1IngressSpec(
-            rules=[NetworkingV1beta1IngressRule(
+        spec=ExtensionsV1beta1IngressSpec(
+            rules=[ExtensionsV1beta1IngressRule(
                 host=host,
-                http=NetworkingV1beta1HTTPIngressRuleValue(
+                http=ExtensionsV1beta1HTTPIngressRuleValue(
                     paths=[
-                        NetworkingV1beta1HTTPIngressPath(
+                        ExtensionsV1beta1HTTPIngressPath(
                             path=path,
-                            backend=NetworkingV1beta1IngressBackend(
+                            backend=ExtensionsV1beta1IngressBackend(
                                 service_name=name,
                                 service_port=target_port
                             )
