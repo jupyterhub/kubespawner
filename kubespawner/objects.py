@@ -472,11 +472,23 @@ def make_ingress(
     # move beta imports here,
     # which are more sensitive to kubernetes version
     # and will change when they move out of beta
-    from kubernetes.client.models import (
-        V1beta1Ingress, V1beta1IngressSpec, V1beta1IngressRule,
-        V1beta1HTTPIngressRuleValue, V1beta1HTTPIngressPath,
-        V1beta1IngressBackend,
-    )
+    # because of the API changes in 1.16, the import is tried conditionally
+    # to keep compatibility with older K8S versions
+
+    try:
+        from kubernetes.client.models import (
+            ExtensionsV1beta1Ingress, ExtensionsV1beta1IngressSpec, ExtensionsV1beta1IngressRule,
+            ExtensionsV1beta1HTTPIngressRuleValue, ExtensionsV1beta1HTTPIngressPath,
+            ExtensionsV1beta1IngressBackend,
+        )
+    except ImportError:
+        from kubernetes.client.models import (
+            V1beta1Ingress as ExtensionsV1beta1Ingress, V1beta1IngressSpec as ExtensionsV1beta1IngressSpec,
+            V1beta1IngressRule as ExtensionsV1beta1IngressRule,
+            V1beta1HTTPIngressRuleValue as ExtensionsV1beta1HTTPIngressRuleValue,
+            V1beta1HTTPIngressPath as ExtensionsV1beta1HTTPIngressPath,
+            V1beta1IngressBackend as ExtensionsV1beta1IngressBackend
+        )
 
     meta = V1ObjectMeta(
         name=name,
@@ -544,17 +556,17 @@ def make_ingress(
         )
 
     # Make Ingress object
-    ingress = V1beta1Ingress(
+    ingress = ExtensionsV1beta1Ingress(
         kind='Ingress',
         metadata=meta,
-        spec=V1beta1IngressSpec(
-            rules=[V1beta1IngressRule(
+        spec=ExtensionsV1beta1IngressSpec(
+            rules=[ExtensionsV1beta1IngressRule(
                 host=host,
-                http=V1beta1HTTPIngressRuleValue(
+                http=ExtensionsV1beta1HTTPIngressRuleValue(
                     paths=[
-                        V1beta1HTTPIngressPath(
+                        ExtensionsV1beta1HTTPIngressPath(
                             path=path,
-                            backend=V1beta1IngressBackend(
+                            backend=ExtensionsV1beta1IngressBackend(
                                 service_name=name,
                                 service_port=target_port
                             )
