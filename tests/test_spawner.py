@@ -7,7 +7,6 @@ from kubernetes.client.models import (
 from kubespawner import KubeSpawner
 from traitlets.config import Config
 from unittest.mock import Mock
-from slugify import slugify
 import json
 import os
 import pytest
@@ -235,7 +234,7 @@ async def test_user_options_api():
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = _test_profiles
     # set user_options directly (e.g. via api)
-    spawner.user_options = {'profile': slugify(_test_profiles[1]['slug'])}
+    spawner.user_options = {'profile': _test_profiles[1]['slug']}
 
     # nothing should be loaded yet
     assert spawner.cpu_limit is None
