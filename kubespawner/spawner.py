@@ -5,45 +5,39 @@ This module exports `KubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
 
-from functools import partial  # noqa
-from datetime import datetime, timedelta
 import asyncio
 import json
-import os
-import sys
-import string
 import multiprocessing
-from concurrent.futures import ThreadPoolExecutor
+import os
+import string
+import sys
 import warnings
+from asyncio import sleep
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
+from functools import partial  # noqa
 
-from tornado import gen
-from tornado.ioloop import IOLoop
-from tornado.concurrent import run_on_executor
-from tornado import web
-from traitlets import (
-    Bool,
-    Dict,
-    Integer,
-    List,
-    Unicode,
-    Union,
-    default,
-    observe,
-    validate,
-)
-from jupyterhub.spawner import Spawner
-from jupyterhub.utils import exponential_backoff
-from jupyterhub.traitlets import Command
-from kubernetes.client.rest import ApiException
-from kubernetes import client
 import escapism
-from jinja2 import Environment, BaseLoader
+from async_generator import async_generator, yield_
+from jinja2 import BaseLoader, Environment
+from jupyterhub.spawner import Spawner
+from jupyterhub.traitlets import Command
+from jupyterhub.utils import exponential_backoff
+from kubernetes import client
+from kubernetes.client.rest import ApiException
+from slugify import slugify
+from tornado import gen, web
+from tornado.concurrent import run_on_executor
+from tornado.ioloop import IOLoop
 
-from .clients import shared_client
-from kubespawner.traitlets import Callable
 from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import NamespacedResourceReflector
-from slugify import slugify
+from kubespawner.traitlets import Callable
+from traitlets import (Bool, Dict, Integer, List, Unicode, Union, default,
+                       observe, validate)
+
+from .clients import shared_client
+
 
 class PodReflector(NamespacedResourceReflector):
     """
@@ -467,7 +461,7 @@ class KubeSpawner(Spawner):
     )
 
     image = Unicode(
-        'jupyterhub/singleuser:latest',
+        'jupytertest:local',
         config=True,
         help="""
         Docker image to use for spawning user's containers.
@@ -1482,10 +1476,26 @@ class KubeSpawner(Spawner):
         labels = self._build_pod_labels(self._expand_all(self.extra_labels))
         annotations = self._build_common_annotations(self._expand_all(self.extra_annotations))
 
+        # FIXME: use a real config option instead of an annotation
+        if "jupyterhub/port" in self.extra_annotations:
+            if self.extra_annotations["jupyterhub/port"] == "auto":
+                self.log.info(f"Letting pod {self.pod_name} choose the port itself")
+                self.port = 0
+                if real_cmd:
+                    for arg in real_cmd:
+                        if arg.startswith("--port="):
+                            self.log.debug(f"Removing '--port' flag from cmd for pod {self.pod_name}, which chooses the port itself")
+                            real_cmd.remove(arg)
+                    real_cmd = ["kubespawner-autoport"] + real_cmd # FIXME: add configuration option to specify the path to the executable
+                else:
+                    real_cmd = ["kubespawner-autoport"]
+        self.log.debug(f"Full CMD for pod {self.pod_name} is '{real_cmd}'")
+        port_selection = self.port
+
         return make_pod(
             name=self.pod_name,
             cmd=real_cmd,
-            port=self.port,
+            port=port_selection,
             image=self.image,
             image_pull_policy=self.image_pull_policy,
             image_pull_secrets=self.image_pull_secrets,
@@ -1955,6 +1965,14 @@ class KubeSpawner(Spawner):
                     ]
                 ),
             )
+
+        if self.port == 0:
+            self.log.info(f"Pod {self.pod_name} has port set to 0, so we wait for it to set the real port itself")
+        while self.port == 0:
+            self.log.debug(f"Waiting for {self.pod_name} to send the real port number...")
+            yield gen.sleep(1)
+        self.log.info(f"Pod {self.pod_name} is listening on port {self.port}")
+
         return (pod["status"]["podIP"], self.port)
 
     async def _make_delete_pod_request(self, pod_name, delete_options, grace_seconds, request_timeout):

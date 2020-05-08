@@ -5,22 +5,26 @@ import json
 import re
 from urllib.parse import urlparse
 
+from kubernetes.client.models import (V1Affinity, V1Container, V1ContainerPort,
+                                      V1EndpointAddress, V1EndpointPort,
+                                      V1Endpoints, V1EndpointSubset, V1EnvVar,
+                                      V1Lifecycle, V1LocalObjectReference,
+                                      V1NodeAffinity, V1NodeSelector,
+                                      V1NodeSelectorRequirement,
+                                      V1NodeSelectorTerm, V1ObjectMeta,
+                                      V1PersistentVolumeClaim,
+                                      V1PersistentVolumeClaimSpec, V1Pod,
+                                      V1PodAffinity, V1PodAffinityTerm,
+                                      V1PodAntiAffinity, V1PodSecurityContext,
+                                      V1PodSpec, V1PreferredSchedulingTerm,
+                                      V1ResourceRequirements,
+                                      V1SecurityContext, V1Service,
+                                      V1ServicePort, V1ServiceSpec,
+                                      V1Toleration, V1Volume, V1VolumeMount,
+                                      V1WeightedPodAffinityTerm)
+
 from kubespawner.utils import get_k8s_model, update_k8s_model
 
-from kubernetes.client.models import (
-    V1Pod, V1PodSpec, V1PodSecurityContext,
-    V1ObjectMeta,
-    V1LocalObjectReference,
-    V1Volume, V1VolumeMount,
-    V1Container, V1ContainerPort, V1SecurityContext, V1EnvVar, V1ResourceRequirements, V1Lifecycle,
-    V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec,
-    V1Endpoints, V1EndpointSubset, V1EndpointAddress, V1EndpointPort,
-    V1Service, V1ServiceSpec, V1ServicePort,
-    V1Toleration,
-    V1Affinity,
-    V1NodeAffinity, V1NodeSelector, V1NodeSelectorTerm, V1PreferredSchedulingTerm, V1NodeSelectorRequirement,
-    V1PodAffinity, V1PodAntiAffinity, V1WeightedPodAffinityTerm, V1PodAffinityTerm,
-)
 
 def make_pod(
     name,
@@ -298,11 +302,17 @@ def make_pod(
             prepared_env.append(get_k8s_model(V1EnvVar, v))
         else:
             prepared_env.append(V1EnvVar(name=k, value=v))
+    # port == 0: do not create a port object
+    if port == 0:
+        ports = []
+    else:
+        ports=[V1ContainerPort(name='notebook-port', container_port=port)]
+
     notebook_container = V1Container(
         name='notebook',
         image=image,
         working_dir=working_dir,
-        ports=[V1ContainerPort(name='notebook-port', container_port=port)],
+        ports=ports,
         env=prepared_env,
         args=cmd,
         image_pull_policy=image_pull_policy,
@@ -502,18 +512,24 @@ def make_ingress(
 
     try:
         from kubernetes.client.models import (
-            ExtensionsV1beta1Ingress, ExtensionsV1beta1IngressSpec, ExtensionsV1beta1IngressRule,
-            ExtensionsV1beta1HTTPIngressRuleValue, ExtensionsV1beta1HTTPIngressPath,
-            ExtensionsV1beta1IngressBackend,
-        )
+            ExtensionsV1beta1HTTPIngressPath,
+            ExtensionsV1beta1HTTPIngressRuleValue, ExtensionsV1beta1Ingress,
+            ExtensionsV1beta1IngressBackend, ExtensionsV1beta1IngressRule,
+            ExtensionsV1beta1IngressSpec)
     except ImportError:
-        from kubernetes.client.models import (
-            V1beta1Ingress as ExtensionsV1beta1Ingress, V1beta1IngressSpec as ExtensionsV1beta1IngressSpec,
-            V1beta1IngressRule as ExtensionsV1beta1IngressRule,
-            V1beta1HTTPIngressRuleValue as ExtensionsV1beta1HTTPIngressRuleValue,
-            V1beta1HTTPIngressPath as ExtensionsV1beta1HTTPIngressPath,
+        from kubernetes.client.models import \
+            V1beta1HTTPIngressPath as ExtensionsV1beta1HTTPIngressPath
+        from kubernetes.client.models import \
+            V1beta1HTTPIngressRuleValue as \
+            ExtensionsV1beta1HTTPIngressRuleValue
+        from kubernetes.client.models import \
+            V1beta1Ingress as ExtensionsV1beta1Ingress
+        from kubernetes.client.models import \
             V1beta1IngressBackend as ExtensionsV1beta1IngressBackend
-        )
+        from kubernetes.client.models import \
+            V1beta1IngressRule as ExtensionsV1beta1IngressRule
+        from kubernetes.client.models import \
+            V1beta1IngressSpec as ExtensionsV1beta1IngressSpec
 
     meta = V1ObjectMeta(
         name=name,

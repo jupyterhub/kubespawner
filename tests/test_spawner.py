@@ -101,6 +101,8 @@ def test_spawner_values():
 @pytest.mark.asyncio
 async def test_spawn(kube_ns, kube_client, config):
     spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=config)
+    spawner.extra_annotations = {"jupyterhub/port": "auto"}
+    
     # empty spawner isn't running
     status = await spawner.poll()
     assert isinstance(status, int)

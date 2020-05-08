@@ -13,6 +13,8 @@ in your `jupyterhub_config.py` file.
 # instead of the more verbose import kubespawner.spawner.KubeSpawner.
 
 from kubespawner.spawner import KubeSpawner
+from . import api
+from . import autoport
 
 __version__ = '0.14.2.dev'
 __all__ = [KubeSpawner]

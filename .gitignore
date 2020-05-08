@@ -75,3 +75,6 @@ docs/source/build/
 
 # PyBuilder
 target/
+
+# Pipenv
+Pipfile*
