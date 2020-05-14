@@ -1954,8 +1954,6 @@ class KubeSpawner(Spawner):
             user_options (dict): the selected profile in the user_options form,
                 e.g. ``{"profile": "cpus-8"}``
         """
-        if not self.profile_list or self._profile_list is None:
-            return formdata
         return {
             'profile': formdata.get('profile', [None])[0]
         }
