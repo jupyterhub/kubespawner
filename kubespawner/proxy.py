@@ -12,7 +12,7 @@ from kubespawner.objects import make_ingress
 from kubespawner.utils import generate_hashed_slug
 from kubespawner.reflector import NamespacedResourceReflector
 from .clients import shared_client
-from traitlets import Unicode
+from traitlets import Unicode, List
 from tornado import gen
 from tornado.concurrent import run_on_executor
 
@@ -65,6 +65,13 @@ class KubeIngressProxy(Proxy):
 
         If running inside a kubernetes cluster with service accounts enabled,
         defaults to the current namespace. If not, defaults to 'default'
+        """
+    )
+
+    ingress_host = Unicode(
+        config=True,
+        help="""
+        Hostname for ingress rules
         """
     )
 
@@ -123,10 +130,14 @@ class KubeIngressProxy(Proxy):
         # Create a route with the name being escaped routespec
         # Use full routespec in label
         # 'data' is JSON encoded and put in an annotation - we don't need to query for it
+        if self.ingress_host is not '':
+            host_routespec = '{}/{}'.format(self.ingress_host, routespec)
+        else:
+            host_routespec = routespec
         safe_name = self.safe_name_for_routespec(routespec).lower()
         endpoint, service, ingress = make_ingress(
             safe_name,
-            routespec,
+            host_routespec,
             target,
             data
         )

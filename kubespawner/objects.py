@@ -490,11 +490,17 @@ def make_ingress(
             V1beta1IngressBackend as ExtensionsV1beta1IngressBackend
         )
 
+    if routespec.startswith('/'):
+        host = None
+        path = routespec
+    else:
+        host, path = routespec.split('/', 1)
+
     meta = V1ObjectMeta(
         name=name,
         annotations={
             'hub.jupyter.org/proxy-data': json.dumps(data),
-            'hub.jupyter.org/proxy-routespec': routespec,
+            'hub.jupyter.org/proxy-routespec': path,
             'hub.jupyter.org/proxy-target': target
         },
         labels={
@@ -503,12 +509,6 @@ def make_ingress(
             'hub.jupyter.org/proxy-route': 'true'
         }
     )
-
-    if routespec.startswith('/'):
-        host = None
-        path = routespec
-    else:
-        host, path = routespec.split('/', 1)
 
     target_parts = urlparse(target)
 
