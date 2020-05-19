@@ -1903,9 +1903,6 @@ class KubeSpawner(Spawner):
 
 
         if self.cert_paths:
-            self.log.info("hmm")
-            self.log.info(created_pod)
-            self.log.info(created_pod.metadata)
             yield exponential_backoff(
                 lambda: self.is_pod_creating(self.pod_reflector.pods.get(self.pod_name, None)),
                 'pod/%s does not exist!' % (self.pod_name),
