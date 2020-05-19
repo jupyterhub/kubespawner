@@ -1623,7 +1623,7 @@ def test_make_pod_with_ssl():
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
-        ssl_secret_name='ssl'
+        ssl_secret_name='ssl',
         ssl_secret_mount_path="/etc/jupyterhub/ssl/"
     )) == {
         "metadata": {
