@@ -249,7 +249,7 @@ def make_pod(
         image_secret.name = image_pull_secret
         pod.spec.image_pull_secrets.append(image_secret)
 
-    if ssl_secret_name:
+    if ssl_secret_name and ssl_secret_mount_path:
         if not volumes:
             volumes = []
         volumes.append({

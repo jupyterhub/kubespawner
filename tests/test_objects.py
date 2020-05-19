@@ -4,7 +4,6 @@ Test functions used to create k8s objects
 from kubernetes.client import ApiClient
 from kubespawner.objects import make_ingress, make_pod, make_pvc
 
-
 api_client = ApiClient()
 
 def test_make_simplest_pod():
@@ -1625,6 +1624,7 @@ def test_make_pod_with_ssl():
         port=8888,
         image_pull_policy='IfNotPresent',
         ssl_secret_name='ssl'
+        ssl_secret_mount_path="/etc/jupyterhub/ssl/"
     )) == {
         "metadata": {
             "name": "ssl",
