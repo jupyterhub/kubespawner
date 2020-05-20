@@ -130,7 +130,7 @@ class KubeIngressProxy(Proxy):
         # Create a route with the name being escaped routespec
         # Use full routespec in label
         # 'data' is JSON encoded and put in an annotation - we don't need to query for it
-        if self.ingress_host is not '':
+        if self.ingress_host != '':
             host_routespec = '{}/{}'.format(self.ingress_host, routespec)
         else:
             host_routespec = routespec
