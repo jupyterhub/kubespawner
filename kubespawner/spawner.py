@@ -1952,11 +1952,11 @@ class KubeSpawner(Spawner):
         if not self.pod_reflector.first_load_future.done():
             await asyncio.wrap_future(self.pod_reflector.first_load_future)
         ref_key = "{}/{}".format(self.namespace, self.pod_name)
-        data = self.pod_reflector.pods.get(ref_key, None)
-        if data is not None:
-            if data["status"]["phase"] == 'Pending':
+        pod = self.pod_reflector.pods.get(ref_key, None)
+        if pod is not None:
+            if pod["status"]["phase"] == 'Pending':
                 return None
-            ctr_stat = data["status"].get("containerStatuses")
+            ctr_stat = pod["status"].get("containerStatuses")
             if ctr_stat is None:  # No status, no container (we hope)
                 # This seems to happen when a pod is idle-culled.
                 return 1
@@ -1969,6 +1969,19 @@ class KubeSpawner(Spawner):
                             await self.stop(now=True)
                         return c["state"]["terminated"]["exitCode"]
                     break
+
+            # pod running. Check and update server url if it changed!
+            # only do this if fully running, not just starting up
+            # and there's a stored url in self.server to check against
+            if self.is_pod_running(pod) and self.server:
+                pod_url = self._get_pod_url(pod)
+                if self.server.url != pod_url:
+                    self.log.warning(
+                        f"Pod {ref_key} url changed! {self.server.url} -> {pod_url}"
+                    )
+                    self.server.url = pod_url
+                    self.db.commit()
+
             # None means pod is running or starting up
             return None
         # pod doesn't exist or has been deleted
