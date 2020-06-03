@@ -206,6 +206,11 @@ async def test_spawn_start(
 
 @pytest.mark.asyncio
 
+async def test_spawn_progress(kube_ns, kube_client, config):
+    spawner = KubeSpawner(hub=Hub(), user=MockUser(
+        name="progress"), config=config)
+
+
 async def test_spawn_internal_ssl(
     kube_ns,
     kube_client,
@@ -308,6 +313,7 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
         user=MockUser(name="progress"),
         config=config,
     )
+
     # empty spawner isn't running
     status = await spawner.poll()
     assert isinstance(status, int)
@@ -544,8 +550,9 @@ async def test_pod_connect_ip(kube_ns, kube_client, config, hub_pod, hub):
 async def test_pod_ip_template(kube_ns, kube_client, config):
     config.KubeSpawner.pod_ip_template = "jupyter-{username}--{servername}.foo.example.com"
 
+    user = MockUser(name="connectip")
     # w/o servername
-    spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=config)
+    spawner = KubeSpawner(hub=hub, user=user, config=config)
 
     # start the spawner
     res = await spawner.start()

@@ -45,7 +45,6 @@ from kubernetes.client.models import (
     V1Affinity,
     V1NodeAffinity, V1NodeSelector, V1NodeSelectorTerm, V1PreferredSchedulingTerm, V1NodeSelectorRequirement,
     V1PodAffinity, V1PodAntiAffinity, V1WeightedPodAffinityTerm, V1PodAffinityTerm,
-    V1Namespace
 )
 from kubespawner.utils import get_k8s_model, update_k8s_model
 
@@ -808,13 +807,14 @@ def make_owner_reference(name, uid):
     Returns a owner reference object for garbage collection.
     """
     return V1OwnerReference(
-            api_version="v1",
-            kind="Pod",
-            name=name,
-            uid=uid,
-            block_owner_deletion=True,
-            controller=False
-           )
+        api_version="v1",
+        kind="Pod",
+        name=name,
+        uid=uid,
+        block_owner_deletion=True,
+        controller=False,
+    )
+
 
 def make_secret(
     name,
@@ -852,7 +852,7 @@ def make_secret(
     secret.metadata.name = name
     secret.metadata.annotations = (annotations or {}).copy()
     secret.metadata.labels = (labels or {}).copy()
-    secret.metadata.owner_references=owner_references
+    secret.metadata.owner_references = owner_references
 
     secret.data = {}
 
@@ -870,7 +870,9 @@ def make_secret(
 
     with open(hub_ca, 'r') as file:
         encoded = base64.b64encode(file.read().encode("utf-8"))
-        secret.data["notebooks-ca_trust.crt"] = secret.data["notebooks-ca_trust.crt"] + encoded.decode("utf-8")
+        secret.data["notebooks-ca_trust.crt"] = secret.data[
+            "notebooks-ca_trust.crt"
+        ] + encoded.decode("utf-8")
 
     return secret
 
@@ -916,9 +918,9 @@ def make_service(
             selector={
                 'component': 'singleuser-server',
                 'hub.jupyter.org/servername': servername,
-                'hub.jupyter.org/username': metadata.labels['hub.jupyter.org/username']
-            }
-        )
+                'hub.jupyter.org/username': metadata.labels['hub.jupyter.org/username'],
+            },
+        ),
     )
 
     return service
