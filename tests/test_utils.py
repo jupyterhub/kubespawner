@@ -1,8 +1,17 @@
 import copy
-from kubespawner.utils import get_k8s_model, update_k8s_model, _get_k8s_model_attribute
+
+import pytest
 from kubernetes.client.models import (
-    V1PodSpec, V1SecurityContext, V1Container, V1Capabilities, V1Lifecycle
+    V1PodSpec,
+    V1SecurityContext,
+    V1Container,
+    V1Capabilities,
+    V1Lifecycle,
 )
+from kubespawner.utils import get_k8s_model, update_k8s_model, _get_k8s_model_attribute
+
+from conftest import ExecError
+
 
 class MockLogger(object):
     """Trivial class to store logs for inspection after a test run."""
@@ -16,10 +25,31 @@ class MockLogger(object):
         self.warning_count += 1
 
 
+def print_hello():
+    print("hello!")
+
+
+def exec_error():
+    1 / 0
+
+
+def test_exec(exec_python):
+    """Test the exec fixture itself"""
+    r = exec_python(print_hello)
+    print("result: %r" % r)
+
+
+def test_exec_error(exec_python):
+    """Test the exec fixture error handling"""
+    with pytest.raises(ExecError) as e:
+        exec_python(exec_error)
+
+
 def test__get_k8s_model_attribute():
     """Verifies fundamental behavior"""
     assert _get_k8s_model_attribute(V1PodSpec, "service_account") == "service_account"
     assert _get_k8s_model_attribute(V1PodSpec, "serviceAccount") == "service_account"
+
 
 def test_update_k8s_model():
     """Ensure update_k8s_model does what it should. The test is first updating

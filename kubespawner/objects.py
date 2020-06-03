@@ -7,25 +7,44 @@ import os
 import re
 from urllib.parse import urlparse
 
-from kubernetes.client.models import (V1Affinity, V1Container, V1ContainerPort,
-                                      V1EndpointAddress, V1EndpointPort,
-                                      V1Endpoints, V1EndpointSubset, V1EnvVar,
-                                      V1LabelSelector, V1Lifecycle,
-                                      V1LocalObjectReference, V1NodeAffinity,
-                                      V1NodeSelector,
-                                      V1NodeSelectorRequirement,
-                                      V1NodeSelectorTerm, V1ObjectMeta,
-                                      V1OwnerReference,
-                                      V1PersistentVolumeClaim,
-                                      V1PersistentVolumeClaimSpec, V1Pod,
-                                      V1PodAffinity, V1PodAffinityTerm,
-                                      V1PodAntiAffinity, V1PodSecurityContext,
-                                      V1PodSpec, V1PreferredSchedulingTerm,
-                                      V1ResourceRequirements, V1Secret,
-                                      V1SecurityContext, V1Service,
-                                      V1ServicePort, V1ServiceSpec,
-                                      V1Toleration, V1Volume, V1VolumeMount,
-                                      V1WeightedPodAffinityTerm)
+from kubernetes.client.models import (
+    V1Affinity,
+    V1Container,
+    V1ContainerPort,
+    V1EndpointAddress,
+    V1EndpointPort,
+    V1Endpoints,
+    V1EndpointSubset,
+    V1EnvVar,
+    V1LabelSelector,
+    V1Lifecycle,
+    V1LocalObjectReference,
+    V1NodeAffinity,
+    V1NodeSelector,
+    V1NodeSelectorRequirement,
+    V1NodeSelectorTerm,
+    V1ObjectMeta,
+    V1OwnerReference,
+    V1PersistentVolumeClaim,
+    V1PersistentVolumeClaimSpec,
+    V1Pod,
+    V1PodAffinity,
+    V1PodAffinityTerm,
+    V1PodAntiAffinity,
+    V1PodSecurityContext,
+    V1PodSpec,
+    V1PreferredSchedulingTerm,
+    V1ResourceRequirements,
+    V1Secret,
+    V1SecurityContext,
+    V1Service,
+    V1ServicePort,
+    V1ServiceSpec,
+    V1Toleration,
+    V1Volume,
+    V1VolumeMount,
+    V1WeightedPodAffinityTerm,
+)
 from kubespawner.utils import get_k8s_model, update_k8s_model
 
 
@@ -262,21 +281,24 @@ def make_pod(
     if ssl_secret_name and ssl_secret_mount_path:
         if not volumes:
             volumes = []
-        volumes.append({
-            'name':'jupyterhub-internal-certs',
-            'secret': {
-                'secretName': ssl_secret_name,
-                'defaultMode': 511
+        volumes.append(
+            {
+                'name': 'jupyterhub-internal-certs',
+                'secret': {'secretName': ssl_secret_name, 'defaultMode': 511},
             }
-        })
+        )
 
         env['JUPYTERHUB_SSL_KEYFILE'] = ssl_secret_mount_path + "ssl.key"
         env['JUPYTERHUB_SSL_CERTFILE'] = ssl_secret_mount_path + "ssl.crt"
-        env['JUPYTERHUB_SSL_CLIENT_CA'] = ssl_secret_mount_path + "notebooks-ca_trust.crt"
+        env['JUPYTERHUB_SSL_CLIENT_CA'] = (
+            ssl_secret_mount_path + "notebooks-ca_trust.crt"
+        )
 
         if not volume_mounts:
             volume_mounts = []
-        volume_mounts.append({'name': 'jupyterhub-internal-certs', 'mountPath': ssl_secret_mount_path})
+        volume_mounts.append(
+            {'name': 'jupyterhub-internal-certs', 'mountPath': ssl_secret_mount_path}
+        )
 
     if node_selector:
         pod.spec.node_selector = node_selector
@@ -632,18 +654,20 @@ def make_ingress(
 
     return endpoint, service, ingress
 
+
 def make_owner_reference(name, uid):
     """
     Returns a owner reference object for garbage collection.
     """
     return V1OwnerReference(
-            api_version="v1",
-            kind="Pod",
-            name=name,
-            uid=uid,
-            block_owner_deletion=True,
-            controller=False
-           )
+        api_version="v1",
+        kind="Pod",
+        name=name,
+        uid=uid,
+        block_owner_deletion=True,
+        controller=False,
+    )
+
 
 def make_secret(
     name,
@@ -681,7 +705,7 @@ def make_secret(
     secret.metadata.name = name
     secret.metadata.annotations = (annotations or {}).copy()
     secret.metadata.labels = (labels or {}).copy()
-    secret.metadata.owner_references=owner_references
+    secret.metadata.owner_references = owner_references
 
     secret.data = {}
 
@@ -699,7 +723,9 @@ def make_secret(
 
     with open(hub_ca, 'r') as file:
         encoded = base64.b64encode(file.read().encode("utf-8"))
-        secret.data["notebooks-ca_trust.crt"] = secret.data["notebooks-ca_trust.crt"] + encoded.decode("utf-8")
+        secret.data["notebooks-ca_trust.crt"] = secret.data[
+            "notebooks-ca_trust.crt"
+        ] + encoded.decode("utf-8")
 
     return secret
 
@@ -745,9 +771,9 @@ def make_service(
             selector={
                 'component': 'singleuser-server',
                 'hub.jupyter.org/servername': servername,
-                'hub.jupyter.org/username': metadata.labels['hub.jupyter.org/username']
-            }
-        )
+                'hub.jupyter.org/username': metadata.labels['hub.jupyter.org/username'],
+            },
+        ),
     )
 
     return service
