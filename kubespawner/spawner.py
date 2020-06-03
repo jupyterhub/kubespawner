@@ -44,7 +44,7 @@ from kubespawner.objects import make_pod, make_pvc
 from kubespawner.reflector import NamespacedResourceReflector
 from asyncio import sleep
 from async_generator import async_generator, yield_
-
+from slugify import slugify
 
 class PodReflector(NamespacedResourceReflector):
     """
@@ -1062,9 +1062,9 @@ class KubeSpawner(Spawner):
 
         <div class='form-group' id='kubespawner-profiles-list'>
         {% for profile in profile_list %}
-        <label for='profile-item-{{ loop.index0 }}' class='form-control input-group'>
+        <label for='profile-item-{{ profile.slug }}' class='form-control input-group'>
             <div class='col-md-1'>
-                <input type='radio' name='profile' id='profile-item-{{ loop.index0 }}' value='{{ loop.index0 }}' {% if profile.default %}checked{% endif %} />
+                <input type='radio' name='profile' id='profile-item-{{ profile.slug }}' value='{{ profile.slug }}' {% if profile.default %}checked{% endif %} />
             </div>
             <div class='col-md-11'>
                 <strong>{{ profile.display_name }}</strong>
@@ -1101,6 +1101,8 @@ class KubeSpawner(Spawner):
         Signature is: `List(Dict())`, where each item is a dictionary that has two keys:
 
         - `display_name`: the human readable display name (should be HTML safe)
+        - `slug`: the machine readable slug to ifentify the profile
+          (missing slugs are generated from display_name)
         - `description`: Optional description of this profile displayed to the user.
         - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
           settings. Each value can be either the final value to change or a callable that
@@ -1112,6 +1114,7 @@ class KubeSpawner(Spawner):
             c.KubeSpawner.profile_list = [
                 {
                     'display_name': 'Training Env - Python',
+                    'slug': 'training-python',
                     'default': True,
                     'kubespawner_override': {
                         'image': 'training/python:label',
@@ -1120,6 +1123,7 @@ class KubeSpawner(Spawner):
                     }
                 }, {
                     'display_name': 'Training Env - Datascience',
+                    'slug': 'training-datascience',
                     'kubespawner_override': {
                         'image': 'training/datascience:label',
                         'cpu_limit': 4,
@@ -1127,6 +1131,7 @@ class KubeSpawner(Spawner):
                     }
                 }, {
                     'display_name': 'DataScience - Small instance',
+                    'slug': 'datascience-small',
                     'kubespawner_override': {
                         'image': 'datascience/small:label',
                         'cpu_limit': 10,
@@ -1134,6 +1139,7 @@ class KubeSpawner(Spawner):
                     }
                 }, {
                     'display_name': 'DataScience - Medium instance',
+                    'slug': 'datascience-medium',
                     'kubespawner_override': {
                         'image': 'datascience/medium:label',
                         'cpu_limit': 48,
@@ -1141,6 +1147,7 @@ class KubeSpawner(Spawner):
                     }
                 }, {
                     'display_name': 'DataScience - Medium instance (GPUx2)',
+                    'slug': 'datascience-gpu2x',
                     'kubespawner_override': {
                         'image': 'datascience/medium:label',
                         'cpu_limit': 48,
@@ -1897,13 +1904,14 @@ class KubeSpawner(Spawner):
     _profile_list = None
 
     def _render_options_form(self, profile_list):
-        self._profile_list = profile_list
+        self._profile_list = self._init_profile_list(profile_list)
         profile_form_template = Environment(loader=BaseLoader).from_string(self.profile_form_template)
-        return profile_form_template.render(profile_list=profile_list)
+        return profile_form_template.render(profile_list=self._profile_list)
 
     @gen.coroutine
     def _render_options_form_dynamically(self, current_spawner):
         profile_list = yield gen.maybe_future(self.profile_list(current_spawner))
+        profile_list = self._init_profile_list(profile_list)
         return self._render_options_form(profile_list)
 
     @default('options_form')
@@ -1944,22 +1952,14 @@ class KubeSpawner(Spawner):
 
         Returns:
             user_options (dict): the selected profile in the user_options form,
-                e.g. ``{"profile": "8 CPUs"}``
+                e.g. ``{"profile": "cpus-8"}``
         """
-        if not self.profile_list or self._profile_list is None:
-            return formdata
-        # Default to first profile if somehow none is provided
-        try:
-            selected_profile = int(formdata.get('profile', [0])[0])
-            options = self._profile_list[selected_profile]
-        except (TypeError, IndexError, ValueError):
-            raise web.HTTPError(400, "No such profile: %i", formdata.get('profile', None))
         return {
-            'profile': options['display_name']
+            'profile': formdata.get('profile', [None])[0]
         }
 
     @gen.coroutine
-    def _load_profile(self, profile_name):
+    def _load_profile(self, slug):
         """Load a profile by name
 
         Called by load_user_options
@@ -1972,13 +1972,13 @@ class KubeSpawner(Spawner):
                 # explicit default, not the first
                 default_profile = profile
 
-            if profile['display_name'] == profile_name:
+            if profile['slug'] == slug:
                 break
         else:
-            if profile_name:
+            if slug:
                 # name specified, but not found
                 raise ValueError("No such profile: %s. Options include: %s" % (
-                    profile_name, ', '.join(p['display_name'] for p in self._profile_list)
+                    slug, ', '.join(p['slug'] for p in self._profile_list)
                 ))
             else:
                 # no name specified, use the default
@@ -1998,6 +1998,14 @@ class KubeSpawner(Spawner):
     # used for warning about ignoring unrecognised options
     _user_option_keys = {'profile',}
 
+    def _init_profile_list(self, profile_list):
+        # generate missing slug fields from display_name
+        for profile in profile_list:
+            if 'slug' not in profile:
+                profile['slug'] = slugify(profile['display_name'])
+
+        return profile_list
+
     @gen.coroutine
     def load_user_options(self):
         """Load user options from self.user_options dict
@@ -2007,11 +2015,15 @@ class KubeSpawner(Spawner):
         Only supported argument by default is 'profile'.
         Override in subclasses to support other options.
         """
+
         if self._profile_list is None:
             if callable(self.profile_list):
-                self._profile_list = yield gen.maybe_future(self.profile_list(self))
+                profile_list = yield gen.maybe_future(self.profile_list(self))
             else:
-                self._profile_list = self.profile_list
+                profile_list = self.profile_list
+
+            self._profile_list = self._init_profile_list(profile_list)
+
         selected_profile = self.user_options.get('profile', None)
         if self._profile_list:
             yield self._load_profile(selected_profile)

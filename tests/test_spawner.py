@@ -192,6 +192,7 @@ def test_get_pod_manifest_tolerates_mixed_input():
 _test_profiles = [
     {
         'display_name': 'Training Env - Python',
+        'slug': 'training-python',
         'default': True,
         'kubespawner_override': {
             'image': 'training/python:label',
@@ -201,6 +202,7 @@ _test_profiles = [
     },
     {
         'display_name': 'Training Env - Datascience',
+        'slug': 'training-datascience',
         'kubespawner_override': {
             'image': 'training/datascience:label',
             'cpu_limit': 4,
@@ -216,9 +218,9 @@ async def test_user_options_set_from_form():
     spawner.profile_list = _test_profiles
     # render the form
     await spawner.get_options_form()
-    spawner.user_options = spawner.options_from_form({'profile': [1]})
+    spawner.user_options = spawner.options_from_form({'profile': [_test_profiles[1]['slug']]})
     assert spawner.user_options == {
-        'profile': _test_profiles[1]['display_name'],
+        'profile': _test_profiles[1]['slug'],
     }
     # nothing should be loaded yet
     assert spawner.cpu_limit is None
@@ -232,7 +234,7 @@ async def test_user_options_api():
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = _test_profiles
     # set user_options directly (e.g. via api)
-    spawner.user_options = {'profile': _test_profiles[1]['display_name']}
+    spawner.user_options = {'profile': _test_profiles[1]['slug']}
 
     # nothing should be loaded yet
     assert spawner.cpu_limit is None
