@@ -2000,9 +2000,9 @@ class KubeSpawner(Spawner):
 
     def _init_profile_list(self, profile_list):
         # generate missing slug fields from display_name
-        for i, v in enumerate(profile_list):
-            if 'slug' not in profile_list[i]:
-                profile_list[i]['slug'] = slugify(profile_list[i]['display_name'])
+        for profile in profile_list:
+            if 'slug' not in profile:
+                profile['slug'] = slugify(profile['display_name'])
 
         return profile_list
 
