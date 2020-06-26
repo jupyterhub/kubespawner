@@ -1101,7 +1101,7 @@ class KubeSpawner(Spawner):
         Signature is: `List(Dict())`, where each item is a dictionary that has two keys:
 
         - `display_name`: the human readable display name (should be HTML safe)
-        - `slug`: the machine readable slug to ifentify the profile
+        - `slug`: the machine readable slug to identify the profile
           (missing slugs are generated from display_name)
         - `description`: Optional description of this profile displayed to the user.
         - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
