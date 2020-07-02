@@ -281,7 +281,7 @@ def test_pod_name_named_servers():
 
     spawner = KubeSpawner(config=c, user=user, orm_spawner=orm_spawner, _mock=True)
 
-    assert spawner.pod_name == "jupyter-user-server"
+    assert spawner.pod_name == "jupyter-user--server"
 
 
 def test_pod_name_escaping():
@@ -296,18 +296,34 @@ def test_pod_name_escaping():
 
     spawner = KubeSpawner(config=c, user=user, orm_spawner=orm_spawner, _mock=True)
 
-    assert spawner.pod_name == "jupyter-some-5fuser-test-2dserver-21"
+    assert spawner.pod_name == "jupyter-some-5fuser--test-2dserver-21"
 
 
 def test_pod_name_custom_template():
-    c = Config()
-    c.JupyterHub.allow_named_servers = False
-
-    user = Config()
+    user = MockUser()
     user.name = "some_user"
 
     pod_name_template = "prefix-{username}-suffix"
 
-    spawner = KubeSpawner(config=c, user=user, pod_name_template=pod_name_template, _mock=True)
+    spawner = KubeSpawner(user=user, pod_name_template=pod_name_template, _mock=True)
 
     assert spawner.pod_name == "prefix-some-5fuser-suffix"
+
+
+def test_pod_name_collision():
+    user1 = MockUser()
+    user1.name = "user-has-dash"
+
+    orm_spawner1 = Spawner()
+    orm_spawner1.name = ""
+
+    user2 = MockUser()
+    user2.name = "user-has"
+    orm_spawner2 = Spawner()
+    orm_spawner2.name = "2ddash"
+
+    spawner = KubeSpawner(user=user1, orm_spawner=orm_spawner1, _mock=True)
+    assert spawner.pod_name == "jupyter-user-2dhas-2ddash"
+    named_spawner = KubeSpawner(user=user2, orm_spawner=orm_spawner2, _mock=True)
+    assert named_spawner.pod_name == "jupyter-user-2dhas--2ddash"
+    assert spawner.pod_name != named_spawner.pod_name

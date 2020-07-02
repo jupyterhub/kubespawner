@@ -1315,8 +1315,12 @@ class KubeSpawner(Spawner):
 
         # Set servername based on whether named-server initialised
         if self.name:
-            servername = '-{}'.format(self.name)
-            safe_servername = '-{}'.format(escapism.escape(self.name, safe=safe_chars, escape_char='-').lower())
+            # use two -- to ensure no collision possibilities
+            # are created by an ambiguous boundary between username and
+            # servername.
+            # -- cannot occur in a string where - is the escape char.
+            servername = '--{}'.format(self.name)
+            safe_servername = '--{}'.format(escapism.escape(self.name, safe=safe_chars, escape_char='-').lower())
         else:
             servername = ''
             safe_servername = ''
@@ -1329,7 +1333,7 @@ class KubeSpawner(Spawner):
             unescaped_username=self.user.name,
             legacy_escape_username=legacy_escaped_username,
             servername=safe_servername,
-            unescaped_servername=servername
+            unescaped_servername=servername,
         )
 
     def _expand_all(self, src):
