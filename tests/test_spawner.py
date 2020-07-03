@@ -324,6 +324,9 @@ def test_pod_name_collision():
 
     spawner = KubeSpawner(user=user1, orm_spawner=orm_spawner1, _mock=True)
     assert spawner.pod_name == "jupyter-user-2dhas-2ddash"
+    assert spawner.pvc_name == "claim-user-2dhas-2ddash"
     named_spawner = KubeSpawner(user=user2, orm_spawner=orm_spawner2, _mock=True)
     assert named_spawner.pod_name == "jupyter-user-2dhas--2ddash"
     assert spawner.pod_name != named_spawner.pod_name
+    assert named_spawner.pvc_name == "claim-user-2dhas--2ddash"
+    assert spawner.pvc_name != named_spawner.pvc_name
