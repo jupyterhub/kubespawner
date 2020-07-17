@@ -19,11 +19,6 @@ from tornado.concurrent import run_on_executor
 
 class IngressReflector(NamespacedResourceReflector):
     kind = 'ingresses'
-    labels = {
-        'component': 'singleuser-server',
-        'hub.jupyter.org/proxy-route': 'true'
-    }
-
     list_method_name = 'list_namespaced_ingress'
     api_group_name = 'ExtensionsV1beta1Api'
 
@@ -33,11 +28,6 @@ class IngressReflector(NamespacedResourceReflector):
 
 class ServiceReflector(NamespacedResourceReflector):
     kind = 'services'
-    labels = {
-        'component': 'singleuser-server',
-        'hub.jupyter.org/proxy-route': 'true'
-    }
-
     list_method_name = 'list_namespaced_service'
 
     @property
@@ -46,11 +36,6 @@ class ServiceReflector(NamespacedResourceReflector):
 
 class EndpointsReflector(NamespacedResourceReflector):
     kind = 'endpoints'
-    labels = {
-        'component': 'singleuser-server',
-        'hub.jupyter.org/proxy-route': 'true'
-    }
-
     list_method_name = 'list_namespaced_endpoints'
 
     @property
@@ -81,6 +66,16 @@ class KubeIngressProxy(Proxy):
                 return f.read().strip()
         return 'default'
 
+    component_label = Unicode(
+        'singleuser-server',
+        config=True,
+        help="""
+        The component label used to tag the user pods. This can be used to override
+        the spawner behavior when dealing with multiple hub instances in the same
+        namespace. Usually helpful for CI workflows.
+        """
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -89,10 +84,13 @@ class KubeIngressProxy(Proxy):
         # an accidental bottleneck. Since we serialize our create operations, we only
         # need 1x concurrent_spawn_limit, not 3x.
         self.executor = ThreadPoolExecutor(max_workers=self.app.concurrent_spawn_limit)
-
-        self.ingress_reflector = IngressReflector(parent=self, namespace=self.namespace)
-        self.service_reflector = ServiceReflector(parent=self, namespace=self.namespace)
-        self.endpoint_reflector = EndpointsReflector(parent=self, namespace=self.namespace)
+        labels = {
+            'component': self.component_label,
+            'hub.jupyter.org/proxy-route': 'true'
+        }
+        self.ingress_reflector = IngressReflector(parent=self, namespace=self.namespace, labels = labels)
+        self.service_reflector = ServiceReflector(parent=self, namespace=self.namespace, labels = labels)
+        self.endpoint_reflector = EndpointsReflector(parent=self, namespace=self.namespace, labels = labels)
 
         self.core_api = shared_client('CoreV1Api')
         self.extension_api = shared_client('ExtensionsV1beta1Api')
@@ -124,10 +122,16 @@ class KubeIngressProxy(Proxy):
         # Use full routespec in label
         # 'data' is JSON encoded and put in an annotation - we don't need to query for it
         safe_name = self.safe_name_for_routespec(routespec).lower()
+        labels={
+            'heritage': 'jupyterhub',
+            'component': self.component_label,
+            'hub.jupyter.org/proxy-route': 'true'
+        }
         endpoint, service, ingress = make_ingress(
             safe_name,
             routespec,
             target,
+            labels,
             data
         )
 

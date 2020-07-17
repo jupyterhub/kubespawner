@@ -463,6 +463,7 @@ def make_ingress(
         name,
         routespec,
         target,
+        labels,
         data
 ):
     """
@@ -497,11 +498,7 @@ def make_ingress(
             'hub.jupyter.org/proxy-routespec': routespec,
             'hub.jupyter.org/proxy-target': target
         },
-        labels={
-            'heritage': 'jupyterhub',
-            'component': 'singleuser-server',
-            'hub.jupyter.org/proxy-route': 'true'
-        }
+        labels=labels,
     )
 
     if routespec.startswith('/'):

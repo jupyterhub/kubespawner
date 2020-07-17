@@ -55,10 +55,7 @@ class PodReflector(NamespacedResourceReflector):
     """
     kind = 'pods'
     list_method_name = 'list_namespaced_pod'
-    # FUTURE: These labels are the selection labels for the PodReflector. We
-    # might want to support multiple deployments in the same namespace, so we
-    # would need to select based on additional labels such as `app` and
-    # `release`.
+    # The default component label can be over-ridden by specifying the component_label property
     labels = {
         'component': 'singleuser-server',
     }
@@ -360,6 +357,16 @@ class KubeSpawner(Spawner):
             where it was implicitly added to the `servername` field before.
             Additionally, `username--servername` delimiter was `-` instead of `--`,
             allowing collisions in certain circumstances.
+        """
+    )
+
+    component_label = Unicode(
+        'singleuser-server',
+        config=True,
+        help="""
+        The component label used to tag the user pods. This can be used to override
+        the spawner behavior when dealing with multiple hub instances in the same
+        namespace. Usually helpful for CI workflows.
         """
     )
 
@@ -1199,7 +1206,7 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         Time in seconds for the pod to be in `terminating` state before is forcefully killed.
-        
+
         Increase this if you need more time to execute a `preStop` lifecycle hook.
 
         See https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods for
@@ -1369,7 +1376,7 @@ class KubeSpawner(Spawner):
     def _build_pod_labels(self, extra_labels):
         labels = self._build_common_labels(extra_labels)
         labels.update({
-            'component': 'singleuser-server'
+            'component': self.component_label
         })
         return labels
 
@@ -1737,6 +1744,7 @@ class KubeSpawner(Spawner):
         If replace=True, a running pod reflector will be stopped
         and a new one started (for recovering from possible errors).
         """
+        PodReflector.labels.update({'component': self.component_label})
         return self._start_reflector("pods", PodReflector, replace=replace)
 
     # record a future for the call to .start()
