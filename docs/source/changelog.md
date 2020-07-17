@@ -1,5 +1,45 @@
 # Changes in KubeSpawner
 
+<!-- PR link template: - [#](https://github.com/jupyterhub/kubespawner/pull/) ([@](https://github.com/)) -->
+
+## [0.12]
+
+### [0.12.0] - 2020-07-XX
+
+#### Security
+
+- Security fix: CVE-2020-15110 / GHSA-v7m9-9497-p9gr.
+  When named-servers are enabled,
+  certain username patterns, depending on authenticator,
+  could allow collisions.
+  The default named-server template is changed to prevent collisions,
+  meaning that upgrading will lose associations of
+  named-servers with their PVCs if the default templates are used.
+  Data should not be lost (old PVCs will be ignored, not deleted),
+  but will need manual migration to new PVCs prior to deletion of old PVCs.
+
+#### New features
+
+- Add `slugs` field for selecting profiles in API, instead of indices. [#401](https://github.com/jupyterhub/kubespawner/pull/401) ([@stv0g](https://github.com/stv0g))
+- Expose `__version__` in kubespawner module [#383](https://github.com/jupyterhub/kubespawner/pull/383) ([@consideRatio](https://github.com/consideRatio))
+- log a warning if unrecognized user_options are provided [#389](https://github.com/jupyterhub/kubespawner/pull/389) ([@minrk](https://github.com/minrk))
+
+#### Fixes
+
+- Fix ingress compatibility with kubernetes >= 0.10.
+  kubernetes >= 0.10 is now required. [#402](https://github.com/jupyterhub/kubespawner/pull/402) ([@BertR](https://github.com/BertR))
+- Fix progress serialization [#381](https://github.com/jupyterhub/kubespawner/pull/381) ([@consideRatio](https://github.com/consideRatio))
+- Typos in storage capacity [#384](https://github.com/jupyterhub/kubespawner/pull/384) ([@TkTech](https://github.com/TkTech))
+- Typos in profile_list help [#411](https://github.com/jupyterhub/kubespawner/pull/411) ([@mriedem](https://github.com/mriedem))
+
+#### Maintenance
+
+- Fix CI builds [#394](https://github.com/jupyterhub/kubespawner/pull/394) ([@consideRatio](https://github.com/consideRatio))
+- use bump2version and add release documentation [#376](https://github.com/jupyterhub/kubespawner/pull/376) ([@consideRatio](https://github.com/consideRatio))
+- improve development documentation [#377](https://github.com/jupyterhub/kubespawner/pull/377) ([@consideRatio](https://github.com/consideRatio))
+- test with JupyterHub master [#380](https://github.com/jupyterhub/kubespawner/pull/380) ([@consideRatio](https://github.com/consideRatio))
+- update contributing guide [#391](https://github.com/jupyterhub/kubespawner/pull/391) ([@betatim](https://github.com/betatim))
+
 ## [0.11]
 
 ### [0.11.1] - 2019-11-29
