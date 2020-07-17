@@ -103,11 +103,10 @@ jobs:
 
     # Only deploy if all test jobs passed
     - stage: publish
-      # FIXME: We don't want to run tests again here, but I got
-      # the following issue when these were commented out...
-      # https://travis-ci.org/mapbox/vtvalidate/jobs/492280599
-      #script: []
-      #after_success: []
+      script:
+        - echo "Required dummy override of default 'script' in .travis.yml."
+      after_success:
+        - echo "Required dummy override of default 'after_success' in .travis.yml."
       deploy:
         provider: pypi
         user: __token__
