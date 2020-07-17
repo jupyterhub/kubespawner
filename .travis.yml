@@ -74,7 +74,7 @@ matrix:
       python: 3.8
       
     - name: client:11,k8s:1.18
-      env: KUBE_PY=11 KUBE_VERSION=1.18.9
+      env: KUBE_PY=11 KUBE_VERSION=1.18.6
       python: 3.8
       before_install:
         # This is required by k8s 1.18 according to minikube error message
