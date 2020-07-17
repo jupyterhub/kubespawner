@@ -86,12 +86,14 @@ matrix:
     # 1. Test with pre-releases of kubernetes-client/python and other
     #    python dependencies
     - &allowed_failure_1
+      name: client:pre-release,k8s:1.16
       python: 3.8
       env: PRE_RELEASES=TRUE KUBE_VERSION=1.16.13
 
     # 2. Test with a nightly python build using latest known
     #    supported configuration.
     - &allowed_failure_2
+      name: client:11,k8s:1.15,python:nightly
       python: nightly
       env: *latest_supported
 
