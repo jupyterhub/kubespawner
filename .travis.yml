@@ -48,7 +48,7 @@ matrix:
     # version 8 supports k8s API version 1.12, and version 9 supports k8s API
     # version 1.13 and so on.
     - python: 3.8
-      env: KUBE_PY=8 KUBE_VERSION=1.12.10
+      env: KUBE_PY=9 KUBE_VERSION=1.13.12
     # NOTE: TravisCI's linux kernel, has since 2020 or so, when specifying
     #       bionic as a distribution, made minikube fail to start a k8s 1.13
     #       cluster. This is why we use xenial here.
@@ -56,11 +56,11 @@ matrix:
     #       https://travis-ci.org/jupyterhub/kubespawner/jobs/642305915
     - dist: xenial
       python: 3.7
-      env: KUBE_PY=9 KUBE_VERSION=1.13.12
+      env: KUBE_PY=10 KUBE_VERSION=1.14.0
     - python: 3.6
-      env: &latest_supported KUBE_PY=10 KUBE_VERSION=1.14.9
+      env: &latest_supported KUBE_PY=11 KUBE_VERSION=1.15.12
     - python: 3.6
-      env: KUBE_PY=10 KUBE_VERSION=1.14.9 JUPYTERHUB_MASTER=TRUE
+      env: KUBE_PY=11 KUBE_VERSION=1.15.12 JUPYTERHUB_MASTER=TRUE
 
     # Allowed failure tests:
     # ----------------------
@@ -69,13 +69,13 @@ matrix:
     #    python dependencies
     - &allowed_failure_1
       python: 3.8
-      env: PRE_RELEASES=TRUE KUBE_VERSION=1.15.9
+      env: PRE_RELEASES=TRUE KUBE_VERSION=1.16.13
 
     # 2. Test with latest stable kubernetes client along with the latest
     #    kubernetes cluster version
     - &allowed_failure_2
       python: 3.8
-      env: KUBE_PY=10 KUBE_VERSION=1.17.2
+      env: KUBE_PY=11 KUBE_VERSION=1.18.6
 
     # 3. Test with a nightly python build using latest known
     #    supported configuration.
