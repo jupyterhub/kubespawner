@@ -27,11 +27,6 @@ minikube update-context
 # can be used to check a condition of nodes and pods
 JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}'
 
-echo "waiting for kube-addon-manager"
-until kubectl -n kube-system get pods -l component=kube-addon-manager -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do
-  sleep 1
-done
-
 echo "waiting for kube-dns"
 until kubectl -n kube-system get pods -l k8s-app=kube-dns -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do
   sleep 1
