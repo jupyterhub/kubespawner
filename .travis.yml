@@ -49,13 +49,13 @@ matrix:
     # version 1.13 and so on.
     - python: 3.8
       env: KUBE_PY=9 KUBE_VERSION=1.13.12
-    # NOTE: TravisCI's linux kernel, has since 2020 or so, when specifying
-    #       bionic as a distribution, made minikube fail to start a k8s 1.13
-    #       cluster. This is why we use xenial here.
-    # Reference - a build failure with bionic:
-    #       https://travis-ci.org/jupyterhub/kubespawner/jobs/642305915
-    - dist: xenial
-      python: 3.7
+      # NOTE: TravisCI's linux kernel, has since 2020 or so, when specifying
+      #       bionic as a distribution, made minikube fail to start a k8s 1.13
+      #       cluster. This is why we use xenial here.
+      # Reference - a build failure with bionic:
+      #       https://travis-ci.org/jupyterhub/kubespawner/jobs/642305915
+      dist: xenial
+    - python: 3.7
       env: KUBE_PY=10 KUBE_VERSION=1.14.0
     - python: 3.6
       env: &latest_supported KUBE_PY=11 KUBE_VERSION=1.15.12
