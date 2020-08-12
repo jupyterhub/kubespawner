@@ -106,7 +106,7 @@ class EventReflector(NamespacedResourceReflector):
         #   timestamp without and the other is a higher resolution timestamp.
         return sorted(
             self.resources.values(),
-            key=lambda event: event.last_timestamp or event.event_time,
+            key=lambda event: event["lastTimestamp"] or event["eventTime"],
         )
 
 
@@ -1492,10 +1492,10 @@ class KubeSpawner(Spawner):
         # FIXME: Validate if this is really the best way
         is_running = (
             pod is not None and
-            pod.status.phase == 'Running' and
-            pod.status.pod_ip is not None and
-            pod.metadata.deletion_timestamp is None and
-            all([cs.ready for cs in pod.status.container_statuses])
+            pod["status"]["phase"] == 'Running' and
+            pod["status"]["podIP"] is not None and
+            "deletionTimestamp" not in pod["metadata"] and
+            all([cs["ready"] for cs in pod["status"]["containerStatuses"]])
         )
         return is_running
 
@@ -1559,20 +1559,20 @@ class KubeSpawner(Spawner):
             yield self.pod_reflector.first_load_future
         data = self.pod_reflector.pods.get(self.pod_name, None)
         if data is not None:
-            if data.status.phase == 'Pending':
+            if data["status"]["phase"] == 'Pending':
                 return None
-            ctr_stat = data.status.container_statuses
+            ctr_stat = data["status"]["containerStatuses"]
             if ctr_stat is None:  # No status, no container (we hope)
                 # This seems to happen when a pod is idle-culled.
                 return 1
             for c in ctr_stat:
                 # return exit code if notebook container has terminated
-                if c.name == 'notebook':
-                    if c.state.terminated:
+                if c["name"] == 'notebook':
+                    if c["state"] == "terminated":
                         # call self.stop to delete the pod
                         if self.delete_stopped_pods:
                             yield self.stop(now=True)
-                        return c.state.terminated.exit_code
+                        return c["state"]["exitCode"]
                     break
             # None means pod is running or starting up
             return None
@@ -1596,11 +1596,11 @@ class KubeSpawner(Spawner):
 
         events = []
         for event in self.event_reflector.events:
-            if event.involved_object.name != self.pod_name:
+            if event["involvedObject"]["name"] != self.pod_name:
                 # only consider events for my pod name
                 continue
 
-            if self._last_event and event.metadata.uid == self._last_event:
+            if self._last_event and event["metadata"]["uid"]== self._last_event:
                 # saw last_event marker, ignore any previous events
                 # and only consider future events
                 # only include events *after* our _last_event marker
@@ -1642,10 +1642,11 @@ class KubeSpawner(Spawner):
                 # pod_id may change if a previous pod is being stopped
                 # before starting a new one
                 # use the uid of the latest event to identify 'current'
-                pod_id = events[-1].involved_object.uid
+                pod_id = events[-1]["involvedObject"]["uid"]
                 for i in range(next_event, len_events):
                     event = events[i]
                     # move the progress bar.
+
                     # Since we don't know how many events we will get,
                     # asymptotically approach 90% completion with each event.
                     # each event gets 33% closer to 90%:
@@ -1656,16 +1657,13 @@ class KubeSpawner(Spawner):
                     # objects within it, and we need what we pass back to be
                     # serializable to it can be sent back from JupyterHub to
                     # a browser wanting to display progress.
-                    serializable_event = json.loads(
-                        json.dumps(event.to_dict(), default=datetime.isoformat)
-                    )
                     await yield_({
                         'progress': int(progress),
-                        'raw_event': serializable_event,
+                        'raw_event': event,
                         'message':  "%s [%s] %s" % (
-                            event.last_timestamp or event.event_time,
-                            event.type,
-                            event.message,
+                            event["lastTimestamp"] or event["eventTime"],
+                            event["type"],
+                            event["message"],
                         )
                     })
                 next_event = len_events
@@ -1769,7 +1767,7 @@ class KubeSpawner(Spawner):
         # pod if it's part of this spawn process
         events = self.events
         if events:
-            self._last_event = events[-1].metadata.uid
+            self._last_event = events[-1]["metadata"]["uid"]
 
         if self.storage_pvc_ensure:
             # Try and create the pvc. If it succeeds we are good. If
@@ -1863,19 +1861,19 @@ class KubeSpawner(Spawner):
             raise
 
         pod = self.pod_reflector.pods[self.pod_name]
-        self.pod_id = pod.metadata.uid
+        self.pod_id = pod["metadata"]["uid"]
         if self.event_reflector:
             self.log.debug(
                 'pod %s events before launch: %s',
                 self.pod_name,
                 "\n".join(
                     [
-                        "%s [%s] %s" % (event.last_timestamp or event.event_time, event.type, event.message)
+                        "%s [%s] %s" % (event["lastTimestamp"] or event["eventTime"], event["type"], event["message"])
                         for event in self.events
                     ]
                 ),
             )
-        return (pod.status.pod_ip, self.port)
+        return (pod["status"]["podIP"], self.port)
 
     @gen.coroutine
     def stop(self, now=False):
