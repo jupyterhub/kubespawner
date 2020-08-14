@@ -66,9 +66,9 @@ class PodReflector(NamespacedResourceReflector):
     @property
     def pods(self):
         """
-        A dictionary of the python kubernetes client's representation of pods
-        for the namespace. The dictionary keys are the pod ids and the values
-        are the actual pod resource representations.
+        A dictionary of pods for the namespace as returned by the Kubernetes
+        API. The dictionary keys are the pod ids and the values are
+        dictionaries of the actual pod resource values.
 
         ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#pod-v1-core
         """
@@ -88,7 +88,7 @@ class EventReflector(NamespacedResourceReflector):
     @property
     def events(self):
         """
-        Returns list of the python kubernetes client's representation of k8s
+        Returns list of dictionaries representing the k8s
         events within the namespace, sorted by the latest event.
 
         ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#event-v1-core
@@ -101,9 +101,10 @@ class EventReflector(NamespacedResourceReflector):
         #   suddenly refreshes itself entirely. We should not assume a call to
         #   this dictionary's values will result in a consistently ordered list,
         #   so we sort it to get it somewhat more structured.
-        # - We either seem to get only event.last_timestamp or event.event_time,
-        #   both fields serve the same role but the former is a low resolution
-        #   timestamp without and the other is a higher resolution timestamp.
+        # - We either seem to get only event['lastTimestamp'] or
+        #   event['eventTime'], both fields serve the same role but the former
+        #   is a low resolution timestamp without and the other is a higher
+        #   resolution timestamp.
         return sorted(
             self.resources.values(),
             key=lambda event: event["lastTimestamp"] or event["eventTime"],
@@ -1568,11 +1569,11 @@ class KubeSpawner(Spawner):
             for c in ctr_stat:
                 # return exit code if notebook container has terminated
                 if c["name"] == 'notebook':
-                    if c["state"] == "terminated":
+                    if "terminated" in c["state"]:
                         # call self.stop to delete the pod
                         if self.delete_stopped_pods:
                             yield self.stop(now=True)
-                        return c["state"]["exitCode"]
+                        return c["state"]["terminated"]["exitCode"]
                     break
             # None means pod is running or starting up
             return None
@@ -1646,17 +1647,12 @@ class KubeSpawner(Spawner):
                 for i in range(next_event, len_events):
                     event = events[i]
                     # move the progress bar.
-
                     # Since we don't know how many events we will get,
                     # asymptotically approach 90% completion with each event.
                     # each event gets 33% closer to 90%:
                     # 30 50 63 72 78 82 84 86 87 88 88 89
                     progress += (90 - progress) / 3
 
-                    # V1Event isn't serializable, and neither is the datetime
-                    # objects within it, and we need what we pass back to be
-                    # serializable to it can be sent back from JupyterHub to
-                    # a browser wanting to display progress.
                     await yield_({
                         'progress': int(progress),
                         'raw_event': event,
