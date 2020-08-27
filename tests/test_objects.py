@@ -1535,10 +1535,16 @@ def test_make_ingress():
     """
     Test specification of the ingress objects
     """
+    labels={
+        'heritage': 'jupyterhub',
+        'component': 'singleuser-server',
+        'hub.jupyter.org/proxy-route': 'true'
+    }
     endpoint, service, ingress = api_client.sanitize_for_serialization(make_ingress(
         name='jupyter-test',
         routespec='/my-path',
         target='http://192.168.1.10:9000',
+        labels=labels,
         data={"mykey": "myvalue"}
     ))
 
