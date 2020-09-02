@@ -152,12 +152,12 @@ class NamespacedResourceReflector(LoggingConfigurable):
 
         Overwrites all current resource info.
         """
-        method = partial(getattr(self.api, self.list_method_name), _preload_content=False)
-        initial_resources = method(
+        initial_resources = getattr(self.api, self.list_method_name)(
             self.namespace,
             label_selector=self.label_selector,
             field_selector=self.field_selector,
             _request_timeout=self.request_timeout,
+            _preload_content=False,
         )
         # This is an atomic operation on the dictionary!
         initial_resources = json.loads(initial_resources.read())
