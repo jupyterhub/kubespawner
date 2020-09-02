@@ -2,6 +2,8 @@
 # asyncio Futures cannot be used across threads
 from concurrent.futures import Future
 
+from functools import partial
+import json
 import time
 import threading
 
@@ -155,11 +157,13 @@ class NamespacedResourceReflector(LoggingConfigurable):
             label_selector=self.label_selector,
             field_selector=self.field_selector,
             _request_timeout=self.request_timeout,
+            _preload_content=False,
         )
         # This is an atomic operation on the dictionary!
-        self.resources = {p.metadata.name: p for p in initial_resources.items}
+        initial_resources = json.loads(initial_resources.read())
+        self.resources = {p["metadata"]["name"]: p for p in initial_resources["items"]}
         # return the resource version so we can hook up a watch
-        return initial_resources.metadata.resource_version
+        return initial_resources["metadata"]["resourceVersion"]
 
     def _watch_and_update(self):
         """
@@ -219,10 +223,11 @@ class NamespacedResourceReflector(LoggingConfigurable):
                 if self.timeout_seconds:
                     # set watch timeout
                     watch_args['timeout_seconds'] = self.timeout_seconds
+                method = partial(getattr(self.api, self.list_method_name), _preload_content=False)
                 # in case of timeout_seconds, the w.stream just exits (no exception thrown)
                 # -> we stop the watcher and start a new one
                 for watch_event in w.stream(
-                    getattr(self.api, self.list_method_name),
+                    method,
                     **watch_args
                 ):
                     # Remember that these events are k8s api related WatchEvents
@@ -236,10 +241,10 @@ class NamespacedResourceReflector(LoggingConfigurable):
                     resource = watch_event['object']
                     if watch_event['type'] == 'DELETED':
                         # This is an atomic delete operation on the dictionary!
-                        self.resources.pop(resource.metadata.name, None)
+                        self.resources.pop(resource["metadata"]["name"], None)
                     else:
                         # This is an atomic operation on the dictionary!
-                        self.resources[resource.metadata.name] = resource
+                        self.resources[resource["metadata"]["name"]] = resource
                     if self._stop_event.is_set():
                         self.log.info("%s watcher stopped", self.kind)
                         break
