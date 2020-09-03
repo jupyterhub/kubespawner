@@ -274,12 +274,24 @@ def make_pod(
     if all([e is None for e in container_security_context.to_dict().values()]):
         container_security_context = None
 
+    # Transform a dict into valid Kubernetes EnvVar Python representations. This
+    # representation shall always have a "name" field as well as either a
+    # "value" field or "value_from" field. For examples see the
+    # test_make_pod_with_env function.
+    prepared_env = []
+    for k, v in (env or {}).items():
+        if type(v) == dict:
+            if not "name" in v:
+                v["name"] = k
+            prepared_env.append(get_k8s_model(V1EnvVar, v))
+        else:
+            prepared_env.append(V1EnvVar(name=k, value=v))
     notebook_container = V1Container(
         name='notebook',
         image=image,
         working_dir=working_dir,
         ports=[V1ContainerPort(name='notebook-port', container_port=port)],
-        env=[V1EnvVar(k, v) for k, v in (env or {}).items()],
+        env=prepared_env,
         args=cmd,
         image_pull_policy=image_pull_policy,
         lifecycle=lifecycle_hooks,

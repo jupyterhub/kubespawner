@@ -443,13 +443,30 @@ def test_make_pod_resources_all():
 
 def test_make_pod_with_env():
     """
-    Test specification of a pod with custom environment variables
+    Test specification of a pod with custom environment variables.
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
         env={
-            'TEST_KEY': 'TEST_VALUE'
+            'TEST_KEY_1': 'TEST_VALUE',
+            'TEST_KEY_2': {
+                'valueFrom': {
+                    'secretKeyRef': {
+                        'name': 'my-k8s-secret',
+                        'key': 'password',
+                    },
+                },
+            },
+            'TEST_KEY_NAME_IGNORED': {
+                'name': 'TEST_KEY_3',
+                'valueFrom': {
+                    'secretKeyRef': {
+                        'name': 'my-k8s-secret',
+                        'key': 'password',
+                    },
+                },
+            },
         },
         cmd=['jupyterhub-singleuser'],
         port=8888,
@@ -464,7 +481,30 @@ def test_make_pod_with_env():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "env": [{'name': 'TEST_KEY', 'value': 'TEST_VALUE'}],
+                    "env": [
+                        {
+                            'name': 'TEST_KEY_1',
+                            'value': 'TEST_VALUE',
+                        },
+                        {
+                            'name': 'TEST_KEY_2',
+                            'valueFrom': {
+                                'secretKeyRef': {
+                                    'name': 'my-k8s-secret',
+                                    'key': 'password',
+                                },
+                            },
+                        },
+                        {
+                            'name': 'TEST_KEY_3',
+                            'valueFrom': {
+                                'secretKeyRef': {
+                                    'name': 'my-k8s-secret',
+                                    'key': 'password',
+                                },
+                            },
+                        },
+                    ],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
