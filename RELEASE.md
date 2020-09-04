@@ -10,8 +10,14 @@ For you to follow along according to these instructions, you need:
 
 ## Steps to make a release
 
-1. Update [CHANGELOG.md](CHANGELOG.md) if it is not up to date. Make a PR to
-   review the CHANGELOG notes.
+1. Update [CHANGELOG.md](CHANGELOG.md). Doing this can be made easier with the
+   help of the
+   [choldgraf/github-activity](https://github.com/choldgraf/github-activity)
+   utility to list merged PRs and generate a list of contributors.
+
+   ```bash
+   github-activity jupyterhub/kubespawner --output tmp-changelog-prep.md
+   ```
 
 1. Once the changelog is up to date, checkout master and make sure it is up to date and clean.
 
