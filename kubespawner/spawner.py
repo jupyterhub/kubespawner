@@ -306,6 +306,19 @@ class KubeSpawner(Spawner):
         """
     )
 
+    release = Unicode(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        The name of the helm release that is used for this jupyterhub
+        
+        When set to `None` (the default), releasename can not be expanded in various naming templates. 
+        Being able to distinguish between releases is important to allow the same user to work on 
+        multiple jupyterhub deployments in the same namespace 
+        """
+    )
+
     pod_name_template = Unicode(
         'jupyter-{username}--{servername}',
         config=True,
@@ -314,6 +327,7 @@ class KubeSpawner(Spawner):
 
         `{username}` is expanded to the escaped, dns-label-safe username.
         `{servername}` is expanded to the escaped, dns-label-safe server name, if any.
+        `{releasename}` is expanded to the escaped, dns-label-save release name, if any.
 
         Trailing `-` characters are stripped for safe handling of empty server names (user default servers).
 
@@ -348,6 +362,7 @@ class KubeSpawner(Spawner):
 
         `{username}` is expanded to the escaped, dns-label safe username.
         `{servername}` is expanded to the escaped, dns-label-safe server name, if any.
+        `{releasename}` is expanded to the escaped, dns-label-save release name, if any.
 
         Trailing `-` characters are stripped for safe handling of empty server names (user default servers).
 
@@ -1346,6 +1361,9 @@ class KubeSpawner(Spawner):
 
         legacy_escaped_username = ''.join([s if s in safe_chars else '-' for s in self.user.name.lower()])
         safe_username = escapism.escape(self.user.name, safe=safe_chars, escape_char='-').lower()
+
+        raw_releasename = self.release or ''
+        safe_releasename = escapism.escape(raw_releasename, safe=safe_chars, escape_char='-').lower()
         rendered = template.format(
             userid=self.user.id,
             username=safe_username,
@@ -1353,6 +1371,8 @@ class KubeSpawner(Spawner):
             legacy_escape_username=legacy_escaped_username,
             servername=safe_servername,
             unescaped_servername=raw_servername,
+            releasename=safe_releasename,
+            unescaped_releasename=raw_releasename
         )
         # strip trailing - delimiter in case of empty servername.
         # k8s object names cannot have trailing -
