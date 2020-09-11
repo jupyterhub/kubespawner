@@ -311,11 +311,11 @@ class KubeSpawner(Spawner):
         allow_none=True,
         config=True,
         help="""
-        The name of the helm release that is used for this jupyterhub
+        The name of the helm release that is used for this jupyterhub deployment.
         
-        When set to `None` (the default), releasename can not be expanded in various naming templates. 
+        When set to `None` (the default), releasename will not be expanded in various naming templates. 
         Being able to distinguish between releases is important to allow the same user to work on 
-        multiple jupyterhub deployments in the same namespace 
+        multiple jupyterhub deployments in the same namespace.
         """
     )
 
