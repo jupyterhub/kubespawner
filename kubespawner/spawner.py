@@ -1853,7 +1853,7 @@ class KubeSpawner(Spawner):
                 self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
             except ReadTimeoutError:
                 if i < (retry_times - 1):
-                    self.log.warn(f'create_namespaced_pod read timeout on attempt {i+1} of {retry_times}')
+                    self.log.warn(f'create_namespaced_pod for {self.user.name} timeout on attempt {i+1} of {retry_times}')
                 else:
                     raise
         else:
