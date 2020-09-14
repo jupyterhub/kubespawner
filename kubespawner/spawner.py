@@ -1825,6 +1825,7 @@ class KubeSpawner(Spawner):
                     self.api.create_namespaced_pod,
                     self.namespace,
                     pod,
+                    _request_timeout=self.k8s_post_timeout
                 )
                 break
             except ApiException as e:
