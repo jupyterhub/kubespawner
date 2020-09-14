@@ -35,6 +35,7 @@ from jupyterhub.spawner import Spawner
 from jupyterhub.utils import exponential_backoff
 from jupyterhub.traitlets import Command
 from kubernetes.client.rest import ApiException
+from urllib3.exceptions import ReadTimeoutError
 from kubernetes import client
 import escapism
 from jinja2 import Environment, BaseLoader
@@ -1850,10 +1851,8 @@ class KubeSpawner(Spawner):
                 yield self.stop(True)
 
                 self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
-            except Exception as ex:
-                # look at __name__ to avoid adding dependency on urllib3
-                # (full exception is urllib3.exceptions.ReadTimeoutError)
-                if "ReadTimeoutError" in ex.__class__.__name__ and i < (retry_times - 1):
+            except ReadTimeoutError:
+                if i < (retry_times - 1):
                     self.log.warn(f'create_namespaced_pod read timeout on attempt {i+1} of {retry_times}')
                 else:
                     raise
