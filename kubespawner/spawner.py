@@ -1838,6 +1838,13 @@ class KubeSpawner(Spawner):
                 yield self.stop(True)
 
                 self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
+            except Exception as ex:
+                # look at __name__ to avoid adding dependency on urllib3
+                # (full exception is urllib3.exceptions.ReadTimeoutError)
+                if "ReadTimeoutError" in ex.__class__.__name__ and i < (retry_times - 1):
+                    self.log.warn(f'create_namespaced_pod read timeout on attempt {i+1} of {retry_times}')
+                else:
+                    raise
         else:
             raise Exception(
                 'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
