@@ -20,6 +20,7 @@ from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
 from tornado import web
 from traitlets import (
+    Float,
     Bool,
     Dict,
     Integer,
@@ -204,6 +205,17 @@ class KubeSpawner(Spawner):
         Increase this if you are dealing with a very large number of users.
 
         Defaults to `5 * cpu_cores`, which is the default for `ThreadPoolExecutor`.
+        """
+    )
+
+    k8s_api_request_timeout = Float(
+        5,
+        config=True,
+        help="""
+        API request timeout (in seconds) for all k8s API calls.
+
+        This is the total amount of time a request might take before the connection
+        is killed. This includes connection time and reading the response.
         """
     )
 
@@ -1825,7 +1837,7 @@ class KubeSpawner(Spawner):
                     self.api.create_namespaced_pod,
                     self.namespace,
                     pod,
-                    _request_timeout=self.k8s_post_timeout
+                    _request_timeout=self.k8s_api_request_timeout
                 )
                 break
             except ApiException as e:
