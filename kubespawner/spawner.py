@@ -1827,12 +1827,12 @@ class KubeSpawner(Spawner):
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
         # try again. We try 4 times, and if it still fails we give up.
-        # FIXME: Have better / cleaner retry logic!
-        retry_times = 4
         pod = yield self.get_pod_manifest()
         if self.modify_pod_hook:
             pod = yield gen.maybe_future(self.modify_pod_hook(self, pod))
-        for i in range(retry_times):
+        
+        @gen.coroutine
+        def create_pod():
             try:
                 self.log.info(f"Attempting to create pod {pod.metadata.name}, with timeout {self.k8s_api_request_timeout}")
                 yield self.asynchronize(
@@ -1841,7 +1841,6 @@ class KubeSpawner(Spawner):
                     pod,
                     _request_timeout=self.k8s_api_request_timeout
                 )
-                break
             except ApiException as e:
                 if e.status != 409:
                     # We only want to handle 409 conflict errors
@@ -1852,14 +1851,15 @@ class KubeSpawner(Spawner):
                 yield self.stop(True)
 
                 self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
-            except ReadTimeoutError:
-                if i < (retry_times - 1):
-                    self.log.warn(f'create_namespaced_pod for {self.user.name} timeout on attempt {i+1} of {retry_times}')
-                else:
-                    raise
-        else:
-            raise Exception(
-                'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
+                # Raise an exception to signal to exponential_backoff to keep going
+                raise ValueError(f'Killed pod {self.pod_name}, will try creating it again')
+        
+        # If there's a timeout, just let it propagate
+        yield exponential_backoff(
+            create_pod,
+                f'Could not create pod {self.pod_name}',
+                timeout=self.k8s_api_request_timeout
+            )
 
         # we need a timeout here even though start itself has a timeout
         # in order for this coroutine to finish at some point.
