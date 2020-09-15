@@ -6,7 +6,7 @@ implementation that should be used by JupyterHub.
 """
 
 from functools import partial  # noqa
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
 import sys
@@ -1836,7 +1836,7 @@ class KubeSpawner(Spawner):
             try:
                 self.log.info(f"Attempting to create pod {pod.metadata.name}, with timeout {self.k8s_api_request_timeout}")
                 # Use tornado's timeout, _request_timeout seems unreliable?
-                yield gen.with_timeout(self.k8s_api_request_timeout, self.asynchronize(
+                yield gen.with_timeout(timedelta(seconds=self.k8s_api_request_timeout), self.asynchronize(
                     self.api.create_namespaced_pod,
                     self.namespace,
                     pod,
@@ -1857,9 +1857,12 @@ class KubeSpawner(Spawner):
         
         # If there's a timeout, just let it propagate
         yield exponential_backoff(
-            create_pod,
+                create_pod,
                 f'Could not create pod {self.pod_name}',
-                timeout=self.k8s_api_request_timeout
+                # Each req should be given k8s_api_request_timeout seconds.
+                # So we let the entire creation setup play out for about 5 times
+                # FIXME: This is ridiculously bad
+                timeout=self.k8s_api_request_timeout * 5
             )
 
         # we need a timeout here even though start itself has a timeout
