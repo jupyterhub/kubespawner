@@ -1842,7 +1842,7 @@ class KubeSpawner(Spawner):
                     pod,
                 ))
                 return True
-            except tornado.util.TimeoutError:
+            except gen.TimeoutError:
                 # Just try again
                 return False
             except ApiException as e:
@@ -1929,7 +1929,7 @@ class KubeSpawner(Spawner):
                     grace_period_seconds=grace_seconds,
                 ))
                 return True
-            except tornado.util.TimeoutError:
+            except gen.TimeoutError:
                 return False
             except ApiException as e:
                 if e.status == 404:
