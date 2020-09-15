@@ -1841,6 +1841,7 @@ class KubeSpawner(Spawner):
                     pod,
                     _request_timeout=self.k8s_api_request_timeout
                 )
+                return True
             except ApiException as e:
                 if e.status != 409:
                     # We only want to handle 409 conflict errors
@@ -1852,7 +1853,7 @@ class KubeSpawner(Spawner):
 
                 self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
                 # Raise an exception to signal to exponential_backoff to keep going
-                raise ValueError(f'Killed pod {self.pod_name}, will try creating it again')
+                return False
         
         # If there's a timeout, just let it propagate
         yield exponential_backoff(
