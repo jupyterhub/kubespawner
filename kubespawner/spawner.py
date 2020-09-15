@@ -1916,23 +1916,36 @@ class KubeSpawner(Spawner):
             grace_seconds = self.delete_grace_period
 
         delete_options.grace_period_seconds = grace_seconds
-        self.log.info("Deleting pod %s", self.pod_name)
-        try:
-            yield self.asynchronize(
-                self.api.delete_namespaced_pod,
-                name=self.pod_name,
-                namespace=self.namespace,
-                body=delete_options,
-                grace_period_seconds=grace_seconds,
-            )
-        except ApiException as e:
-            if e.status == 404:
-                self.log.warning(
-                    "No pod %s to delete. Assuming already deleted.",
-                    self.pod_name,
-                )
-            else:
-                raise
+
+        @gen.coroutine
+        def delete_pod():
+            self.log.info("Deleting pod %s", self.pod_name)
+            try:
+                yield gen.with_timeout(timedelta(seconds=self.k8s_api_request_timeout), self.asynchronize(
+                    self.api.delete_namespaced_pod,
+                    name=self.pod_name,
+                    namespace=self.namespace,
+                    body=delete_options,
+                    grace_period_seconds=grace_seconds,
+                ))
+                return True
+            except tornado.util.TimeoutError:
+                return False
+            except ApiException as e:
+                if e.status == 404:
+                    self.log.warning(
+                        "No pod %s to delete. Assuming already deleted.",
+                        self.pod_name,
+                    )
+                else:
+                    raise
+
+        yield exponential_backoff(
+            delete_pod,
+            f'Could not delete pod {self.pod_name}',
+            self.k8s_api_request_timeout * 5
+        )
+
         try:
             yield exponential_backoff(
                 lambda: self.pod_reflector.pods.get(self.pod_name, None) is None,
