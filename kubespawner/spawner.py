@@ -1937,6 +1937,8 @@ class KubeSpawner(Spawner):
                         "No pod %s to delete. Assuming already deleted.",
                         self.pod_name,
                     )
+                    # If there isn't already a pod, that's ok too!
+                    return True
                 else:
                     raise
 
