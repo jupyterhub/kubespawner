@@ -1842,6 +1842,9 @@ class KubeSpawner(Spawner):
                     pod,
                 ))
                 return True
+            except tornado.util.TimeoutError:
+                # Just try again
+                return False
             except ApiException as e:
                 if e.status != 409:
                     # We only want to handle 409 conflict errors
