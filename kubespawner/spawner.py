@@ -20,7 +20,6 @@ from tornado.ioloop import IOLoop
 from tornado.concurrent import run_on_executor
 from tornado import web
 from traitlets import (
-    Float,
     Bool,
     Dict,
     Integer,
@@ -209,7 +208,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    k8s_api_request_timeout = Float(
+    k8s_api_request_timeout = Integer(
         5,
         config=True,
         help="""
