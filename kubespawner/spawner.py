@@ -1602,6 +1602,7 @@ class KubeSpawner(Spawner):
 
     @run_on_executor
     def asynchronize(self, method, *args, **kwargs):
+        self.log.info(f"Asynchronously calling {method} with {args} and {kwargs}")
         return method(*args, **kwargs)
 
     @property
@@ -1834,6 +1835,7 @@ class KubeSpawner(Spawner):
             pod = yield gen.maybe_future(self.modify_pod_hook(self, pod))
         for i in range(retry_times):
             try:
+                self.log.info(f"Attempting to create pod {pod['metadata']['name']}, with timeout {self.k8s_api_request_timeout}")
                 yield self.asynchronize(
                     self.api.create_namespaced_pod,
                     self.namespace,
