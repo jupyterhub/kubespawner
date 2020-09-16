@@ -14,10 +14,6 @@ c.JupyterHub.cleanup_servers = False
 # First pulls can be really slow, so let's give it a big timeout
 c.KubeSpawner.start_timeout = 60 * 5
 
-# Used only for the create_namespaced_pod call.  Azure AKS (<=1.17.9)
-# doesn't respond sometimes to these requests
-c.KubeSpawner.k8s_api_request_timeout = 5
-
 # Our simplest user image! Optimized to just... start, and be small!
 c.KubeSpawner.image = 'jupyterhub/singleuser:1.0'
 
