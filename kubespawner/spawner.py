@@ -208,7 +208,7 @@ class KubeSpawner(Spawner):
     )
 
     k8s_api_request_timeout = Integer(
-        1,
+        3,
         config=True,
         help="""
         API request timeout (in seconds) for all k8s API calls.
