@@ -6,7 +6,7 @@ implementation that should be used by JupyterHub.
 """
 
 from functools import partial  # noqa
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
 import sys
@@ -204,6 +204,33 @@ class KubeSpawner(Spawner):
         Increase this if you are dealing with a very large number of users.
 
         Defaults to `5 * cpu_cores`, which is the default for `ThreadPoolExecutor`.
+        """
+    )
+
+    k8s_api_request_timeout = Integer(
+        3,
+        config=True,
+        help="""
+        API request timeout (in seconds) for all k8s API calls.
+
+        This is the total amount of time a request might take before the connection
+        is killed. This includes connection time and reading the response.
+
+        NOTE: This is currently only implemented for creation and deletion of pods,
+        and creation of PVCs.
+        """
+    )
+
+    k8s_api_request_retry_timeout = Integer(
+        30,
+        config=True,
+        help="""
+        Total timeout, including retry timeout, for kubernetes API calls
+
+        When a k8s API request connection times out, we retry it while backing
+        off exponentially. This lets you configure the total amount of time
+        we will spend trying an API request - including retries - before
+        giving up.
         """
     )
 
@@ -1758,6 +1785,82 @@ class KubeSpawner(Spawner):
     _last_event = None
 
     @gen.coroutine
+    def _make_create_pod_request(self, pod, request_timeout):
+        """
+        Make an HTTP request to create the given pod
+
+        Designed to be used with exponential_backoff, so returns
+        True / False on success / failure
+        """
+        try:
+            self.log.info(f"Attempting to create pod {pod.metadata.name}, with timeout {request_timeout}")
+            # Use tornado's timeout, _request_timeout seems unreliable?
+            yield gen.with_timeout(timedelta(seconds=request_timeout), self.asynchronize(
+                self.api.create_namespaced_pod,
+                self.namespace,
+                pod,
+            ))
+            return True
+        except gen.TimeoutError:
+            # Just try again
+            return False
+        except ApiException as e:
+            pod_name = pod.metadata.name
+            if e.status != 409:
+                # We only want to handle 409 conflict errors
+                self.log.exception("Failed for %s", pod.to_str())
+                raise
+            self.log.info(f'Found existing pod {pod_name}, attempting to kill')
+            # TODO: this should show up in events
+            yield self.stop(True)
+
+            self.log.info(f'Killed pod {pod_name}, will try starting singleuser pod again')
+            # We tell exponential_backoff to retry
+            return False
+
+    @gen.coroutine
+    def _make_create_pvc_request(self, pvc, request_timeout):
+        # Try and create the pvc. If it succeeds we are good. If
+        # returns a 409 indicating it already exists we are good. If
+        # it returns a 403, indicating potential quota issue we need
+        # to see if pvc already exists before we decide to raise the
+        # error for quota being exceeded. This is because quota is
+        # checked before determining if the PVC needed to be
+        # created.
+        pvc_name = pvc.metadata.name
+        try:
+            self.log.info(f"Attempting to create pvc {pvc.metadata.name}, with timeout {request_timeout}")
+            yield gen.with_timeout(timedelta(seconds=request_timeout), self.asynchronize(
+                self.api.create_namespaced_persistent_volume_claim,
+                namespace=self.namespace,
+                body=pvc
+            ))
+            return True
+        except gen.TimeoutError:
+            # Just try again
+            return False
+        except ApiException as e:
+            if e.status == 409:
+                self.log.info("PVC " + pvc_name + " already exists, so did not create new pvc.")
+
+            elif e.status == 403:
+                t, v, tb = sys.exc_info()
+
+                try:
+                    yield self.asynchronize(
+                        self.api.read_namespaced_persistent_volume_claim,
+                        name=pvc_name,
+                        namespace=self.namespace)
+
+                except ApiException as e:
+                    raise v.with_traceback(tb)
+
+                self.log.info("PVC " + self.pvc_name + " already exists, possibly have reached quota though.")
+                return True
+            else:
+                raise
+
+    @gen.coroutine
     def _start(self):
         """Start the user's pod"""
 
@@ -1774,72 +1877,28 @@ class KubeSpawner(Spawner):
             self._last_event = events[-1]["metadata"]["uid"]
 
         if self.storage_pvc_ensure:
-            # Try and create the pvc. If it succeeds we are good. If
-            # returns a 409 indicating it already exists we are good. If
-            # it returns a 403, indicating potential quota issue we need
-            # to see if pvc already exists before we decide to raise the
-            # error for quota being exceeded. This is because quota is
-            # checked before determining if the PVC needed to be
-            # created.
-
             pvc = self.get_pvc_manifest()
 
-            try:
-                yield self.asynchronize(
-                    self.api.create_namespaced_persistent_volume_claim,
-                    namespace=self.namespace,
-                    body=pvc
-                )
-            except ApiException as e:
-                if e.status == 409:
-                    self.log.info("PVC " + self.pvc_name + " already exists, so did not create new pvc.")
-
-                elif e.status == 403:
-                    t, v, tb = sys.exc_info()
-
-                    try:
-                        yield self.asynchronize(
-                            self.api.read_namespaced_persistent_volume_claim,
-                            name=self.pvc_name,
-                            namespace=self.namespace)
-
-                    except ApiException as e:
-                        raise v.with_traceback(tb)
-
-                    self.log.info("PVC " + self.pvc_name + " already exists, possibly have reached quota though.")
-
-                else:
-                    raise
-
+            # If there's a timeout, just let it propagate
+            yield exponential_backoff(
+                partial(self._make_create_pvc_request, pvc, self.k8s_api_request_timeout),
+                f'Could not create pod {self.pvc_name}',
+                # Each req should be given k8s_api_request_timeout seconds.
+                timeout=self.k8s_api_request_retry_timeout
+            )
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
         # try again. We try 4 times, and if it still fails we give up.
-        # FIXME: Have better / cleaner retry logic!
-        retry_times = 4
         pod = yield self.get_pod_manifest()
         if self.modify_pod_hook:
             pod = yield gen.maybe_future(self.modify_pod_hook(self, pod))
-        for i in range(retry_times):
-            try:
-                yield self.asynchronize(
-                    self.api.create_namespaced_pod,
-                    self.namespace,
-                    pod,
-                )
-                break
-            except ApiException as e:
-                if e.status != 409:
-                    # We only want to handle 409 conflict errors
-                    self.log.exception("Failed for %s", pod.to_str())
-                    raise
-                self.log.info('Found existing pod %s, attempting to kill', self.pod_name)
-                # TODO: this should show up in events
-                yield self.stop(True)
 
-                self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
-        else:
-            raise Exception(
-                'Can not create user pod %s already exists & could not be deleted' % self.pod_name)
+        # If there's a timeout, just let it propagate
+        yield exponential_backoff(
+            partial(self._make_create_pod_request, pod, self.k8s_api_request_timeout),
+            f'Could not create pod {self.pod_name}',
+            timeout=self.k8s_api_request_retry_timeout
+        )
 
         # we need a timeout here even though start itself has a timeout
         # in order for this coroutine to finish at some point.
@@ -1880,6 +1939,37 @@ class KubeSpawner(Spawner):
         return (pod["status"]["podIP"], self.port)
 
     @gen.coroutine
+    def _make_delete_pod_request(self, pod_name, delete_options, grace_seconds, request_timeout):
+        """
+        Make an HTTP request to delete the given pod
+
+        Designed to be used with exponential_backoff, so returns
+        True / False on success / failure
+        """
+        self.log.info("Deleting pod %s", pod_name)
+        try:
+            yield gen.with_timeout(timedelta(seconds=request_timeout), self.asynchronize(
+                self.api.delete_namespaced_pod,
+                name=pod_name,
+                namespace=self.namespace,
+                body=delete_options,
+                grace_period_seconds=grace_seconds,
+            ))
+            return True
+        except gen.TimeoutError:
+            return False
+        except ApiException as e:
+            if e.status == 404:
+                self.log.warning(
+                    "No pod %s to delete. Assuming already deleted.",
+                    pod_name,
+                )
+                # If there isn't already a pod, that's ok too!
+                return True
+            else:
+                raise
+
+    @gen.coroutine
     def stop(self, now=False):
         delete_options = client.V1DeleteOptions()
 
@@ -1889,23 +1979,14 @@ class KubeSpawner(Spawner):
             grace_seconds = self.delete_grace_period
 
         delete_options.grace_period_seconds = grace_seconds
-        self.log.info("Deleting pod %s", self.pod_name)
-        try:
-            yield self.asynchronize(
-                self.api.delete_namespaced_pod,
-                name=self.pod_name,
-                namespace=self.namespace,
-                body=delete_options,
-                grace_period_seconds=grace_seconds,
-            )
-        except ApiException as e:
-            if e.status == 404:
-                self.log.warning(
-                    "No pod %s to delete. Assuming already deleted.",
-                    self.pod_name,
-                )
-            else:
-                raise
+
+
+        yield exponential_backoff(
+            partial(self._make_delete_pod_request, self.pod_name, delete_options, grace_seconds, self.k8s_api_request_timeout),
+            f'Could not delete pod {self.pod_name}',
+            timeout=self.k8s_api_request_retry_timeout
+        )
+
         try:
             yield exponential_backoff(
                 lambda: self.pod_reflector.pods.get(self.pod_name, None) is None,
