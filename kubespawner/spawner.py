@@ -1791,7 +1791,7 @@ class KubeSpawner(Spawner):
         True / False on success / failure
         """
         try:
-            self.log.info(f"Attempting to create pod {pod.metadata.name}, with timeout {self.k8s_api_request_timeout}")
+            self.log.info(f"Attempting to create pod {pod.metadata.name}, with timeout {request_timeout}")
             # Use tornado's timeout, _request_timeout seems unreliable?
             yield gen.with_timeout(timedelta(seconds=request_timeout), self.asynchronize(
                 self.api.create_namespaced_pod,
