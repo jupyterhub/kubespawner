@@ -209,13 +209,26 @@ class KubeSpawner(Spawner):
     )
 
     k8s_api_request_timeout = Integer(
-        5,
+        1,
         config=True,
         help="""
         API request timeout (in seconds) for all k8s API calls.
 
         This is the total amount of time a request might take before the connection
         is killed. This includes connection time and reading the response.
+
+        NOTE: This is currently only implemented for creation and deletion of pods.
+        """
+    )
+
+    k8s_api_request_timeout_retries = Integer(
+        5,
+        config=True,
+        help="""
+        Number of times kubernetes API calls shoulbe retried before giving up
+
+        When a k8s API request connection times out, we retry it. This lets you
+        configure the number of times a request is retried before giving up.
         """
     )
 
@@ -1863,9 +1876,8 @@ class KubeSpawner(Spawner):
                 create_pod,
                 f'Could not create pod {self.pod_name}',
                 # Each req should be given k8s_api_request_timeout seconds.
-                # So we let the entire creation setup play out for about 5 times
-                # FIXME: This is ridiculously bad
-                timeout=self.k8s_api_request_timeout * 5
+                # FIXME: We should instead add a timeout_times property to exponential_backoff instead
+                timeout=self.k8s_api_request_timeout * self.k8s_api_request_timeout_retries
             )
 
         # we need a timeout here even though start itself has a timeout
@@ -1945,7 +1957,8 @@ class KubeSpawner(Spawner):
         yield exponential_backoff(
             delete_pod,
             f'Could not delete pod {self.pod_name}',
-            self.k8s_api_request_timeout * 5
+            # FIXME: We should instead add a timeout_times property to exponential_backoff instead
+            timeout=self.k8s_api_request_timeout * self.k8s_api_request_timeout_retries
         )
 
         try:
