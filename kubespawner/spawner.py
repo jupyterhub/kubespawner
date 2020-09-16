@@ -221,14 +221,16 @@ class KubeSpawner(Spawner):
         """
     )
 
-    k8s_api_request_timeout_retries = Integer(
-        5,
+    k8s_api_request_retry_timeout = Integer(
+        30,
         config=True,
         help="""
-        Number of times kubernetes API calls shoulbe retried before giving up
+        Total timeout, includign retry timeout, for kubernetes API calls
 
-        When a k8s API request connection times out, we retry it. This lets you
-        configure the number of times a request is retried before giving up.
+        When a k8s API request connection times out, we retry it while backing
+        off exponentially. This lets you configure the total amount of time
+        we will spend trying an API request - including retries - before
+        giving up.
         """
     )
 
@@ -1882,8 +1884,7 @@ class KubeSpawner(Spawner):
                 partial(self._make_create_pvc_request, pvc, self.k8s_api_request_timeout),
                 f'Could not create pod {self.pvc_name}',
                 # Each req should be given k8s_api_request_timeout seconds.
-                # FIXME: We should instead add a timeout_times property to exponential_backoff instead
-                timeout=self.k8s_api_request_timeout * self.k8s_api_request_timeout_retries
+                timeout=self.k8s_api_request_retry_timeout
             )
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
@@ -1896,9 +1897,7 @@ class KubeSpawner(Spawner):
         yield exponential_backoff(
             partial(self._make_create_pod_request, pod, self.k8s_api_request_timeout),
             f'Could not create pod {self.pod_name}',
-            # Each req should be given k8s_api_request_timeout seconds.
-            # FIXME: We should instead add a timeout_times property to exponential_backoff instead
-            timeout=self.k8s_api_request_timeout * self.k8s_api_request_timeout_retries
+            timeout=self.k8s_api_request_retry_timeout
         )
 
         # we need a timeout here even though start itself has a timeout
@@ -1985,8 +1984,7 @@ class KubeSpawner(Spawner):
         yield exponential_backoff(
             partial(self._make_delete_pod_request, self.pod_name, delete_options, grace_seconds, self.k8s_api_request_timeout),
             f'Could not delete pod {self.pod_name}',
-            # FIXME: We should instead add a timeout_times property to exponential_backoff instead
-            timeout=self.k8s_api_request_timeout * self.k8s_api_request_timeout_retries
+            timeout=self.k8s_api_request_retry_timeout
         )
 
         try:
