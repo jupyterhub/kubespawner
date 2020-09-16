@@ -1614,7 +1614,6 @@ class KubeSpawner(Spawner):
 
     @run_on_executor
     def asynchronize(self, method, *args, **kwargs):
-        self.log.info(f"Asynchronously calling {method} with {args} and {kwargs}")
         return method(*args, **kwargs)
 
     @property
