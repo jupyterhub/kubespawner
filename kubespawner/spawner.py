@@ -34,7 +34,6 @@ from jupyterhub.spawner import Spawner
 from jupyterhub.utils import exponential_backoff
 from jupyterhub.traitlets import Command
 from kubernetes.client.rest import ApiException
-from urllib3.exceptions import ReadTimeoutError
 from kubernetes import client
 import escapism
 from jinja2 import Environment, BaseLoader
