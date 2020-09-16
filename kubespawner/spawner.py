@@ -1784,6 +1784,40 @@ class KubeSpawner(Spawner):
     _last_event = None
 
     @gen.coroutine
+    def _make_create_pod_request(self, pod, request_timeout):
+        """
+        Make an HTTP request to create the given pod
+
+        Designed to be used with exponential_backoff, so returns
+        True / False on success / failure
+        """
+        try:
+            self.log.info(f"Attempting to create pod {pod.metadata.name}, with timeout {self.k8s_api_request_timeout}")
+            # Use tornado's timeout, _request_timeout seems unreliable?
+            yield gen.with_timeout(timedelta(seconds=request_timeout), self.asynchronize(
+                self.api.create_namespaced_pod,
+                self.namespace,
+                pod,
+            ))
+            return True
+        except gen.TimeoutError:
+            # Just try again
+            return False
+        except ApiException as e:
+            pod_name = pod.metadata.name
+            if e.status != 409:
+                # We only want to handle 409 conflict errors
+                self.log.exception("Failed for %s", pod.to_str())
+                raise
+            self.log.info(f'Found existing pod {pod_name}, attempting to kill')
+            # TODO: this should show up in events
+            yield self.stop(True)
+
+            self.log.info(f'Killed pod {pod_name}, will try starting singleuser pod again')
+            # We tell exponential_backoff to retry
+            return False
+
+    @gen.coroutine
     def _start(self):
         """Start the user's pod"""
 
@@ -1843,37 +1877,10 @@ class KubeSpawner(Spawner):
         pod = yield self.get_pod_manifest()
         if self.modify_pod_hook:
             pod = yield gen.maybe_future(self.modify_pod_hook(self, pod))
-        
-        @gen.coroutine
-        def create_pod():
-            try:
-                self.log.info(f"Attempting to create pod {pod.metadata.name}, with timeout {self.k8s_api_request_timeout}")
-                # Use tornado's timeout, _request_timeout seems unreliable?
-                yield gen.with_timeout(timedelta(seconds=self.k8s_api_request_timeout), self.asynchronize(
-                    self.api.create_namespaced_pod,
-                    self.namespace,
-                    pod,
-                ))
-                return True
-            except gen.TimeoutError:
-                # Just try again
-                return False
-            except ApiException as e:
-                if e.status != 409:
-                    # We only want to handle 409 conflict errors
-                    self.log.exception("Failed for %s", pod.to_str())
-                    raise
-                self.log.info('Found existing pod %s, attempting to kill', self.pod_name)
-                # TODO: this should show up in events
-                yield self.stop(True)
 
-                self.log.info('Killed pod %s, will try starting singleuser pod again', self.pod_name)
-                # Raise an exception to signal to exponential_backoff to keep going
-                return False
-        
         # If there's a timeout, just let it propagate
         yield exponential_backoff(
-                create_pod,
+                partial(self._make_create_pod_request, pod, self.k8s_api_request_timeout),
                 f'Could not create pod {self.pod_name}',
                 # Each req should be given k8s_api_request_timeout seconds.
                 # FIXME: We should instead add a timeout_times property to exponential_backoff instead
@@ -1919,6 +1926,37 @@ class KubeSpawner(Spawner):
         return (pod["status"]["podIP"], self.port)
 
     @gen.coroutine
+    def _make_delete_pod_request(self, pod_name, delete_options, grace_seconds, request_timeout):
+        """
+        Make an HTTP request to delete the given pod
+
+        Designed to be used with exponential_backoff, so returns
+        True / False on success / failure
+        """
+        self.log.info("Deleting pod %s", pod_name)
+        try:
+            yield gen.with_timeout(timedelta(seconds=request_timeout), self.asynchronize(
+                self.api.delete_namespaced_pod,
+                name=pod_name,
+                namespace=self.namespace,
+                body=delete_options,
+                grace_period_seconds=grace_seconds,
+            ))
+            return True
+        except gen.TimeoutError:
+            return False
+        except ApiException as e:
+            if e.status == 404:
+                self.log.warning(
+                    "No pod %s to delete. Assuming already deleted.",
+                    pod_name,
+                )
+                # If there isn't already a pod, that's ok too!
+                return True
+            else:
+                raise
+
+    @gen.coroutine
     def stop(self, now=False):
         delete_options = client.V1DeleteOptions()
 
@@ -1929,33 +1967,9 @@ class KubeSpawner(Spawner):
 
         delete_options.grace_period_seconds = grace_seconds
 
-        @gen.coroutine
-        def delete_pod():
-            self.log.info("Deleting pod %s", self.pod_name)
-            try:
-                yield gen.with_timeout(timedelta(seconds=self.k8s_api_request_timeout), self.asynchronize(
-                    self.api.delete_namespaced_pod,
-                    name=self.pod_name,
-                    namespace=self.namespace,
-                    body=delete_options,
-                    grace_period_seconds=grace_seconds,
-                ))
-                return True
-            except gen.TimeoutError:
-                return False
-            except ApiException as e:
-                if e.status == 404:
-                    self.log.warning(
-                        "No pod %s to delete. Assuming already deleted.",
-                        self.pod_name,
-                    )
-                    # If there isn't already a pod, that's ok too!
-                    return True
-                else:
-                    raise
 
         yield exponential_backoff(
-            delete_pod,
+            partial(self._make_delete_pod_request, self.pod_name, delete_options, grace_seconds, self.k8s_api_request_timeout),
             f'Could not delete pod {self.pod_name}',
             # FIXME: We should instead add a timeout_times property to exponential_backoff instead
             timeout=self.k8s_api_request_timeout * self.k8s_api_request_timeout_retries
