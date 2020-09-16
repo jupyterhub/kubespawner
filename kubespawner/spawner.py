@@ -225,7 +225,7 @@ class KubeSpawner(Spawner):
         30,
         config=True,
         help="""
-        Total timeout, includign retry timeout, for kubernetes API calls
+        Total timeout, including retry timeout, for kubernetes API calls
 
         When a k8s API request connection times out, we retry it while backing
         off exponentially. This lets you configure the total amount of time
