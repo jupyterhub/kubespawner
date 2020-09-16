@@ -18,6 +18,7 @@ setup(
         'jupyterhub>=0.8',
         'jinja2',
         'kubernetes>=10.1.0',
+        'urllib3',
         'pyYAML',
     ],
     python_requires='>=3.6',
