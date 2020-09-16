@@ -217,7 +217,8 @@ class KubeSpawner(Spawner):
         This is the total amount of time a request might take before the connection
         is killed. This includes connection time and reading the response.
 
-        NOTE: This is currently only implemented for creation and deletion of pods.
+        NOTE: This is currently only implemented for creation and deletion of pods,
+        and creation of PVCs.
         """
     )
 
@@ -1817,6 +1818,48 @@ class KubeSpawner(Spawner):
             return False
 
     @gen.coroutine
+    def _make_create_pvc_request(self, pvc, request_timeout):
+        # Try and create the pvc. If it succeeds we are good. If
+        # returns a 409 indicating it already exists we are good. If
+        # it returns a 403, indicating potential quota issue we need
+        # to see if pvc already exists before we decide to raise the
+        # error for quota being exceeded. This is because quota is
+        # checked before determining if the PVC needed to be
+        # created.
+        pvc_name = pvc.metadata.name
+        try:
+            self.log.info(f"Attempting to create pvc {pvc.metadata.name}, with timeout {request_timeout}")
+            yield gen.with_timeout(timedelta(seconds=request_timeout), self.asynchronize(
+                self.api.create_namespaced_persistent_volume_claim,
+                namespace=self.namespace,
+                body=pvc
+            ))
+            return True
+        except gen.TimeoutError:
+            # Just try again
+            return False
+        except ApiException as e:
+            if e.status == 409:
+                self.log.info("PVC " + pvc_name + " already exists, so did not create new pvc.")
+
+            elif e.status == 403:
+                t, v, tb = sys.exc_info()
+
+                try:
+                    yield self.asynchronize(
+                        self.api.read_namespaced_persistent_volume_claim,
+                        name=pvc_name,
+                        namespace=self.namespace)
+
+                except ApiException as e:
+                    raise v.with_traceback(tb)
+
+                self.log.info("PVC " + self.pvc_name + " already exists, possibly have reached quota though.")
+                return True
+            else:
+                raise
+
+    @gen.coroutine
     def _start(self):
         """Start the user's pod"""
 
@@ -1833,43 +1876,16 @@ class KubeSpawner(Spawner):
             self._last_event = events[-1]["metadata"]["uid"]
 
         if self.storage_pvc_ensure:
-            # Try and create the pvc. If it succeeds we are good. If
-            # returns a 409 indicating it already exists we are good. If
-            # it returns a 403, indicating potential quota issue we need
-            # to see if pvc already exists before we decide to raise the
-            # error for quota being exceeded. This is because quota is
-            # checked before determining if the PVC needed to be
-            # created.
-
             pvc = self.get_pvc_manifest()
 
-            try:
-                yield self.asynchronize(
-                    self.api.create_namespaced_persistent_volume_claim,
-                    namespace=self.namespace,
-                    body=pvc
-                )
-            except ApiException as e:
-                if e.status == 409:
-                    self.log.info("PVC " + self.pvc_name + " already exists, so did not create new pvc.")
-
-                elif e.status == 403:
-                    t, v, tb = sys.exc_info()
-
-                    try:
-                        yield self.asynchronize(
-                            self.api.read_namespaced_persistent_volume_claim,
-                            name=self.pvc_name,
-                            namespace=self.namespace)
-
-                    except ApiException as e:
-                        raise v.with_traceback(tb)
-
-                    self.log.info("PVC " + self.pvc_name + " already exists, possibly have reached quota though.")
-
-                else:
-                    raise
-
+            # If there's a timeout, just let it propagate
+            yield exponential_backoff(
+                partial(self._make_create_pvc_request, pvc, self.k8s_api_request_timeout),
+                f'Could not create pod {self.pvc_name}',
+                # Each req should be given k8s_api_request_timeout seconds.
+                # FIXME: We should instead add a timeout_times property to exponential_backoff instead
+                timeout=self.k8s_api_request_timeout * self.k8s_api_request_timeout_retries
+            )
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
         # try again. We try 4 times, and if it still fails we give up.
@@ -1879,12 +1895,12 @@ class KubeSpawner(Spawner):
 
         # If there's a timeout, just let it propagate
         yield exponential_backoff(
-                partial(self._make_create_pod_request, pod, self.k8s_api_request_timeout),
-                f'Could not create pod {self.pod_name}',
-                # Each req should be given k8s_api_request_timeout seconds.
-                # FIXME: We should instead add a timeout_times property to exponential_backoff instead
-                timeout=self.k8s_api_request_timeout * self.k8s_api_request_timeout_retries
-            )
+            partial(self._make_create_pod_request, pod, self.k8s_api_request_timeout),
+            f'Could not create pod {self.pod_name}',
+            # Each req should be given k8s_api_request_timeout seconds.
+            # FIXME: We should instead add a timeout_times property to exponential_backoff instead
+            timeout=self.k8s_api_request_timeout * self.k8s_api_request_timeout_retries
+        )
 
         # we need a timeout here even though start itself has a timeout
         # in order for this coroutine to finish at some point.
