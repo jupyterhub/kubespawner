@@ -1842,7 +1842,7 @@ class KubeSpawner(Spawner):
         except ApiException as e:
             if e.status == 409:
                 self.log.info("PVC " + pvc_name + " already exists, so did not create new pvc.")
-
+                return True
             elif e.status == 403:
                 t, v, tb = sys.exc_info()
 
