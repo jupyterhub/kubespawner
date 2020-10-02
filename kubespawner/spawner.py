@@ -1596,7 +1596,7 @@ class KubeSpawner(Spawner):
         if data is not None:
             if data["status"]["phase"] == 'Pending':
                 return None
-            ctr_stat = data["status"]["containerStatuses"]
+            ctr_stat = data["status"].get("containerStatuses")
             if ctr_stat is None:  # No status, no container (we hope)
                 # This seems to happen when a pod is idle-culled.
                 return 1
