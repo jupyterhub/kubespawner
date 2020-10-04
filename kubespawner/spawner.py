@@ -514,22 +514,39 @@ class KubeSpawner(Spawner):
         """
     )
 
-    # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
-    image_pull_secrets = Unicode(
-        None,
-        allow_none=True,
+    image_pull_secrets = Union(
+        trait_types=[
+            List(),
+            Unicode(),
+        ],
         config=True,
         help="""
-        The kubernetes secret to use for pulling images from private repository.
+        A list of references to Kubernetes Secret resources with credentials to
+        pull images from image registries. This list can either have strings in
+        it or objects with the string value nested under a name field.
 
-        Set this to the name of a Kubernetes secret containing the docker configuration
-        required to pull the image.
+        Passing a single string is still supported, but deprecated as of
+        KubeSpawner 0.14.0.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod>`__
+        See `the Kubernetes documentation
+        <https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod>`__
         for more information on when and why this might need to be set, and what
         it should be set to.
         """
     )
+
+    @validate('image_pull_secrets')
+    def _validate_image_pull_secrets(self, proposal):
+        if type(proposal['value']) == str:
+            warnings.warn(
+                """Passing KubeSpawner.image_pull_secrets string values is
+                deprecated since KubeSpawner 0.14.0. The recommended
+                configuration is now a list of either strings or dictionary
+                objects with the string referencing the Kubernetes Secret name
+                in under the value of the dictionary's name key.""",
+                DeprecationWarning,
+            )
+            return [{"name": proposal['value']}]
 
     node_selector = Dict(
         config=True,
@@ -1460,7 +1477,7 @@ class KubeSpawner(Spawner):
             port=self.port,
             image=self.image,
             image_pull_policy=self.image_pull_policy,
-            image_pull_secret=self.image_pull_secrets,
+            image_pull_secrets=self.image_pull_secrets,
             node_selector=self.node_selector,
             run_as_uid=uid,
             run_as_gid=gid,
