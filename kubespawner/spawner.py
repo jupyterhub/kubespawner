@@ -1659,7 +1659,6 @@ class KubeSpawner(Spawner):
 
         self.log.debug('progress generator: %s', self.pod_name)
         start_future = self._start_future
-        pod_id = None
         progress = 0
         next_event = 0
 
@@ -1673,11 +1672,6 @@ class KubeSpawner(Spawner):
 
             len_events = len(events)
             if next_event < len_events:
-                # only show messages for the 'current' pod
-                # pod_id may change if a previous pod is being stopped
-                # before starting a new one
-                # use the uid of the latest event to identify 'current'
-                pod_id = events[-1]["involvedObject"]["uid"]
                 for i in range(next_event, len_events):
                     event = events[i]
                     # move the progress bar.
