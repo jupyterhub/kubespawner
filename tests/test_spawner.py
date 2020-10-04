@@ -11,11 +11,6 @@ import json
 import os
 import pytest
 
-def sync_wait(future):
-    loop = get_event_loop()
-    loop.run_until_complete(future)
-    return future.result()
-
 
 class MockUser(Mock):
     name = 'fake'
@@ -153,7 +148,8 @@ async def test_spawn_progress(kube_ns, kube_client, config):
     await spawner.stop()
 
 
-def test_get_pod_manifest_tolerates_mixed_input():
+@pytest.mark.asyncio
+async def test_get_pod_manifest_tolerates_mixed_input():
     """
     Test that the get_pod_manifest function can handle a either a dictionary or
     an object both representing V1Container objects and that the function
@@ -181,7 +177,7 @@ def test_get_pod_manifest_tolerates_mixed_input():
     spawner = KubeSpawner(config=c, _mock=True)
 
     # this test ensures the following line doesn't raise an error
-    manifest = sync_wait(spawner.get_pod_manifest())
+    manifest = await spawner.get_pod_manifest()
 
     # and tests the return value's types
     assert isinstance(manifest, V1Pod)
