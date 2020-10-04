@@ -524,7 +524,7 @@ def make_ingress(
     target_ip = target_parts.hostname
     target_port = target_parts.port
 
-    target_is_ip = re.match('^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', target_ip) is not None
+    target_is_ip = re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', target_ip) is not None
 
     # Make endpoint object
     if target_is_ip:
