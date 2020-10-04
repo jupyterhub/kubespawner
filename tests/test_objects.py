@@ -137,7 +137,7 @@ def test_make_annotated_pod():
         "apiVersion": "v1"
     }
 
-def test_make_pod_with_image_pull_secrets():
+def test_make_pod_with_image_pull_secrets_simplified_format():
     """
     Test specification of the simplest possible pod specification
     """
@@ -147,7 +147,7 @@ def test_make_pod_with_image_pull_secrets():
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
-        image_pull_secret='super-sekrit'
+        image_pull_secrets=["k8s-secret-a", "k8s-secret-b"],
     )) == {
         "metadata": {
             "name": "test",
@@ -157,7 +157,57 @@ def test_make_pod_with_image_pull_secrets():
         "spec": {
             'automountServiceAccountToken': False,
             "imagePullSecrets": [
-                {'name': 'super-sekrit'}
+                {"name": "k8s-secret-a"},
+                {"name": "k8s-secret-b"}
+            ],
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    'volumeMounts': [],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    }
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
+def test_make_pod_with_image_pull_secrets_k8s_native_format():
+    """
+    Test specification of the simplest possible pod specification
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        image_pull_secrets=[{"name": "k8s-secret-a"}, {"name": "k8s-secret-b"}],
+    )) == {
+        "metadata": {
+            "name": "test",
+            "annotations": {},
+            "labels": {},
+        },
+        "spec": {
+            'automountServiceAccountToken': False,
+            "imagePullSecrets": [
+                {"name": "k8s-secret-a"},
+                {"name": "k8s-secret-b"}
             ],
             "containers": [
                 {
@@ -397,7 +447,6 @@ def test_make_pod_resources_all():
         mem_limit='1Gi',
         mem_guarantee='512Mi',
         image_pull_policy='IfNotPresent',
-        image_pull_secret="myregistrykey",
         node_selector={"disk": "ssd"}
     )) == {
         "metadata": {
@@ -407,7 +456,6 @@ def test_make_pod_resources_all():
         },
         "spec": {
             'automountServiceAccountToken': False,
-            "imagePullSecrets": [{"name": "myregistrykey"}],
             "nodeSelector": {"disk": "ssd"},
             "containers": [
                 {
@@ -862,7 +910,6 @@ def test_make_pod_with_extra_resources():
         mem_limit='1Gi',
         mem_guarantee='512Mi',
         image_pull_policy='IfNotPresent',
-        image_pull_secret="myregistrykey",
         node_selector={"disk": "ssd"}
     )) == {
         "metadata": {
@@ -872,7 +919,6 @@ def test_make_pod_with_extra_resources():
         },
         "spec": {
             'automountServiceAccountToken': False,
-            "imagePullSecrets": [{"name": "myregistrykey"}],
             "nodeSelector": {"disk": "ssd"},
             "containers": [
                 {
