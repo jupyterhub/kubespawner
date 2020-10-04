@@ -40,6 +40,7 @@ def test_deprecated_config():
         c.KubeSpawner.hub_connect_ip = '10.0.1.1'
         c.KubeSpawner.singleuser_extra_pod_config = extra_pod_config = {"key": "value"}
         c.KubeSpawner.image_spec = 'abc:123'
+        c.KubeSpawner.image_pull_secrets = 'k8s-secret-a'
         spawner = KubeSpawner(hub=Hub(), config=c, _mock=True)
         assert spawner.hub.connect_ip == '10.0.1.1'
         assert spawner.fs_gid == 10
@@ -48,6 +49,7 @@ def test_deprecated_config():
         assert spawner.singleuser_fs_gid == spawner.fs_gid
         assert spawner.singleuser_extra_pod_config == spawner.extra_pod_config
         assert spawner.image == 'abc:123'
+        assert spawner.image_pull_secrets[0]["name"] == 'k8s-secret-a'
 
 
 def test_deprecated_runtime_access():
@@ -65,6 +67,8 @@ def test_deprecated_runtime_access():
     spawner.image = 'abc:123'
     assert spawner.image_spec == 'abc:123'
     assert spawner.image == 'abc:123'
+    spawner.image_pull_secrets = 'k8s-secret-a'
+    assert spawner.image_pull_secrets[0]["name"] == 'k8s-secret-a'
 
 
 def test_spawner_values():
