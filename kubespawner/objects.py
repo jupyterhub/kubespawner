@@ -28,7 +28,7 @@ def make_pod(
     port,
     image,
     image_pull_policy,
-    image_pull_secret=None,
+    image_pull_secrets=None,
     node_selector=None,
     run_as_uid=None,
     run_as_gid=None,
@@ -80,9 +80,11 @@ def make_pod(
         Image pull policy - one of 'Always', 'IfNotPresent' or 'Never'. Decides
         when kubernetes will check for a newer version of image and pull it when
         running a pod.
-    image_pull_secret:
-        Image pull secret - Default is None -- set to your secret name to pull
-        from private docker registry.
+    image_pull_secrets:
+        Image pull secrets - a list of references to Kubernetes Secret resources
+        with credentials to pull images from image registries. This list can
+        either have strings in it or objects with the string value nested under
+        a name field.
     port:
         Port the notebook server is going to be listening on
     cmd:
@@ -230,11 +232,16 @@ def make_pod(
     pod.spec = V1PodSpec(containers=[])
     pod.spec.restart_policy = 'OnFailure'
 
-    if image_pull_secret is not None:
-        pod.spec.image_pull_secrets = []
-        image_secret = V1LocalObjectReference()
-        image_secret.name = image_pull_secret
-        pod.spec.image_pull_secrets.append(image_secret)
+    if image_pull_secrets is not None:
+        # image_pull_secrets as received by the make_pod function should always
+        # be a list, but it is allowed to have "a-string" elements or {"name":
+        # "a-string"} elements.
+        pod.spec.image_pull_secrets = [
+            V1LocalObjectReference(name=secret_ref)
+            if type(secret_ref) == str else
+            get_k8s_model(V1LocalObjectReference, secret_ref)
+            for secret_ref in image_pull_secrets
+        ]
 
     if node_selector:
         pod.spec.node_selector = node_selector
