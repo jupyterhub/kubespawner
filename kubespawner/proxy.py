@@ -106,18 +106,16 @@ class KubeIngressProxy(Proxy):
         )
         return safe_name
 
-    @gen.coroutine
-    def delete_if_exists(self, kind, safe_name, future):
+    async def delete_if_exists(self, kind, safe_name, future):
         try:
-            yield future
+            await future
             self.log.info('Deleted %s/%s', kind, safe_name)
         except client.rest.ApiException as e:
             if e.status != 404:
                 raise
             self.log.warn("Could not delete %s/%s: does not exist", kind, safe_name)
 
-    @gen.coroutine
-    def add_route(self, routespec, target, data):
+    async def add_route(self, routespec, target, data):
         # Create a route with the name being escaped routespec
         # Use full routespec in label
         # 'data' is JSON encoded and put in an annotation - we don't need to query for it
@@ -135,10 +133,9 @@ class KubeIngressProxy(Proxy):
             data
         )
 
-        @gen.coroutine
-        def ensure_object(create_func, patch_func, body, kind):
+        async def ensure_object(create_func, patch_func, body, kind):
             try:
-                resp = yield self.asynchronize(
+                resp = await self.asynchronize(
                     create_func,
                     namespace=self.namespace,
                     body=body
@@ -148,7 +145,7 @@ class KubeIngressProxy(Proxy):
                 if e.status == 409:
                     # This object already exists, we should patch it to make it be what we want
                     self.log.warn("Trying to patch %s/%s, it already exists", kind, safe_name)
-                    resp = yield self.asynchronize(
+                    resp = await self.asynchronize(
                         patch_func,
                         namespace=self.namespace,
                         body=body,
@@ -158,14 +155,14 @@ class KubeIngressProxy(Proxy):
                     raise
 
         if endpoint is not None:
-            yield ensure_object(
+            await ensure_object(
                 self.core_api.create_namespaced_endpoints,
                 self.core_api.patch_namespaced_endpoints,
                 body=endpoint,
                 kind='endpoints'
             )
 
-            yield exponential_backoff(
+            await exponential_backoff(
                 lambda: safe_name in self.endpoint_reflector.endpoints,
                 'Could not find endpoints/%s after creating it' % safe_name
             )
@@ -176,34 +173,33 @@ class KubeIngressProxy(Proxy):
                 namespace=self.namespace,
                 body=client.V1DeleteOptions(grace_period_seconds=0),
             )
-            yield self.delete_if_exists('endpoint', safe_name, delete_endpoint)
+            await self.delete_if_exists('endpoint', safe_name, delete_endpoint)
 
-        yield ensure_object(
+        await ensure_object(
             self.core_api.create_namespaced_service,
             self.core_api.patch_namespaced_service,
             body=service,
             kind='service'
         )
 
-        yield exponential_backoff(
+        await exponential_backoff(
             lambda: safe_name in self.service_reflector.services,
             'Could not find service/%s after creating it' % safe_name
         )
 
-        yield ensure_object(
+        await ensure_object(
             self.extension_api.create_namespaced_ingress,
             self.extension_api.patch_namespaced_ingress,
             body=ingress,
             kind='ingress'
         )
 
-        yield exponential_backoff(
+        await exponential_backoff(
             lambda: safe_name in self.ingress_reflector.ingresses,
             'Could not find ingress/%s after creating it' % safe_name
         )
 
-    @gen.coroutine
-    def delete_route(self, routespec):
+    async def delete_route(self, routespec):
         # We just ensure that these objects are deleted.
         # This means if some of them are already deleted, we just let it
         # be.
@@ -226,11 +222,11 @@ class KubeIngressProxy(Proxy):
         )
 
         delete_ingress = self.asynchronize(
-                self.extension_api.delete_namespaced_ingress,
-                name=safe_name,
-                namespace=self.namespace,
-                body=delete_options,
-                grace_period_seconds=0
+            self.extension_api.delete_namespaced_ingress,
+            name=safe_name,
+            namespace=self.namespace,
+            body=delete_options,
+            grace_period_seconds=0
         )
 
         # This seems like cleanest way to parallelize all three of these while
@@ -240,13 +236,12 @@ class KubeIngressProxy(Proxy):
         # explicitly ourselves as well. In the future, we can probably try a
         # foreground cascading deletion (https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/#foreground-cascading-deletion)
         # instead, but for now this works well enough.
-        yield self.delete_if_exists('endpoint', safe_name, delete_endpoint)
-        yield self.delete_if_exists('service', safe_name, delete_service)
-        yield self.delete_if_exists('ingress', safe_name, delete_ingress)
+        await self.delete_if_exists('endpoint', safe_name, delete_endpoint)
+        await self.delete_if_exists('service', safe_name, delete_service)
+        await self.delete_if_exists('ingress', safe_name, delete_ingress)
 
 
-    @gen.coroutine
-    def get_all_routes(self):
+    async def get_all_routes(self):
         # copy everything, because iterating over this directly is not threadsafe
         # FIXME: is this performance intensive? It could be! Measure?
         # FIXME: Validate that this shallow copy *is* thread safe
