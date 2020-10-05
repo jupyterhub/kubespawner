@@ -2,13 +2,32 @@
 
 <!-- PR link template: - [#](https://github.com/jupyterhub/kubespawner/pull/) ([@](https://github.com/)) -->
 
+## [0.14]
+
+### [0.14.0] - 2020-10-05
+
+#### Enhancements made
+* Allow image_pull_secrets config to be specified the k8s native way [#442](https://github.com/jupyterhub/kubespawner/pull/442) ([@consideRatio](https://github.com/consideRatio))
+
+#### Bugs fixed
+* Access containerStatuses key with get() [#441](https://github.com/jupyterhub/kubespawner/pull/441) ([@rmoe](https://github.com/rmoe))
+* Allow pod to spawn if the PVC specified already exists [#438](https://github.com/jupyterhub/kubespawner/pull/438) ([@gravenimage](https://github.com/gravenimage))
+* Add timeout and retry to create_namespaced_pod [#433](https://github.com/jupyterhub/kubespawner/pull/433) ([@gravenimage](https://github.com/gravenimage))
+* Fix KubeIngressProxy.get_all_routes for 0.13 [#430](https://github.com/jupyterhub/kubespawner/pull/430) ([@remche](https://github.com/remche))
+
+#### Maintenance and upkeep improvements
+* Manage regexp syntax deprecation [#445](https://github.com/jupyterhub/kubespawner/pull/445) ([@consideRatio](https://github.com/consideRatio))
+* Python 3.6+ migration: async in 3.5 and async with yeild in 3.6 [#444](https://github.com/jupyterhub/kubespawner/pull/444) ([@consideRatio](https://github.com/consideRatio))
+* Add an explicit dependency on urllib3 [#437](https://github.com/jupyterhub/kubespawner/pull/437) ([@yuvipanda](https://github.com/yuvipanda))
+* Delete remnant now unused parts in spawner.py [#382](https://github.com/jupyterhub/kubespawner/pull/382) ([@bitnik](https://github.com/bitnik))
+
 ## [0.13]
 
 ### [0.13.0] - 2020-09-XX
 
 Noteworthy for this release are: performance improvements, Kubernetes native environment variable specification, the possibility to run multiple JupyterHub's in the same namespace.
 
-### Breaking changes
+#### Breaking changes
 
 The following changes probably won't break typical usage of KubeSpawner, but could for example break logic to customized the progress page JupyerHub displays while spawning a Kubernetes pod for the user.
 
