@@ -92,7 +92,7 @@ jobs:
       env: KUBE_PY=12 KUBE_VERSION=1.16.15 JUPYTERHUB_MASTER=TRUE
 
     - name: client:12,k8s:1.19
-      env: KUBE_PY=12 KUBE_VERSION=1.19.3
+      env: KUBE_PY=12 KUBE_VERSION=1.19.2
 
     # Allowed failure tests:
     # ----------------------
@@ -101,7 +101,7 @@ jobs:
     #    python dependencies
     - &allowed_failure_1
       name: client:pre-release,k8s:1.17 - allowed failure
-      env: PRE_RELEASES=TRUE KUBE_VERSION=1.17.13
+      env: PRE_RELEASES=TRUE KUBE_VERSION=1.17.12
 
     # 2. Test with a nightly python build using latest known
     #    supported configuration.
