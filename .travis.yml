@@ -10,6 +10,15 @@ stages:
   - name: publish
     if: tag IS present
 
+before_install:
+  # Exit immediately if a command exits with a non-zero status.
+  - set -e
+  # Minikube sais conntrack is required by k8s 1.18 and 1.19
+  - |
+      if [ "${KUBE_VERSION:2:2}" -ge "18" ]; then
+        sudo apt-get -q -y install conntrack;
+      fi
+
 # install dependencies
 install:
   # Only add the --pre flag if $PRE_RELEASES is specified to test pre-releases
@@ -28,6 +37,7 @@ install:
 
 # run tests
 script:
+  - set -e
   # flake8 runs a very quick code analysis
   # without running any of the code it analyses
   - flake8 kubespawner
@@ -56,48 +66,47 @@ jobs:
     # version along for the kubernetes-client.
     #
     # KUBE_PY represent the version of kubernetes-client/python, and client
-    # version 8 supports k8s API version 1.12, and version 9 supports k8s API
-    # version 1.13 and so on.
+    # version 10 supports k8s API version 1.14, and version 1 supports k8s API
+    # version 1.15 and so on.
+    #
+    # client 10 -> k8s 1.14.10
+    # client 11 -> k8s 1.15.12
+    # client 12 -> k8s 1.16.15
+    # client 13 -> k8s 1.17.13 (client 13 isn't released)
+    #
+    # For the latest k8s versions, see:
+    # https://github.com/kubernetes/sig-release/blob/master/releases/patch-releases.md
 
-    - name: client:9,k8s:1.13
-      env: KUBE_PY=9 KUBE_VERSION=1.13.12
-      dist: xenial
-      # NOTE: TravisCI's linux kernel, has since 2020 or so, when specifying
-      #       bionic as a distribution, made minikube fail to start a k8s 1.13
-      #       cluster. This is why we use xenial here.
-      # Reference - a build failure with bionic:
-      #       https://travis-ci.org/jupyterhub/kubespawner/jobs/642305915
+    - name: client:10,k8s:1.14,py:38
+      env: KUBE_PY=10 KUBE_VERSION=1.14.10
 
-    - name: client:10,k8s:1.14,py:37
-      env: KUBE_PY=10 KUBE_VERSION=1.14.0
+    - name: client:11,k8s:1.15,py:37
+      env: KUBE_PY=11 KUBE_VERSION=1.15.12
       python: 3.7
 
-    - name: client:11,k8s:1.15,py:36
-      env: &latest_supported KUBE_PY=11 KUBE_VERSION=1.15.12
+    - name: client:12,k8s:1.16,py:36
+      env: &latest_supported KUBE_PY=12 KUBE_VERSION=1.16.15
       python: 3.6
 
-    - name: client:11,k8s:1.15,jupyterhub:master
-      env: KUBE_PY=11 KUBE_VERSION=1.15.12 JUPYTERHUB_MASTER=TRUE
-      
-    - name: client:11,k8s:1.18
-      env: KUBE_PY=11 KUBE_VERSION=1.18.6
-      before_install:
-        # This is required by k8s 1.18 according to minikube error message
-        # trying to install k8s 1.18 without it.
-        - sudo apt-get -q -y install conntrack
+    - name: client:12,k8s:1.16,jupyterhub:master
+      env: KUBE_PY=12 KUBE_VERSION=1.16.15 JUPYTERHUB_MASTER=TRUE
+
+    - name: client:12,k8s:1.19
+      env: KUBE_PY=12 KUBE_VERSION=1.19.2
+
     # Allowed failure tests:
     # ----------------------
 
     # 1. Test with pre-releases of kubernetes-client/python and other
     #    python dependencies
     - &allowed_failure_1
-      name: client:pre-release,k8s:1.16 - allowed failure
-      env: PRE_RELEASES=TRUE KUBE_VERSION=1.16.13
+      name: client:pre-release,k8s:1.17 - allowed failure
+      env: PRE_RELEASES=TRUE KUBE_VERSION=1.17.12
 
     # 2. Test with a nightly python build using latest known
     #    supported configuration.
     - &allowed_failure_2
-      name: client:11,k8s:1.15,python:nightly - allowed failure
+      name: client:12,k8s:1.16,python:nightly - allowed failure
       python: nightly
       env: *latest_supported
 
