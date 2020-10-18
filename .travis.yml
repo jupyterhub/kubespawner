@@ -10,6 +10,15 @@ stages:
   - name: publish
     if: tag IS present
 
+before_install:
+  # Exit immediately if a command exits with a non-zero status.
+  - set -e
+  # Minikube sais conntrack is required by k8s 1.18 and 1.19
+  - |
+      if [ "${KUBE_VERSION:2:2}" -ge "18" ]; then
+        sudo apt-get -q -y install conntrack;
+      fi
+
 # install dependencies
 install:
   # Only add the --pre flag if $PRE_RELEASES is specified to test pre-releases
@@ -28,6 +37,7 @@ install:
 
 # run tests
 script:
+  - set -e
   # flake8 runs a very quick code analysis
   # without running any of the code it analyses
   - flake8 kubespawner
@@ -80,14 +90,10 @@ jobs:
 
     - name: client:12,k8s:1.16,jupyterhub:master
       env: KUBE_PY=12 KUBE_VERSION=1.16.15 JUPYTERHUB_MASTER=TRUE
-      
+
     - name: client:12,k8s:1.19
       env: KUBE_PY=12 KUBE_VERSION=1.19.3
-      before_install:
-        # This is required by k8s 1.18 according to minikube error message
-        # trying to install k8s 1.18 without it, assumed needed for k8s 1.19 as
-        # well.
-        - sudo apt-get -q -y install conntrack
+
     # Allowed failure tests:
     # ----------------------
 
