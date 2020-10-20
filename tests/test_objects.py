@@ -433,7 +433,7 @@ def test_run_privileged_container():
         "apiVersion": "v1"
     }
 
-def test_run_allow_privilege_escalation_container():
+def test_allow_privilege_escalation_container():
     """
     Test specification of the container to run without privilege escalation (AllowPrivilegeEscalation=False).
     """
@@ -442,7 +442,7 @@ def test_run_allow_privilege_escalation_container():
         image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
-        run_allow_privilege_escalation=False,
+        allow_privilege_escalation=False,
         image_pull_policy='IfNotPresent'
     )) == {
         "metadata": {

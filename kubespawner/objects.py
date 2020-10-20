@@ -35,7 +35,7 @@ def make_pod(
     fs_gid=None,
     supplemental_gids=None,
     run_privileged=False,
-    run_allow_privilege_escalation=True,
+    allow_privilege_escalation=True,
     env=None,
     working_dir=None,
     volumes=None,
@@ -118,7 +118,7 @@ def make_pod(
         to, as group writable.
     run_privileged:
         Whether the container should be run in privileged mode.
-    run_allow_privilege_escalation:
+    allow_privilege_escalation:
         Controls whether a process can gain more privileges than its parent process.
     env:
         Dictionary of environment variables.
@@ -280,7 +280,7 @@ def make_pod(
         container_security_context.run_as_group = int(run_as_gid)
     if run_privileged:
         container_security_context.privileged = True
-    if not run_allow_privilege_escalation:
+    if not allow_privilege_escalation:
         container_security_context.allow_privilege_escalation = False
     # Only clutter container spec with actual content
     if all([e is None for e in container_security_context.to_dict().values()]):
