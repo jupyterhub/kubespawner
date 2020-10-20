@@ -280,6 +280,8 @@ def make_pod(
         container_security_context.run_as_group = int(run_as_gid)
     if run_privileged:
         container_security_context.privileged = True
+    if allow_privilege_escalation:
+        container_security_context.allow_privilege_escalation = True
     if not allow_privilege_escalation:
         container_security_context.allow_privilege_escalation = False
     # Only clutter container spec with actual content
