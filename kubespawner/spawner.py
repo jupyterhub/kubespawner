@@ -679,6 +679,20 @@ class KubeSpawner(Spawner):
         """
     )
 
+    allow_privilege_escalation = Bool(
+        True,
+        config=True,
+        help="""
+        Controls whether a process can gain more privileges than its parent process.
+        
+        This bool directly controls whether the no_new_privs flag gets set on the container 
+        process.
+
+        AllowPrivilegeEscalation is true always when the container is: 
+        1) run as Privileged OR 2) has CAP_SYS_ADMIN.
+        """
+    )
+
     modify_pod_hook = Callable(
         None,
         allow_none=True,
@@ -1276,6 +1290,7 @@ class KubeSpawner(Spawner):
         "singleuser_fs_gid",
         "singleuser_supplemental_gids",
         "singleuser_privileged",
+        "singleuser_allow_privilege_escalation"
         "singleuser_lifecycle_hooks",
         "singleuser_extra_pod_config",
         "singleuser_init_containers",
@@ -1482,6 +1497,7 @@ class KubeSpawner(Spawner):
             fs_gid=fs_gid,
             supplemental_gids=supplemental_gids,
             run_privileged=self.privileged,
+            run_allow_privilege_escalation=self.allow_privilege_escalation
             env=self.get_env(),
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),
