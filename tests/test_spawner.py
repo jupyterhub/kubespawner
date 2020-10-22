@@ -330,3 +330,21 @@ def test_pod_name_collision():
     assert spawner.pod_name != named_spawner.pod_name
     assert named_spawner.pvc_name == "claim-user-2dhas--2ddash"
     assert spawner.pvc_name != named_spawner.pvc_name
+
+
+def test_spawner_can_use_list_of_image_pull_secrets():
+    secrets = ["ecr", "regcred", "artifactory"]
+
+    c = Config()
+    c.KubeSpawner.image_spec = "private.docker.registry/jupyter:1.2.3"
+    c.KubeSpawner.image_pull_secrets = secrets
+    spawner = KubeSpawner(hub=Hub(), config=c, _mock=True)
+    assert spawner.image_pull_secrets == secrets
+
+    secrets = [dict(name=secret) for secret in secrets]
+    c = Config()
+    c.KubeSpawner.image_spec = "private.docker.registry/jupyter:1.2.3"
+    c.KubeSpawner.image_pull_secrets = secrets
+    spawner = KubeSpawner(hub=Hub(), config=c, _mock=True)
+    assert spawner.image_pull_secrets == secrets
+

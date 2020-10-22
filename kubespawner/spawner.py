@@ -547,6 +547,8 @@ class KubeSpawner(Spawner):
             )
             return [{"name": proposal['value']}]
 
+        return proposal['value']
+
     node_selector = Dict(
         config=True,
         help="""
