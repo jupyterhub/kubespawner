@@ -2035,7 +2035,8 @@ class KubeSpawner(Spawner):
         else:
             return self._render_options_form(self.profile_list)
 
-    def options_from_form(self, formdata):
+    @default('options_from_form')
+    def _options_from_form(self, formdata):
         """get the option selected by the user on the form
 
         This only constructs the user_options dict,
