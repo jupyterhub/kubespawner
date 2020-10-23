@@ -4,6 +4,19 @@
 
 ## [0.14]
 
+### [0.14.1] - 2020-10-23
+
+#### Bugs fixed
+* KubeSpawner.image_pull_secrets malfunctions in 0.14.0 - this fixes it [#451](https://github.com/jupyterhub/kubespawner/pull/451) ([@johnhoman](https://github.com/johnhoman))
+
+#### Maintenance and upkeep improvements
+* CI: bump to kubernetes client v12, and test k8s 1.19 also [#449](https://github.com/jupyterhub/kubespawner/pull/449) ([@consideRatio](https://github.com/consideRatio))
+
+## Contributors to this release
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2020-10-05&to=2020-10-23&type=c))
+
+[@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2020-10-05..2020-10-23&type=Issues) | [@johnhoman](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajohnhoman+updated%3A2020-10-05..2020-10-23&type=Issues) | [@rkdarst](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Arkdarst+updated%3A2020-10-05..2020-10-23&type=Issues) | [@welcome](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Awelcome+updated%3A2020-10-05..2020-10-23&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2020-10-05..2020-10-23&type=Issues)
+
 ### [0.14.0] - 2020-10-05
 
 #### Enhancements made
