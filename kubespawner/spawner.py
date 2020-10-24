@@ -567,6 +567,7 @@ class KubeSpawner(Spawner):
             Integer(),
             Callable(),
         ],
+        default_value=None,
         allow_none=True,
         config=True,
         help="""
@@ -592,6 +593,7 @@ class KubeSpawner(Spawner):
             Integer(),
             Callable(),
         ],
+        default_value=None,
         allow_none=True,
         config=True,
         help="""
@@ -617,6 +619,7 @@ class KubeSpawner(Spawner):
             Integer(),
             Callable(),
         ],
+        default_value=None,
         allow_none=True,
         config=True,
         help="""
