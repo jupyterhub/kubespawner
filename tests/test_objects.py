@@ -433,6 +433,54 @@ def test_run_privileged_container():
         "apiVersion": "v1"
     }
 
+def test_allow_privilege_escalation_container():
+    """
+    Test specification of the container to run without privilege escalation (AllowPrivilegeEscalation=False).
+    """
+    assert api_client.sanitize_for_serialization(make_pod(
+        name='test',
+        image='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        allow_privilege_escalation=False,
+        image_pull_policy='IfNotPresent'
+    )) == {
+        "metadata": {
+            "name": "test",
+            "annotations": {},
+            "labels": {},
+        },
+        "spec": {
+            'automountServiceAccountToken': False,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{
+                        "name": "notebook-port",
+                        "containerPort": 8888
+                    }],
+                    "resources": {
+                        "limits": {},
+                        "requests": {}
+                    },
+                    "securityContext": {
+                        "allowPrivilegeEscalation": False
+                    },
+                    'volumeMounts': [],
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1"
+    }
+
+
 def test_make_pod_resources_all():
     """
     Test specifying all possible resource limits & guarantees
