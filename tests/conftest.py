@@ -25,7 +25,6 @@ def config(kube_ns):
     """
     cfg = Config()
     cfg.KubeSpawner.namespace = kube_ns
-    cfg.KubeSpawner.start_timeout = 120
     return cfg
 
 
