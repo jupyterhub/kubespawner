@@ -1133,13 +1133,6 @@ class KubeSpawner(Spawner):
 
     profile_form_template = Unicode(
         """
-        <script>
-        // JupyterHub 0.8 applied form-control indisciminately to all form elements.
-        // Can be removed once we stop supporting JupyterHub 0.8
-        $(document).ready(function() {
-            $('#kubespawner-profiles-list input[type="radio"]').removeClass('form-control');
-        });
-        </script>
         <style>
         /* The profile description should not be bold, even though it is inside the <label> tag */
         #kubespawner-profiles-list label p {
