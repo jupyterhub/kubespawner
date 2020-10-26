@@ -388,6 +388,18 @@ class KubeSpawner(Spawner):
                 return f.read().strip()
         return 'default'
 
+    services_enabled = Bool(
+        False,
+        config=True,
+        help="""
+        Enable fronting the user pods with a kubernetes service.
+
+        This is useful in cases when network rules don't allow direct traffic
+        routing to pods in a cluster. Should be enabled when using jupyterhub
+        with a service mesh like istio with mTLS enabled.
+        """
+    )
+
     ip = Unicode(
         '0.0.0.0',
         config=True,
@@ -1800,6 +1812,9 @@ class KubeSpawner(Spawner):
         if getattr(self, "internal_ssl", False):
             proto = "https"
             hostname = self.dns_name
+        elif getattr(self, "services_enabled", False):
+            proto = "http"
+            hostname = self.dns_name
         else:
             proto = "http"
             hostname = pod["status"]["podIP"]
@@ -2511,7 +2526,7 @@ class KubeSpawner(Spawner):
             timeout=self.k8s_api_request_retry_timeout,
         )
 
-        if self.internal_ssl:
+        if self.internal_ssl or self.services_enabled:
             try:
                 # wait for pod to have uid,
                 # required for creating owner reference
@@ -2527,20 +2542,21 @@ class KubeSpawner(Spawner):
                     self.pod_name, pod["metadata"]["uid"]
                 )
 
-                # internal ssl, create secret object
-                secret_manifest = self.get_secret_manifest(owner_reference)
-                await exponential_backoff(
-                    partial(
-                        self._ensure_not_exists, "secret", secret_manifest.metadata.name
-                    ),
-                    f"Failed to delete secret {secret_manifest.metadata.name}",
-                )
-                await exponential_backoff(
-                    partial(
-                        self._make_create_resource_request, "secret", secret_manifest
-                    ),
-                    f"Failed to create secret {secret_manifest.metadata.name}",
-                )
+                if self.internal_ssl:
+                    # internal ssl, create secret object
+                    secret_manifest = self.get_secret_manifest(owner_reference)
+                    await exponential_backoff(
+                        partial(
+                            self._ensure_not_exists, "secret", secret_manifest.metadata.name
+                        ),
+                        f"Failed to delete secret {secret_manifest.metadata.name}",
+                    )
+                    await exponential_backoff(
+                        partial(
+                            self._make_create_resource_request, "secret", secret_manifest
+                        ),
+                        f"Failed to create secret {secret_manifest.metadata.name}",
+                    )
 
                 service_manifest = self.get_service_manifest(owner_reference)
                 await exponential_backoff(
