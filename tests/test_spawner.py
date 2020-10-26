@@ -73,6 +73,7 @@ def test_spawner_values():
     def set_id(spawner):
         return 1
 
+    assert spawner.uid == None
     spawner.uid = 10
     assert spawner.uid == 10
     spawner.uid = set_id
@@ -80,6 +81,7 @@ def test_spawner_values():
     spawner.uid = None
     assert spawner.uid == None
 
+    assert spawner.gid == None
     spawner.gid = 20
     assert spawner.gid == 20
     spawner.gid = set_id
@@ -87,6 +89,7 @@ def test_spawner_values():
     spawner.gid = None
     assert spawner.gid == None
 
+    assert spawner.fs_gid == None
     spawner.fs_gid = 30
     assert spawner.fs_gid == 30
     spawner.fs_gid = set_id

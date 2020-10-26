@@ -244,8 +244,8 @@ def test_set_container_uid_and_gid():
         image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
         port=8888,
-        run_as_uid=1000,
-        run_as_gid=2000,
+        run_as_uid=0,
+        run_as_gid=0,
         image_pull_policy='IfNotPresent'
     )) == {
         "metadata": {
@@ -258,8 +258,8 @@ def test_set_container_uid_and_gid():
             "containers": [
                 {
                     "securityContext": {
-                        "runAsUser": 1000,
-                        "runAsGroup": 2000
+                        "runAsUser": 0,
+                        "runAsGroup": 0
                     },
                     "env": [],
                     "name": "notebook",
@@ -294,7 +294,7 @@ def test_set_container_uid_and_pod_fs_gid():
         cmd=['jupyterhub-singleuser'],
         port=8888,
         run_as_uid=1000,
-        fs_gid=1000,
+        fs_gid=0,
         image_pull_policy='IfNotPresent'
     )) == {
         "metadata": {
@@ -327,7 +327,7 @@ def test_set_container_uid_and_pod_fs_gid():
             ],
             'restartPolicy': 'OnFailure',
             'securityContext': {
-                'fsGroup': 1000,
+                'fsGroup': 0,
             },
             'volumes': [],
         },
