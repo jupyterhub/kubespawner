@@ -1,10 +1,14 @@
 """
 Test functions used to create k8s objects
 """
+from kubespawner.objects import (make_pod,
+                                 make_pvc,
+                                 make_ingress,
+                                 make_namespace)
 from kubernetes.client import ApiClient
-from kubespawner.objects import make_ingress, make_pod, make_pvc
 
 api_client = ApiClient()
+
 
 def test_make_simplest_pod():
     """
@@ -48,6 +52,7 @@ def test_make_simplest_pod():
         "kind": "Pod",
         "apiVersion": "v1"
     }
+
 
 def test_make_labeled_pod():
     """
@@ -93,6 +98,7 @@ def test_make_labeled_pod():
         "apiVersion": "v1"
     }
 
+
 def test_make_annotated_pod():
     """
     Test specification of the simplest possible pod specification with annotations
@@ -136,6 +142,7 @@ def test_make_annotated_pod():
         "kind": "Pod",
         "apiVersion": "v1"
     }
+
 
 def test_make_pod_with_image_pull_secrets_simplified_format():
     """
@@ -196,7 +203,8 @@ def test_make_pod_with_image_pull_secrets_k8s_native_format():
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
-        image_pull_secrets=[{"name": "k8s-secret-a"}, {"name": "k8s-secret-b"}],
+        image_pull_secrets=[{"name": "k8s-secret-a"},
+                            {"name": "k8s-secret-b"}],
     )) == {
         "metadata": {
             "name": "test",
@@ -284,6 +292,7 @@ def test_set_container_uid_and_gid():
         "apiVersion": "v1"
     }
 
+
 def test_set_container_uid_and_pod_fs_gid():
     """
     Test specification of the simplest possible pod specification
@@ -334,6 +343,7 @@ def test_set_container_uid_and_pod_fs_gid():
         "kind": "Pod",
         "apiVersion": "v1"
     }
+
 
 def test_set_pod_supplemental_gids():
     """
@@ -386,6 +396,7 @@ def test_set_pod_supplemental_gids():
         "apiVersion": "v1"
     }
 
+
 def test_run_privileged_container():
     """
     Test specification of the container to run as privileged
@@ -432,6 +443,7 @@ def test_run_privileged_container():
         "kind": "Pod",
         "apiVersion": "v1"
     }
+
 
 def test_allow_privilege_escalation_container():
     """
@@ -625,6 +637,7 @@ def test_make_pod_with_env():
         "apiVersion": "v1"
     }
 
+
 def test_make_pod_with_lifecycle():
     """
     Test specification of a pod with lifecycle
@@ -817,6 +830,7 @@ def test_make_pod_with_extra_container_config():
         "apiVersion": "v1"
     }
 
+
 def test_make_pod_with_extra_pod_config():
     """
     Test specification of a pod with initContainers
@@ -942,6 +956,7 @@ def test_make_pod_with_extra_containers():
         "apiVersion": "v1"
     }
 
+
 def test_make_pod_with_extra_resources():
     """
     Test specification of extra resources (like GPUs)
@@ -951,7 +966,8 @@ def test_make_pod_with_extra_resources():
         image='jupyter/singleuser:latest',
         cpu_limit=2,
         cpu_guarantee=1,
-        extra_resource_limits={"nvidia.com/gpu": "5", "k8s.io/new-resource": "1"},
+        extra_resource_limits={
+            "nvidia.com/gpu": "5", "k8s.io/new-resource": "1"},
         extra_resource_guarantees={"nvidia.com/gpu": "3"},
         cmd=['jupyterhub-singleuser'],
         port=8888,
@@ -1001,6 +1017,7 @@ def test_make_pod_with_extra_resources():
         "kind": "Pod",
         "apiVersion": "v1"
     }
+
 
 def test_make_pvc_simple():
     """
@@ -1073,7 +1090,7 @@ def test_make_resources_all():
         name='test',
         storage_class='gce-standard-storage',
         access_modes=['ReadWriteOnce'],
-        selector={'matchLabels':{'content': 'jupyter'}},
+        selector={'matchLabels': {'content': 'jupyter'}},
         storage='10Gi',
         labels={'key': 'value'}
     )) == {
@@ -1665,11 +1682,12 @@ def test_make_pod_with_priority_class_name():
         "apiVersion": "v1"
     }
 
+
 def test_make_ingress():
     """
     Test specification of the ingress objects
     """
-    labels={
+    labels = {
         'heritage': 'jupyterhub',
         'component': 'singleuser-server',
         'hub.jupyter.org/proxy-route': 'true'
@@ -1697,8 +1715,8 @@ def test_make_ingress():
         },
         'subsets': [
             {'addresses': [{'ip': '192.168.1.10'}
-        ],
-        'ports': [{'port': 9000}]}]
+                           ],
+             'ports': [{'port': 9000}]}]
     }
 
     assert service == {
@@ -1720,7 +1738,7 @@ def test_make_ingress():
             'type': 'ClusterIP'
         }
     }
-    assert ingress ==  {
+    assert ingress == {
         'kind': 'Ingress',
         'metadata': {
             'annotations': {
@@ -1743,9 +1761,9 @@ def test_make_ingress():
                             'path': '/my-path'
                         }
                     ]}
-                }]
-            }
+                 }]
         }
+
 
 def test_make_pod_with_ssl():
     """
@@ -1817,4 +1835,24 @@ def test_make_pod_with_ssl():
         },
         "kind": "Pod",
         "apiVersion": "v1",
+    }
+
+
+def test_make_namespace():
+    labels = {
+        'heritage': 'jupyterhub',
+        'component': 'singleuser-server',
+    }
+    namespace = api_client.sanitize_for_serialization(make_namespace(
+        name='test-namespace',
+        labels=labels))
+    assert namespace == {
+        'metadata': {
+            'annotations': {},
+            'labels': {
+                'component': 'singleuser-server',
+                'heritage': 'jupyterhub',
+            },
+            'name': 'test-namespace',
+        },
     }
