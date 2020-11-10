@@ -42,11 +42,15 @@ from kubernetes.client.models import (
     V1ServicePort,
     V1ServiceSpec,
     V1Toleration,
+    V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec,
+    V1Endpoints, V1EndpointSubset, V1EndpointAddress, V1EndpointPort,
+    V1Service, V1ServiceSpec, V1ServicePort,
     V1Affinity,
     V1NodeAffinity, V1NodeSelector, V1NodeSelectorTerm, V1PreferredSchedulingTerm, V1NodeSelectorRequirement,
     V1PodAffinity, V1PodAntiAffinity, V1WeightedPodAffinityTerm, V1PodAffinityTerm,
 )
 from kubespawner.utils import get_k8s_model, update_k8s_model
+
 
 
 
@@ -924,4 +928,17 @@ def make_service(
     )
 
     return service
+
+def make_namespace(name, labels=None, annotations=None):
+    """
+    Make a k8s namespace specification for a user pod.
+    """
+
+    metadata =  V1ObjectMeta(
+        name=name,
+        labels=(labels or {}).copy(),
+        annotations=(annotations or {}).copy()
+    )
+
+    return V1Namespace(metadata=metadata)
 

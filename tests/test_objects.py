@@ -1927,3 +1927,23 @@ def test_make_pod_with_ssl():
         "kind": "Pod",
         "apiVersion": "v1",
     }
+
+
+def test_make_namespace():
+    labels = {
+        'heritage': 'jupyterhub',
+        'component': 'singleuser-server',
+    }
+    namespace = api_client.sanitize_for_serialization(make_namespace(
+        name='test-namespace',
+        labels=labels))
+    assert namespace == {
+        'metadata': {
+            'annotations': {},
+            'labels': {
+                'component': 'singleuser-server',
+                'heritage': 'jupyterhub',
+            },
+            'name': 'test-namespace',
+        },
+    }

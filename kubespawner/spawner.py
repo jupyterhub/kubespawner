@@ -30,6 +30,8 @@ from jupyterhub.utils import exponential_backoff
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from slugify import slugify
+
+from .clients import shared_client
 from traitlets import (
     Bool,
     Dict,
@@ -42,11 +44,11 @@ from traitlets import (
     validate,
 )
 
-from .clients import shared_client
 from .objects import make_owner_reference, make_pod, make_pvc, make_secret, make_service, make_namespace
 from .reflector import NamespacedResourceReflector, MultiNamespaceResourceReflector
-
 from .traitlets import Callable
+
+
 
 
 
