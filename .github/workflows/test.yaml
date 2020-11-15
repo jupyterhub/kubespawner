@@ -35,40 +35,38 @@ jobs:
         # specified below, these parameters have no meaning on their own and
         # gain meaning on how job steps use them.
         #
-        # k3s:                https://github.com/kubernetes/kubernetes/tags
+        # k3s:                https://github.com/rancher/k3s/tags
         # k8s-python-client:  https://github.com/kubernetes-client/python#compatibility
         #
         include:
-          # Test k8s-python-client 9 (k8s 1.14)
+          # Test k8s-python-client 9 (supports k8s 1.13)
           - python: 3.6
-            k8s: 1.13.12
+            k3s: v1.16.15+k3s1
             k8s-python-client: 9
-          # Test k8s-python-client 10 (k8s 1.15)
+          # Test k8s-python-client 10 (supports k8s 1.14)
           - python: 3.7
-            k8s: 1.14.10
+            k3s: v1.16.15+k3s1
             k8s-python-client: 10
-          # Test k8s-python-client 11 (k8s 1.15)
+          # Test k8s-python-client 11 (supports k8s 1.15)
           - python: 3.8
-            k8s: 1.15.12
+            k3s: v1.16.15+k3s1
             k8s-python-client: 11
-          # Test k8s-python-client 12 (k8s 1.16)
+          # Test k8s-python-client 12 (supports k8s 1.16)
           - python: 3.9
-            k8s: 1.16.15
+            k3s: v1.16.15+k3s1
             k8s-python-client: 12
           # Try with latest k8s
-          - name: latest_k8s
-            python: 3.8
-            k8s: 1.19.3
+          - python: 3.8
+            k3s: v1.19.3+k3s2
             k8s-python-client: 12
           # Try with JupyterHub's current state in git
           - python: 3.8
-            k8s: 1.16.15
+            k3s: v1.16.15+k3s1
             k8s-python-client: 12
             jupyterhub: master
-
-          # Test k8s-python-client etc. in pre-release (k8s 1.17)
+          # Test k8s-python-client etc. in pre-release (supports k8s 1.17)
           - python: 3.9
-            k8s: 1.17.14
+            k3s: v1.17.13+k3s2
             k8s-python-client: pre
 
     steps:
@@ -103,13 +101,18 @@ jobs:
         run: |
           flake8 kubespawner
 
-      # install kubectl, minikube and start minikube
-      - name: Setup k8s
-        env:
-          K8S_VERSION: ${{ matrix.k8s }}
-        run: |
-          source ci/minikube.env
-          ./ci/install-kube.sh
+      # Starts a k8s cluster with NetworkPolicy enforcement and installs both
+      # kubectl and helm. We won't need network policy enforcement or helm
+      # though.
+      #
+      # ref: https://github.com/manics/action-k3s-helm/
+      - uses: manics/action-k3s-helm@v0.2.1
+        with:
+          k3s-version: ${{ matrix.k3s }}
+          helm-version: v3.4.1
+          metrics-enabled: false
+          traefik-enabled: false
+          docker-enabled: false
 
       - name: Run pytest
         run: |
