@@ -483,6 +483,37 @@ def make_pvc(
 
     return pvc
 
+def make_service(
+    name,
+    port,
+    labels=None,
+    annotations=None,
+):
+    """
+    Make a k8s service specification for fronting the pod running a user notebook.
+
+    Parameters
+    ----------
+    name:
+        Name of the service. Must be a valid DNS label.
+    port:
+        The port to which the service binds.
+    labels:
+        Labels to add to the spawned service.
+    annotations:
+        Annotations to add to the spawned service.
+
+    """
+    return V1Service(
+            kind='Service',
+            metadata=V1ObjectMeta(name=name, labels=labels, annotations=annotations),
+            spec=V1ServiceSpec(
+                type='ClusterIP',
+                selector={'hub.jupyter.org/server-name': name},
+                ports=[V1ServicePort(port=port, target_port=port)]
+            )
+        )
+
 def make_ingress(
         name,
         routespec,
