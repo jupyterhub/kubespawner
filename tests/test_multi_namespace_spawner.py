@@ -62,27 +62,32 @@ async def test_multi_namespace_spawn():
 
     # the spawner will create the namespace on its own.
 
-    # start the spawner
-    await spawner.start()
+    # Wrap in a try block so we clean up the namespace.
 
-    # verify the pod exists
-    pods = client.list_namespaced_pod(kube_ns).items
-    pod_names = [p.metadata.name for p in pods]
-    assert "jupyter-%s" % spawner.user.name in pod_names
-    # verify poll while running
-    status = await spawner.poll()
-    assert status is None
-    # stop the pod
-    await spawner.stop()
+    saved_exception = None
+    try:
+        # start the spawner
+        await spawner.start()
 
-    # verify pod is gone
-    pods = client.list_namespaced_pod(kube_ns).items
-    pod_names = [p.metadata.name for p in pods]
-    assert "jupyter-%s" % spawner.user.name not in pod_names
-
-    # verify exit status
-    status = await spawner.poll()
-    assert isinstance(status, int)
-
+        # verify the pod exists
+        pods = client.list_namespaced_pod(kube_ns).items
+        pod_names = [p.metadata.name for p in pods]
+        assert "jupyter-%s" % spawner.user.name in pod_names
+        # verify poll while running
+        status = await spawner.poll()
+        assert status is None
+        # stop the pod
+        await spawner.stop()
+        # verify pod is gone
+        pods = client.list_namespaced_pod(kube_ns).items
+        pod_names = [p.metadata.name for p in pods]
+        assert "jupyter-%s" % spawner.user.name not in pod_names
+        # verify exit status
+        status = await spawner.poll()
+        assert isinstance(status, int)
+    except Exception as saved_exception:
+        pass  # We will raise after namespace removal
     # remove namespace
     client.delete_namespace(kube_ns, body={})
+    if saved_exception is not None:
+        raise saved_exception
