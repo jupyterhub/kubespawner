@@ -1274,6 +1274,17 @@ class KubeSpawner(Spawner):
         """
     )
 
+    extra_env = Dict(
+        config=True,
+        help="""
+        Extra environment variables to set on the single-user server containers.
+
+        The keys and values must both be strings.
+
+        `{username}` is expanded to the escaped, dns-label safe username.
+        """,
+    )
+
     # deprecate redundant and inconsistent singleuser_ and user_ prefixes:
     _deprecated_traits_09 = [
         "singleuser_working_dir",
@@ -1588,6 +1599,8 @@ class KubeSpawner(Spawner):
         # deprecate image
         env['JUPYTER_IMAGE_SPEC'] = self.image
         env['JUPYTER_IMAGE'] = self.image
+
+        env.update(self._expand_all(self.extra_env))
 
         return env
 
