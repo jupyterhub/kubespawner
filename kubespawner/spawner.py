@@ -1975,6 +1975,7 @@ class KubeSpawner(Spawner):
             )
 
         if self.pod_ip_template:
+            # Strip trailing `-` of empty server names in each domain level.
             ip = ".".join([s.rstrip("-") for s in self._expand_user_properties(self.pod_ip_template).split(".")])
         else:
             ip = pod["status"]["podIP"]
