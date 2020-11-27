@@ -24,6 +24,12 @@ class MockUser(Mock):
     def url(self):
         return self.server.url
 
+
+class MockOrmSpawner(Mock):
+    name = 'server'
+    server = None
+
+
 def test_deprecated_config():
     """Deprecated config is handled correctly"""
     with pytest.warns(DeprecationWarning):
@@ -350,4 +356,27 @@ def test_spawner_can_use_list_of_image_pull_secrets():
     c.KubeSpawner.image_pull_secrets = secrets
     spawner = KubeSpawner(hub=Hub(), config=c, _mock=True)
     assert spawner.image_pull_secrets == secrets
+
+
+@pytest.mark.asyncio
+async def test_pod_ip_template(kube_ns, kube_client, config):
+    config.KubeSpawner.pod_ip_template = "jupyter-{username}--{servername}.foo.example.com"
+
+    # w/o servername
+    spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=config)
+
+    # start the spawner
+    res = await spawner.start()
+    # verify the pod IP and port
+    assert res == ("jupyter-fake.foo.example.com", 8888)
+
+    await spawner.stop()
+
+    # w/ servername
+    spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=config, orm_spawner=MockOrmSpawner())
+
+    # start the spawner
+    res = await spawner.start()
+    # verify the pod IP and port
+    assert res == ("jupyter-fake--server.foo.example.com", 8888)
 
