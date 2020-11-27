@@ -541,14 +541,22 @@ async def test_pod_connect_ip(kube_ns, kube_client, config, hub_pod, hub):
     # w/o servername
     spawner = KubeSpawner(hub=hub, user=user, config=config)
 
+async def test_pod_ip_template(kube_ns, kube_client, config):
+    config.KubeSpawner.pod_ip_template = "jupyter-{username}--{servername}.foo.example.com"
+
+    # w/o servername
+    spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=config)
+
     # start the spawner
     res = await spawner.start()
     # verify the pod IP and port
+
     assert res == "http://jupyter-connectip.foo.example.com:8888"
 
     await spawner.stop()
 
     # w/ servername
+
     spawner = KubeSpawner(
         hub=hub,
         user=user,
@@ -559,6 +567,7 @@ async def test_pod_connect_ip(kube_ns, kube_client, config, hub_pod, hub):
     # start the spawner
     res = await spawner.start()
     # verify the pod IP and port
+
     assert res == "http://jupyter-connectip--server.foo.example.com:8888"
     await spawner.stop()
 
