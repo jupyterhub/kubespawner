@@ -1,6 +1,10 @@
 from __future__ import print_function
-from setuptools import setup, find_packages
+
+import os
 import sys
+from glob import glob
+
+from setuptools import find_packages, setup
 
 v = sys.version_info
 if v[:2] < (3, 6):
@@ -20,6 +24,7 @@ setup(
         'kubernetes>=10.1.0',
         'urllib3',
         'pyYAML',
+        'notebook>=4.0'
     ],
     python_requires='>=3.6',
     extras_require={
