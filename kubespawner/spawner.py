@@ -355,6 +355,25 @@ class KubeSpawner(Spawner):
         """
     )
 
+    pod_connect_ip = Unicode(
+        config=True,
+        help="""
+        The IP address (or hostname) of user's pods which KubeSpawner connects to.
+        If you do not specify the value, KubeSpawner will use the pod IP.
+
+        e.g. 'jupyter-{username}--{servername}.notebooks.jupyterhub.svc.cluster.local',
+
+        `{username}` is expanded to the escaped, dns-label-safe username.
+        `{servername}` is expanded to the escaped, dns-label-safe server name, if any.
+
+        Trailing `-` characters in each domain level are stripped for safe handling of empty server names (user default servers).
+
+        This must be unique within the namespace the pods are being spawned
+        in, so if you are running multiple jupyterhubs spawning in the
+        same namespace, consider setting this to be something more unique.
+        """
+    )
+
     storage_pvc_ensure = Bool(
         False,
         config=True,
@@ -1959,7 +1978,14 @@ class KubeSpawner(Spawner):
                     ]
                 ),
             )
-        return (pod["status"]["podIP"], self.port)
+
+        if self.pod_connect_ip:
+            # Strip trailing `-` of empty server names in each domain level.
+            ip = ".".join([s.rstrip("-") for s in self._expand_user_properties(self.pod_connect_ip).split(".")])
+        else:
+            ip = pod["status"]["podIP"]
+
+        return (ip, self.port)
 
     async def _make_delete_pod_request(self, pod_name, delete_options, grace_seconds, request_timeout):
         """
