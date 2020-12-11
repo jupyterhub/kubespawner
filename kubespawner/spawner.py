@@ -857,6 +857,8 @@ class KubeSpawner(Spawner):
         For example to match the Nodes that have a label of `content: jupyter` use::
 
            c.KubeSpawner.storage_selector = {'matchLabels':{'content': 'jupyter'}}
+
+        `{username}` is expanded to the escaped, dns-label safe username.
         """
     )
 
@@ -1537,11 +1539,13 @@ class KubeSpawner(Spawner):
 
         annotations = self._build_common_annotations({})
 
+        storage_selector = self._expand_all(self.storage_selector)
+
         return make_pvc(
             name=self.pvc_name,
             storage_class=self.storage_class,
             access_modes=self.storage_access_modes,
-            selector=self.storage_selector,
+            selector=storage_selector,
             storage=self.storage_capacity,
             labels=labels,
             annotations=annotations
