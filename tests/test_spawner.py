@@ -571,7 +571,6 @@ async def test_pod_ip_template(kube_ns, kube_client, config):
     assert res == "http://jupyter-connectip--server.foo.example.com:8888"
     await spawner.stop()
 
-
 def test_get_pvc_manifest():
     c = Config()
 
