@@ -359,8 +359,8 @@ def test_spawner_can_use_list_of_image_pull_secrets():
 
 
 @pytest.mark.asyncio
-async def test_pod_ip_template(kube_ns, kube_client, config):
-    config.KubeSpawner.pod_ip_template = "jupyter-{username}--{servername}.foo.example.com"
+async def test_pod_connect_ip(kube_ns, kube_client, config):
+    config.KubeSpawner.pod_connect_ip = "jupyter-{username}--{servername}.foo.example.com"
 
     # w/o servername
     spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=config)

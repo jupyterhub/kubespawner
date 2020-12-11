@@ -355,7 +355,7 @@ class KubeSpawner(Spawner):
         """
     )
 
-    pod_ip_template = Unicode(
+    pod_connect_ip = Unicode(
         config=True,
         help="""
         Template to use to form The IP address (or hostname) of user's pods.
@@ -1974,9 +1974,9 @@ class KubeSpawner(Spawner):
                 ),
             )
 
-        if self.pod_ip_template:
+        if self.pod_connect_ip:
             # Strip trailing `-` of empty server names in each domain level.
-            ip = ".".join([s.rstrip("-") for s in self._expand_user_properties(self.pod_ip_template).split(".")])
+            ip = ".".join([s.rstrip("-") for s in self._expand_user_properties(self.pod_connect_ip).split(".")])
         else:
             ip = pod["status"]["podIP"]
 
