@@ -39,14 +39,10 @@ jobs:
         # k8s-python-client:  https://github.com/kubernetes-client/python#compatibility
         #
         include:
-          # Test k8s-python-client 9 (supports k8s 1.13)
-          - python: 3.6
-            k3s: v1.16.15+k3s1
-            k8s-python-client: 9
           # Test k8s-python-client 10 (supports k8s 1.14)
           - python: 3.7
             k3s: v1.16.15+k3s1
-            k8s-python-client: 10
+            k8s-python-client: 10.1
           # Test k8s-python-client 11 (supports k8s 1.15)
           - python: 3.8
             k3s: v1.16.15+k3s1
