@@ -2,7 +2,7 @@ from asyncio import get_event_loop
 from jupyterhub.objects import Hub, Server
 from jupyterhub.orm import Spawner
 from kubernetes.client.models import (
-    V1SecurityContext, V1Container, V1Capabilities, V1Pod
+    V1SecurityContext, V1Container, V1Capabilities, V1Pod, V1PersistentVolumeClaim
 )
 from kubespawner import KubeSpawner
 from traitlets.config import Config
@@ -351,3 +351,24 @@ def test_spawner_can_use_list_of_image_pull_secrets():
     spawner = KubeSpawner(hub=Hub(), config=c, _mock=True)
     assert spawner.image_pull_secrets == secrets
 
+
+def test_get_pvc_manifest():
+    c = Config()
+
+    c.KubeSpawner.pvc_name_template = "user-{username}"
+    c.KubeSpawner.storage_extra_labels = {"user": "{username}"}
+    c.KubeSpawner.storage_selector = {"matchLabels": {"user": "{username}"}}
+
+    spawner = KubeSpawner(config=c, _mock=True)
+
+    manifest = spawner.get_pvc_manifest()
+
+    assert isinstance(manifest, V1PersistentVolumeClaim)
+    assert manifest.metadata.name == "user-mock-5fname"
+    assert manifest.metadata.labels == {
+        "user": "mock-5fname",
+        "app": "jupyterhub",
+        "component": "singleuser-storage",
+        "heritage": "jupyterhub",
+    }
+    assert manifest.spec.selector == {"matchLabels": {"user": "mock-5fname"}}
