@@ -358,7 +358,8 @@ class KubeSpawner(Spawner):
     pod_connect_ip = Unicode(
         config=True,
         help="""
-        Template to use to form The IP address (or hostname) of user's pods.
+        The IP address (or hostname) of user's pods which KubeSpawner connects to.
+        If you do not specify the value, KubeSpawner will use the pod IP.
 
         e.g. 'jupyter-{username}--{servername}.notebooks.jupyterhub.svc.cluster.local',
 
