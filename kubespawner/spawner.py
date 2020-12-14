@@ -1642,7 +1642,7 @@ class KubeSpawner(Spawner):
         """
         # have to wait for first load of data before we have a valid answer
         if not self.pod_reflector.first_load_future.done():
-            await self.pod_reflector.first_load_future
+            await asyncio.wrap_future(self.pod_reflector.first_load_future)
         data = self.pod_reflector.pods.get(self.pod_name, None)
         if data is not None:
             if data["status"]["phase"] == 'Pending':
