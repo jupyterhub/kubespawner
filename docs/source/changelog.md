@@ -2,6 +2,35 @@
 
 <!-- PR link template: - [#](https://github.com/jupyterhub/kubespawner/pull/) ([@](https://github.com/)) -->
 
+## [0.15]
+
+### [0.15.0] - 2020-10-15
+
+#### Enhancements made
+
+* Expand storage selector [#463](https://github.com/jupyterhub/kubespawner/pull/463) ([@dtaniwaki](https://github.com/dtaniwaki))
+* Add pod_connect_ip config regarding how kubespawner reach the pod [#460](https://github.com/jupyterhub/kubespawner/pull/460) ([@dtaniwaki](https://github.com/dtaniwaki))
+* [Feature] Add AllowPrivilegeEscalation to container's securityContext [#450](https://github.com/jupyterhub/kubespawner/pull/450) ([@captnbp](https://github.com/captnbp))
+
+#### Bugs fixed
+
+* Wrap concurrent.futures Future in polling function [#467](https://github.com/jupyterhub/kubespawner/pull/467) ([@ondave](https://github.com/ondave))
+* Let uid/gid/fs_gid default to None instead of 0 [#453](https://github.com/jupyterhub/kubespawner/pull/453) ([@consideRatio](https://github.com/consideRatio))
+
+#### Maintenance and upkeep improvements
+
+* action-k3s-helm was moved to jupyterhub [#465](https://github.com/jupyterhub/kubespawner/pull/465) ([@manics](https://github.com/manics))
+* Don't run tests on unsupported k8s client versions [#464](https://github.com/jupyterhub/kubespawner/pull/464) ([@yuvipanda](https://github.com/yuvipanda))
+* Migrate from travis to GitHub actions [#459](https://github.com/jupyterhub/kubespawner/pull/459) ([@consideRatio](https://github.com/consideRatio))
+* Cleanup JS patch of JupyterHub 0.8 HTML not needed in 0.9+ [#455](https://github.com/jupyterhub/kubespawner/pull/455) ([@consideRatio](https://github.com/consideRatio))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2020-10-23&to=2020-12-15&type=c))
+
+[@athornton](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aathornton+updated%3A2020-10-23..2020-12-15&type=Issues) | [@betatim](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Abetatim+updated%3A2020-10-23..2020-12-15&type=Issues) | [@captnbp](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Acaptnbp+updated%3A2020-10-23..2020-12-15&type=Issues) | [@celine168](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aceline168+updated%3A2020-10-23..2020-12-15&type=Issues) | [@clkao](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aclkao+updated%3A2020-10-23..2020-12-15&type=Issues) | [@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2020-10-23..2020-12-15&type=Issues) | [@DarkmatterVale](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3ADarkmatterVale+updated%3A2020-10-23..2020-12-15&type=Issues) | [@dkipping](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adkipping+updated%3A2020-10-23..2020-12-15&type=Issues) | [@dtaniwaki](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adtaniwaki+updated%3A2020-10-23..2020-12-15&type=Issues) | [@erolosty](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aerolosty+updated%3A2020-10-23..2020-12-15&type=Issues) | [@gcavalcante8808](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Agcavalcante8808+updated%3A2020-10-23..2020-12-15&type=Issues) | [@gsemet](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Agsemet+updated%3A2020-10-23..2020-12-15&type=Issues) | [@gweis](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Agweis+updated%3A2020-10-23..2020-12-15&type=Issues) | [@h4gen](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ah4gen+updated%3A2020-10-23..2020-12-15&type=Issues) | [@joelpfaff](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajoelpfaff+updated%3A2020-10-23..2020-12-15&type=Issues) | [@manics](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2020-10-23..2020-12-15&type=Issues) | [@meeseeksmachine](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ameeseeksmachine+updated%3A2020-10-23..2020-12-15&type=Issues) | [@minrk](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2020-10-23..2020-12-15&type=Issues) | [@ondave](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aondave+updated%3A2020-10-23..2020-12-15&type=Issues) | [@ryanlovett](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aryanlovett+updated%3A2020-10-23..2020-12-15&type=Issues) | [@stefanvangastel](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Astefanvangastel+updated%3A2020-10-23..2020-12-15&type=Issues) | [@support](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Asupport+updated%3A2020-10-23..2020-12-15&type=Issues) | [@tjcrone](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Atjcrone+updated%3A2020-10-23..2020-12-15&type=Issues) | [@welcome](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Awelcome+updated%3A2020-10-23..2020-12-15&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2020-10-23..2020-12-15&type=Issues)
+
+
 ## [0.14]
 
 ### [0.14.1] - 2020-10-23
