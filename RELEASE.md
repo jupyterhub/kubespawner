@@ -57,7 +57,7 @@ For you to follow along according to these instructions, you need:
    git push --follow-tags $ORIGIN master
    ```
 
-1. Verify that the [build succeed on
-   TravisCI](https://travis-ci.org/jupyterhub/kubespawner/builds) and that that
-   PyPI received a [new
-   release](https://pypi.org/project/jupyterhub-kubespawner/)
+1. Verify that [the GitHub
+   workflow](https://github.com/jupyterhub/kubespawner/actions?query=workflow%3APublish)
+   triggers and succeeds and that that PyPI received a [new
+   release](https://pypi.org/project/jupyterhub-kubespawner/).
