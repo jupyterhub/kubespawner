@@ -4,10 +4,12 @@ from jupyterhub.orm import Spawner
 from kubernetes.client.models import (
     V1SecurityContext, V1Container, V1Capabilities, V1Pod, V1PersistentVolumeClaim
 )
+from kubernetes.client.rest import ApiException
 from kubespawner import KubeSpawner
 from traitlets.config import Config
 from unittest.mock import Mock
 import json
+import logging
 import os
 import pytest
 
@@ -131,6 +133,64 @@ async def test_spawn(kube_ns, kube_client, config):
     # verify exit status
     status = await spawner.poll()
     assert isinstance(status, int)
+
+
+@pytest.mark.asyncio
+async def test_spawn_pending_pods(kube_ns, kube_client):
+    """Spawner can deal with pods that are pending."""
+    c = Config()
+    # Make a config where the fake-jupyter pod cannot be scheduled so it
+    # will always be in a pending state.
+    # You can use any setting here that will be impossible to satisfy on the
+    # minikube cluster. 
+    c.KubeSpawner.node_selector = {'disktype': 'ssd'}
+    c.KubeSpawner.namespace = kube_ns
+    c.KubeSpawner.start_timeout = 30  # Do not wait very long.
+    spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=c)
+    with pytest.raises(TimeoutError) as te:
+      await spawner.start()
+    assert 'pod/jupyter-fake did not start' in str(te.value)
+
+    pods = kube_client.list_namespaced_pod(kube_ns).items
+    assert pods[0].status.phase == 'Pending'
+    status = await spawner.poll()
+    # Pending state actually makes poll return None
+    assert status is None
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = kube_client.list_namespaced_pod(kube_ns).items
+    pod_names = [p.metadata.name for p in pods]
+    assert "jupyter-%s" % spawner.user.name not in pod_names
+
+    # verify exit status
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+
+@pytest.mark.asyncio
+async def test_spawn_watcher_reflector_started_twice(config):
+    spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=config)
+    await spawner.start()
+
+    with pytest.raises(ValueError) as ve:
+        spawner.pod_reflector.start()
+    assert ('Thread watching for resources is already running' in str(ve.value))
+    await spawner.stop()
+
+
+@pytest.mark.asyncio
+async def test_spawn_pvc():
+    c = Config()
+    c.KubeSpawner.storage_pvc_ensure = True
+    spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=c)
+    # Since no storage amount is specified, the pvc will not be created.
+    # This lets us test the ApiException handling and it also means we do not have
+    # to clean up the pvc afterwards.
+    with pytest.raises(ApiException) as ae:
+        await spawner.start()
+    assert 'Unprocessable Entity' in str(ae.value)
+    await spawner.stop()
 
 
 @pytest.mark.asyncio
@@ -262,6 +322,28 @@ async def test_default_profile():
     await spawner.load_user_options()
     for key, value in _test_profiles[0]['kubespawner_override'].items():
         assert getattr(spawner, key) == value
+
+
+@pytest.mark.asyncio
+async def test_stop_pod_reflector(kube_ns, kube_client):
+    c = Config()
+    c.KubeSpawner.namespace = kube_ns
+    c.KubeSpawner.start_timeout = 30  # Do not wait very long.
+    spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=c)
+
+    # start the spawner
+    await spawner.start()
+
+    # Manually stop the pod reflector.
+    spawner.pod_reflector.stop()
+    assert spawner.pod_reflector._stop_event.is_set()
+
+    # This will make the spawner notice that the pod status isn't updating.
+    # The spawner will then restart the pod reflector.
+    await spawner.stop()
+
+    # Pod reflector is running again.
+    assert not spawner.pod_reflector._stop_event.is_set()
 
 
 def test_pod_name_no_named_servers():

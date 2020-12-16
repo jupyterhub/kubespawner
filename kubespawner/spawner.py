@@ -1963,6 +1963,7 @@ class KubeSpawner(Spawner):
                     self.pod_name,
                 )
                 self._start_watching_pods(replace=True)
+            # a failure to start the server should result in a raised exception
             raise
 
         pod = self.pod_reflector.pods[self.pod_name]
