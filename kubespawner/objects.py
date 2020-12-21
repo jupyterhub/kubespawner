@@ -61,6 +61,8 @@ from kubernetes.client.models import (
     V1PodAntiAffinity,
     V1WeightedPodAffinityTerm,
     V1PodAffinityTerm,
+    V1Volume,
+    V1VolumeMount,
 )
 from kubespawner.utils import get_k8s_model, update_k8s_model
 
