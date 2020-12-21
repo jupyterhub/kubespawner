@@ -52,14 +52,11 @@ from .objects import (
     make_service,
     make_namespace,
 )
-from .reflector import (
-    NamespacedResourceReflector,
-    MultiNamespaceResourceReflector,
-)
+from .reflector import ResourceReflector
 from .traitlets import Callable
 
 
-class PodReflector(NamespacedResourceReflector):
+class PodReflector(ResourceReflector):
     """
     PodReflector is merely a configured NamespacedResourceReflector. It exposes
     the pods property, which is simply mapping to self.resources where the
@@ -68,7 +65,6 @@ class PodReflector(NamespacedResourceReflector):
     """
 
     kind = "pods"
-    list_method_name = "list_namespaced_pod"
     # The default component label can be over-ridden by specifying the component_label property
     labels = {
         "component": "singleuser-server",
@@ -86,23 +82,7 @@ class PodReflector(NamespacedResourceReflector):
         return self.resources
 
 
-class MultiNamespacePodReflector(MultiNamespaceResourceReflector):
-    """
-    MultiNamespacePodReflector is the all-namespaces analog of PodReflector.
-    """
-
-    kind = "pods"
-    list_method_name = "list_pod_for_all_namespaces"
-    labels = {
-        "component": "singleuser-server",
-    }
-
-    @property
-    def pods(self):
-        return self.resources
-
-
-class EventReflector(NamespacedResourceReflector):
+class EventReflector(ResourceReflector):
     """
     EventsReflector is merely a configured NamespacedResourceReflector. It
     exposes the events property, which is simply mapping to self.resources where
@@ -111,7 +91,6 @@ class EventReflector(NamespacedResourceReflector):
     """
 
     kind = "events"
-    list_method_name = "list_namespaced_event"
 
     @property
     def events(self):
@@ -133,23 +112,6 @@ class EventReflector(NamespacedResourceReflector):
         #   event['eventTime'], both fields serve the same role but the former
         #   is a low resolution timestamp without and the other is a higher
         #   resolution timestamp.
-        return sorted(
-            self.resources.values(),
-            key=lambda event: event["lastTimestamp"] or event["eventTime"],
-        )
-
-
-class MultiNamespaceEventReflector(MultiNamespaceResourceReflector):
-    """
-    MultiNamespaceEventReflector is the all-namespaces analog of
-    EventReflector.
-    """
-
-    kind = "events"
-    list_method_name = "list_event_for_all_namespaces"
-
-    @property
-    def events(self):
         return sorted(
             self.resources.values(),
             key=lambda event: event["lastTimestamp"] or event["eventTime"],
@@ -2057,12 +2019,18 @@ class KubeSpawner(Spawner):
                 break
             await asyncio.sleep(1)
 
-    def _start_reflector(self, key, ReflectorClass, replace=False, **kwargs):
+    def _start_reflector(
+        self,
+        kind=None,
+        reflector_class=ResourceReflector,
+        replace=False,
+        **kwargs,
+    ):
         """Start a shared reflector on the KubeSpawner class
 
 
-        key: key for the reflector (e.g. 'pod' or 'events')
-        Reflector: Reflector class to be instantiated
+        kind: key for the reflector (e.g. 'pod' or 'events')
+        reflector_class: Reflector class to be instantiated
         kwargs: extra keyword-args to be relayed to ReflectorClass
 
         If replace=False and the pod reflector is already running,
@@ -2072,6 +2040,8 @@ class KubeSpawner(Spawner):
         and a new one started (for recovering from possible errors).
         """
         main_loop = IOLoop.current()
+        key = kind
+        ReflectorClass = reflector_class
 
         def on_reflector_failure():
             self.log.critical(
@@ -2105,13 +2075,11 @@ class KubeSpawner(Spawner):
         If replace=True, a running pod reflector will be stopped
         and a new one started (for recovering from possible errors).
         """
-        event_reflector_class = EventReflector
-        if self.enable_user_namespaces:
-            event_reflector_class = MultiNamespaceEventReflector
         return self._start_reflector(
-            "events",
-            event_reflector_class,
+            kind="events",
+            reflector_class=EventReflector,
             fields={"involvedObject.kind": "Pod"},
+            omit_namespace=self.enable_user_namespaces,
             replace=replace,
         )
 
@@ -2126,10 +2094,13 @@ class KubeSpawner(Spawner):
         """
         pod_reflector_class = PodReflector
         if self.enable_user_namespaces:
-            pod_reflector_class = MultiNamespacePodReflector
+            reflector_omit_namespace = True
         pod_reflector_class.labels.update({"component": self.component_label})
         return self._start_reflector(
-            "pods", pod_reflector_class, replace=replace
+            "pods",
+            PodReflector,
+            omit_namespace=self.enable_user_namespaces,
+            replace=replace,
         )
 
     # record a future for the call to .start()

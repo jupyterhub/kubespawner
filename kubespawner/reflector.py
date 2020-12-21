@@ -179,6 +179,39 @@ class ResourceReflector(LoggingConfigurable):
         self.first_load_future = Future()
         self._stop_event = threading.Event()
 
+        # Make sure that we know kind, whether we should omit the namespace,
+        #  and what our list_method_name is.  For the things we already
+        #  know about (that is, Pod and Event reflectors) we can derive
+        #  list_method_name from those two things.  If we generally add more
+        #  reflectors, we can update our logic here.  But if someone wants
+        #  to subclass reflector without pushing it upstream, and specify
+        #  kind, omit_namespace, and the appropriate list_methods, then
+        #  that'll work too.
+        if not self.kind and "kind" in kwargs and kwargs["kind"]:
+            self.kind = kwargs["kind"]
+        if "omit_namespace" in kwargs and not self.omit_namespace:
+            self.omit_namespace = kwargs["omit_namespace"]
+        if "list_method_name" in kwargs and kwargs["list_method_name"]:
+            self.list_method_name = kwargs["list_method_name"]
+        if not self.list_method_name:
+            # This logic can be extended if we add other reflector types or
+            #  it can be directly supplied or overridden in a subclass.
+            if self.kind == "pods":
+                if self.omit_namespace:
+                    self.list_method_name = "list_pod_for_all_namespaces"
+                else:
+                    self.list_method_name = "list_namespaced_pod"
+            elif self.kind == "events":
+                if self.omit_namespace:
+                    self.list_method_name = "list_event_for_all_namespaces"
+                else:
+                    self.list_method_name = "list_namespaced_event"
+
+        if not self.kind:
+            raise RuntimeError("Reflector kind must be set!")
+        if not self.list_method_name:
+            raise RuntimeError("Reflector list_method_name must be set!")
+
         self.start()
 
     def __del__(self):
