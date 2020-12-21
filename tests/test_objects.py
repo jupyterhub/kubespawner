@@ -1763,7 +1763,7 @@ def test_make_ingress():
                     ]}
                  }]
         }
-
+    }
 
 def test_make_pod_with_ssl():
     """
@@ -1855,6 +1855,7 @@ def test_make_namespace():
             },
             'name': 'test-namespace',
         },
+    }
 
 def test_make_pod_with_ssl():
     """
