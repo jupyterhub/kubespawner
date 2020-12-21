@@ -1,26 +1,52 @@
 """
 Helper methods for generating k8s API objects.
 """
+import base64
 import json
+import os
 import re
 from urllib.parse import urlparse
 
+from kubernetes.client.models import (
+    V1Affinity,
+    V1Container,
+    V1ContainerPort,
+    V1EndpointAddress,
+    V1EndpointPort,
+    V1Endpoints,
+    V1EndpointSubset,
+    V1EnvVar,
+    V1LabelSelector,
+    V1Lifecycle,
+    V1LocalObjectReference,
+    V1NodeAffinity,
+    V1NodeSelector,
+    V1NodeSelectorRequirement,
+    V1NodeSelectorTerm,
+    V1ObjectMeta,
+    V1OwnerReference,
+    V1PersistentVolumeClaim,
+    V1PersistentVolumeClaimSpec,
+    V1Pod,
+    V1PodAffinity,
+    V1PodAffinityTerm,
+    V1PodAntiAffinity,
+    V1PodSecurityContext,
+    V1PodSpec,
+    V1PreferredSchedulingTerm,
+    V1ResourceRequirements,
+    V1Secret,
+    V1SecurityContext,
+    V1Service,
+    V1ServicePort,
+    V1ServiceSpec,
+    V1Toleration,
+    V1Volume,
+    V1VolumeMount,
+    V1WeightedPodAffinityTerm,
+)
 from kubespawner.utils import get_k8s_model, update_k8s_model
 
-from kubernetes.client.models import (
-    V1Pod, V1PodSpec, V1PodSecurityContext,
-    V1ObjectMeta,
-    V1LocalObjectReference,
-    V1Volume, V1VolumeMount,
-    V1Container, V1ContainerPort, V1SecurityContext, V1EnvVar, V1ResourceRequirements, V1Lifecycle,
-    V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec,
-    V1Endpoints, V1EndpointSubset, V1EndpointAddress, V1EndpointPort,
-    V1Service, V1ServiceSpec, V1ServicePort,
-    V1Toleration,
-    V1Affinity,
-    V1NodeAffinity, V1NodeSelector, V1NodeSelectorTerm, V1PreferredSchedulingTerm, V1NodeSelectorRequirement,
-    V1PodAffinity, V1PodAntiAffinity, V1WeightedPodAffinityTerm, V1PodAffinityTerm,
-)
 
 def make_pod(
     name,
@@ -63,6 +89,8 @@ def make_pod(
     pod_anti_affinity_preferred=None,
     pod_anti_affinity_required=None,
     priority_class_name=None,
+    ssl_secret_name=None,
+    ssl_secret_mount_path=None,
     logger=None,
 ):
     """
@@ -220,6 +248,10 @@ def make_pod(
         * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/#podaffinityterm-v1-core
     priority_class_name:
         The name of the PriorityClass to be assigned the pod. This feature is Beta available in K8s 1.11.
+    ssl_secret_name:
+        Specifies the name of the ssl secret
+    ssl_secret_mount_path:
+        Specifies the name of the ssl secret mount path for the pod
     """
 
     pod = V1Pod()
@@ -245,6 +277,28 @@ def make_pod(
             get_k8s_model(V1LocalObjectReference, secret_ref)
             for secret_ref in image_pull_secrets
         ]
+
+    if ssl_secret_name and ssl_secret_mount_path:
+        if not volumes:
+            volumes = []
+        volumes.append(
+            {
+                'name': 'jupyterhub-internal-certs',
+                'secret': {'secretName': ssl_secret_name, 'defaultMode': 511},
+            }
+        )
+
+        env['JUPYTERHUB_SSL_KEYFILE'] = ssl_secret_mount_path + "ssl.key"
+        env['JUPYTERHUB_SSL_CERTFILE'] = ssl_secret_mount_path + "ssl.crt"
+        env['JUPYTERHUB_SSL_CLIENT_CA'] = (
+            ssl_secret_mount_path + "notebooks-ca_trust.crt"
+        )
+
+        if not volume_mounts:
+            volume_mounts = []
+        volume_mounts.append(
+            {'name': 'jupyterhub-internal-certs', 'mountPath': ssl_secret_mount_path}
+        )
 
     if node_selector:
         pod.spec.node_selector = node_selector
@@ -599,3 +653,127 @@ def make_ingress(
     )
 
     return endpoint, service, ingress
+
+
+def make_owner_reference(name, uid):
+    """
+    Returns a owner reference object for garbage collection.
+    """
+    return V1OwnerReference(
+        api_version="v1",
+        kind="Pod",
+        name=name,
+        uid=uid,
+        block_owner_deletion=True,
+        controller=False,
+    )
+
+
+def make_secret(
+    name,
+    username,
+    cert_paths,
+    hub_ca,
+    owner_references,
+    labels=None,
+    annotations=None,
+):
+    """
+    Make a k8s secret specification using pre-existing ssl credentials for a given user.
+
+    Parameters
+    ----------
+    name:
+        Name of the secret. Must be unique within the namespace the object is
+        going to be created in.
+    username:
+        The name of the user notebook.
+    cert_paths:
+        JupyterHub spawners cert_paths dictionary container certificate path references
+    hub_ca:
+        Path to the hub certificate authority
+    labels:
+        Labels to add to the secret.
+    annotations:
+        Annotations to add to the secret.
+    """
+
+    secret = V1Secret()
+    secret.kind = "Secret"
+    secret.api_version = "v1"
+    secret.metadata = V1ObjectMeta()
+    secret.metadata.name = name
+    secret.metadata.annotations = (annotations or {}).copy()
+    secret.metadata.labels = (labels or {}).copy()
+    secret.metadata.owner_references = owner_references
+
+    secret.data = {}
+
+    with open(cert_paths['keyfile'], 'r') as file:
+        encoded = base64.b64encode(file.read().encode("utf-8"))
+        secret.data['ssl.key'] = encoded.decode("utf-8")
+
+    with open(cert_paths['certfile'], 'r') as file:
+        encoded = base64.b64encode(file.read().encode("utf-8"))
+        secret.data['ssl.crt'] = encoded.decode("utf-8")
+
+    with open(cert_paths['cafile'], 'r') as file:
+        encoded = base64.b64encode(file.read().encode("utf-8"))
+        secret.data["notebooks-ca_trust.crt"] = encoded.decode("utf-8")
+
+    with open(hub_ca, 'r') as file:
+        encoded = base64.b64encode(file.read().encode("utf-8"))
+        secret.data["notebooks-ca_trust.crt"] = secret.data[
+            "notebooks-ca_trust.crt"
+        ] + encoded.decode("utf-8")
+
+    return secret
+
+
+def make_service(
+    name,
+    port,
+    servername,
+    owner_references,
+    labels=None,
+    annotations=None,
+):
+    """
+    Make a k8s service specification for using dns to communicate with the notebook.
+
+    Parameters
+    ----------
+    name:
+        Name of the service. Must be unique within the namespace the object is
+        going to be created in.
+    env:
+        Dictionary of environment variables.
+    labels:
+        Labels to add to the service.
+    annotations:
+        Annotations to add to the service.
+
+    """
+
+    metadata = V1ObjectMeta(
+        name=name,
+        annotations=(annotations or {}).copy(),
+        labels=(labels or {}).copy(),
+        owner_references=owner_references,
+    )
+
+    service = V1Service(
+        kind='Service',
+        metadata=metadata,
+        spec=V1ServiceSpec(
+            type='ClusterIP',
+            ports=[V1ServicePort(port=port, target_port=port)],
+            selector={
+                'component': 'singleuser-server',
+                'hub.jupyter.org/servername': servername,
+                'hub.jupyter.org/username': metadata.labels['hub.jupyter.org/username'],
+            },
+        ),
+    )
+
+    return service

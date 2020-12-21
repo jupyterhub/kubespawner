@@ -1,20 +1,30 @@
-from asyncio import get_event_loop
+import json
+import os
+import time
+from unittest.mock import Mock
+
+import pytest
 from jupyterhub.objects import Hub, Server
 from jupyterhub.orm import Spawner
 from kubernetes.client.models import (
-    V1SecurityContext, V1Container, V1Capabilities, V1Pod, V1PersistentVolumeClaim
+    V1Capabilities,
+    V1Container,
+    V1PersistentVolumeClaim,
+    V1Pod,
+    V1SecurityContext,
 )
-from kubespawner import KubeSpawner
 from traitlets.config import Config
-from unittest.mock import Mock
-import json
-import os
-import pytest
+
+from kubespawner import KubeSpawner
 
 
 class MockUser(Mock):
     name = 'fake'
     server = Server()
+    def __init__(self, **kwargs):
+        super().__init__()
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
     @property
     def escaped_name(self):
@@ -104,22 +114,167 @@ def test_spawner_values():
     assert spawner.fs_gid == None
 
 
+def check_up(url, ssl_ca=None, ssl_client_cert=None, ssl_client_key=None):
+    """Check that a url responds with a non-error code
+
+    For use in exec_python_in_pod,
+    which means imports need to be in the function
+
+    Uses stdlib only because requests isn't always available in the target pod
+    """
+    from urllib import request
+    import ssl
+
+    if ssl_ca:
+        context = ssl.create_default_context(
+            purpose=ssl.Purpose.SERVER_AUTH, cafile=ssl_ca
+        )
+        if ssl_client_cert:
+            context.load_cert_chain(certfile=ssl_client_cert, keyfile=ssl_client_key)
+    else:
+        context = None
+
+    # disable redirects (this would be easier if we ran exec in an image with requests)
+    class NoRedirect(request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None
+
+    opener = request.build_opener(NoRedirect, request.HTTPSHandler(context=context))
+    try:
+        u = opener.open(url)
+    except request.HTTPError as e:
+        if e.status >= 400:
+            raise
+        u = e
+    print(u.status)
+
+
 @pytest.mark.asyncio
-async def test_spawn(kube_ns, kube_client, config):
-    spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=config)
+async def test_spawn_start(
+    kube_ns,
+    kube_client,
+    config,
+    hub,
+    exec_python,
+):
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="start"),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+    )
     # empty spawner isn't running
     status = await spawner.poll()
     assert isinstance(status, int)
 
+    pod_name = spawner.pod_name
+
     # start the spawner
-    await spawner.start()
+    url = await spawner.start()
+
     # verify the pod exists
     pods = kube_client.list_namespaced_pod(kube_ns).items
     pod_names = [p.metadata.name for p in pods]
-    assert "jupyter-%s" % spawner.user.name in pod_names
+    assert pod_name in pod_names
+
+    # pod should be running when start returns
+    pod = kube_client.read_namespaced_pod(namespace=kube_ns, name=pod_name)
+    assert pod.status.phase == "Running"
+
     # verify poll while running
     status = await spawner.poll()
     assert status is None
+
+    # make sure spawn url is correct
+    r = exec_python(check_up, {"url": url}, _retries=3)
+    assert r == "302"
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = kube_client.list_namespaced_pod(kube_ns).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name not in pod_names
+
+    # verify exit status
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+
+@pytest.mark.asyncio
+async def test_spawn_internal_ssl(
+    kube_ns,
+    kube_client,
+    ssl_app,
+    hub_pod_ssl,
+    hub_ssl,
+    config,
+    exec_python_pod,
+):
+    hub_pod_name = hub_pod_ssl.metadata.name
+
+    spawner = KubeSpawner(
+        config=config,
+        hub=hub_ssl,
+        user=MockUser(name="ssl"),
+        api_token="abc123",
+        oauth_client_id="unused",
+        internal_ssl=True,
+        internal_trust_bundles=ssl_app.internal_trust_bundles,
+        internal_certs_location=ssl_app.internal_certs_location,
+    )
+    # initialize ssl config
+    hub_paths = await spawner.create_certs()
+
+    spawner.cert_paths = await spawner.move_certs(hub_paths)
+
+    # start the spawner
+    url = await spawner.start()
+    pod_name = "jupyter-%s" % spawner.user.name
+    # verify the pod exists
+    pods = kube_client.list_namespaced_pod(kube_ns).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+
+    # verify service and secret exist
+    secret_name = spawner.secret_name
+    secrets = kube_client.list_namespaced_secret(kube_ns).items
+    secret_names = [s.metadata.name for s in secrets]
+    assert secret_name in secret_names
+
+    service_name = pod_name
+    services = kube_client.list_namespaced_service(kube_ns).items
+    service_names = [s.metadata.name for s in services]
+    assert service_name in service_names
+
+    # resolve internal-ssl paths in hub-ssl pod
+    # these are in /etc/jupyterhub/internal-ssl
+    hub_ssl_dir = "/etc/jupyterhub"
+    hub_ssl_ca = os.path.join(hub_ssl_dir, ssl_app.internal_trust_bundles["hub-ca"])
+
+    # use certipy to resolve these?
+    hub_internal = os.path.join(hub_ssl_dir, "internal-ssl", "hub-internal")
+    hub_internal_cert = os.path.join(hub_internal, "hub-internal.crt")
+    hub_internal_key = os.path.join(hub_internal, "hub-internal.key")
+
+    r = exec_python_pod(
+        hub_pod_name,
+        check_up,
+        {
+            "url": url,
+            "ssl_ca": hub_ssl_ca,
+            "ssl_client_cert": hub_internal_cert,
+            "ssl_client_key": hub_internal_key,
+        },
+        _retries=3,
+    )
+    assert r == "302"
+
     # stop the pod
     await spawner.stop()
 
@@ -128,14 +283,29 @@ async def test_spawn(kube_ns, kube_client, config):
     pod_names = [p.metadata.name for p in pods]
     assert "jupyter-%s" % spawner.user.name not in pod_names
 
-    # verify exit status
-    status = await spawner.poll()
-    assert isinstance(status, int)
+    # verify service and secret are gone
+    # it may take a little while for them to get cleaned up
+    for i in range(5):
+        secrets = kube_client.list_namespaced_secret(kube_ns).items
+        secret_names = {s.metadata.name for s in secrets}
+
+        services = kube_client.list_namespaced_service(kube_ns).items
+        service_names = {s.metadata.name for s in services}
+        if secret_name in secret_names or service_name in service_names:
+            time.sleep(1)
+        else:
+            break
+    assert secret_name not in secret_names
+    assert service_name not in service_names
 
 
 @pytest.mark.asyncio
-async def test_spawn_progress(kube_ns, kube_client, config):
-    spawner = KubeSpawner(hub=Hub(), user=MockUser(name="progress"), config=config)
+async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="progress"),
+        config=config,
+    )
     # empty spawner isn't running
     status = await spawner.poll()
     assert isinstance(status, int)
@@ -359,26 +529,35 @@ def test_spawner_can_use_list_of_image_pull_secrets():
 
 
 @pytest.mark.asyncio
-async def test_pod_connect_ip(kube_ns, kube_client, config):
-    config.KubeSpawner.pod_connect_ip = "jupyter-{username}--{servername}.foo.example.com"
+async def test_pod_connect_ip(kube_ns, kube_client, config, hub_pod, hub):
+    config.KubeSpawner.pod_connect_ip = (
+        "jupyter-{username}--{servername}.foo.example.com"
+    )
 
+    user = MockUser(name="connectip")
     # w/o servername
-    spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=config)
+    spawner = KubeSpawner(hub=hub, user=user, config=config)
 
     # start the spawner
     res = await spawner.start()
     # verify the pod IP and port
-    assert res == ("jupyter-fake.foo.example.com", 8888)
+    assert res == "http://jupyter-connectip.foo.example.com:8888"
 
     await spawner.stop()
 
     # w/ servername
-    spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=config, orm_spawner=MockOrmSpawner())
+    spawner = KubeSpawner(
+        hub=hub,
+        user=user,
+        config=config,
+        orm_spawner=MockOrmSpawner(),
+    )
 
     # start the spawner
     res = await spawner.start()
     # verify the pod IP and port
-    assert res == ("jupyter-fake--server.foo.example.com", 8888)
+    assert res == "http://jupyter-connectip--server.foo.example.com:8888"
+    await spawner.stop()
 
 
 def test_get_pvc_manifest():
@@ -396,6 +575,7 @@ def test_get_pvc_manifest():
     assert manifest.metadata.name == "user-mock-5fname"
     assert manifest.metadata.labels == {
         "user": "mock-5fname",
+        "hub.jupyter.org/username": "mock-5fname",
         "app": "jupyterhub",
         "component": "singleuser-storage",
         "heritage": "jupyterhub",

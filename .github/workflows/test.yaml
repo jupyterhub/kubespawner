@@ -25,7 +25,7 @@ jobs:
   run-pytest:
     name: Run pytest
     runs-on: ubuntu-20.04
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     strategy:
       # Keep running even if one variation of the job fail
@@ -112,7 +112,7 @@ jobs:
 
       - name: Run pytest
         run: |
-          pytest -v --cov kubespawner --color=yes
+          pytest -v --durations 10 --cov kubespawner --color=yes
 
       - name: Submit a codecov report
         run: |
