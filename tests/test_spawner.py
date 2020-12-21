@@ -19,8 +19,9 @@ from kubespawner import KubeSpawner
 
 
 class MockUser(Mock):
-    name = 'fake'
+    name = "fake"
     server = Server()
+
     def __init__(self, **kwargs):
         super().__init__()
         for key, value in kwargs.items():
@@ -36,7 +37,7 @@ class MockUser(Mock):
 
 
 class MockOrmSpawner(Mock):
-    name = 'server'
+    name = "server"
     server = None
 
 
@@ -48,20 +49,21 @@ def test_deprecated_config():
         c.KubeSpawner.singleuser_fs_gid = 5
         c.KubeSpawner.fs_gid = 10
         # only deprecated set, should still work
-        c.KubeSpawner.hub_connect_ip = '10.0.1.1'
+        c.KubeSpawner.hub_connect_ip = "10.0.1.1"
         c.KubeSpawner.singleuser_extra_pod_config = extra_pod_config = {
-            "key": "value"}
-        c.KubeSpawner.image_spec = 'abc:123'
-        c.KubeSpawner.image_pull_secrets = 'k8s-secret-a'
+            "key": "value"
+        }
+        c.KubeSpawner.image_spec = "abc:123"
+        c.KubeSpawner.image_pull_secrets = "k8s-secret-a"
         spawner = KubeSpawner(hub=Hub(), config=c, _mock=True)
-        assert spawner.hub.connect_ip == '10.0.1.1'
+        assert spawner.hub.connect_ip == "10.0.1.1"
         assert spawner.fs_gid == 10
         assert spawner.extra_pod_config == extra_pod_config
         # deprecated access gets the right values, too
         assert spawner.singleuser_fs_gid == spawner.fs_gid
         assert spawner.singleuser_extra_pod_config == spawner.extra_pod_config
-        assert spawner.image == 'abc:123'
-        assert spawner.image_pull_secrets[0]["name"] == 'k8s-secret-a'
+        assert spawner.image == "abc:123"
+        assert spawner.image_pull_secrets[0]["name"] == "k8s-secret-a"
 
 
 def test_deprecated_runtime_access():
@@ -73,14 +75,14 @@ def test_deprecated_runtime_access():
     spawner.uid = 20
     assert spawner.uid == 20
     assert spawner.singleuser_uid == 20
-    spawner.image_spec = 'abc:latest'
-    assert spawner.image_spec == 'abc:latest'
-    assert spawner.image == 'abc:latest'
-    spawner.image = 'abc:123'
-    assert spawner.image_spec == 'abc:123'
-    assert spawner.image == 'abc:123'
-    spawner.image_pull_secrets = 'k8s-secret-a'
-    assert spawner.image_pull_secrets[0]["name"] == 'k8s-secret-a'
+    spawner.image_spec = "abc:latest"
+    assert spawner.image_spec == "abc:latest"
+    assert spawner.image == "abc:latest"
+    spawner.image = "abc:123"
+    assert spawner.image_spec == "abc:123"
+    assert spawner.image == "abc:123"
+    spawner.image_pull_secrets = "k8s-secret-a"
+    assert spawner.image_pull_secrets[0]["name"] == "k8s-secret-a"
 
 
 def test_spawner_values():
@@ -131,7 +133,9 @@ def check_up(url, ssl_ca=None, ssl_client_cert=None, ssl_client_key=None):
             purpose=ssl.Purpose.SERVER_AUTH, cafile=ssl_ca
         )
         if ssl_client_cert:
-            context.load_cert_chain(certfile=ssl_client_cert, keyfile=ssl_client_key)
+            context.load_cert_chain(
+                certfile=ssl_client_cert, keyfile=ssl_client_key
+            )
     else:
         context = None
 
@@ -140,7 +144,9 @@ def check_up(url, ssl_ca=None, ssl_client_cert=None, ssl_client_key=None):
         def redirect_request(self, req, fp, code, msg, headers, newurl):
             return None
 
-    opener = request.build_opener(NoRedirect, request.HTTPSHandler(context=context))
+    opener = request.build_opener(
+        NoRedirect, request.HTTPSHandler(context=context)
+    )
     try:
         u = opener.open(url)
     except request.HTTPError as e:
@@ -152,11 +158,7 @@ def check_up(url, ssl_ca=None, ssl_client_cert=None, ssl_client_key=None):
 
 @pytest.mark.asyncio
 async def test_spawn_start(
-    kube_ns,
-    kube_client,
-    config,
-    hub,
-    exec_python,
+    kube_ns, kube_client, config, hub, exec_python,
 ):
     spawner = KubeSpawner(
         hub=hub,
@@ -205,10 +207,10 @@ async def test_spawn_start(
 
 
 @pytest.mark.asyncio
-
 async def test_spawn_progress(kube_ns, kube_client, config):
-    spawner = KubeSpawner(hub=Hub(), user=MockUser(
-        name="progress"), config=config)
+    spawner = KubeSpawner(
+        hub=Hub(), user=MockUser(name="progress"), config=config
+    )
 
 
 async def test_spawn_internal_ssl(
@@ -262,7 +264,9 @@ async def test_spawn_internal_ssl(
     # resolve internal-ssl paths in hub-ssl pod
     # these are in /etc/jupyterhub/internal-ssl
     hub_ssl_dir = "/etc/jupyterhub"
-    hub_ssl_ca = os.path.join(hub_ssl_dir, ssl_app.internal_trust_bundles["hub-ca"])
+    hub_ssl_ca = os.path.join(
+        hub_ssl_dir, ssl_app.internal_trust_bundles["hub-ca"]
+    )
 
     # use certipy to resolve these?
     hub_internal = os.path.join(hub_ssl_dir, "internal-ssl", "hub-internal")
@@ -309,9 +313,7 @@ async def test_spawn_internal_ssl(
 @pytest.mark.asyncio
 async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
     spawner = KubeSpawner(
-        hub=hub,
-        user=MockUser(name="progress"),
-        config=config,
+        hub=hub, user=MockUser(name="progress"), config=config,
     )
 
     # empty spawner isn't running
@@ -323,16 +325,16 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
     # check progress events
     messages = []
     async for progress in spawner.progress():
-        assert 'progress' in progress
-        assert isinstance(progress['progress'], int)
-        assert 'message' in progress
-        assert isinstance(progress['message'], str)
-        messages.append(progress['message'])
+        assert "progress" in progress
+        assert isinstance(progress["progress"], int)
+        assert "message" in progress
+        assert isinstance(progress["message"], str)
+        messages.append(progress["message"])
 
         # ensure we can serialize whatever we return
         with open(os.devnull, "w") as devnull:
             json.dump(progress, devnull)
-    assert 'Started container' in '\n'.join(messages)
+    assert "Started container" in "\n".join(messages)
 
     await start_future
     # stop the pod
@@ -349,19 +351,19 @@ async def test_get_pod_manifest_tolerates_mixed_input():
     c = Config()
 
     dict_model = {
-        'name': 'mock_name_1',
-        'image': 'mock_image_1',
-        'command': ['mock_command_1']
+        "name": "mock_name_1",
+        "image": "mock_image_1",
+        "command": ["mock_command_1"],
     }
     object_model = V1Container(
         name="mock_name_2",
         image="mock_image_2",
-        command=['mock_command_2'],
+        command=["mock_command_2"],
         security_context=V1SecurityContext(
             privileged=True,
             run_as_user=0,
-            capabilities=V1Capabilities(add=['NET_ADMIN'])
-        )
+            capabilities=V1Capabilities(add=["NET_ADMIN"]),
+        ),
     )
     c.KubeSpawner.init_containers = [dict_model, object_model]
 
@@ -378,23 +380,23 @@ async def test_get_pod_manifest_tolerates_mixed_input():
 
 _test_profiles = [
     {
-        'display_name': 'Training Env - Python',
-        'slug': 'training-python',
-        'default': True,
-        'kubespawner_override': {
-            'image': 'training/python:label',
-            'cpu_limit': 1,
-            'mem_limit': 512 * 1024 * 1024,
-        }
+        "display_name": "Training Env - Python",
+        "slug": "training-python",
+        "default": True,
+        "kubespawner_override": {
+            "image": "training/python:label",
+            "cpu_limit": 1,
+            "mem_limit": 512 * 1024 * 1024,
+        },
     },
     {
-        'display_name': 'Training Env - Datascience',
-        'slug': 'training-datascience',
-        'kubespawner_override': {
-            'image': 'training/datascience:label',
-            'cpu_limit': 4,
-            'mem_limit': 8 * 1024 * 1024 * 1024,
-        }
+        "display_name": "Training Env - Datascience",
+        "slug": "training-datascience",
+        "kubespawner_override": {
+            "image": "training/datascience:label",
+            "cpu_limit": 4,
+            "mem_limit": 8 * 1024 * 1024 * 1024,
+        },
     },
 ]
 
@@ -406,14 +408,15 @@ async def test_user_options_set_from_form():
     # render the form
     await spawner.get_options_form()
     spawner.user_options = spawner.options_from_form(
-        {'profile': [_test_profiles[1]['slug']]})
+        {"profile": [_test_profiles[1]["slug"]]}
+    )
     assert spawner.user_options == {
-        'profile': _test_profiles[1]['slug'],
+        "profile": _test_profiles[1]["slug"],
     }
     # nothing should be loaded yet
     assert spawner.cpu_limit is None
     await spawner.load_user_options()
-    for key, value in _test_profiles[1]['kubespawner_override'].items():
+    for key, value in _test_profiles[1]["kubespawner_override"].items():
         assert getattr(spawner, key) == value
 
 
@@ -422,12 +425,12 @@ async def test_user_options_api():
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = _test_profiles
     # set user_options directly (e.g. via api)
-    spawner.user_options = {'profile': _test_profiles[1]['slug']}
+    spawner.user_options = {"profile": _test_profiles[1]["slug"]}
 
     # nothing should be loaded yet
     assert spawner.cpu_limit is None
     await spawner.load_user_options()
-    for key, value in _test_profiles[1]['kubespawner_override'].items():
+    for key, value in _test_profiles[1]["kubespawner_override"].items():
         assert getattr(spawner, key) == value
 
 
@@ -439,7 +442,7 @@ async def test_default_profile():
     # nothing should be loaded yet
     assert spawner.cpu_limit is None
     await spawner.load_user_options()
-    for key, value in _test_profiles[0]['kubespawner_override'].items():
+    for key, value in _test_profiles[0]["kubespawner_override"].items():
         assert getattr(spawner, key) == value
 
 
@@ -452,7 +455,9 @@ def test_pod_name_no_named_servers():
 
     orm_spawner = Spawner()
 
-    spawner = KubeSpawner(config=c, user=user, orm_spawner=orm_spawner, _mock=True)
+    spawner = KubeSpawner(
+        config=c, user=user, orm_spawner=orm_spawner, _mock=True
+    )
 
     assert spawner.pod_name == "jupyter-user"
 
@@ -467,7 +472,9 @@ def test_pod_name_named_servers():
     orm_spawner = Spawner()
     orm_spawner.name = "server"
 
-    spawner = KubeSpawner(config=c, user=user, orm_spawner=orm_spawner, _mock=True)
+    spawner = KubeSpawner(
+        config=c, user=user, orm_spawner=orm_spawner, _mock=True
+    )
 
     assert spawner.pod_name == "jupyter-user--server"
 
@@ -482,7 +489,9 @@ def test_pod_name_escaping():
     orm_spawner = Spawner()
     orm_spawner.name = "test-server!"
 
-    spawner = KubeSpawner(config=c, user=user, orm_spawner=orm_spawner, _mock=True)
+    spawner = KubeSpawner(
+        config=c, user=user, orm_spawner=orm_spawner, _mock=True
+    )
 
     assert spawner.pod_name == "jupyter-some-5fuser--test-2dserver-21"
 
@@ -493,7 +502,9 @@ def test_pod_name_custom_template():
 
     pod_name_template = "prefix-{username}-suffix"
 
-    spawner = KubeSpawner(user=user, pod_name_template=pod_name_template, _mock=True)
+    spawner = KubeSpawner(
+        user=user, pod_name_template=pod_name_template, _mock=True
+    )
 
     assert spawner.pod_name == "prefix-some-5fuser-suffix"
 
@@ -513,7 +524,9 @@ def test_pod_name_collision():
     spawner = KubeSpawner(user=user1, orm_spawner=orm_spawner1, _mock=True)
     assert spawner.pod_name == "jupyter-user-2dhas-2ddash"
     assert spawner.pvc_name == "claim-user-2dhas-2ddash"
-    named_spawner = KubeSpawner(user=user2, orm_spawner=orm_spawner2, _mock=True)
+    named_spawner = KubeSpawner(
+        user=user2, orm_spawner=orm_spawner2, _mock=True
+    )
     assert named_spawner.pod_name == "jupyter-user-2dhas--2ddash"
     assert spawner.pod_name != named_spawner.pod_name
     assert named_spawner.pvc_name == "claim-user-2dhas--2ddash"
@@ -547,8 +560,11 @@ async def test_pod_connect_ip(kube_ns, kube_client, config, hub_pod, hub):
     # w/o servername
     spawner = KubeSpawner(hub=hub, user=user, config=config)
 
+
 async def test_pod_ip_template(kube_ns, kube_client, config):
-    config.KubeSpawner.pod_ip_template = "jupyter-{username}--{servername}.foo.example.com"
+    config.KubeSpawner.pod_ip_template = (
+        "jupyter-{username}--{servername}.foo.example.com"
+    )
 
     user = MockUser(name="connectip")
     # w/o servername
@@ -565,10 +581,7 @@ async def test_pod_ip_template(kube_ns, kube_client, config):
     # w/ servername
 
     spawner = KubeSpawner(
-        hub=hub,
-        user=user,
-        config=config,
-        orm_spawner=MockOrmSpawner(),
+        hub=hub, user=user, config=config, orm_spawner=MockOrmSpawner(),
     )
 
     # start the spawner
@@ -577,6 +590,7 @@ async def test_pod_ip_template(kube_ns, kube_client, config):
 
     assert res == "http://jupyter-connectip--server.foo.example.com:8888"
     await spawner.stop()
+
 
 def test_get_pvc_manifest():
     c = Config()
@@ -599,4 +613,3 @@ def test_get_pvc_manifest():
         "heritage": "jupyterhub",
     }
     assert manifest.spec.selector == {"matchLabels": {"user": "mock-5fname"}}
-

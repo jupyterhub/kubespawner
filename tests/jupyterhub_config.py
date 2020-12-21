@@ -38,7 +38,9 @@ if os.path.exists(ssl_tar_file):
             print(os.path.join(root, name) + "/")
 
     # rewrite paths in certipy config not created here
-    certipy_config = os.path.join(c.JupyterHub.internal_certs_location, "certipy.json")
+    certipy_config = os.path.join(
+        c.JupyterHub.internal_certs_location, "certipy.json"
+    )
     with open(certipy_config) as f:
         cfg = json.load(f)
     print("cfg before", cfg)

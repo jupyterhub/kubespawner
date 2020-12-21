@@ -12,7 +12,7 @@ class Callable(TraitType):
     with a __call__() method.
     """
 
-    info_text = 'a callable'
+    info_text = "a callable"
 
     def validate(self, obj, value):
         if callable(value):

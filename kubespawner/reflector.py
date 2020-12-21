@@ -10,6 +10,7 @@ import threading
 from traitlets.config import LoggingConfigurable
 from traitlets import Any, Bool, Dict, Int, Unicode
 from kubernetes import config, watch
+
 # This is kubernetes client implementation specific, but we need to know
 # whether it was a network or watch timeout.
 from urllib3.exceptions import ReadTimeoutError
@@ -27,12 +28,13 @@ class ResourceReflector(LoggingConfigurable):
     MultiNamespaceResourceReflector, depending on whether you are using
     per-user namespaces or not.
     """
+
     labels = Dict(
         {},
         config=True,
         help="""
         Labels to reflect onto local cache
-        """
+        """,
     )
 
     fields = Dict(
@@ -40,7 +42,7 @@ class ResourceReflector(LoggingConfigurable):
         config=True,
         help="""
         Fields to restrict the reflected objects
-        """
+        """,
     )
 
     resources = Dict(
@@ -49,16 +51,16 @@ class ResourceReflector(LoggingConfigurable):
         Dictionary of resource names to the appropriate resource objects.
 
         This can be accessed across threads safely.
-        """
+        """,
     )
 
     kind = Unicode(
-        'resource',
+        "resource",
         help="""
         Human readable name for kind of object we're watching for.
 
         Used for diagnostic messages.
-        """
+        """,
     )
 
     omit_namespace = Bool(
@@ -102,18 +104,18 @@ class ResourceReflector(LoggingConfigurable):
         list_<resource>_for_all_namespaces.
 
         This must be set by a subclass.
-        """
+        """,
     )
 
     api_group_name = Unicode(
-        'CoreV1Api',
+        "CoreV1Api",
         help="""
         Name of class that represents the apigroup on which
         `list_method_name` is to be found.
 
         Defaults to CoreV1Api, which has everything in the 'core' API group. If you want to watch Ingresses,
         for example, you would have to use ExtensionsV1beta1Api
-        """
+        """,
     )
 
     request_timeout = Int(
@@ -124,7 +126,7 @@ class ResourceReflector(LoggingConfigurable):
 
         Trigger watch reconnect when a given request is taking too long,
         which can indicate network issues.
-        """
+        """,
     )
 
     timeout_seconds = Int(
@@ -136,7 +138,7 @@ class ResourceReflector(LoggingConfigurable):
         Trigger watch reconnect when no watch event has been received.
         This will cause a full reload of the currently existing resources
         from the API server.
-        """
+        """,
     )
 
     restart_seconds = Int(
@@ -149,10 +151,12 @@ class ResourceReflector(LoggingConfigurable):
         even if events are still arriving.
         Avoids trusting kubernetes watch to yield all events,
         which seems to not be a safe assumption.
-        """)
+        """,
+    )
 
     on_failure = Any(
-        help="""Function to be called when the reflector gives up.""")
+        help="""Function to be called when the reflector gives up."""
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -165,10 +169,12 @@ class ResourceReflector(LoggingConfigurable):
         self.api = shared_client(self.api_group_name)
 
         # FIXME: Protect against malicious labels?
-        self.label_selector = ','.join(
-            ['{}={}'.format(k, v) for k, v in self.labels.items()])
-        self.field_selector = ','.join(
-            ['{}={}'.format(k, v) for k, v in self.fields.items()])
+        self.label_selector = ",".join(
+            ["{}={}".format(k, v) for k, v in self.labels.items()]
+        )
+        self.field_selector = ",".join(
+            ["{}={}".format(k, v) for k, v in self.fields.items()]
+        )
 
         self.first_load_future = Future()
         self._stop_event = threading.Event()
@@ -203,7 +209,9 @@ class ResourceReflector(LoggingConfigurable):
         # This is an atomic operation on the dictionary!
         initial_resources = json.loads(initial_resources.read())
         self.resources = {
-            f'{p["metadata"]["namespace"]}/{ p["metadata"]["name"]}': p for p in initial_resources["items"]}
+            f'{p["metadata"]["namespace"]}/{ p["metadata"]["name"]}': p
+            for p in initial_resources["items"]
+        }
         # return the resource version so we can hook up a watch
         return initial_resources["metadata"]["resourceVersion"]
 
@@ -236,7 +244,7 @@ class ResourceReflector(LoggingConfigurable):
             selectors.append("label selector=%r" % self.label_selector)
         if self.field_selector:
             selectors.append("field selector=%r" % self.field_selector)
-        log_selector = ', '.join(selectors)
+        log_selector = ", ".join(selectors)
 
         cur_delay = 0.1
 
@@ -246,10 +254,7 @@ class ResourceReflector(LoggingConfigurable):
             ns_str = "namespace {}".format(self.namespace)
 
         self.log.info(
-            "watching for %s with %s in %s",
-            self.kind,
-            log_selector,
-            ns_str,
+            "watching for %s with %s in %s", self.kind, log_selector, ns_str,
         )
         while True:
             self.log.debug("Connecting %s watcher", self.kind)
@@ -269,18 +274,17 @@ class ResourceReflector(LoggingConfigurable):
                     watch_args["namespace"] = self.namespace
                 if self.request_timeout:
                     # set network receive timeout
-                    watch_args['_request_timeout'] = self.request_timeout
+                    watch_args["_request_timeout"] = self.request_timeout
                 if self.timeout_seconds:
                     # set watch timeout
-                    watch_args['timeout_seconds'] = self.timeout_seconds
+                    watch_args["timeout_seconds"] = self.timeout_seconds
                 method = partial(
-                    getattr(self.api, self.list_method_name), _preload_content=False)
+                    getattr(self.api, self.list_method_name),
+                    _preload_content=False,
+                )
                 # in case of timeout_seconds, the w.stream just exits (no exception thrown)
                 # -> we stop the watcher and start a new one
-                for watch_event in w.stream(
-                    method,
-                    **watch_args
-                ):
+                for watch_event in w.stream(method, **watch_args):
                     # Remember that these events are k8s api related WatchEvents
                     # objects, not k8s Event or Pod representations, they will
                     # reside in the WatchEvent's object field depending on what
@@ -289,10 +293,12 @@ class ResourceReflector(LoggingConfigurable):
                     # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#watchevent-v1-meta
                     # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#event-v1-core
                     cur_delay = 0.1
-                    resource = watch_event['object']
-                    ref_key = "{}/{}".format(resource["metadata"]["namespace"],
-                                             resource["metadata"]["name"])
-                    if watch_event['type'] == 'DELETED':
+                    resource = watch_event["object"]
+                    ref_key = "{}/{}".format(
+                        resource["metadata"]["namespace"],
+                        resource["metadata"]["name"],
+                    )
+                    if watch_event["type"] == "DELETED":
                         # This is an atomic delete operation on the dictionary!
                         self.resources.pop(ref_key, None)
                     else:
@@ -305,25 +311,29 @@ class ResourceReflector(LoggingConfigurable):
                     if watch_duration >= self.restart_seconds:
                         self.log.debug(
                             "Restarting %s watcher after %i seconds",
-                            self.kind, watch_duration,
+                            self.kind,
+                            watch_duration,
                         )
                         break
             except ReadTimeoutError:
                 # network read time out, just continue and restart the watch
                 # this could be due to a network problem or just low activity
                 self.log.warning(
-                    "Read timeout watching %s, reconnecting", self.kind)
+                    "Read timeout watching %s, reconnecting", self.kind
+                )
                 continue
             except Exception:
                 cur_delay = cur_delay * 2
                 if cur_delay > 30:
                     self.log.exception(
-                        "Watching resources never recovered, giving up")
+                        "Watching resources never recovered, giving up"
+                    )
                     if self.on_failure:
                         self.on_failure()
                     return
                 self.log.exception(
-                    "Error when watching resources, retrying in %ss", cur_delay)
+                    "Error when watching resources, retrying in %ss", cur_delay
+                )
                 time.sleep(cur_delay)
                 continue
             else:
@@ -346,9 +356,10 @@ class ResourceReflector(LoggingConfigurable):
         start of program initialization (when the singleton is being created),
         and not afterwards!
         """
-        if hasattr(self, 'watch_thread'):
+        if hasattr(self, "watch_thread"):
             raise ValueError(
-                'Thread watching for resources is already running')
+                "Thread watching for resources is already running"
+            )
 
         self._list_and_update()
         self.watch_thread = threading.Thread(target=self._watch_and_update)
@@ -368,6 +379,7 @@ class NamespacedResourceReflector(ResourceReflector):
     Watches for resources in a particular namespace.  The list_methods
     want both a method name and a namespace.
     """
+
     omit_namespace = False
 
 
@@ -379,4 +391,5 @@ class MultiNamespaceResourceReflector(ResourceReflector):
     rather than just Roles, and therefore this is inherently more
     dangerous.
     """
+
     omit_namespace = True

@@ -42,16 +42,27 @@ from kubernetes.client.models import (
     V1ServicePort,
     V1ServiceSpec,
     V1Toleration,
-    V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec,
-    V1Endpoints, V1EndpointSubset, V1EndpointAddress, V1EndpointPort,
-    V1Service, V1ServiceSpec, V1ServicePort,
+    V1PersistentVolumeClaim,
+    V1PersistentVolumeClaimSpec,
+    V1Endpoints,
+    V1EndpointSubset,
+    V1EndpointAddress,
+    V1EndpointPort,
+    V1Service,
+    V1ServiceSpec,
+    V1ServicePort,
     V1Affinity,
-    V1NodeAffinity, V1NodeSelector, V1NodeSelectorTerm, V1PreferredSchedulingTerm, V1NodeSelectorRequirement,
-    V1PodAffinity, V1PodAntiAffinity, V1WeightedPodAffinityTerm, V1PodAffinityTerm,
+    V1NodeAffinity,
+    V1NodeSelector,
+    V1NodeSelectorTerm,
+    V1PreferredSchedulingTerm,
+    V1NodeSelectorRequirement,
+    V1PodAffinity,
+    V1PodAntiAffinity,
+    V1WeightedPodAffinityTerm,
+    V1PodAffinityTerm,
 )
 from kubespawner.utils import get_k8s_model, update_k8s_model
-
-
 
 
 def make_pod(
@@ -271,11 +282,11 @@ def make_pod(
     pod.metadata = V1ObjectMeta(
         name=name,
         labels=(labels or {}).copy(),
-        annotations=(annotations or {}).copy()
+        annotations=(annotations or {}).copy(),
     )
 
     pod.spec = V1PodSpec(containers=[])
-    pod.spec.restart_policy = 'OnFailure'
+    pod.spec.restart_policy = "OnFailure"
 
     if image_pull_secrets is not None:
         # image_pull_secrets as received by the make_pod function should always
@@ -283,8 +294,8 @@ def make_pod(
         # "a-string"} elements.
         pod.spec.image_pull_secrets = [
             V1LocalObjectReference(name=secret_ref)
-            if type(secret_ref) == str else
-            get_k8s_model(V1LocalObjectReference, secret_ref)
+            if type(secret_ref) == str
+            else get_k8s_model(V1LocalObjectReference, secret_ref)
             for secret_ref in image_pull_secrets
         ]
 
@@ -293,21 +304,24 @@ def make_pod(
             volumes = []
         volumes.append(
             {
-                'name': 'jupyterhub-internal-certs',
-                'secret': {'secretName': ssl_secret_name, 'defaultMode': 511},
+                "name": "jupyterhub-internal-certs",
+                "secret": {"secretName": ssl_secret_name, "defaultMode": 511},
             }
         )
 
-        env['JUPYTERHUB_SSL_KEYFILE'] = ssl_secret_mount_path + "ssl.key"
-        env['JUPYTERHUB_SSL_CERTFILE'] = ssl_secret_mount_path + "ssl.crt"
-        env['JUPYTERHUB_SSL_CLIENT_CA'] = (
+        env["JUPYTERHUB_SSL_KEYFILE"] = ssl_secret_mount_path + "ssl.key"
+        env["JUPYTERHUB_SSL_CERTFILE"] = ssl_secret_mount_path + "ssl.crt"
+        env["JUPYTERHUB_SSL_CLIENT_CA"] = (
             ssl_secret_mount_path + "notebooks-ca_trust.crt"
         )
 
         if not volume_mounts:
             volume_mounts = []
         volume_mounts.append(
-            {'name': 'jupyterhub-internal-certs', 'mountPath': ssl_secret_mount_path}
+            {
+                "name": "jupyterhub-internal-certs",
+                "mountPath": ssl_secret_mount_path,
+            }
         )
 
     if node_selector:
@@ -333,7 +347,8 @@ def make_pod(
         pod_security_context.fs_group = int(fs_gid)
     if supplemental_gids is not None and supplemental_gids:
         pod_security_context.supplemental_groups = [
-            int(gid) for gid in supplemental_gids]
+            int(gid) for gid in supplemental_gids
+        ]
     # Only clutter pod spec with actual content
     if not all([e is None for e in pod_security_context.to_dict().values()]):
         pod.spec.security_context = pod_security_context
@@ -364,17 +379,18 @@ def make_pod(
         else:
             prepared_env.append(V1EnvVar(name=k, value=v))
     notebook_container = V1Container(
-        name='notebook',
+        name="notebook",
         image=image,
         working_dir=working_dir,
-        ports=[V1ContainerPort(name='notebook-port', container_port=port)],
+        ports=[V1ContainerPort(name="notebook-port", container_port=port)],
         env=prepared_env,
         args=cmd,
         image_pull_policy=image_pull_policy,
         lifecycle=lifecycle_hooks,
         resources=V1ResourceRequirements(),
-        volume_mounts=[get_k8s_model(V1VolumeMount, obj)
-                       for obj in (volume_mounts or [])],
+        volume_mounts=[
+            get_k8s_model(V1VolumeMount, obj) for obj in (volume_mounts or [])
+        ],
         security_context=container_security_context,
     )
 
@@ -387,17 +403,17 @@ def make_pod(
 
     notebook_container.resources.requests = {}
     if cpu_guarantee:
-        notebook_container.resources.requests['cpu'] = cpu_guarantee
+        notebook_container.resources.requests["cpu"] = cpu_guarantee
     if mem_guarantee:
-        notebook_container.resources.requests['memory'] = mem_guarantee
+        notebook_container.resources.requests["memory"] = mem_guarantee
     if extra_resource_guarantees:
         notebook_container.resources.requests.update(extra_resource_guarantees)
 
     notebook_container.resources.limits = {}
     if cpu_limit:
-        notebook_container.resources.limits['cpu'] = cpu_limit
+        notebook_container.resources.limits["cpu"] = cpu_limit
     if mem_limit:
-        notebook_container.resources.limits['memory'] = mem_limit
+        notebook_container.resources.limits["memory"] = mem_limit
     if extra_resource_limits:
         notebook_container.resources.limits.update(extra_resource_limits)
 
@@ -414,13 +430,16 @@ def make_pod(
 
     if extra_containers:
         pod.spec.containers.extend(
-            [get_k8s_model(V1Container, obj) for obj in extra_containers])
+            [get_k8s_model(V1Container, obj) for obj in extra_containers]
+        )
     if tolerations:
-        pod.spec.tolerations = [get_k8s_model(
-            V1Toleration, obj) for obj in tolerations]
+        pod.spec.tolerations = [
+            get_k8s_model(V1Toleration, obj) for obj in tolerations
+        ]
     if init_containers:
-        pod.spec.init_containers = [get_k8s_model(
-            V1Container, obj) for obj in init_containers]
+        pod.spec.init_containers = [
+            get_k8s_model(V1Container, obj) for obj in init_containers
+        ]
     if volumes:
         pod.spec.volumes = [get_k8s_model(V1Volume, obj) for obj in volumes]
     else:
@@ -435,14 +454,18 @@ def make_pod(
         node_selector = None
         if node_affinity_required:
             node_selector = V1NodeSelector(
-                node_selector_terms=[get_k8s_model(
-                    V1NodeSelectorTerm, obj) for obj in node_affinity_required],
+                node_selector_terms=[
+                    get_k8s_model(V1NodeSelectorTerm, obj)
+                    for obj in node_affinity_required
+                ],
             )
 
         preferred_scheduling_terms = None
         if node_affinity_preferred:
-            preferred_scheduling_terms = [get_k8s_model(
-                V1PreferredSchedulingTerm, obj) for obj in node_affinity_preferred]
+            preferred_scheduling_terms = [
+                get_k8s_model(V1PreferredSchedulingTerm, obj)
+                for obj in node_affinity_preferred
+            ]
 
         node_affinity = V1NodeAffinity(
             preferred_during_scheduling_ignored_during_execution=preferred_scheduling_terms,
@@ -453,11 +476,17 @@ def make_pod(
     if pod_affinity_preferred or pod_affinity_required:
         weighted_pod_affinity_terms = None
         if pod_affinity_preferred:
-            weighted_pod_affinity_terms = [get_k8s_model(V1WeightedPodAffinityTerm, obj) for obj in pod_affinity_preferred]
+            weighted_pod_affinity_terms = [
+                get_k8s_model(V1WeightedPodAffinityTerm, obj)
+                for obj in pod_affinity_preferred
+            ]
 
         pod_affinity_terms = None
         if pod_affinity_required:
-            pod_affinity_terms = [get_k8s_model(V1PodAffinityTerm, obj) for obj in pod_affinity_required]
+            pod_affinity_terms = [
+                get_k8s_model(V1PodAffinityTerm, obj)
+                for obj in pod_affinity_required
+            ]
 
         pod_affinity = V1PodAffinity(
             preferred_during_scheduling_ignored_during_execution=weighted_pod_affinity_terms,
@@ -468,11 +497,17 @@ def make_pod(
     if pod_anti_affinity_preferred or pod_anti_affinity_required:
         weighted_pod_affinity_terms = None
         if pod_anti_affinity_preferred:
-            weighted_pod_affinity_terms = [get_k8s_model(V1WeightedPodAffinityTerm, obj) for obj in pod_anti_affinity_preferred]
+            weighted_pod_affinity_terms = [
+                get_k8s_model(V1WeightedPodAffinityTerm, obj)
+                for obj in pod_anti_affinity_preferred
+            ]
 
         pod_affinity_terms = None
         if pod_anti_affinity_required:
-            pod_affinity_terms = [get_k8s_model(V1PodAffinityTerm, obj) for obj in pod_anti_affinity_required]
+            pod_affinity_terms = [
+                get_k8s_model(V1PodAffinityTerm, obj)
+                for obj in pod_anti_affinity_required
+            ]
 
         pod_anti_affinity = V1PodAffinity(
             preferred_during_scheduling_ignored_during_execution=weighted_pod_affinity_terms,
@@ -480,7 +515,7 @@ def make_pod(
         )
 
     affinity = None
-    if (node_affinity or pod_affinity or pod_anti_affinity):
+    if node_affinity or pod_affinity or pod_anti_affinity:
         affinity = V1Affinity(
             node_affinity=node_affinity,
             pod_affinity=pod_affinity,
@@ -545,7 +580,9 @@ def make_pvc(
     pvc.spec.resources.requests = {"storage": storage}
 
     if storage_class is not None:
-        pvc.metadata.annotations.update({"volume.beta.kubernetes.io/storage-class": storage_class})
+        pvc.metadata.annotations.update(
+            {"volume.beta.kubernetes.io/storage-class": storage_class}
+        )
         pvc.spec.storage_class_name = storage_class
 
     if selector:
@@ -553,13 +590,8 @@ def make_pvc(
 
     return pvc
 
-def make_ingress(
-        name,
-        routespec,
-        target,
-        labels,
-        data
-):
+
+def make_ingress(name, routespec, target, labels, data):
     """
     Returns an ingress, service, endpoint object that'll work for this service
     """
@@ -572,53 +604,60 @@ def make_ingress(
 
     try:
         from kubernetes.client.models import (
-            ExtensionsV1beta1Ingress, ExtensionsV1beta1IngressSpec, ExtensionsV1beta1IngressRule,
-            ExtensionsV1beta1HTTPIngressRuleValue, ExtensionsV1beta1HTTPIngressPath,
+            ExtensionsV1beta1Ingress,
+            ExtensionsV1beta1IngressSpec,
+            ExtensionsV1beta1IngressRule,
+            ExtensionsV1beta1HTTPIngressRuleValue,
+            ExtensionsV1beta1HTTPIngressPath,
             ExtensionsV1beta1IngressBackend,
         )
     except ImportError:
         from kubernetes.client.models import (
-            V1beta1Ingress as ExtensionsV1beta1Ingress, V1beta1IngressSpec as ExtensionsV1beta1IngressSpec,
+            V1beta1Ingress as ExtensionsV1beta1Ingress,
+            V1beta1IngressSpec as ExtensionsV1beta1IngressSpec,
             V1beta1IngressRule as ExtensionsV1beta1IngressRule,
             V1beta1HTTPIngressRuleValue as ExtensionsV1beta1HTTPIngressRuleValue,
             V1beta1HTTPIngressPath as ExtensionsV1beta1HTTPIngressPath,
-            V1beta1IngressBackend as ExtensionsV1beta1IngressBackend
+            V1beta1IngressBackend as ExtensionsV1beta1IngressBackend,
         )
 
     meta = V1ObjectMeta(
         name=name,
         annotations={
-            'hub.jupyter.org/proxy-data': json.dumps(data),
-            'hub.jupyter.org/proxy-routespec': routespec,
-            'hub.jupyter.org/proxy-target': target
+            "hub.jupyter.org/proxy-data": json.dumps(data),
+            "hub.jupyter.org/proxy-routespec": routespec,
+            "hub.jupyter.org/proxy-target": target,
         },
         labels=labels,
     )
 
-    if routespec.startswith('/'):
+    if routespec.startswith("/"):
         host = None
         path = routespec
     else:
-        host, path = routespec.split('/', 1)
+        host, path = routespec.split("/", 1)
 
     target_parts = urlparse(target)
 
     target_ip = target_parts.hostname
     target_port = target_parts.port
 
-    target_is_ip = re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', target_ip) is not None
+    target_is_ip = (
+        re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", target_ip)
+        is not None
+    )
 
     # Make endpoint object
     if target_is_ip:
         endpoint = V1Endpoints(
-            kind='Endpoints',
+            kind="Endpoints",
             metadata=meta,
             subsets=[
                 V1EndpointSubset(
                     addresses=[V1EndpointAddress(ip=target_ip)],
-                    ports=[V1EndpointPort(port=target_port)]
+                    ports=[V1EndpointPort(port=target_port)],
                 )
-            ]
+            ],
         )
     else:
         endpoint = None
@@ -626,185 +665,55 @@ def make_ingress(
     # Make service object
     if target_is_ip:
         service = V1Service(
-            kind='Service',
+            kind="Service",
             metadata=meta,
             spec=V1ServiceSpec(
-                type='ClusterIP',
-                external_name='',
-                ports=[V1ServicePort(port=target_port, target_port=target_port)]
-            )
+                type="ClusterIP",
+                external_name="",
+                ports=[
+                    V1ServicePort(port=target_port, target_port=target_port)
+                ],
+            ),
         )
     else:
         service = V1Service(
-            kind='Service',
+            kind="Service",
             metadata=meta,
             spec=V1ServiceSpec(
-                type='ExternalName',
+                type="ExternalName",
                 external_name=target_ip,
-                cluster_ip='',
-                ports=[V1ServicePort(port=target_port, target_port=target_port)],
+                cluster_ip="",
+                ports=[
+                    V1ServicePort(port=target_port, target_port=target_port)
+                ],
             ),
         )
 
     # Make Ingress object
     ingress = ExtensionsV1beta1Ingress(
-        kind='Ingress',
+        kind="Ingress",
         metadata=meta,
         spec=ExtensionsV1beta1IngressSpec(
-            rules=[ExtensionsV1beta1IngressRule(
-                host=host,
-                http=ExtensionsV1beta1HTTPIngressRuleValue(
-                    paths=[
-                        ExtensionsV1beta1HTTPIngressPath(
-                            path=path,
-                            backend=ExtensionsV1beta1IngressBackend(
-                                service_name=name,
-                                service_port=target_port
+            rules=[
+                ExtensionsV1beta1IngressRule(
+                    host=host,
+                    http=ExtensionsV1beta1HTTPIngressRuleValue(
+                        paths=[
+                            ExtensionsV1beta1HTTPIngressPath(
+                                path=path,
+                                backend=ExtensionsV1beta1IngressBackend(
+                                    service_name=name, service_port=target_port
+                                ),
                             )
-                        )
-                    ]
+                        ]
+                    ),
                 )
-            )]
-        )
+            ]
+        ),
     )
 
     return endpoint, service, ingress
 
-def make_owner_reference(name, uid):
-    """
-    Returns a owner reference object for garbage collection.
-    """
-    return V1OwnerReference(
-        api_version="v1",
-        kind="Pod",
-        name=name,
-        uid=uid,
-        block_owner_deletion=True,
-        controller=False,
-    )
-
-
-def make_secret(
-    name,
-    username,
-    cert_paths,
-    hub_ca,
-    owner_references,
-    labels=None,
-    annotations=None,
-):
-    """
-    Make a k8s secret specification using pre-existing ssl credentials for a given user.
-
-    Parameters
-    ----------
-    name:
-        Name of the secret. Must be unique within the namespace the object is
-        going to be created in.
-    username:
-        The name of the user notebook.
-    cert_paths:
-        JupyterHub spawners cert_paths dictionary container certificate path references
-    hub_ca:
-        Path to the hub certificate authority
-    labels:
-        Labels to add to the secret.
-    annotations:
-        Annotations to add to the secret.
-    """
-
-    secret = V1Secret()
-    secret.kind = "Secret"
-    secret.api_version = "v1"
-    secret.metadata = V1ObjectMeta()
-    secret.metadata.name = name
-    secret.metadata.annotations = (annotations or {}).copy()
-    secret.metadata.labels = (labels or {}).copy()
-    secret.metadata.owner_references = owner_references
-
-    secret.data = {}
-
-    with open(cert_paths['keyfile'], 'r') as file:
-        encoded = base64.b64encode(file.read().encode("utf-8"))
-        secret.data['ssl.key'] = encoded.decode("utf-8")
-
-    with open(cert_paths['certfile'], 'r') as file:
-        encoded = base64.b64encode(file.read().encode("utf-8"))
-        secret.data['ssl.crt'] = encoded.decode("utf-8")
-
-    with open(cert_paths['cafile'], 'r') as file:
-        encoded = base64.b64encode(file.read().encode("utf-8"))
-        secret.data["notebooks-ca_trust.crt"] = encoded.decode("utf-8")
-
-    with open(hub_ca, 'r') as file:
-        encoded = base64.b64encode(file.read().encode("utf-8"))
-        secret.data["notebooks-ca_trust.crt"] = secret.data[
-            "notebooks-ca_trust.crt"
-        ] + encoded.decode("utf-8")
-
-    return secret
-
-
-def make_service(
-    name,
-    port,
-    servername,
-    owner_references,
-    labels=None,
-    annotations=None,
-):
-    """
-    Make a k8s service specification for using dns to communicate with the notebook.
-
-    Parameters
-    ----------
-    name:
-        Name of the service. Must be unique within the namespace the object is
-        going to be created in.
-    env:
-        Dictionary of environment variables.
-    labels:
-        Labels to add to the service.
-    annotations:
-        Annotations to add to the service.
-
-    """
-
-    metadata = V1ObjectMeta(
-        name=name,
-        annotations=(annotations or {}).copy(),
-        labels=(labels or {}).copy(),
-        owner_references=owner_references,
-    )
-
-    service = V1Service(
-        kind='Service',
-        metadata=metadata,
-        spec=V1ServiceSpec(
-            type='ClusterIP',
-            ports=[V1ServicePort(port=port, target_port=port)],
-            selector={
-                'component': 'singleuser-server',
-                'hub.jupyter.org/servername': servername,
-                'hub.jupyter.org/username': metadata.labels['hub.jupyter.org/username'],
-            },
-        ),
-    )
-
-    return service
-
-def make_namespace(name, labels=None, annotations=None):
-    """
-    Make a k8s namespace specification for a user pod.
-    """
-
-    metadata =  V1ObjectMeta(
-        name=name,
-        labels=(labels or {}).copy(),
-        annotations=(annotations or {}).copy()
-    )
-
-    return V1Namespace(metadata=metadata)
 
 def make_owner_reference(name, uid):
     """
@@ -860,19 +769,19 @@ def make_secret(
 
     secret.data = {}
 
-    with open(cert_paths['keyfile'], 'r') as file:
+    with open(cert_paths["keyfile"], "r") as file:
         encoded = base64.b64encode(file.read().encode("utf-8"))
-        secret.data['ssl.key'] = encoded.decode("utf-8")
+        secret.data["ssl.key"] = encoded.decode("utf-8")
 
-    with open(cert_paths['certfile'], 'r') as file:
+    with open(cert_paths["certfile"], "r") as file:
         encoded = base64.b64encode(file.read().encode("utf-8"))
-        secret.data['ssl.crt'] = encoded.decode("utf-8")
+        secret.data["ssl.crt"] = encoded.decode("utf-8")
 
-    with open(cert_paths['cafile'], 'r') as file:
+    with open(cert_paths["cafile"], "r") as file:
         encoded = base64.b64encode(file.read().encode("utf-8"))
         secret.data["notebooks-ca_trust.crt"] = encoded.decode("utf-8")
 
-    with open(hub_ca, 'r') as file:
+    with open(hub_ca, "r") as file:
         encoded = base64.b64encode(file.read().encode("utf-8"))
         secret.data["notebooks-ca_trust.crt"] = secret.data[
             "notebooks-ca_trust.crt"
@@ -882,12 +791,7 @@ def make_secret(
 
 
 def make_service(
-    name,
-    port,
-    servername,
-    owner_references,
-    labels=None,
-    annotations=None,
+    name, port, servername, owner_references, labels=None, annotations=None,
 ):
     """
     Make a k8s service specification for using dns to communicate with the notebook.
@@ -914,31 +818,168 @@ def make_service(
     )
 
     service = V1Service(
-        kind='Service',
+        kind="Service",
         metadata=metadata,
         spec=V1ServiceSpec(
-            type='ClusterIP',
+            type="ClusterIP",
             ports=[V1ServicePort(port=port, target_port=port)],
             selector={
-                'component': 'singleuser-server',
-                'hub.jupyter.org/servername': servername,
-                'hub.jupyter.org/username': metadata.labels['hub.jupyter.org/username'],
+                "component": "singleuser-server",
+                "hub.jupyter.org/servername": servername,
+                "hub.jupyter.org/username": metadata.labels[
+                    "hub.jupyter.org/username"
+                ],
             },
         ),
     )
 
     return service
 
+
 def make_namespace(name, labels=None, annotations=None):
     """
     Make a k8s namespace specification for a user pod.
     """
 
-    metadata =  V1ObjectMeta(
+    metadata = V1ObjectMeta(
         name=name,
         labels=(labels or {}).copy(),
-        annotations=(annotations or {}).copy()
+        annotations=(annotations or {}).copy(),
     )
 
     return V1Namespace(metadata=metadata)
 
+
+def make_owner_reference(name, uid):
+    """
+    Returns a owner reference object for garbage collection.
+    """
+    return V1OwnerReference(
+        api_version="v1",
+        kind="Pod",
+        name=name,
+        uid=uid,
+        block_owner_deletion=True,
+        controller=False,
+    )
+
+
+def make_secret(
+    name,
+    username,
+    cert_paths,
+    hub_ca,
+    owner_references,
+    labels=None,
+    annotations=None,
+):
+    """
+    Make a k8s secret specification using pre-existing ssl credentials for a given user.
+
+    Parameters
+    ----------
+    name:
+        Name of the secret. Must be unique within the namespace the object is
+        going to be created in.
+    username:
+        The name of the user notebook.
+    cert_paths:
+        JupyterHub spawners cert_paths dictionary container certificate path references
+    hub_ca:
+        Path to the hub certificate authority
+    labels:
+        Labels to add to the secret.
+    annotations:
+        Annotations to add to the secret.
+    """
+
+    secret = V1Secret()
+    secret.kind = "Secret"
+    secret.api_version = "v1"
+    secret.metadata = V1ObjectMeta()
+    secret.metadata.name = name
+    secret.metadata.annotations = (annotations or {}).copy()
+    secret.metadata.labels = (labels or {}).copy()
+    secret.metadata.owner_references = owner_references
+
+    secret.data = {}
+
+    with open(cert_paths["keyfile"], "r") as file:
+        encoded = base64.b64encode(file.read().encode("utf-8"))
+        secret.data["ssl.key"] = encoded.decode("utf-8")
+
+    with open(cert_paths["certfile"], "r") as file:
+        encoded = base64.b64encode(file.read().encode("utf-8"))
+        secret.data["ssl.crt"] = encoded.decode("utf-8")
+
+    with open(cert_paths["cafile"], "r") as file:
+        encoded = base64.b64encode(file.read().encode("utf-8"))
+        secret.data["notebooks-ca_trust.crt"] = encoded.decode("utf-8")
+
+    with open(hub_ca, "r") as file:
+        encoded = base64.b64encode(file.read().encode("utf-8"))
+        secret.data["notebooks-ca_trust.crt"] = secret.data[
+            "notebooks-ca_trust.crt"
+        ] + encoded.decode("utf-8")
+
+    return secret
+
+
+def make_service(
+    name, port, servername, owner_references, labels=None, annotations=None,
+):
+    """
+    Make a k8s service specification for using dns to communicate with the notebook.
+
+    Parameters
+    ----------
+    name:
+        Name of the service. Must be unique within the namespace the object is
+        going to be created in.
+    env:
+        Dictionary of environment variables.
+    labels:
+        Labels to add to the service.
+    annotations:
+        Annotations to add to the service.
+
+    """
+
+    metadata = V1ObjectMeta(
+        name=name,
+        annotations=(annotations or {}).copy(),
+        labels=(labels or {}).copy(),
+        owner_references=owner_references,
+    )
+
+    service = V1Service(
+        kind="Service",
+        metadata=metadata,
+        spec=V1ServiceSpec(
+            type="ClusterIP",
+            ports=[V1ServicePort(port=port, target_port=port)],
+            selector={
+                "component": "singleuser-server",
+                "hub.jupyter.org/servername": servername,
+                "hub.jupyter.org/username": metadata.labels[
+                    "hub.jupyter.org/username"
+                ],
+            },
+        ),
+    )
+
+    return service
+
+
+def make_namespace(name, labels=None, annotations=None):
+    """
+    Make a k8s namespace specification for a user pod.
+    """
+
+    metadata = V1ObjectMeta(
+        name=name,
+        labels=(labels or {}).copy(),
+        annotations=(annotations or {}).copy(),
+    )
+
+    return V1Namespace(metadata=metadata)

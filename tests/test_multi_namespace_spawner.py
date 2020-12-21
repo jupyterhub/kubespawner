@@ -2,7 +2,10 @@ from asyncio import get_event_loop
 from jupyterhub.objects import Hub, Server
 from jupyterhub.orm import Spawner
 from kubernetes.client.models import (
-    V1SecurityContext, V1Container, V1Capabilities, V1Pod
+    V1SecurityContext,
+    V1Container,
+    V1Capabilities,
+    V1Pod,
 )
 from kubespawner import KubeSpawner, MultiNamespaceKubeSpawner
 from kubernetes.client import V1Namespace
@@ -19,7 +22,7 @@ import os
 
 
 class MockUser(Mock):
-    name = 'multifake'
+    name = "multifake"
     server = Server()
 
     @property
@@ -48,8 +51,9 @@ async def test_multi_namespace_spawn():
     # We cannot use the fixtures, because they assume the standard
     #  namespace and client for that namespace.
 
-    spawner = MultiNamespaceKubeSpawner(hub=Hub(), user=MockUser(),
-                                        config=Config())
+    spawner = MultiNamespaceKubeSpawner(
+        hub=Hub(), user=MockUser(), config=Config()
+    )
 
     # empty spawner isn't running
     status = await spawner.poll()
@@ -58,7 +62,7 @@ async def test_multi_namespace_spawn():
     # get a client
     kube_ns = spawner.namespace
     load_kube_config()
-    client = shared_client('CoreV1Api')
+    client = shared_client("CoreV1Api")
 
     # the spawner will create the namespace on its own.
 
