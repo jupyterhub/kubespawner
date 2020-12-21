@@ -197,8 +197,9 @@ def make_pod(
         learn more about pod tolerations, see
         https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/.
 
-        Pass this field an array of "Toleration" objects.*
-        #nodeselectorterm-v1-core
+        Pass this field an array of "Toleration" objects.
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#nodeselectorterm-v1-core>`__
+
         * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.10/
     node_affinity_preferred:
         Affinities describe where pods prefer or require to be scheduled, they

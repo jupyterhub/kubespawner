@@ -829,8 +829,7 @@ class KubeSpawner(Spawner):
         upgrades to break.
 
         You'll *have* to set this if you are using auto-provisioned volumes with most
-        #podsecuritycontext-v1-core>`_
-        cloud providers. See `fsGroup <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/
+        cloud providers. See `fsGroup <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#podsecuritycontext-v1-core>`_
         for more details.
         """,
     )
@@ -2726,7 +2725,10 @@ class KubeSpawner(Spawner):
         ns = make_namespace(self.namespace)
         api = self.api
         try:
-            api.create_namespace(ns)
+            await gen.with_timeout(
+                timedelta(seconds=self.k8s_api_request_timeout),
+                self.asynchronize(api.create_namespace, ns),
+            )
         except ApiException as e:
             if e.status != 409:
                 # It's fine if it already exists
