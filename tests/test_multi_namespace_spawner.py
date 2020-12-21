@@ -7,7 +7,7 @@ from kubernetes.client.models import (
     V1Capabilities,
     V1Pod,
 )
-from kubespawner import KubeSpawner, MultiNamespaceKubeSpawner
+from kubespawner import KubeSpawner
 from kubernetes.client import V1Namespace
 from kubernetes.config import load_kube_config
 import pytest
@@ -42,7 +42,7 @@ def test_enable_user_namespaces():
 
 def test_multi_namespace_spawner_class():
     user = MockUser()
-    spawner = MultiNamespaceKubeSpawner(user=user, _mock=True)
+    spawner = KubeSpawner(user=user, _mock=True, enable_user_namespaces=True)
     assert spawner.namespace.endswith("-{}".format(user.escaped_name))
 
 
@@ -51,8 +51,11 @@ async def test_multi_namespace_spawn():
     # We cannot use the fixtures, because they assume the standard
     #  namespace and client for that namespace.
 
-    spawner = MultiNamespaceKubeSpawner(
-        hub=Hub(), user=MockUser(), config=Config()
+    spawner = KubeSpawner(
+        hub=Hub(),
+        user=MockUser(),
+        config=Config(),
+        enable_user_namespaces=True,
     )
 
     # empty spawner isn't running
