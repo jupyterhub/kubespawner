@@ -22,11 +22,7 @@ class ResourceReflector(LoggingConfigurable):
     """Base class for keeping a local up-to-date copy of a set of
     kubernetes resources.
 
-
-    Must be subclassed once per kind of resource that needs watching, but
-    in general you should subclass either NamespacedResourceReflector or
-    MultiNamespaceResourceReflector, depending on whether you are using
-    per-user namespaces or not.
+    Must be subclassed once per kind of resource that needs watching.
     """
 
     labels = Dict(
@@ -68,10 +64,7 @@ class ResourceReflector(LoggingConfigurable):
         config=True,
         help="""
         Set this to true if the reflector is to operate across
-        multiple namespaces.  This is set by both the
-        MultiNamespaceResourceReflector and
-        NamespacedResourceReflector subclasses, so you probably do not
-        have to set it yourself.
+        multiple namespaces.
         """,
     )
 
@@ -80,7 +73,7 @@ class ResourceReflector(LoggingConfigurable):
         allow_none=True,
         help="""
         Namespace to watch for resources in; leave at 'None' for
-        MultiNamespaceResourceReflectors.
+        multi-namespace reflectors.
         """,
     )
 
@@ -92,18 +85,21 @@ class ResourceReflector(LoggingConfigurable):
 
         This will be passed a a label selector.
 
-        If self.omit_namespace is False (and this class is a
-        NamespacedResourceReflector), you want something of the form
+        If self.omit_namespace is False you want something of the form
         list_namespaced_<resource> - for example,
-        `list_namespaced_pod` will give you a PodReflector.  It will take
-        its namespace from self.namespace (which therefore should not be
-        None).
+        `list_namespaced_pod` will give you a PodReflector.  It will
+        take its namespace from self.namespace (which therefore should
+        not be None).
 
-        If self.omit_namespace is True (and this class is a
-        MultiNamespaceResourceReflector), you want
+        If self.omit_namespace is True, you want 
         list_<resource>_for_all_namespaces.
 
         This must be set by a subclass.
+
+        It is not necessary to set it for pod or event reflectors, because
+        __init__ will figure it out.  If you create your own reflector
+        subclass you probably want to add the logic to choose the method
+        name to that class's __init__().
         """,
     )
 
@@ -182,17 +178,10 @@ class ResourceReflector(LoggingConfigurable):
         # Make sure that we know kind, whether we should omit the namespace,
         #  and what our list_method_name is.  For the things we already
         #  know about (that is, Pod and Event reflectors) we can derive
-        #  list_method_name from those two things.  If we generally add more
-        #  reflectors, we can update our logic here.  But if someone wants
-        #  to subclass reflector without pushing it upstream, and specify
-        #  kind, omit_namespace, and the appropriate list_methods, then
-        #  that'll work too.
-        if not self.kind and "kind" in kwargs and kwargs["kind"]:
-            self.kind = kwargs["kind"]
-        if "omit_namespace" in kwargs and not self.omit_namespace:
-            self.omit_namespace = kwargs["omit_namespace"]
-        if "list_method_name" in kwargs and kwargs["list_method_name"]:
-            self.list_method_name = kwargs["list_method_name"]
+        #  list_method_name from those two things.  New reflector types
+        #  should also update their __init__() methods to derive
+        #  list_method_name, but you could just set it directly in the
+        #  subclass.
         if not self.list_method_name:
             # This logic can be extended if we add other reflector types or
             #  it can be directly supplied or overridden in a subclass.
@@ -207,6 +196,7 @@ class ResourceReflector(LoggingConfigurable):
                 else:
                     self.list_method_name = "list_namespaced_event"
 
+        # Make sure we have the required values.
         if not self.kind:
             raise RuntimeError("Reflector kind must be set!")
         if not self.list_method_name:
