@@ -45,7 +45,7 @@ def traitlets_logging():
     so KubeSpawner logs are captured by pytest.
     By default, there is a "NullHandler" so no logs are produced.
     """
-    logger = logging.getLogger("traitlets")
+    logger = logging.getLogger('traitlets')
     logger.setLevel(logging.DEBUG)
     logger.handlers = []
 
@@ -134,10 +134,7 @@ def watch_logs(kube_client, pod_info):
                 return
             else:
                 # unexpeced error
-                print(
-                    f"Error watching logs for {pod_info.name}: {e}",
-                    file=sys.stderr,
-                )
+                print(f"Error watching logs for {pod_info.name}: {e}", file=sys.stderr)
                 raise
         else:
             break
@@ -155,14 +152,13 @@ def watch_kubernetes(kube_client, kube_ns):
     log_threads = {}
     watch = Watch()
     for event in watch.stream(
-        func=kube_client.list_namespaced_event, namespace=kube_ns,
+        func=kube_client.list_namespaced_event,
+        namespace=kube_ns,
     ):
 
-        resource = event["object"]
+        resource = event['object']
         obj = resource.involved_object
-        print(
-            f"k8s event ({event['type']} {obj.kind}/{obj.name}): {resource.message}"
-        )
+        print(f"k8s event ({event['type']} {obj.kind}/{obj.name}): {resource.message}")
 
         # new pod appeared, start streaming its logs
         if (
@@ -241,9 +237,7 @@ def wait_for_pod(kube_client, kube_ns, pod_name, timeout=90):
             break
 
     if conditions.get("Ready") != "True":
-        raise TimeoutError(
-            f"pod {kube_ns}/{pod_name} failed to start: {pod.status}"
-        )
+        raise TimeoutError(f"pod {kube_ns}/{pod_name} failed to start: {pod.status}")
     return pod
 
 
@@ -275,9 +269,7 @@ def ensure_not_exists(kube_client, kube_ns, name, resource_type, timeout=30):
             time.sleep(1)
 
 
-def create_resource(
-    kube_client, kube_ns, resource_type, manifest, delete_first=True
-):
+def create_resource(kube_client, kube_ns, resource_type, manifest, delete_first=True):
     """Create a kubernetes resource
 
     handling 409 errors and others that can occur due to rapid startup
@@ -292,7 +284,8 @@ def create_resource(
     for i in range(10):
         try:
             create(
-                body=manifest, namespace=kube_ns,
+                body=manifest,
+                namespace=kube_ns,
             )
         except ApiException as e:
             if e.status == 409:
@@ -314,8 +307,7 @@ def create_hub_pod(kube_client, kube_ns, pod_name="hub", ssl=False):
         config = f.read()
 
     config_map_manifest = V1ConfigMap(
-        metadata={"name": config_map_name},
-        data={"jupyterhub_config.py": config},
+        metadata={"name": config_map_name}, data={"jupyterhub_config.py": config}
     )
 
     config_map = create_resource(
@@ -335,11 +327,12 @@ def create_hub_pod(kube_client, kube_ns, pod_name="hub", ssl=False):
         }
     ]
     if ssl:
-        volumes.append(
-            {"name": "secret", "secret": {"secretName": secret_name}}
-        )
+        volumes.append({"name": "secret", "secret": {"secretName": secret_name}})
         volume_mounts.append(
-            {"mountPath": "/etc/jupyterhub/secret", "name": "secret",}
+            {
+                "mountPath": "/etc/jupyterhub/secret",
+                "name": "secret",
+            }
         )
 
     pod_manifest = V1Pod(
@@ -361,7 +354,9 @@ def create_hub_pod(kube_client, kube_ns, pod_name="hub", ssl=False):
                     ],
                     "env": [{"name": "PYTHONUNBUFFERED", "value": "1"}],
                     "readinessProbe": {
-                        "tcpSocket": {"port": 8081,},
+                        "tcpSocket": {
+                            "port": 8081,
+                        },
                         "periodSeconds": 1,
                     },
                 }
@@ -393,9 +388,7 @@ def hub_pod_ssl(kube_client, kube_ns, ssl_app):
     # load ssl dir to tarfile
     buf = io.BytesIO()
     tf = tarfile.TarFile(fileobj=buf, mode="w")
-    tf.add(
-        ssl_app.internal_certs_location, arcname="internal-ssl", recursive=True
-    )
+    tf.add(ssl_app.internal_certs_location, arcname="internal-ssl", recursive=True)
 
     # store tarfile in a secret
     b64_certs = base64.b64encode(buf.getvalue()).decode("ascii")
@@ -418,7 +411,12 @@ def hub_pod_ssl(kube_client, kube_ns, ssl_app):
 
     create_resource(kube_client, kube_ns, "service", service_manifest)
 
-    return create_hub_pod(kube_client, kube_ns, pod_name=name, ssl=True,)
+    return create_hub_pod(
+        kube_client,
+        kube_ns,
+        pod_name=name,
+        ssl=True,
+    )
 
 
 @pytest.fixture
@@ -448,9 +446,7 @@ class ExecError(Exception):
         )
 
 
-def _exec_python_in_pod(
-    kube_client, kube_ns, pod_name, code, kwargs=None, _retries=0
-):
+def _exec_python_in_pod(kube_client, kube_ns, pod_name, code, kwargs=None, _retries=0):
     """Run simple Python code in a pod
 
     code can be a str of code, or a 'simple' Python function,
@@ -476,9 +472,7 @@ def _exec_python_in_pod(
             ]
         )
     elif kwargs:
-        raise ValueError(
-            "kwargs can only be passed to functions, not code strings."
-        )
+        raise ValueError("kwargs can only be passed to functions, not code strings.")
 
     exec_command = [
         "python3",
@@ -514,7 +508,11 @@ def _exec_python_in_pod(
             # retry
             time.sleep(1)
             return _exec_python_in_pod(
-                kube_client, kube_ns, pod_name, code, _retries=_retries - 1,
+                kube_client,
+                kube_ns,
+                pod_name,
+                code,
+                _retries=_retries - 1,
             )
     else:
         return client.read_stdout().rstrip()

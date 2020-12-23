@@ -8,11 +8,7 @@ from kubernetes.client.models import (
     V1Capabilities,
     V1Lifecycle,
 )
-from kubespawner.utils import (
-    get_k8s_model,
-    update_k8s_model,
-    _get_k8s_model_attribute,
-)
+from kubespawner.utils import get_k8s_model, update_k8s_model, _get_k8s_model_attribute
 
 from conftest import ExecError
 
@@ -51,14 +47,8 @@ def test_exec_error(exec_python):
 
 def test__get_k8s_model_attribute():
     """Verifies fundamental behavior"""
-    assert (
-        _get_k8s_model_attribute(V1PodSpec, "service_account")
-        == "service_account"
-    )
-    assert (
-        _get_k8s_model_attribute(V1PodSpec, "serviceAccount")
-        == "service_account"
-    )
+    assert _get_k8s_model_attribute(V1PodSpec, "service_account") == "service_account"
+    assert _get_k8s_model_attribute(V1PodSpec, "serviceAccount") == "service_account"
 
 
 def test_update_k8s_model():
@@ -68,42 +58,32 @@ def test_update_k8s_model():
     manually_updated_target = V1Container(
         name="mock_name",
         image="mock_image",
-        command=["iptables"],
+        command=['iptables'],
         security_context=V1SecurityContext(
             privileged=True,
             run_as_user=0,
-            capabilities=V1Capabilities(add=["NET_ADMIN"]),
-        ),
+            capabilities=V1Capabilities(add=['NET_ADMIN'])
+        )
     )
     target = copy.deepcopy(manually_updated_target)
     source = {"name": "new_mock_name"}
     update_k8s_model(target, source)
 
     manually_updated_target.name = "new_mock_name"
-
+    
     assert target == manually_updated_target
-
 
 def test_update_k8s_models_logger_warning():
     """Ensure that the update_k8s_model function uses the logger to warn about
     overwriting previous values."""
-    target = V1Container(name="mock_name")
+    target = V1Container(
+        name="mock_name"
+    )
     source = {"name": "new_mock_name", "image_pull_policy": "Always"}
     mock_locker = MockLogger()
-    update_k8s_model(
-        target,
-        source,
-        logger=mock_locker,
-        target_name="notebook_container",
-        changes_name="extra_container_config",
-    )
-
-    assert (
-        mock_locker.most_recent_warning.find(
-            "'notebook_container.name' current value: 'mock_name' is overridden with 'new_mock_name', which is the value of 'extra_container_config.name'"
-        )
-        != -1
-    )
+    update_k8s_model(target, source, logger=mock_locker, target_name="notebook_container", changes_name="extra_container_config")
+    
+    assert mock_locker.most_recent_warning.find("'notebook_container.name' current value: 'mock_name' is overridden with 'new_mock_name', which is the value of 'extra_container_config.name'") != -1
     assert mock_locker.warning_count == 1
 
 
@@ -112,22 +92,35 @@ def test_get_k8s_model():
     dictionary to representing it get_k8s_model should work."""
     # verify get_k8s_model for when passing dict objects
     v1_lifecycle_from_dict = get_k8s_model(
-        V1Lifecycle, {"preStop": {"exec": {"command": ["/bin/sh", "test"]}}},
+        V1Lifecycle,
+        {
+            'preStop': {
+                'exec': {
+                    'command': ['/bin/sh', 'test']
+                }
+            }
+        },
     )
-
+    
     assert isinstance(v1_lifecycle_from_dict, V1Lifecycle)
     assert v1_lifecycle_from_dict.to_dict() == {
-        "post_start": None,
-        "pre_stop": {"exec": {"command": ["/bin/sh", "test"]}},
+        'post_start': None,
+        'pre_stop': {
+            'exec': {
+                'command': ['/bin/sh', 'test']
+            }
+        },
     }
 
     # verify get_k8s_model for when passing model objects
-    v1_lifecycle_from_model_object = get_k8s_model(
-        V1Lifecycle, v1_lifecycle_from_dict
-    )
+    v1_lifecycle_from_model_object = get_k8s_model(V1Lifecycle, v1_lifecycle_from_dict)
 
     assert isinstance(v1_lifecycle_from_model_object, V1Lifecycle)
     assert v1_lifecycle_from_model_object.to_dict() == {
-        "post_start": None,
-        "pre_stop": {"exec": {"command": ["/bin/sh", "test"]}},
+        'post_start': None,
+        'pre_stop': {
+            'exec': {
+                'command': ['/bin/sh', 'test']
+            }
+        },
     }
