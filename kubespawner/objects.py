@@ -6,7 +6,6 @@ import json
 import os
 import re
 from urllib.parse import urlparse
-
 from kubernetes.client.models import (
     V1Affinity,
     V1Container,
@@ -36,6 +35,8 @@ from kubernetes.client.models import (
     V1PreferredSchedulingTerm,
     V1ResourceRequirements,
     V1Secret,
+    V1EnvFromSource, 
+    V1SecretEnvSource,
     V1SecurityContext,
     V1Service,
     V1ServicePort,
@@ -62,7 +63,7 @@ def make_pod(
     supplemental_gids=None,
     run_privileged=False,
     allow_privilege_escalation=True,
-    env=None,
+    env_from=None,
     working_dir=None,
     volumes=None,
     volume_mounts=None,
@@ -266,6 +267,7 @@ def make_pod(
 
     pod.spec = V1PodSpec(containers=[])
     pod.spec.restart_policy = 'OnFailure'
+    
 
     if image_pull_secrets is not None:
         # image_pull_secrets as received by the make_pod function should always
@@ -286,12 +288,6 @@ def make_pod(
                 'name': 'jupyterhub-internal-certs',
                 'secret': {'secretName': ssl_secret_name, 'defaultMode': 511},
             }
-        )
-
-        env['JUPYTERHUB_SSL_KEYFILE'] = ssl_secret_mount_path + "ssl.key"
-        env['JUPYTERHUB_SSL_CERTFILE'] = ssl_secret_mount_path + "ssl.crt"
-        env['JUPYTERHUB_SSL_CLIENT_CA'] = (
-            ssl_secret_mount_path + "notebooks-ca_trust.crt"
         )
 
         if not volume_mounts:
@@ -340,24 +336,12 @@ def make_pod(
     if all([e is None for e in container_security_context.to_dict().values()]):
         container_security_context = None
 
-    # Transform a dict into valid Kubernetes EnvVar Python representations. This
-    # representation shall always have a "name" field as well as either a
-    # "value" field or "value_from" field. For examples see the
-    # test_make_pod_with_env function.
-    prepared_env = []
-    for k, v in (env or {}).items():
-        if type(v) == dict:
-            if not "name" in v:
-                v["name"] = k
-            prepared_env.append(get_k8s_model(V1EnvVar, v))
-        else:
-            prepared_env.append(V1EnvVar(name=k, value=v))
     notebook_container = V1Container(
         name='notebook',
         image=image,
         working_dir=working_dir,
         ports=[V1ContainerPort(name='notebook-port', container_port=port)],
-        env=prepared_env,
+        env_from=[V1EnvFromSource(secret_ref=V1SecretEnvSource(env_from))],
         args=cmd,
         image_pull_policy=image_pull_policy,
         lifecycle=lifecycle_hooks,
@@ -671,9 +655,8 @@ def make_owner_reference(name, uid):
 
 def make_secret(
     name,
+    str_data,
     username,
-    cert_paths,
-    hub_ca,
     owner_references,
     labels=None,
     annotations=None,
@@ -706,26 +689,7 @@ def make_secret(
     secret.metadata.annotations = (annotations or {}).copy()
     secret.metadata.labels = (labels or {}).copy()
     secret.metadata.owner_references = owner_references
-
-    secret.data = {}
-
-    with open(cert_paths['keyfile'], 'r') as file:
-        encoded = base64.b64encode(file.read().encode("utf-8"))
-        secret.data['ssl.key'] = encoded.decode("utf-8")
-
-    with open(cert_paths['certfile'], 'r') as file:
-        encoded = base64.b64encode(file.read().encode("utf-8"))
-        secret.data['ssl.crt'] = encoded.decode("utf-8")
-
-    with open(cert_paths['cafile'], 'r') as file:
-        encoded = base64.b64encode(file.read().encode("utf-8"))
-        secret.data["notebooks-ca_trust.crt"] = encoded.decode("utf-8")
-
-    with open(hub_ca, 'r') as file:
-        encoded = base64.b64encode(file.read().encode("utf-8"))
-        secret.data["notebooks-ca_trust.crt"] = secret.data[
-            "notebooks-ca_trust.crt"
-        ] + encoded.decode("utf-8")
+    secret.string_data = str_data
 
     return secret
 

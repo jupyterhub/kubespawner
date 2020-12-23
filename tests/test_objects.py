@@ -2,7 +2,7 @@
 Test functions used to create k8s objects
 """
 from kubernetes.client import ApiClient
-from kubespawner.objects import make_ingress, make_pod, make_pvc
+from kubespawner.objects import make_ingress, make_pod, make_pvc, make_secret
 
 api_client = ApiClient()
 
@@ -26,7 +26,7 @@ def test_make_simplest_pod():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -70,7 +70,7 @@ def test_make_labeled_pod():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -114,7 +114,7 @@ def test_make_annotated_pod():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -162,7 +162,7 @@ def test_make_pod_with_image_pull_secrets_simplified_format():
             ],
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -211,7 +211,7 @@ def test_make_pod_with_image_pull_secrets_k8s_native_format():
             ],
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -261,7 +261,7 @@ def test_set_container_uid_and_gid():
                         "runAsUser": 0,
                         "runAsGroup": 0
                     },
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -309,7 +309,7 @@ def test_set_container_uid_and_pod_fs_gid():
                     "securityContext": {
                         "runAsUser": 1000,
                     },
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -360,7 +360,7 @@ def test_set_pod_supplemental_gids():
                     "securityContext": {
                         "runAsUser": 1000,
                     },
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -407,7 +407,7 @@ def test_run_privileged_container():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -454,7 +454,7 @@ def test_allow_privilege_escalation_container():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -507,7 +507,7 @@ def test_make_pod_resources_all():
             "nodeSelector": {"disk": "ssd"},
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -537,33 +537,14 @@ def test_make_pod_resources_all():
     }
 
 
-def test_make_pod_with_env():
+def test_make_pod_with_env_from():
     """
     Test specification of a pod with custom environment variables.
     """
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
-        env={
-            'TEST_KEY_1': 'TEST_VALUE',
-            'TEST_KEY_2': {
-                'valueFrom': {
-                    'secretKeyRef': {
-                        'name': 'my-k8s-secret',
-                        'key': 'password',
-                    },
-                },
-            },
-            'TEST_KEY_NAME_IGNORED': {
-                'name': 'TEST_KEY_3',
-                'valueFrom': {
-                    'secretKeyRef': {
-                        'name': 'my-k8s-secret',
-                        'key': 'password',
-                    },
-                },
-            },
-        },
+        env_from='my-k8s-secret',
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent'
@@ -577,29 +558,12 @@ def test_make_pod_with_env():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "env": [
+                    "envFrom": [
                         {
-                            'name': 'TEST_KEY_1',
-                            'value': 'TEST_VALUE',
-                        },
-                        {
-                            'name': 'TEST_KEY_2',
-                            'valueFrom': {
-                                'secretKeyRef': {
-                                    'name': 'my-k8s-secret',
-                                    'key': 'password',
-                                },
-                            },
-                        },
-                        {
-                            'name': 'TEST_KEY_3',
-                            'valueFrom': {
-                                'secretKeyRef': {
-                                    'name': 'my-k8s-secret',
-                                    'key': 'password',
-                                },
-                            },
-                        },
+                            'secretRef': {
+                                'name': 'my-k8s-secret'
+                            }
+                        }
                     ],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -652,7 +616,7 @@ def test_make_pod_with_lifecycle():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -717,7 +681,7 @@ def test_make_pod_with_init_containers():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -785,7 +749,7 @@ def test_make_pod_with_extra_container_config():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -851,7 +815,7 @@ def test_make_pod_with_extra_pod_config():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -912,7 +876,7 @@ def test_make_pod_with_extra_containers():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -970,7 +934,7 @@ def test_make_pod_with_extra_resources():
             "nodeSelector": {"disk": "ssd"},
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -1001,6 +965,51 @@ def test_make_pod_with_extra_resources():
         "kind": "Pod",
         "apiVersion": "v1"
     }
+
+def test_make_secret_simple():
+    """
+    Test specification of the simplest possible secret specification
+    """
+    assert api_client.sanitize_for_serialization(make_secret(
+        name='my-k8s-secret',
+        str_data={},
+        username='test',
+        owner_references=[],
+        labels={}    
+    )) == {
+        'kind': 'Secret',
+        'apiVersion': 'v1',
+        'metadata': {
+            'name': 'my-k8s-secret',
+            'annotations': {},
+            'labels': {},
+            'ownerReferences': []
+        },
+        'stringData': {}
+    }
+
+def test_make_secret_with_data():
+    """
+    Test specification of the simplest possible secret specification
+    """
+    assert api_client.sanitize_for_serialization(make_secret(
+        name='my-k8s-secret',
+        str_data={"TEST1": "VALUE1"},
+        username='test',
+        owner_references=[],
+        labels={}    
+    )) == {
+        'kind': 'Secret',
+        'apiVersion': 'v1',
+        'metadata': {
+            'name': 'my-k8s-secret',
+            'ownerReferences': [],
+            'annotations': {},
+            'labels': {}
+        },
+        'stringData': {"TEST1": "VALUE1"}
+    }
+
 
 def test_make_pvc_simple():
     """
@@ -1125,7 +1134,7 @@ def test_make_pod_with_service_account():
         "spec": {
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -1171,7 +1180,7 @@ def test_make_pod_with_scheduler_name():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -1230,7 +1239,7 @@ def test_make_pod_with_tolerations():
             "automountServiceAccountToken": False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -1286,7 +1295,7 @@ def test_make_pod_with_node_affinity_preferred():
             "automountServiceAccountToken": False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -1343,7 +1352,7 @@ def test_make_pod_with_node_affinity_required():
             "automountServiceAccountToken": False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -1408,7 +1417,7 @@ def test_make_pod_with_pod_affinity_preferred():
             "automountServiceAccountToken": False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -1468,7 +1477,7 @@ def test_make_pod_with_pod_affinity_required():
             "automountServiceAccountToken": False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -1531,7 +1540,7 @@ def test_make_pod_with_pod_anti_affinity_preferred():
             "automountServiceAccountToken": False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -1591,7 +1600,7 @@ def test_make_pod_with_pod_anti_affinity_required():
             "automountServiceAccountToken": False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -1641,7 +1650,7 @@ def test_make_pod_with_priority_class_name():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "env": [],
+                    "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
@@ -1755,11 +1764,7 @@ def test_make_pod_with_ssl():
         make_pod(
             name='ssl',
             image='jupyter/singleuser:latest',
-            env={
-                'JUPYTERHUB_SSL_KEYFILE': 'TEST_VALUE',
-                'JUPYTERHUB_SSL_CERTFILE': 'TEST',
-                'JUPYTERHUB_USER': 'TEST',
-            },
+            env_from='ssl',
             working_dir='/',
             cmd=['jupyterhub-singleuser'],
             port=8888,
@@ -1777,19 +1782,11 @@ def test_make_pod_with_ssl():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "env": [
+                    "envFrom": [
                         {
-                            'name': 'JUPYTERHUB_SSL_KEYFILE',
-                            'value': '/etc/jupyterhub/ssl/ssl.key',
-                        },
-                        {
-                            'name': 'JUPYTERHUB_SSL_CERTFILE',
-                            'value': '/etc/jupyterhub/ssl/ssl.crt',
-                        },
-                        {'name': 'JUPYTERHUB_USER', 'value': 'TEST'},
-                        {
-                            'name': 'JUPYTERHUB_SSL_CLIENT_CA',
-                            'value': '/etc/jupyterhub/ssl/notebooks-ca_trust.crt',
+                            'secretRef': {
+                                'name': 'ssl'
+                            }
                         },
                     ],
                     "name": "notebook",
