@@ -221,7 +221,7 @@ class ResourceReflector(LoggingConfigurable):
         # This is an atomic operation on the dictionary!
         initial_resources = json.loads(initial_resources.read())
         self.resources = {
-            f'{p["metadata"]["namespace"]}/{ p["metadata"]["name"]}': p for p in initial_resources["items"]}
+            f'{p["metadata"]["namespace"]}/{p["metadata"]["name"]}': p for p in initial_resources["items"]}
         # return the resource version so we can hook up a watch
         return initial_resources["metadata"]["resourceVersion"]
 
