@@ -304,8 +304,8 @@ class ResourceReflector(LoggingConfigurable):
                     # reside in the WatchEvent's object field depending on what
                     # kind of resource is watched.
                     #
-                    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#watchevent-v1-meta
-                    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.16/#event-v1-core
+                    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#watchevent-v1-meta
+                    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#event-v1-core
                     cur_delay = 0.1
                     resource = watch_event['object']
                     ref_key = "{}/{}".format(resource["metadata"]["namespace"],
