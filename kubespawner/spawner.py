@@ -7,6 +7,7 @@ implementation that should be used by JupyterHub.
 
 import asyncio
 import json
+import base64
 import multiprocessing
 import os
 import string
@@ -1624,7 +1625,7 @@ class KubeSpawner(Spawner):
             supplemental_gids=supplemental_gids,
             run_privileged=self.privileged,
             allow_privilege_escalation=self.allow_privilege_escalation,
-            env=self.get_env(),
+            env_from=self.secret_name,
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),
             working_dir=self.working_dir,
@@ -1665,12 +1666,11 @@ class KubeSpawner(Spawner):
         annotations = self._build_common_annotations(
             self._expand_all(self.extra_annotations)
         )
-
+        
         return make_secret(
             name=self.secret_name,
+            str_data=self.get_env(),
             username=self.user.name,
-            cert_paths=self.cert_paths,
-            hub_ca=self.internal_trust_bundles['hub-ca'],
             owner_references=[owner_reference],
             labels=labels,
             annotations=annotations,
@@ -1771,6 +1771,24 @@ class KubeSpawner(Spawner):
         # deprecate image
         env['JUPYTER_IMAGE_SPEC'] = self.image
         env['JUPYTER_IMAGE'] = self.image
+        if self.internal_ssl:
+            with open(self.cert_paths['keyfile'], 'r') as file:
+                env['ssl.key'] = file.read()
+
+            with open(self.cert_paths['certfile'], 'r') as file:
+                env['ssl.crt'] = file.read()
+
+            with open(self.cert_paths['cafile'], 'r') as file:
+                env["notebooks-ca_trust.crt"] = file.read()
+
+            with open(self.internal_trust_bundles['hub-ca'], 'r') as file:
+                encoded = base64.b64encode(file.read().encode("utf-8"))
+                env["notebooks-ca_trust.crt"] = env[
+                    "notebooks-ca_trust.crt"
+                ] + file.read()
+            env['JUPYTERHUB_SSL_KEYFILE'] = self.secret_mount_path + "ssl.key"
+            env['JUPYTERHUB_SSL_CERTFILE'] = self.secret_mount_path + "ssl.crt"
+            env['JUPYTERHUB_SSL_CLIENT_CA'] = (self.secret_mount_path + "notebooks-ca_trust.crt")
 
         return env
 
@@ -2182,34 +2200,35 @@ class KubeSpawner(Spawner):
             timeout=self.k8s_api_request_retry_timeout
         )
 
-        if self.internal_ssl:
-            try:
-                # wait for pod to have uid,
-                # required for creating owner reference
-                await exponential_backoff(
-                    lambda: self.pod_has_uid(
-                        self.pod_reflector.pods.get(self.pod_name, None)
-                    ),
-                    "pod/%s does not have a uid!" % (self.pod_name),
-                )
+        try:
+            # wait for pod to have uid,
+            # required for creating owner reference
+            await exponential_backoff(
+                lambda: self.pod_has_uid(
+                    self.pod_reflector.pods.get(self.pod_name, None)
+                ),
+                "pod/%s does not have a uid!" % (self.pod_name),
+            )
 
-                pod = self.pod_reflector.pods[self.pod_name]
-                owner_reference = make_owner_reference(
-                    self.pod_name, pod["metadata"]["uid"]
-                )
+            pod = self.pod_reflector.pods[self.pod_name]
+            owner_reference = make_owner_reference(
+                self.pod_name, pod["metadata"]["uid"]
+            )
 
-                # internal ssl, create secret object
-                secret_manifest = self.get_secret_manifest(owner_reference)
-                await exponential_backoff(
-                    partial(
-                        self._ensure_not_exists, "secret", secret_manifest.metadata.name
-                    ),
-                    f"Failed to delete secret {secret_manifest.metadata.name}",
-                )
-                await exponential_backoff(
-                    partial(self._make_create_resource_request, "secret", secret_manifest),
-                    f"Failed to create secret {secret_manifest.metadata.name}",
-                )
+            # create secret object
+            secret_manifest = self.get_secret_manifest(owner_reference)
+            await exponential_backoff(
+                partial(
+                    self._ensure_not_exists, "secret", secret_manifest.metadata.name
+                ),
+                f"Failed to delete secret {secret_manifest.metadata.name}",
+            )
+            await exponential_backoff(
+                partial(self._make_create_resource_request, "secret", secret_manifest),
+                f"Failed to create secret {secret_manifest.metadata.name}",
+            )
+
+            if self.internal_ssl:
 
                 service_manifest = self.get_service_manifest(owner_reference)
                 await exponential_backoff(
@@ -2224,10 +2243,11 @@ class KubeSpawner(Spawner):
                     ),
                     f"Failed to create service {service_manifest.metadata.name}",
                 )
-            except Exception:
-                # cleanup on failure and re-raise
-                await self.stop(True)
-                raise
+
+        except Exception:
+            # cleanup on failure and re-raise
+            await self.stop(True)
+            raise
 
         # we need a timeout here even though start itself has a timeout
         # in order for this coroutine to finish at some point.
