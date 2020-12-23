@@ -208,21 +208,16 @@ class ResourceReflector(LoggingConfigurable):
         Overwrites all current resource info.
         """
         initial_resources = None
-        if self.omit_namespace:
-            initial_resources = getattr(self.api, self.list_method_name)(
-                label_selector=self.label_selector,
-                field_selector=self.field_selector,
-                _request_timeout=self.request_timeout,
-                _preload_content=False,
-            )
-        else:
-            initial_resources = getattr(self.api, self.list_method_name)(
-                self.namespace,
-                label_selector=self.label_selector,
-                field_selector=self.field_selector,
-                _request_timeout=self.request_timeout,
-                _preload_content=False,
-            )
+        kwargs = dict(
+            label_selector=self.label_selector,
+            field_selector=self.field_selector,
+            _request_timeout=self.request_timeout,
+            _preload_content=False,
+        )
+        if not self.omit_namespace:
+            kwargs["namespace"] = self.namespace
+
+        initial_resources = getattr(self.api, self.list_method_name)(**kwargs)
         # This is an atomic operation on the dictionary!
         initial_resources = json.loads(initial_resources.read())
         self.resources = {
