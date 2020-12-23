@@ -58,9 +58,9 @@ from .traitlets import Callable
 
 class PodReflector(ResourceReflector):
     """
-    PodReflector is merely a configured NamespacedResourceReflector. It exposes
+    PodReflector is merely a configured ResourceReflector. It exposes
     the pods property, which is simply mapping to self.resources where the
-    NamespacedResourceReflector keeps an updated list of the resource defined by
+    ResourceReflector keeps an updated list of the resource defined by
     the `kind` field and the `list_method_name` field.
     """
     kind = "pods"
@@ -84,9 +84,9 @@ class PodReflector(ResourceReflector):
 
 class EventReflector(ResourceReflector):
     """
-    EventsReflector is merely a configured NamespacedResourceReflector. It
+    EventsReflector is merely a configured ResourceReflector. It
     exposes the events property, which is simply mapping to self.resources where
-    the NamespacedResourceReflector keeps an updated list of the resource
+    the ResourceReflector keeps an updated list of the resource
     defined by the `kind` field and the `list_method_name` field.
     """
     kind = "events"
@@ -102,7 +102,7 @@ class EventReflector(ResourceReflector):
 
         # NOTE:
         # - self.resources is a dictionary with keys mapping unique ids of
-        #   Kubernetes Event resources, updated by NamespacedResourceReflector.
+        #   Kubernetes Event resources, updated by ResourceReflector.
         #   self.resources will builds up with incoming k8s events, but can also
         #   suddenly refreshes itself entirely. We should not assume a call to
         #   this dictionary's values will result in a consistently ordered list,
@@ -2668,10 +2668,3 @@ class KubeSpawner(Spawner):
                 self.log.exception("Failed to create namespace %s",
                                    self.namespace)
                 raise
-
-
-class MultiNamespaceKubeSpawner(KubeSpawner):
-    """
-    MultiNamespaceKubeSpawner is the all-namespaces analog of KubeSpawner.
-    """
-    enable_user_namespaces = True
