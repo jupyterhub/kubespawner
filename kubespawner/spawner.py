@@ -28,6 +28,8 @@ from async_generator import async_generator, yield_
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
 from jupyterhub.utils import exponential_backoff
+from kubespawner.utils import get_k8s_model
+from kubernetes.client.models import V1EnvVar
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from slugify import slugify
@@ -1625,6 +1627,7 @@ class KubeSpawner(Spawner):
             supplemental_gids=supplemental_gids,
             run_privileged=self.privileged,
             allow_privilege_escalation=self.allow_privilege_escalation,
+            env=self.get_env()[1],
             env_from=self.secret_name,
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),
@@ -1669,7 +1672,7 @@ class KubeSpawner(Spawner):
         
         return make_secret(
             name=self.secret_name,
-            str_data=self.get_env(),
+            str_data=self.get_env()[0],
             username=self.user.name,
             owner_references=[owner_reference],
             labels=labels,
@@ -1768,10 +1771,33 @@ class KubeSpawner(Spawner):
         """
 
         env = super(KubeSpawner, self).get_env()
+
+        """Separate env. variables into two dicts
+        - Dict containing only "valueFrom" env. variables, these are passed as-is.
+        - replace existing env dict with only "value" env. varaibles, these are passed into secret.
+        """
+        prepared_env = []
+        # create a separate dict for all "valueFrom" environment variables
+        extra_env = {k: v for k, v in (env or {}).items() if type(v) == dict}
+        # Replace existing env dict without "valueFrom" env. variables and pass it to secret
+        env = {k: v for k, v in (env or {}).items() if type(v) != dict}
+        for k, v in (extra_env or {}).items():
+            if not "name" in v:
+                v["name"] = k
+            extra_env[k] = v
+            prepared_env.append(get_k8s_model(V1EnvVar, v))
+
         # deprecate image
         env['JUPYTER_IMAGE_SPEC'] = self.image
         env['JUPYTER_IMAGE'] = self.image
+        
         if self.internal_ssl:
+            """
+            cert_paths:
+                certificate path references
+            hub_ca:
+                Path to the hub certificate authority
+            """
             with open(self.cert_paths['keyfile'], 'r') as file:
                 env['ssl.key'] = file.read()
 
@@ -1782,7 +1808,6 @@ class KubeSpawner(Spawner):
                 env["notebooks-ca_trust.crt"] = file.read()
 
             with open(self.internal_trust_bundles['hub-ca'], 'r') as file:
-                encoded = base64.b64encode(file.read().encode("utf-8"))
                 env["notebooks-ca_trust.crt"] = env[
                     "notebooks-ca_trust.crt"
                 ] + file.read()
@@ -1790,7 +1815,7 @@ class KubeSpawner(Spawner):
             env['JUPYTERHUB_SSL_CERTFILE'] = self.secret_mount_path + "ssl.crt"
             env['JUPYTERHUB_SSL_CLIENT_CA'] = (self.secret_mount_path + "notebooks-ca_trust.crt")
 
-        return env
+        return env, prepared_env
 
     def load_state(self, state):
         """

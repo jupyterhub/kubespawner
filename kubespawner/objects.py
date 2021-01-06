@@ -63,6 +63,7 @@ def make_pod(
     supplemental_gids=None,
     run_privileged=False,
     allow_privilege_escalation=True,
+    env=None,
     env_from=None,
     working_dir=None,
     volumes=None,
@@ -341,6 +342,7 @@ def make_pod(
         image=image,
         working_dir=working_dir,
         ports=[V1ContainerPort(name='notebook-port', container_port=port)],
+        env=env,
         env_from=[V1EnvFromSource(secret_ref=V1SecretEnvSource(env_from))],
         args=cmd,
         image_pull_policy=image_pull_policy,
@@ -671,10 +673,6 @@ def make_secret(
         going to be created in.
     username:
         The name of the user notebook.
-    cert_paths:
-        JupyterHub spawners cert_paths dictionary container certificate path references
-    hub_ca:
-        Path to the hub certificate authority
     labels:
         Labels to add to the secret.
     annotations:

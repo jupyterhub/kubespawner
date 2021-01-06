@@ -581,3 +581,21 @@ def test_get_pvc_manifest():
         "heritage": "jupyterhub",
     }
     assert manifest.spec.selector == {"matchLabels": {"user": "mock-5fname"}}
+
+
+def test_env():
+    c = Config()
+
+    c.KubeSpawner.environment = {
+        "TEST_KEY_1": "VALUE_1", 
+        "TEST_KEY_2": {'valueFrom': {'secretKeyRef': {'name': 'my-test-secret', 'key': 'password'}}},
+        'TEST_KEY_NAME_IGNORED': {'name': 'TEST_KEY_3', 'valueFrom': { 'secretKeyRef': {'name': 'my-test-secret', 'key': 'password'}}}
+    }
+
+    spawner = KubeSpawner(config=c, _mock=True)
+    env = spawner.get_env()
+    assert env[0].get("TEST_KEY_1") == "VALUE_1" 
+    assert env[1][0].name == "TEST_KEY_2"
+    assert env[1][0].value_from == {'secretKeyRef': {'key': 'password', 'name': 'my-test-secret'}}
+    assert env[1][1].name == "TEST_KEY_3"
+    assert env[1][1].value_from == {'secretKeyRef': {'key': 'password', 'name': 'my-test-secret'}}

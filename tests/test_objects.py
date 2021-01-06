@@ -13,6 +13,7 @@ def test_make_simplest_pod():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent'
@@ -26,6 +27,7 @@ def test_make_simplest_pod():
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -56,6 +58,7 @@ def test_make_labeled_pod():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -70,6 +73,7 @@ def test_make_labeled_pod():
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -100,6 +104,7 @@ def test_make_annotated_pod():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -114,6 +119,7 @@ def test_make_annotated_pod():
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -144,6 +150,7 @@ def test_make_pod_with_image_pull_secrets_simplified_format():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -162,6 +169,7 @@ def test_make_pod_with_image_pull_secrets_simplified_format():
             ],
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -193,6 +201,7 @@ def test_make_pod_with_image_pull_secrets_k8s_native_format():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -211,6 +220,7 @@ def test_make_pod_with_image_pull_secrets_k8s_native_format():
             ],
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -242,6 +252,7 @@ def test_set_container_uid_and_gid():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         run_as_uid=0,
@@ -261,6 +272,7 @@ def test_set_container_uid_and_gid():
                         "runAsUser": 0,
                         "runAsGroup": 0
                     },
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -291,6 +303,7 @@ def test_set_container_uid_and_pod_fs_gid():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         run_as_uid=1000,
@@ -309,6 +322,7 @@ def test_set_container_uid_and_pod_fs_gid():
                     "securityContext": {
                         "runAsUser": 1000,
                     },
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -342,6 +356,7 @@ def test_set_pod_supplemental_gids():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         run_as_uid=1000,
@@ -360,6 +375,7 @@ def test_set_pod_supplemental_gids():
                     "securityContext": {
                         "runAsUser": 1000,
                     },
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -393,6 +409,7 @@ def test_run_privileged_container():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         run_privileged=True,
@@ -407,6 +424,7 @@ def test_run_privileged_container():
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -440,6 +458,7 @@ def test_allow_privilege_escalation_container():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         allow_privilege_escalation=False,
@@ -454,6 +473,7 @@ def test_allow_privilege_escalation_container():
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -491,6 +511,7 @@ def test_make_pod_resources_all():
         cpu_limit=2,
         cpu_guarantee=1,
         cmd=['jupyterhub-singleuser'],
+        env=[],
         port=8888,
         mem_limit='1Gi',
         mem_guarantee='512Mi',
@@ -507,6 +528,7 @@ def test_make_pod_resources_all():
             "nodeSelector": {"disk": "ssd"},
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -544,6 +566,26 @@ def test_make_pod_with_env_from():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[
+                {
+                    'name': 'TEST_KEY_1',
+                    'valueFrom': {
+                        'secretKeyRef': {
+                            'name': 'my-test-secret',
+                            'key': 'password',
+                        },
+                    },
+                },
+                {
+                    'name': 'TEST_KEY_2',
+                    'valueFrom': {
+                        'secretKeyRef': {
+                            'name': 'my-test-secret',
+                            'key': 'password',
+                        },
+                    },
+                },
+            ],
         env_from='my-k8s-secret',
         cmd=['jupyterhub-singleuser'],
         port=8888,
@@ -558,6 +600,26 @@ def test_make_pod_with_env_from():
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "env": [
+                        {
+                            'name': 'TEST_KEY_1',
+                            'valueFrom': {
+                                'secretKeyRef': {
+                                    'name': 'my-test-secret',
+                                    'key': 'password',
+                                },
+                            },
+                        },
+                        {
+                            'name': 'TEST_KEY_2',
+                            'valueFrom': {
+                                'secretKeyRef': {
+                                    'name': 'my-test-secret',
+                                    'key': 'password',
+                                },
+                            },
+                        },
+                    ],
                     "envFrom": [
                         {
                             'secretRef': {
@@ -596,6 +658,7 @@ def test_make_pod_with_lifecycle():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -616,6 +679,7 @@ def test_make_pod_with_lifecycle():
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -656,6 +720,7 @@ def test_make_pod_with_init_containers():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -681,6 +746,7 @@ def test_make_pod_with_init_containers():
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -727,6 +793,7 @@ def test_make_pod_with_extra_container_config():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -749,6 +816,7 @@ def test_make_pod_with_extra_container_config():
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -788,6 +856,7 @@ def test_make_pod_with_extra_pod_config():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -815,6 +884,7 @@ def test_make_pod_with_extra_pod_config():
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -856,6 +926,7 @@ def test_make_pod_with_extra_containers():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -876,6 +947,7 @@ def test_make_pod_with_extra_containers():
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -917,6 +989,7 @@ def test_make_pod_with_extra_resources():
         cpu_guarantee=1,
         extra_resource_limits={"nvidia.com/gpu": "5", "k8s.io/new-resource": "1"},
         extra_resource_guarantees={"nvidia.com/gpu": "3"},
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         mem_limit='1Gi',
@@ -934,6 +1007,7 @@ def test_make_pod_with_extra_resources():
             "nodeSelector": {"disk": "ssd"},
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -1121,6 +1195,7 @@ def test_make_pod_with_service_account():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1134,6 +1209,7 @@ def test_make_pod_with_service_account():
         "spec": {
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -1166,6 +1242,7 @@ def test_make_pod_with_scheduler_name():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1180,6 +1257,7 @@ def test_make_pod_with_scheduler_name():
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -1225,6 +1303,7 @@ def test_make_pod_with_tolerations():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1239,6 +1318,7 @@ def test_make_pod_with_tolerations():
             "automountServiceAccountToken": False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -1281,6 +1361,7 @@ def test_make_pod_with_node_affinity_preferred():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1295,6 +1376,7 @@ def test_make_pod_with_node_affinity_preferred():
             "automountServiceAccountToken": False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -1338,6 +1420,7 @@ def test_make_pod_with_node_affinity_required():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1352,6 +1435,7 @@ def test_make_pod_with_node_affinity_required():
             "automountServiceAccountToken": False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -1403,6 +1487,7 @@ def test_make_pod_with_pod_affinity_preferred():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1417,6 +1502,7 @@ def test_make_pod_with_pod_affinity_preferred():
             "automountServiceAccountToken": False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -1463,6 +1549,7 @@ def test_make_pod_with_pod_affinity_required():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1477,6 +1564,7 @@ def test_make_pod_with_pod_affinity_required():
             "automountServiceAccountToken": False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -1526,6 +1614,7 @@ def test_make_pod_with_pod_anti_affinity_preferred():
     assert api_client.sanitize_for_serialization(make_pod(
         name='test',
         image='jupyter/singleuser:latest',
+        env=[],
         cmd=['jupyterhub-singleuser'],
         port=8888,
         image_pull_policy='IfNotPresent',
@@ -1540,6 +1629,7 @@ def test_make_pod_with_pod_anti_affinity_preferred():
             "automountServiceAccountToken": False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -1587,6 +1677,7 @@ def test_make_pod_with_pod_anti_affinity_required():
         name='test',
         image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
+        env=[],
         port=8888,
         image_pull_policy='IfNotPresent',
         pod_anti_affinity_required=pod_anti_affinity_required
@@ -1600,6 +1691,7 @@ def test_make_pod_with_pod_anti_affinity_required():
             "automountServiceAccountToken": False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -1637,6 +1729,7 @@ def test_make_pod_with_priority_class_name():
         name='test',
         image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
+        env=[],
         port=8888,
         image_pull_policy='IfNotPresent',
         priority_class_name='my-custom-priority-class'
@@ -1650,6 +1743,7 @@ def test_make_pod_with_priority_class_name():
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [{'secretRef': {}}],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -1764,6 +1858,7 @@ def test_make_pod_with_ssl():
         make_pod(
             name='ssl',
             image='jupyter/singleuser:latest',
+            env=[],
             env_from='ssl',
             working_dir='/',
             cmd=['jupyterhub-singleuser'],
@@ -1782,6 +1877,7 @@ def test_make_pod_with_ssl():
             'automountServiceAccountToken': False,
             "containers": [
                 {
+                    "env": [],
                     "envFrom": [
                         {
                             'secretRef': {
