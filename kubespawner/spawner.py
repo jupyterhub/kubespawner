@@ -1627,7 +1627,7 @@ class KubeSpawner(Spawner):
             supplemental_gids=supplemental_gids,
             run_privileged=self.privileged,
             allow_privilege_escalation=self.allow_privilege_escalation,
-            env=self.get_env()[1],
+            env=self.get_env_value_from() if self.get_env_value_from() else None,
             env_from=self.secret_name,
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),
@@ -1672,8 +1672,7 @@ class KubeSpawner(Spawner):
         
         return make_secret(
             name=self.secret_name,
-            str_data=self.get_env()[0],
-            username=self.user.name,
+            string_data=self.get_env(),
             owner_references=[owner_reference],
             labels=labels,
             annotations=annotations,
@@ -1771,22 +1770,9 @@ class KubeSpawner(Spawner):
         """
 
         env = super(KubeSpawner, self).get_env()
-
-        """Separate env. variables into two dicts
-        - Dict containing only "valueFrom" env. variables, these are passed as-is.
-        - replace existing env dict with only "value" env. varaibles, these are passed into secret.
-        """
-        prepared_env = []
-        # create a separate dict for all "valueFrom" environment variables
-        extra_env = {k: v for k, v in (env or {}).items() if type(v) == dict}
-        # Replace existing env dict without "valueFrom" env. variables and pass it to secret
+        
+        # Filter env. variables with only values and pass it to secret
         env = {k: v for k, v in (env or {}).items() if type(v) != dict}
-        for k, v in (extra_env or {}).items():
-            if not "name" in v:
-                v["name"] = k
-            extra_env[k] = v
-            prepared_env.append(get_k8s_model(V1EnvVar, v))
-
         # deprecate image
         env['JUPYTER_IMAGE_SPEC'] = self.image
         env['JUPYTER_IMAGE'] = self.image
@@ -1815,7 +1801,26 @@ class KubeSpawner(Spawner):
             env['JUPYTERHUB_SSL_CERTFILE'] = self.secret_mount_path + "ssl.crt"
             env['JUPYTERHUB_SSL_CLIENT_CA'] = (self.secret_mount_path + "notebooks-ca_trust.crt")
 
-        return env, prepared_env
+        return env
+    
+    def get_env_value_from(self):
+
+        """Return the environment dict to use for the Spawner.
+
+        See also: jupyterhub.Spawner.get_env
+        """
+
+        env = super(KubeSpawner, self).get_env()
+        env_value_from = []
+        # Filter env. variables with only "valueFrom" environment variables.
+        extra_env = {k: v for k, v in (env or {}).items() if type(v) == dict}
+        for k, v in (extra_env or {}).items():
+            if not "name" in v:
+                v["name"] = k
+            env_value_from.append(get_k8s_model(V1EnvVar, v))
+
+        return env_value_from
+
 
     def load_state(self, state):
         """
@@ -2239,8 +2244,11 @@ class KubeSpawner(Spawner):
             owner_reference = make_owner_reference(
                 self.pod_name, pod["metadata"]["uid"]
             )
+            
+            """Create secret object
 
-            # create secret object
+            Assuming there will be atleast one env. variable that will be passed
+            """
             secret_manifest = self.get_secret_manifest(owner_reference)
             await exponential_backoff(
                 partial(

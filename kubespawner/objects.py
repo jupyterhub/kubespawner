@@ -657,8 +657,7 @@ def make_owner_reference(name, uid):
 
 def make_secret(
     name,
-    str_data,
-    username,
+    string_data,
     owner_references,
     labels=None,
     annotations=None,
@@ -687,7 +686,7 @@ def make_secret(
     secret.metadata.annotations = (annotations or {}).copy()
     secret.metadata.labels = (labels or {}).copy()
     secret.metadata.owner_references = owner_references
-    secret.string_data = str_data
+    secret.string_data = string_data
 
     return secret
 

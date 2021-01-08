@@ -583,19 +583,20 @@ def test_get_pvc_manifest():
     assert manifest.spec.selector == {"matchLabels": {"user": "mock-5fname"}}
 
 
-def test_env():
+def test_env_value_from():
     c = Config()
 
-    c.KubeSpawner.environment = {
-        "TEST_KEY_1": "VALUE_1", 
+    c.KubeSpawner.environment = { 
         "TEST_KEY_2": {'valueFrom': {'secretKeyRef': {'name': 'my-test-secret', 'key': 'password'}}},
-        'TEST_KEY_NAME_IGNORED': {'name': 'TEST_KEY_3', 'valueFrom': { 'secretKeyRef': {'name': 'my-test-secret', 'key': 'password'}}}
+        "TEST_KEY_3": {'valueFrom': {'fieldRef': {'fieldPath': 'metadata.namespace'}}},
+        'TEST_KEY_NAME_IGNORED': {'name': 'TEST_KEY_4', 'valueFrom': { 'secretKeyRef': {'name': 'my-test-secret-2', 'key': 'password'}}}
     }
 
     spawner = KubeSpawner(config=c, _mock=True)
-    env = spawner.get_env()
-    assert env[0].get("TEST_KEY_1") == "VALUE_1" 
-    assert env[1][0].name == "TEST_KEY_2"
-    assert env[1][0].value_from == {'secretKeyRef': {'key': 'password', 'name': 'my-test-secret'}}
-    assert env[1][1].name == "TEST_KEY_3"
-    assert env[1][1].value_from == {'secretKeyRef': {'key': 'password', 'name': 'my-test-secret'}}
+    env_value_from = spawner.get_env_value_from()
+    assert env_value_from[0].name == "TEST_KEY_2"
+    assert env_value_from[0].value_from == {'secretKeyRef': {'key': 'password', 'name': 'my-test-secret'}}
+    assert env_value_from[1].name == "TEST_KEY_3"
+    assert env_value_from[1].value_from == {'fieldRef': {'fieldPath': 'metadata.namespace'}}
+    assert env_value_from[2].name == "TEST_KEY_4"
+    assert env_value_from[2].value_from == {'secretKeyRef': {'key': 'password', 'name': 'my-test-secret-2'}}
