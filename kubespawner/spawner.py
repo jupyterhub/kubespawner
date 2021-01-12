@@ -411,15 +411,6 @@ class KubeSpawner(Spawner):
         help="""
         Template to use to form the dns name for the pod.
         """
-
-    )
-
-    dns_name_template = Unicode(
-        "{name}.{namespace}.svc.cluster.local",
-        config=True,
-        help="""
-        Template to use to form the dns name for the pod.
-        """
     )
 
     pod_name_template = Unicode(
@@ -2104,8 +2095,6 @@ class KubeSpawner(Spawner):
         and a new one started (for recovering from possible errors).
         """
         pod_reflector_class = PodReflector
-        if self.enable_user_namespaces:
-            reflector_omit_namespace = True
         pod_reflector_class.labels.update({"component": self.component_label})
         return self._start_reflector(
             "pods",
@@ -2363,24 +2352,6 @@ class KubeSpawner(Spawner):
                             "secret", secret_manifest),
                     f"Failed to create secret {secret_manifest.metadata.name}",
                 )
-
-                service_manifest = self.get_service_manifest(owner_reference)
-                await exponential_backoff(
-                    partial(
-                        self._ensure_not_exists, "service", service_manifest.metadata.name
-                    ),
-                    f"Failed to delete service {service_manifest.metadata.name}",
-                )
-                await exponential_backoff(
-                    partial(
-                        self._make_create_resource_request, "service", service_manifest
-                    ),
-                    f"Failed to create service {service_manifest.metadata.name}",
-                )
-            except Exception:
-                # cleanup on failure and re-raise
-                await self.stop(True)
-                raise
 
                 service_manifest = self.get_service_manifest(owner_reference)
                 await exponential_backoff(
