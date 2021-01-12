@@ -590,7 +590,7 @@ class KubeSpawner(Spawner):
         kubernetes pods. The keys and values must both be strings that match the kubernetes
         label key / value constraints.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
         for more info on what labels are and why you might want to use them!
 
         `{username}` is expanded to the escaped, dns-label safe username.
@@ -605,7 +605,7 @@ class KubeSpawner(Spawner):
         The keys and values specified here are added as annotations on the spawned single-user
         kubernetes pods. The keys and values must both be strings.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>`__
         for more info on what annotations are and why you might want to use them!
 
         `{username}` is expanded to the escaped, dns-label safe username.
@@ -650,7 +650,7 @@ class KubeSpawner(Spawner):
         Defaults to `IfNotPresent` which causes the Kubelet to NOT pull the image
         specified in KubeSpawner.image if it already exists, except if the tag
         is `:latest`. For more information on image pull policy,
-        refer to `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/>`_.
+        refer to `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/>`__.
 
 
         This configuration is primarily used in development if you are
@@ -674,7 +674,7 @@ class KubeSpawner(Spawner):
         KubeSpawner 0.14.0.
 
         See `the Kubernetes documentation
-        <https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod>`_
+        <https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod>`__
         for more information on when and why this might need to be set, and what
         it should be set to.
         """
@@ -791,7 +791,7 @@ class KubeSpawner(Spawner):
         upgrades to break.
 
         You'll *have* to set this if you are using auto-provisioned volumes with most
-        cloud providers. See `fsGroup <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core>`_
+        cloud providers. See `fsGroup <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core>`__
         for more details.
         """
     )
@@ -884,7 +884,7 @@ class KubeSpawner(Spawner):
             be an object specifying the various options available for that kind of
             volume.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/volumes>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/volumes>`__
         for more information on the various kinds of volumes available and their options.
         Your kubernetes cluster must already be configured to support the volume types you want to use.
 
@@ -904,7 +904,7 @@ class KubeSpawner(Spawner):
            - `mountPath` The path on the container in which we want to mount the volume.
            - `name` The name of the volume we want to mount, as specified in the `volumes` config.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/volumes>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/volumes>`__
         for more information on how the `volumeMount` item works.
 
         `{username}` is expanded to the escaped, dns-label safe username.
@@ -924,7 +924,7 @@ class KubeSpawner(Spawner):
 
         This will be added to the `resources: requests: storage:` in the k8s pod spec.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims>`__
 
         for more information on how storage works.
 
@@ -944,7 +944,7 @@ class KubeSpawner(Spawner):
         created by kubespawner for the user. Note that these are only set
         when the PVC is created, not later when this setting is updated.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
         for more info on what labels are and why you might want to use them!
 
         `{username}` is expanded to the escaped, dns-label safe username.
@@ -970,7 +970,7 @@ class KubeSpawner(Spawner):
         Note that an empty string is a valid value and is always interpreted to be
         requesting a pv with no class.
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/storage-classes/>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/storage-classes/>`__
         for more information on how StorageClasses work.
 
         """
@@ -988,7 +988,7 @@ class KubeSpawner(Spawner):
             - `ReadOnlyMany` : the volume can be mounted read-only by many nodes
             - `ReadWriteMany` : the volume can be mounted as read-write by many nodes
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes>`__
         for more information on how access modes work.
         """
     )
@@ -1018,7 +1018,7 @@ class KubeSpawner(Spawner):
         The values are handler of hook which executes by Kubernetes management system when hook is called.
 
         Below is an sample copied from
-        `the Kubernetes documentation <https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/>`_::
+        `the Kubernetes documentation <https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/>`__::
 
 
             c.KubeSpawner.lifecycle_hooks = {
@@ -1034,7 +1034,7 @@ class KubeSpawner(Spawner):
                 }
             }
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/>`__
         for more info on what lifecycle hooks are and why you might want to use them!
         """
     )
@@ -1046,7 +1046,7 @@ class KubeSpawner(Spawner):
 
         This list will be directly added under `initContainers` in the kubernetes pod spec,
         so you should use the same structure. Each item in the dict must a field
-        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#container-v1-core>`_
+        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#container-v1-core>`__
 
         One usage is disabling access to metadata service from single-user
         notebook server with configuration below::
@@ -1063,7 +1063,7 @@ class KubeSpawner(Spawner):
             }]
 
 
-        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/workloads/pods/init-containers/>`_
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/workloads/pods/init-containers/>`__
         for more info on what init containers are and why you might want to use them!
 
         To user this feature, Kubernetes version must greater than 1.6.
@@ -1077,7 +1077,7 @@ class KubeSpawner(Spawner):
 
         This dict will be directly merge into `container` of notebook server,
         so you should use the same structure. Each item in the dict must a field
-        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#container-v1-core>`_.
+        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#container-v1-core>`__.
 
 
         One usage is set ``envFrom`` on notebook container with configuration below::
@@ -1147,7 +1147,7 @@ class KubeSpawner(Spawner):
         allow_none=True,
         config=True,
         help="""
-        Set the pod's scheduler explicitly by name. See `the Kubernetes documentation <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podspec-v1-core>`_
+        Set the pod's scheduler explicitly by name. See `the Kubernetes documentation <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podspec-v1-core>`__
         for more information.
         """
     )
