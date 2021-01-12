@@ -189,7 +189,8 @@ class KubeSpawner(Spawner):
         # compute other attributes
 
         if self.enable_user_namespaces:
-            self.namespace = self._expand_user_namespace_name()
+            self.namespace = self._expand_user_properties(
+                self.user_namespace_template)
             self.log.info("Using user namespace: {}".format(self.namespace))
 
         if not _mock:
@@ -1543,6 +1544,10 @@ class KubeSpawner(Spawner):
         safe_servername = escapism.escape(
             raw_servername, safe=safe_chars, escape_char='-').lower()
 
+        hub_namespace = self._namespace_default()
+        if hub_namespace == "default":
+            hub_namespace = "user"
+
         legacy_escaped_username = ''.join(
             [s if s in safe_chars else '-' for s in self.user.name.lower()])
         safe_username = escapism.escape(
@@ -1554,23 +1559,10 @@ class KubeSpawner(Spawner):
             legacy_escape_username=legacy_escaped_username,
             servername=safe_servername,
             unescaped_servername=raw_servername,
+            hubnamespace=hub_namespace,
         )
         # strip trailing - delimiter in case of empty servername.
         # k8s object names cannot have trailing -
-        return rendered.rstrip("-")
-
-    def _expand_user_namespace_name(self):
-        template = self.user_namespace_template
-        safe_chars = set(string.ascii_lowercase + string.digits)
-        safe_username = escapism.escape(
-            self.user.name, safe=safe_chars, escape_char="-"
-        ).lower()
-        hub_namespace = self._namespace_default()
-        if hub_namespace == "default":
-            hub_namespace = "user"
-        rendered = template.format(
-            hubnamespace=hub_namespace,
-            username=safe_username)
         return rendered.rstrip("-")
 
     def _expand_all(self, src):
