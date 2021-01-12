@@ -522,20 +522,6 @@ class KubeSpawner(Spawner):
         """
     )
 
-    secret_name_template = Unicode(
-        'jupyter-{username}{servername}',
-        config=True,
-        help="""
-        Template to use to form the name of user's secret.
-
-        `{username}` is expanded to the escaped, dns-label safe username.
-
-        This must be unique within the namespace the pvc are being spawned
-        in, so if you are running multiple jupyterhubs spawning in the
-        same namespace, consider setting this to be something more unique.
-        """,
-    )
-
     secret_mount_path = Unicode(
         "/etc/jupyterhub/ssl/",
         allow_none=False,
