@@ -1,0 +1,19 @@
+repos:
+- repo: https://github.com/asottile/reorder_python_imports
+  rev: v1.9.0
+  hooks:
+  - id: reorder-python-imports
+- repo: https://github.com/psf/black
+  rev: 20.8b1
+  hooks:
+  - id: black
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v2.4.0
+  hooks:
+  - id: end-of-file-fixer
+  - id: check-json
+  - id: check-yaml
+  - id: check-case-conflict
+  - id: check-executables-have-shebangs
+  - id: requirements-txt-fixer
+  - id: flake8

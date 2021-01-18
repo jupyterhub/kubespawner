@@ -12,19 +12,18 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
-
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
 import sys
+from os.path import dirname
 
-# For conversion from markdown to html
 import recommonmark.parser
 
+# For conversion from markdown to html
 # set paths
-from os.path import dirname
 docs = dirname(dirname(__file__))
 root = dirname(docs)
 sys.path.insert(0, root)
@@ -76,6 +75,7 @@ author = 'Project Jupyter'
 # built documents.
 #
 import pkg_resources
+
 # The full version, including alpha/beta/rc tags.
 release = pkg_resources.get_distribution("jupyterhub-kubespawner").version
 # The short X.Y version.
@@ -131,15 +131,12 @@ latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
     #
     # 'papersize': 'letterpaper',
-
     # The font size ('10pt', '11pt' or '12pt').
     #
     # 'pointsize': '10pt',
-
     # Additional stuff for the LaTeX preamble.
     #
     # 'preamble': '',
-
     # Latex figure (float) alignment
     #
     # 'figure_align': 'htbp',
@@ -149,8 +146,13 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'Kubespawner.tex', 'Kubespawner Documentation',
-     'Project Jupyter', 'manual'),
+    (
+        master_doc,
+        'Kubespawner.tex',
+        'Kubespawner Documentation',
+        'Project Jupyter',
+        'manual',
+    ),
 ]
 
 
@@ -158,10 +160,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    (master_doc, 'kubespawner', 'Kubespawner Documentation',
-     [author], 1)
-]
+man_pages = [(master_doc, 'kubespawner', 'Kubespawner Documentation', [author], 1)]
 
 
 # -- Options for Texinfo output -------------------------------------------
@@ -170,9 +169,15 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'Kubespawner', 'Kubespawner Documentation',
-     author, 'Kubespawner', 'One line description of project.',
-     'Miscellaneous'),
+    (
+        master_doc,
+        'Kubespawner',
+        'Kubespawner Documentation',
+        author,
+        'Kubespawner',
+        'One line description of project.',
+        'Miscellaneous',
+    ),
 ]
 
 

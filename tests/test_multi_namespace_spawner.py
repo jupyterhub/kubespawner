@@ -1,21 +1,22 @@
-from asyncio import get_event_loop
-from jupyterhub.objects import Hub, Server
-from jupyterhub.orm import Spawner
-from kubernetes.client.models import (
-    V1SecurityContext, V1Container, V1Capabilities, V1Pod
-)
-from kubespawner import KubeSpawner
-from kubernetes.client import V1Namespace
-from kubernetes.config import load_kube_config
-import pytest
-
-from kubespawner.clients import shared_client
-
-from traitlets.config import Config
-
-from unittest.mock import Mock
 import json
 import os
+from asyncio import get_event_loop
+from unittest.mock import Mock
+
+import pytest
+from jupyterhub.objects import Hub
+from jupyterhub.objects import Server
+from jupyterhub.orm import Spawner
+from kubernetes.client import V1Namespace
+from kubernetes.client.models import V1Capabilities
+from kubernetes.client.models import V1Container
+from kubernetes.client.models import V1Pod
+from kubernetes.client.models import V1SecurityContext
+from kubernetes.config import load_kube_config
+from traitlets.config import Config
+
+from kubespawner import KubeSpawner
+from kubespawner.clients import shared_client
 
 
 class MockUser(Mock):

@@ -1,20 +1,20 @@
-from concurrent.futures import ThreadPoolExecutor
+import json
 import os
 import string
-import escapism
-import json
-from kubernetes import client
+from concurrent.futures import ThreadPoolExecutor
 
+import escapism
 from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
-
-from kubespawner.objects import make_ingress
-from kubespawner.utils import generate_hashed_slug
-from kubespawner.reflector import NamespacedResourceReflector
-from .clients import shared_client
-from traitlets import Unicode
+from kubernetes import client
 from tornado import gen
 from tornado.concurrent import run_on_executor
+from traitlets import Unicode
+
+from .clients import shared_client
+from kubespawner.objects import make_ingress
+from kubespawner.reflector import NamespacedResourceReflector
+from kubespawner.utils import generate_hashed_slug
 
 
 class IngressReflector(NamespacedResourceReflector):
@@ -26,6 +26,7 @@ class IngressReflector(NamespacedResourceReflector):
     def ingresses(self):
         return self.resources
 
+
 class ServiceReflector(NamespacedResourceReflector):
     kind = 'services'
     list_method_name = 'list_namespaced_service'
@@ -33,6 +34,7 @@ class ServiceReflector(NamespacedResourceReflector):
     @property
     def services(self):
         return self.resources
+
 
 class EndpointsReflector(NamespacedResourceReflector):
     kind = 'endpoints'
@@ -42,6 +44,7 @@ class EndpointsReflector(NamespacedResourceReflector):
     def endpoints(self):
         return self.resources
 
+
 class KubeIngressProxy(Proxy):
     namespace = Unicode(
         config=True,
@@ -50,7 +53,7 @@ class KubeIngressProxy(Proxy):
 
         If running inside a kubernetes cluster with service accounts enabled,
         defaults to the current namespace. If not, defaults to 'default'
-        """
+        """,
     )
 
     def _namespace_default(self):
@@ -73,7 +76,7 @@ class KubeIngressProxy(Proxy):
         The component label used to tag the user pods. This can be used to override
         the spawner behavior when dealing with multiple hub instances in the same
         namespace. Usually helpful for CI workflows.
-        """
+        """,
     )
 
     def __init__(self, *args, **kwargs):
@@ -86,11 +89,17 @@ class KubeIngressProxy(Proxy):
         self.executor = ThreadPoolExecutor(max_workers=self.app.concurrent_spawn_limit)
         labels = {
             'component': self.component_label,
-            'hub.jupyter.org/proxy-route': 'true'
+            'hub.jupyter.org/proxy-route': 'true',
         }
-        self.ingress_reflector = IngressReflector(parent=self, namespace=self.namespace, labels = labels)
-        self.service_reflector = ServiceReflector(parent=self, namespace=self.namespace, labels = labels)
-        self.endpoint_reflector = EndpointsReflector(parent=self, namespace=self.namespace, labels = labels)
+        self.ingress_reflector = IngressReflector(
+            parent=self, namespace=self.namespace, labels=labels
+        )
+        self.service_reflector = ServiceReflector(
+            parent=self, namespace=self.namespace, labels=labels
+        )
+        self.endpoint_reflector = EndpointsReflector(
+            parent=self, namespace=self.namespace, labels=labels
+        )
 
         self.core_api = shared_client('CoreV1Api')
         self.extension_api = shared_client('ExtensionsV1beta1Api')
@@ -102,7 +111,9 @@ class KubeIngressProxy(Proxy):
     def safe_name_for_routespec(self, routespec):
         safe_chars = set(string.ascii_lowercase + string.digits)
         safe_name = generate_hashed_slug(
-            'jupyter-' + escapism.escape(routespec, safe=safe_chars, escape_char='-') + '-route'
+            'jupyter-'
+            + escapism.escape(routespec, safe=safe_chars, escape_char='-')
+            + '-route'
         )
         return safe_name
 
@@ -120,36 +131,32 @@ class KubeIngressProxy(Proxy):
         # Use full routespec in label
         # 'data' is JSON encoded and put in an annotation - we don't need to query for it
         safe_name = self.safe_name_for_routespec(routespec).lower()
-        labels={
+        labels = {
             'heritage': 'jupyterhub',
             'component': self.component_label,
-            'hub.jupyter.org/proxy-route': 'true'
+            'hub.jupyter.org/proxy-route': 'true',
         }
         endpoint, service, ingress = make_ingress(
-            safe_name,
-            routespec,
-            target,
-            labels,
-            data
+            safe_name, routespec, target, labels, data
         )
 
         async def ensure_object(create_func, patch_func, body, kind):
             try:
                 resp = await self.asynchronize(
-                    create_func,
-                    namespace=self.namespace,
-                    body=body
+                    create_func, namespace=self.namespace, body=body
                 )
                 self.log.info('Created %s/%s', kind, safe_name)
             except client.rest.ApiException as e:
                 if e.status == 409:
                     # This object already exists, we should patch it to make it be what we want
-                    self.log.warn("Trying to patch %s/%s, it already exists", kind, safe_name)
+                    self.log.warn(
+                        "Trying to patch %s/%s, it already exists", kind, safe_name
+                    )
                     resp = await self.asynchronize(
                         patch_func,
                         namespace=self.namespace,
                         body=body,
-                        name=body.metadata.name
+                        name=body.metadata.name,
                     )
                 else:
                     raise
@@ -159,12 +166,12 @@ class KubeIngressProxy(Proxy):
                 self.core_api.create_namespaced_endpoints,
                 self.core_api.patch_namespaced_endpoints,
                 body=endpoint,
-                kind='endpoints'
+                kind='endpoints',
             )
 
             await exponential_backoff(
                 lambda: safe_name in self.endpoint_reflector.endpoints,
-                'Could not find endpoints/%s after creating it' % safe_name
+                'Could not find endpoints/%s after creating it' % safe_name,
             )
         else:
             delete_endpoint = self.asynchronize(
@@ -179,24 +186,24 @@ class KubeIngressProxy(Proxy):
             self.core_api.create_namespaced_service,
             self.core_api.patch_namespaced_service,
             body=service,
-            kind='service'
+            kind='service',
         )
 
         await exponential_backoff(
             lambda: safe_name in self.service_reflector.services,
-            'Could not find service/%s after creating it' % safe_name
+            'Could not find service/%s after creating it' % safe_name,
         )
 
         await ensure_object(
             self.extension_api.create_namespaced_ingress,
             self.extension_api.patch_namespaced_ingress,
             body=ingress,
-            kind='ingress'
+            kind='ingress',
         )
 
         await exponential_backoff(
             lambda: safe_name in self.ingress_reflector.ingresses,
-            'Could not find ingress/%s after creating it' % safe_name
+            'Could not find ingress/%s after creating it' % safe_name,
         )
 
     async def delete_route(self, routespec):
@@ -226,7 +233,7 @@ class KubeIngressProxy(Proxy):
             name=safe_name,
             namespace=self.namespace,
             body=delete_options,
-            grace_period_seconds=0
+            grace_period_seconds=0,
         )
 
         # This seems like cleanest way to parallelize all three of these while
@@ -240,18 +247,22 @@ class KubeIngressProxy(Proxy):
         await self.delete_if_exists('service', safe_name, delete_service)
         await self.delete_if_exists('ingress', safe_name, delete_ingress)
 
-
     async def get_all_routes(self):
         # copy everything, because iterating over this directly is not threadsafe
         # FIXME: is this performance intensive? It could be! Measure?
         # FIXME: Validate that this shallow copy *is* thread safe
         ingress_copy = dict(self.ingress_reflector.ingresses)
         routes = {
-            ingress["metadata"]["annotations"]['hub.jupyter.org/proxy-routespec']:
-            {
-                'routespec': ingress["metadata"]["annotations"]['hub.jupyter.org/proxy-routespec'],
-                'target': ingress["metadata"]["annotations"]['hub.jupyter.org/proxy-target'],
-                'data': json.loads(ingress["metadata"]["annotations"]['hub.jupyter.org/proxy-data'])
+            ingress["metadata"]["annotations"]['hub.jupyter.org/proxy-routespec']: {
+                'routespec': ingress["metadata"]["annotations"][
+                    'hub.jupyter.org/proxy-routespec'
+                ],
+                'target': ingress["metadata"]["annotations"][
+                    'hub.jupyter.org/proxy-target'
+                ],
+                'data': json.loads(
+                    ingress["metadata"]["annotations"]['hub.jupyter.org/proxy-data']
+                ),
             }
             for ingress in ingress_copy.values()
         }
