@@ -523,15 +523,6 @@ class KubeSpawner(Spawner):
         """
     )
 
-    secret_mount_path = Unicode(
-        "/etc/jupyterhub/ssl/",
-        allow_none=False,
-        config=True,
-        help="""
-        Location to mount the spawned pod's certificates needed for internal_ssl functionality.
-        """
-    )
-
     # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     hub_connect_ip = Unicode(
         allow_none=True,
