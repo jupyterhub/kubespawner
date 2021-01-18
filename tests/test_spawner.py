@@ -49,7 +49,8 @@ def test_deprecated_config():
         c.KubeSpawner.fs_gid = 10
         # only deprecated set, should still work
         c.KubeSpawner.hub_connect_ip = '10.0.1.1'
-        c.KubeSpawner.singleuser_extra_pod_config = extra_pod_config = {"key": "value"}
+        c.KubeSpawner.singleuser_extra_pod_config = extra_pod_config = {
+            "key": "value"}
         c.KubeSpawner.image_spec = 'abc:123'
         c.KubeSpawner.image_pull_secrets = 'k8s-secret-a'
         spawner = KubeSpawner(hub=Hub(), config=c, _mock=True)
@@ -204,6 +205,12 @@ async def test_spawn_start(
 
 
 @pytest.mark.asyncio
+
+async def test_spawn_progress(kube_ns, kube_client, config):
+    spawner = KubeSpawner(hub=Hub(), user=MockUser(
+        name="progress"), config=config)
+
+
 async def test_spawn_internal_ssl(
     kube_ns,
     kube_client,
@@ -306,6 +313,7 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
         user=MockUser(name="progress"),
         config=config,
     )
+
     # empty spawner isn't running
     status = await spawner.poll()
     assert isinstance(status, int)
@@ -377,7 +385,7 @@ _test_profiles = [
             'image': 'training/python:label',
             'cpu_limit': 1,
             'mem_limit': 512 * 1024 * 1024,
-            }
+        }
     },
     {
         'display_name': 'Training Env - Datascience',
@@ -386,7 +394,7 @@ _test_profiles = [
             'image': 'training/datascience:label',
             'cpu_limit': 4,
             'mem_limit': 8 * 1024 * 1024 * 1024,
-            }
+        }
     },
 ]
 
@@ -397,7 +405,8 @@ async def test_user_options_set_from_form():
     spawner.profile_list = _test_profiles
     # render the form
     await spawner.get_options_form()
-    spawner.user_options = spawner.options_from_form({'profile': [_test_profiles[1]['slug']]})
+    spawner.user_options = spawner.options_from_form(
+        {'profile': [_test_profiles[1]['slug']]})
     assert spawner.user_options == {
         'profile': _test_profiles[1]['slug'],
     }
@@ -538,14 +547,23 @@ async def test_pod_connect_ip(kube_ns, kube_client, config, hub_pod, hub):
     # w/o servername
     spawner = KubeSpawner(hub=hub, user=user, config=config)
 
+async def test_pod_ip_template(kube_ns, kube_client, config):
+    config.KubeSpawner.pod_ip_template = "jupyter-{username}--{servername}.foo.example.com"
+
+    user = MockUser(name="connectip")
+    # w/o servername
+    spawner = KubeSpawner(hub=hub, user=user, config=config)
+
     # start the spawner
     res = await spawner.start()
     # verify the pod IP and port
+
     assert res == "http://jupyter-connectip.foo.example.com:8888"
 
     await spawner.stop()
 
     # w/ servername
+
     spawner = KubeSpawner(
         hub=hub,
         user=user,
@@ -556,9 +574,9 @@ async def test_pod_connect_ip(kube_ns, kube_client, config, hub_pod, hub):
     # start the spawner
     res = await spawner.start()
     # verify the pod IP and port
+
     assert res == "http://jupyter-connectip--server.foo.example.com:8888"
     await spawner.stop()
-
 
 def test_get_pvc_manifest():
     c = Config()
@@ -581,3 +599,4 @@ def test_get_pvc_manifest():
         "heritage": "jupyterhub",
     }
     assert manifest.spec.selector == {"matchLabels": {"user": "mock-5fname"}}
+
