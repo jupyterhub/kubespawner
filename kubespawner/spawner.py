@@ -2298,12 +2298,12 @@ class KubeSpawner(Spawner):
                 # required for creating owner reference
                 await exponential_backoff(
                     lambda: self.pod_has_uid(
-                        self.pod_reflector.pods.get(self.pod_name, None)
+                        self.pod_reflector.pods.get(ref_key, None)
                     ),
-                    "pod/%s does not have a uid!" % (self.pod_name),
+                    f"pod/{ref_key} does not have a uid!",
                 )
 
-                pod = self.pod_reflector.pods[self.pod_name]
+                pod = self.pod_reflector.pods[ref_key]
                 owner_reference = make_owner_reference(
                     self.pod_name, pod["metadata"]["uid"]
                 )
