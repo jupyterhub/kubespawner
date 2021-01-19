@@ -7,46 +7,46 @@ import os
 import re
 from urllib.parse import urlparse
 
-from kubernetes.client.models import (
-    V1Affinity,
-    V1Container,
-    V1ContainerPort,
-    V1EndpointAddress,
-    V1EndpointPort,
-    V1Endpoints,
-    V1EndpointSubset,
-    V1EnvVar,
-    V1LabelSelector,
-    V1Lifecycle,
-    V1LocalObjectReference,
-    V1Namespace,
-    V1NodeAffinity,
-    V1NodeSelector,
-    V1NodeSelectorRequirement,
-    V1NodeSelectorTerm,
-    V1ObjectMeta,
-    V1OwnerReference,
-    V1PersistentVolumeClaim,
-    V1PersistentVolumeClaimSpec,
-    V1Pod,
-    V1PodAffinity,
-    V1PodAffinityTerm,
-    V1PodAntiAffinity,
-    V1PodSecurityContext,
-    V1PodSpec,
-    V1PreferredSchedulingTerm,
-    V1ResourceRequirements,
-    V1Secret,
-    V1SecurityContext,
-    V1Service,
-    V1ServicePort,
-    V1ServiceSpec,
-    V1Toleration,
-    V1WeightedPodAffinityTerm,
-    V1Volume,
-    V1VolumeMount,
-)
-from kubespawner.utils import get_k8s_model, update_k8s_model
+from kubernetes.client.models import V1Affinity
+from kubernetes.client.models import V1Container
+from kubernetes.client.models import V1ContainerPort
+from kubernetes.client.models import V1EndpointAddress
+from kubernetes.client.models import V1EndpointPort
+from kubernetes.client.models import V1Endpoints
+from kubernetes.client.models import V1EndpointSubset
+from kubernetes.client.models import V1EnvVar
+from kubernetes.client.models import V1LabelSelector
+from kubernetes.client.models import V1Lifecycle
+from kubernetes.client.models import V1LocalObjectReference
+from kubernetes.client.models import V1Namespace
+from kubernetes.client.models import V1NodeAffinity
+from kubernetes.client.models import V1NodeSelector
+from kubernetes.client.models import V1NodeSelectorRequirement
+from kubernetes.client.models import V1NodeSelectorTerm
+from kubernetes.client.models import V1ObjectMeta
+from kubernetes.client.models import V1OwnerReference
+from kubernetes.client.models import V1PersistentVolumeClaim
+from kubernetes.client.models import V1PersistentVolumeClaimSpec
+from kubernetes.client.models import V1Pod
+from kubernetes.client.models import V1PodAffinity
+from kubernetes.client.models import V1PodAffinityTerm
+from kubernetes.client.models import V1PodAntiAffinity
+from kubernetes.client.models import V1PodSecurityContext
+from kubernetes.client.models import V1PodSpec
+from kubernetes.client.models import V1PreferredSchedulingTerm
+from kubernetes.client.models import V1ResourceRequirements
+from kubernetes.client.models import V1Secret
+from kubernetes.client.models import V1SecurityContext
+from kubernetes.client.models import V1Service
+from kubernetes.client.models import V1ServicePort
+from kubernetes.client.models import V1ServiceSpec
+from kubernetes.client.models import V1Toleration
+from kubernetes.client.models import V1Volume
+from kubernetes.client.models import V1VolumeMount
+from kubernetes.client.models import V1WeightedPodAffinityTerm
+
+from kubespawner.utils import get_k8s_model
+from kubespawner.utils import update_k8s_model
 
 
 def make_pod(
@@ -305,7 +305,7 @@ def make_pod(
     pod.metadata = V1ObjectMeta(
         name=name,
         labels=(labels or {}).copy(),
-        annotations=(annotations or {}).copy()
+        annotations=(annotations or {}).copy(),
     )
 
     pod.spec = V1PodSpec(containers=[])
@@ -317,8 +317,8 @@ def make_pod(
         # "a-string"} elements.
         pod.spec.image_pull_secrets = [
             V1LocalObjectReference(name=secret_ref)
-            if type(secret_ref) == str else
-            get_k8s_model(V1LocalObjectReference, secret_ref)
+            if type(secret_ref) == str
+            else get_k8s_model(V1LocalObjectReference, secret_ref)
             for secret_ref in image_pull_secrets
         ]
 
@@ -341,8 +341,10 @@ def make_pod(
         if not volume_mounts:
             volume_mounts = []
         volume_mounts.append(
-            {'name': 'jupyterhub-internal-certs',
-                'mountPath': ssl_secret_mount_path}
+            {
+                'name': 'jupyterhub-internal-certs',
+                'mountPath': ssl_secret_mount_path,
+            }
         )
 
     if node_selector:
@@ -368,7 +370,8 @@ def make_pod(
         pod_security_context.fs_group = int(fs_gid)
     if supplemental_gids is not None and supplemental_gids:
         pod_security_context.supplemental_groups = [
-            int(gid) for gid in supplemental_gids]
+            int(gid) for gid in supplemental_gids
+        ]
     # Only clutter pod spec with actual content
     if not all([e is None for e in pod_security_context.to_dict().values()]):
         pod.spec.security_context = pod_security_context
@@ -408,8 +411,9 @@ def make_pod(
         image_pull_policy=image_pull_policy,
         lifecycle=lifecycle_hooks,
         resources=V1ResourceRequirements(),
-        volume_mounts=[get_k8s_model(V1VolumeMount, obj)
-                       for obj in (volume_mounts or [])],
+        volume_mounts=[
+            get_k8s_model(V1VolumeMount, obj) for obj in (volume_mounts or [])
+        ],
         security_context=container_security_context,
     )
 
@@ -449,13 +453,14 @@ def make_pod(
 
     if extra_containers:
         pod.spec.containers.extend(
-            [get_k8s_model(V1Container, obj) for obj in extra_containers])
+            [get_k8s_model(V1Container, obj) for obj in extra_containers]
+        )
     if tolerations:
-        pod.spec.tolerations = [get_k8s_model(
-            V1Toleration, obj) for obj in tolerations]
+        pod.spec.tolerations = [get_k8s_model(V1Toleration, obj) for obj in tolerations]
     if init_containers:
-        pod.spec.init_containers = [get_k8s_model(
-            V1Container, obj) for obj in init_containers]
+        pod.spec.init_containers = [
+            get_k8s_model(V1Container, obj) for obj in init_containers
+        ]
     if volumes:
         pod.spec.volumes = [get_k8s_model(V1Volume, obj) for obj in volumes]
     else:
@@ -470,14 +475,18 @@ def make_pod(
         node_selector = None
         if node_affinity_required:
             node_selector = V1NodeSelector(
-                node_selector_terms=[get_k8s_model(
-                    V1NodeSelectorTerm, obj) for obj in node_affinity_required],
+                node_selector_terms=[
+                    get_k8s_model(V1NodeSelectorTerm, obj)
+                    for obj in node_affinity_required
+                ],
             )
 
         preferred_scheduling_terms = None
         if node_affinity_preferred:
-            preferred_scheduling_terms = [get_k8s_model(
-                V1PreferredSchedulingTerm, obj) for obj in node_affinity_preferred]
+            preferred_scheduling_terms = [
+                get_k8s_model(V1PreferredSchedulingTerm, obj)
+                for obj in node_affinity_preferred
+            ]
 
         node_affinity = V1NodeAffinity(
             preferred_during_scheduling_ignored_during_execution=preferred_scheduling_terms,
@@ -488,13 +497,16 @@ def make_pod(
     if pod_affinity_preferred or pod_affinity_required:
         weighted_pod_affinity_terms = None
         if pod_affinity_preferred:
-            weighted_pod_affinity_terms = [get_k8s_model(
-                V1WeightedPodAffinityTerm, obj) for obj in pod_affinity_preferred]
+            weighted_pod_affinity_terms = [
+                get_k8s_model(V1WeightedPodAffinityTerm, obj)
+                for obj in pod_affinity_preferred
+            ]
 
         pod_affinity_terms = None
         if pod_affinity_required:
-            pod_affinity_terms = [get_k8s_model(
-                V1PodAffinityTerm, obj) for obj in pod_affinity_required]
+            pod_affinity_terms = [
+                get_k8s_model(V1PodAffinityTerm, obj) for obj in pod_affinity_required
+            ]
 
         pod_affinity = V1PodAffinity(
             preferred_during_scheduling_ignored_during_execution=weighted_pod_affinity_terms,
@@ -505,13 +517,17 @@ def make_pod(
     if pod_anti_affinity_preferred or pod_anti_affinity_required:
         weighted_pod_affinity_terms = None
         if pod_anti_affinity_preferred:
-            weighted_pod_affinity_terms = [get_k8s_model(
-                V1WeightedPodAffinityTerm, obj) for obj in pod_anti_affinity_preferred]
+            weighted_pod_affinity_terms = [
+                get_k8s_model(V1WeightedPodAffinityTerm, obj)
+                for obj in pod_anti_affinity_preferred
+            ]
 
         pod_affinity_terms = None
         if pod_anti_affinity_required:
-            pod_affinity_terms = [get_k8s_model(
-                V1PodAffinityTerm, obj) for obj in pod_anti_affinity_required]
+            pod_affinity_terms = [
+                get_k8s_model(V1PodAffinityTerm, obj)
+                for obj in pod_anti_affinity_required
+            ]
 
         pod_anti_affinity = V1PodAffinity(
             preferred_during_scheduling_ignored_during_execution=weighted_pod_affinity_terms,
@@ -519,7 +535,7 @@ def make_pod(
         )
 
     affinity = None
-    if (node_affinity or pod_affinity or pod_anti_affinity):
+    if node_affinity or pod_affinity or pod_anti_affinity:
         affinity = V1Affinity(
             node_affinity=node_affinity,
             pod_affinity=pod_affinity,
@@ -585,7 +601,8 @@ def make_pvc(
 
     if storage_class is not None:
         pvc.metadata.annotations.update(
-            {"volume.beta.kubernetes.io/storage-class": storage_class})
+            {"volume.beta.kubernetes.io/storage-class": storage_class}
+        )
         pvc.spec.storage_class_name = storage_class
 
     if selector:
@@ -594,13 +611,7 @@ def make_pvc(
     return pvc
 
 
-def make_ingress(
-        name,
-        routespec,
-        target,
-        labels,
-        data
-):
+def make_ingress(name, routespec, target, labels, data):
     """
     Returns an ingress, service, endpoint object that'll work for this service
     """
@@ -613,17 +624,21 @@ def make_ingress(
 
     try:
         from kubernetes.client.models import (
-            ExtensionsV1beta1Ingress, ExtensionsV1beta1IngressSpec, ExtensionsV1beta1IngressRule,
-            ExtensionsV1beta1HTTPIngressRuleValue, ExtensionsV1beta1HTTPIngressPath,
+            ExtensionsV1beta1Ingress,
+            ExtensionsV1beta1IngressSpec,
+            ExtensionsV1beta1IngressRule,
+            ExtensionsV1beta1HTTPIngressRuleValue,
+            ExtensionsV1beta1HTTPIngressPath,
             ExtensionsV1beta1IngressBackend,
         )
     except ImportError:
         from kubernetes.client.models import (
-            V1beta1Ingress as ExtensionsV1beta1Ingress, V1beta1IngressSpec as ExtensionsV1beta1IngressSpec,
+            V1beta1Ingress as ExtensionsV1beta1Ingress,
+            V1beta1IngressSpec as ExtensionsV1beta1IngressSpec,
             V1beta1IngressRule as ExtensionsV1beta1IngressRule,
             V1beta1HTTPIngressRuleValue as ExtensionsV1beta1HTTPIngressRuleValue,
             V1beta1HTTPIngressPath as ExtensionsV1beta1HTTPIngressPath,
-            V1beta1IngressBackend as ExtensionsV1beta1IngressBackend
+            V1beta1IngressBackend as ExtensionsV1beta1IngressBackend,
         )
 
     meta = V1ObjectMeta(
@@ -631,7 +646,7 @@ def make_ingress(
         annotations={
             'hub.jupyter.org/proxy-data': json.dumps(data),
             'hub.jupyter.org/proxy-routespec': routespec,
-            'hub.jupyter.org/proxy-target': target
+            'hub.jupyter.org/proxy-target': target,
         },
         labels=labels,
     )
@@ -647,8 +662,9 @@ def make_ingress(
     target_ip = target_parts.hostname
     target_port = target_parts.port
 
-    target_is_ip = re.match(
-        r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', target_ip) is not None
+    target_is_ip = (
+        re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', target_ip) is not None
+    )
 
     # Make endpoint object
     if target_is_ip:
@@ -658,9 +674,9 @@ def make_ingress(
             subsets=[
                 V1EndpointSubset(
                     addresses=[V1EndpointAddress(ip=target_ip)],
-                    ports=[V1EndpointPort(port=target_port)]
+                    ports=[V1EndpointPort(port=target_port)],
                 )
-            ]
+            ],
         )
     else:
         endpoint = None
@@ -673,9 +689,8 @@ def make_ingress(
             spec=V1ServiceSpec(
                 type='ClusterIP',
                 external_name='',
-                ports=[V1ServicePort(
-                    port=target_port, target_port=target_port)]
-            )
+                ports=[V1ServicePort(port=target_port, target_port=target_port)],
+            ),
         )
     else:
         service = V1Service(
@@ -685,8 +700,7 @@ def make_ingress(
                 type='ExternalName',
                 external_name=target_ip,
                 cluster_ip='',
-                ports=[V1ServicePort(
-                    port=target_port, target_port=target_port)],
+                ports=[V1ServicePort(port=target_port, target_port=target_port)],
             ),
         )
 
@@ -695,21 +709,23 @@ def make_ingress(
         kind='Ingress',
         metadata=meta,
         spec=ExtensionsV1beta1IngressSpec(
-            rules=[ExtensionsV1beta1IngressRule(
-                host=host,
-                http=ExtensionsV1beta1HTTPIngressRuleValue(
-                    paths=[
-                        ExtensionsV1beta1HTTPIngressPath(
-                            path=path,
-                            backend=ExtensionsV1beta1IngressBackend(
-                                service_name=name,
-                                service_port=target_port
+            rules=[
+                ExtensionsV1beta1IngressRule(
+                    host=host,
+                    http=ExtensionsV1beta1HTTPIngressRuleValue(
+                        paths=[
+                            ExtensionsV1beta1HTTPIngressPath(
+                                path=path,
+                                backend=ExtensionsV1beta1IngressBackend(
+                                    service_name=name,
+                                    service_port=target_port,
+                                ),
                             )
-                        )
-                    ]
+                        ]
+                    ),
                 )
-            )]
-        )
+            ]
+        ),
     )
 
     return endpoint, service, ingress
@@ -845,9 +861,7 @@ def make_namespace(name, labels=None, annotations=None):
     """
 
     metadata = V1ObjectMeta(
-        name=name,
-        labels=(labels or {}).copy(),
-        annotations=(annotations or {}).copy()
+        name=name, labels=(labels or {}).copy(), annotations=(annotations or {}).copy()
     )
 
     return V1Namespace(metadata=metadata)

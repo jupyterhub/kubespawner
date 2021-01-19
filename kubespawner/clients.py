@@ -3,9 +3,8 @@
 avoids creating multiple kubernetes client objects,
 each of which spawns an unused max-size thread pool
 """
-
-from unittest.mock import Mock
 import weakref
+from unittest.mock import Mock
 
 import kubernetes.client
 from kubernetes.client import api_client
