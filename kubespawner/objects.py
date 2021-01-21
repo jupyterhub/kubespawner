@@ -417,11 +417,11 @@ def make_pod(
         security_context=container_security_context,
     )
 
-    if service_account is None:
-        # This makes sure that we don't accidentally give access to the whole
-        # kubernetes API to the users in the spawned pods.
-        pod.spec.automount_service_account_token = False
-    else:
+    # This makes sure that we don't accidentally give access to the whole
+    # kubernetes API to the users in the spawned pods.
+    pod.spec.automount_service_account_token = False
+
+    if service_account is not None:
         pod.spec.service_account_name = service_account
 
     notebook_container.resources.requests = {}
