@@ -1006,6 +1006,7 @@ def test_make_pod_with_service_account():
     ) == {
         "metadata": {"name": "test", "labels": {}, "annotations": {}},
         "spec": {
+            "automountServiceAccountToken": False,
             "containers": [
                 {
                     "env": [],
