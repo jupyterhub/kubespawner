@@ -1600,6 +1600,84 @@ def test_make_ingress(target, ip):
     }
 
 
+def test_make_ingress_external_name():
+    """
+    Test specification of the ingress objects
+    """
+    labels = {
+        'heritage': 'jupyterhub',
+        'component': 'singleuser-server',
+        'hub.jupyter.org/proxy-route': 'true',
+    }
+    endpoint, service, ingress = api_client.sanitize_for_serialization(
+        make_ingress(
+            name='jupyter-test',
+            routespec='/my-path',
+            target='http://my-pod-name:9000',
+            labels=labels,
+            data={"mykey": "myvalue"},
+        )
+    )
+
+    assert endpoint == None
+
+    assert service == {
+        'kind': 'Service',
+        'metadata': {
+            'annotations': {
+                'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
+                'hub.jupyter.org/proxy-routespec': '/my-path',
+                'hub.jupyter.org/proxy-target': 'http://my-pod-name:9000',
+            },
+            'labels': {
+                'component': 'singleuser-server',
+                'heritage': 'jupyterhub',
+                'hub.jupyter.org/proxy-route': 'true',
+            },
+            'name': 'jupyter-test',
+        },
+        'spec': {
+            'externalName': 'my-pod-name',
+            'clusterIP': '',
+            'ports': [{'port': 9000, 'targetPort': 9000}],
+            'type': 'ExternalName',
+        },
+    }
+    assert ingress == {
+        'kind': 'Ingress',
+        'metadata': {
+            'annotations': {
+                'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
+                'hub.jupyter.org/proxy-routespec': '/my-path',
+                'hub.jupyter.org/proxy-target': 'http://my-pod-name:9000',
+            },
+            'labels': {
+                'component': 'singleuser-server',
+                'heritage': 'jupyterhub',
+                'hub.jupyter.org/proxy-route': 'true',
+            },
+            'name': 'jupyter-test',
+        },
+        'spec': {
+            'rules': [
+                {
+                    'http': {
+                        'paths': [
+                            {
+                                'backend': {
+                                    'serviceName': 'jupyter-test',
+                                    'servicePort': 9000,
+                                },
+                                'path': '/my-path',
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+    }
+
+
 def test_make_pod_with_ssl():
     """
     Test specification of a pod with ssl enabled
