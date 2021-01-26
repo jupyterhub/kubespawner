@@ -1,6 +1,7 @@
 """
 Test functions used to create k8s objects
 """
+import pytest
 from kubernetes.client import ApiClient
 
 from kubespawner.objects import make_ingress
@@ -1499,7 +1500,14 @@ def test_make_pod_with_priority_class_name():
     }
 
 
-def test_make_ingress():
+@pytest.mark.parametrize(
+    'target,ip',
+    [
+        ('http://192.168.1.10:9000', '192.168.1.10'),
+        ('http://[2001:db8::dead:babe]:9000', '2001:db8::dead:babe'),
+    ],
+)
+def test_make_ingress(target, ip):
     """
     Test specification of the ingress objects
     """
@@ -1512,7 +1520,7 @@ def test_make_ingress():
         make_ingress(
             name='jupyter-test',
             routespec='/my-path',
-            target='http://192.168.1.10:9000',
+            target=target,
             labels=labels,
             data={"mykey": "myvalue"},
         )
@@ -1524,7 +1532,7 @@ def test_make_ingress():
             'annotations': {
                 'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
                 'hub.jupyter.org/proxy-routespec': '/my-path',
-                'hub.jupyter.org/proxy-target': 'http://192.168.1.10:9000',
+                'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
                 'component': 'singleuser-server',
@@ -1533,7 +1541,7 @@ def test_make_ingress():
             },
             'name': 'jupyter-test',
         },
-        'subsets': [{'addresses': [{'ip': '192.168.1.10'}], 'ports': [{'port': 9000}]}],
+        'subsets': [{'addresses': [{'ip': ip}], 'ports': [{'port': 9000}]}],
     }
 
     assert service == {
@@ -1542,7 +1550,7 @@ def test_make_ingress():
             'annotations': {
                 'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
                 'hub.jupyter.org/proxy-routespec': '/my-path',
-                'hub.jupyter.org/proxy-target': 'http://192.168.1.10:9000',
+                'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
                 'component': 'singleuser-server',
@@ -1563,7 +1571,7 @@ def test_make_ingress():
             'annotations': {
                 'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
                 'hub.jupyter.org/proxy-routespec': '/my-path',
-                'hub.jupyter.org/proxy-target': 'http://192.168.1.10:9000',
+                'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
                 'component': 'singleuser-server',

@@ -2,6 +2,7 @@
 Helper methods for generating k8s API objects.
 """
 import base64
+import ipaddress
 import json
 import os
 import re
@@ -658,31 +659,29 @@ def make_ingress(name, routespec, target, labels, data):
         host, path = routespec.split('/', 1)
 
     target_parts = urlparse(target)
-
-    target_ip = target_parts.hostname
     target_port = target_parts.port
 
-    target_is_ip = (
-        re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', target_ip) is not None
-    )
+    try:
+        # Try to parse as an IP address
+        target_ip = ipaddress.ip_address(target_parts.hostname)
+    except ValueError:
+        target_is_ip = False
+    else:
+        target_is_ip = True
 
-    # Make endpoint object
     if target_is_ip:
+        # Make endpoint object
         endpoint = V1Endpoints(
             kind='Endpoints',
             metadata=meta,
             subsets=[
                 V1EndpointSubset(
-                    addresses=[V1EndpointAddress(ip=target_ip)],
+                    addresses=[V1EndpointAddress(ip=target_ip.compressed)],
                     ports=[V1EndpointPort(port=target_port)],
                 )
             ],
         )
-    else:
-        endpoint = None
 
-    # Make service object
-    if target_is_ip:
         service = V1Service(
             kind='Service',
             metadata=meta,
@@ -693,12 +692,15 @@ def make_ingress(name, routespec, target, labels, data):
             ),
         )
     else:
+        endpoint = None
+
+        # Make service object
         service = V1Service(
             kind='Service',
             metadata=meta,
             spec=V1ServiceSpec(
                 type='ExternalName',
-                external_name=target_ip,
+                external_name=target_parts.hostname,
                 cluster_ip='',
                 ports=[V1ServicePort(port=target_port, target_port=target_port)],
             ),
