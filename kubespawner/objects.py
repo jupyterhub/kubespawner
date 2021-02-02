@@ -372,6 +372,7 @@ def make_pod(
         pod_security_context.supplemental_groups = [
             int(gid) for gid in supplemental_gids
         ]
+    pod_security_context.fs_group_change_policy = "OnRootMismatch"
     # Only clutter pod spec with actual content
     if not all([e is None for e in pod_security_context.to_dict().values()]):
         pod.spec.security_context = pod_security_context
