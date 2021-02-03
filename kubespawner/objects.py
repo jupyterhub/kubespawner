@@ -63,6 +63,8 @@ def make_pod(
     supplemental_gids=None,
     privileged=False,
     allow_privilege_escalation=True,
+    container_security_context=None,
+    pod_security_context=None,
     env=None,
     working_dir=None,
     volumes=None,
@@ -158,8 +160,15 @@ def make_pod(
 
     privileged:
         Whether the container should be run in privileged mode.
+
     allow_privilege_escalation:
         Controls whether a process can gain more privileges than its parent process.
+
+    container_security_context:
+        A kubernetes securityContext to apply to the container.
+
+    pod_security_context:
+        A kubernetes securityContext to apply to the pod.
 
     env:
         Dictionary of environment variables.
@@ -365,29 +374,50 @@ def make_pod(
     # ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
     # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core (container)
     # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core (pod)
-    pod_security_context = V1PodSecurityContext()
-    if fs_gid is not None:
-        pod_security_context.fs_group = int(fs_gid)
-    if supplemental_gids is not None and supplemental_gids:
-        pod_security_context.supplemental_groups = [
-            int(gid) for gid in supplemental_gids
-        ]
+    pod_context_dict = {}
+    # populate with fs_gid  / supplemental_gids
+    pod_context_dict["fs_group"] = int(fs_gid) if fs_gid else None
+    pod_context_dict["supplemental_groups"] = (
+        [int(gid) for gid in supplemental_gids] if supplemental_gids else None
+    )
+    if pod_security_context is not None:
+        pod_context_dict.update(pod_security_context)
+    try:
+        v1_pod_security_context = V1PodSecurityContext(**pod_context_dict)
+    except TypeError as err:
+        print("Not a valid security context: ", str(pod_context_dict))
+        print("You supplied: ", str(pod_security_context))
+        print(
+            """Do check if your Kubernetes versions supports the relevant options, as well as the kubernetes-client library"""
+        )
+        raise
     # Only clutter pod spec with actual content
-    if not all([e is None for e in pod_security_context.to_dict().values()]):
-        pod.spec.security_context = pod_security_context
+    if not all([e is None for e in v1_pod_security_context.to_dict().values()]):
+        pod.spec.security_context = v1_pod_security_context
 
-    container_security_context = V1SecurityContext()
-    if uid is not None:
-        container_security_context.run_as_user = int(uid)
-    if gid is not None:
-        container_security_context.run_as_group = int(gid)
-    if privileged:
-        container_security_context.privileged = True
-    if not allow_privilege_escalation:
-        container_security_context.allow_privilege_escalation = False
-    # Only clutter container spec with actual content
-    if all([e is None for e in container_security_context.to_dict().values()]):
-        container_security_context = None
+    container_context_dict = {}
+    # populate with uid / gid  / privileged
+    container_context_dict["run_as_user"] = int(run_as_uid) if run_as_uid else None
+    container_context_dict["run_as_group"] = int(run_as_gid) if run_as_gid else None
+    # requires None for the 'silent' default behavior, not a boolean
+    container_context_dict["privileged"] = None if not run_privileged else True
+    container_context_dict["allow_privilege_escalation"] = (
+        None if allow_privilege_escalation else False
+    )
+    if container_security_context is not None:
+        container_context_dict.update(container_security_context)
+    try:
+        v1_container_security_context = V1SecurityContext(**container_context_dict)
+    except TypeError as err:
+        print("Not a valid security context: ", str(container_context_dict))
+        print("You supplied: ", str(container_security_context))
+        print(
+            """Do check if your Kubernetes versions supports the relevant options, as well as the kubernetes-client library"""
+        )
+        raise
+    # Only clutter pod spec with actual content
+    if not all([e is None for e in v1_container_security_context.to_dict().values()]):
+        pod.spec.security_context = v1_container_security_context
 
     # Transform a dict into valid Kubernetes EnvVar Python representations. This
     # representation shall always have a "name" field as well as either a
@@ -414,7 +444,7 @@ def make_pod(
         volume_mounts=[
             get_k8s_model(V1VolumeMount, obj) for obj in (volume_mounts or [])
         ],
-        security_context=container_security_context,
+        security_context=v1_container_security_context,
     )
 
     if service_account is None:

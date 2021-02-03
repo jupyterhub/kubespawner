@@ -824,6 +824,34 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    container_security_context = Union(
+        trait_types=[
+            Dict(),
+            Callable(),
+        ],
+        config=True,
+        help="""
+        A Kubernetes security context for the container. It overrides the pod.
+        It takes precedence over values like `runAsUser`.
+        The supported options are dependent on your own Kubernetes version and
+        on whether the Python kubernetes-client library supports them.
+        """,
+    )
+
+    pod_security_context = Union(
+        trait_types=[
+            Dict(),
+            Callable(),
+        ],
+        config=True,
+        help="""
+        A Kubernetes security context for the pod. It applies to the container
+        unless overriden by container_security_context. It takes precedence over values like `runAsUser`.
+        The supported options are dependent on your own Kubernetes version and
+        on whether the Python kubernetes-client library supports them.
+        """,
+    )
+
     modify_pod_hook = Callable(
         None,
         allow_none=True,

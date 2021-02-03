@@ -1,6 +1,7 @@
 """
 Test functions used to create k8s objects
 """
+import pytest
 from kubernetes.client import ApiClient
 
 from kubespawner.objects import make_ingress
@@ -432,6 +433,135 @@ def test_allow_privilege_escalation_container():
         "kind": "Pod",
         "apiVersion": "v1",
     }
+
+
+def test_security_context_container():
+    """
+    Test specification of the container to run with a security context.
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            container_security_context={'run_as_user': 1000},
+            pod_security_context={'supplemental_groups': [100]},
+            image_pull_policy='IfNotPresent',
+        )
+    ) == {
+        "metadata": {
+            "name": "test",
+            "annotations": {},
+            "labels": {},
+        },
+        "spec": {
+            'automountServiceAccountToken': False,
+            "containers": [
+                {
+                    "securityContext": {
+                        "runAsUser": 1000,
+                    },
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'securityContext': {
+                'supplementalGroups': [100],
+            },
+            'volumes': [],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_security_context_priority():
+    """
+    Test specification of the container to run with a security context.
+    security_context should be prioritized
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            run_as_uid=1001,
+            supplemental_gids=[101],
+            container_security_context={'run_as_user': 1000},
+            pod_security_context={'supplemental_groups': [100]},
+            image_pull_policy='IfNotPresent',
+        )
+    ) == {
+        "metadata": {
+            "name": "test",
+            "annotations": {},
+            "labels": {},
+        },
+        "spec": {
+            'automountServiceAccountToken': False,
+            "containers": [
+                {
+                    "securityContext": {
+                        "runAsUser": 1000,
+                    },
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'securityContext': {
+                'supplementalGroups': [100],
+            },
+            'volumes': [],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_bad_pod_security_context_options():
+    """
+    Test whether an invalid security context key is ignored as expected
+    """
+    with pytest.raises(TypeError):
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            image_pull_policy='IfNotPresent',
+            pod_security_context={"not a thing": "won't work"},
+        )
+
+
+def test_bad_container_security_context_options():
+    """
+    Test whether an invalid security context key is ignored as expected
+    """
+    with pytest.raises(TypeError):
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            image_pull_policy='IfNotPresent',
+            container_security_context={"not a thing": "won't work"},
+        )
 
 
 def test_make_pod_resources_all():
