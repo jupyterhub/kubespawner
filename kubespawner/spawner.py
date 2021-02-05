@@ -2283,7 +2283,7 @@ class KubeSpawner(Spawner):
                 partial(
                     self._make_create_pvc_request, pvc, self.k8s_api_request_timeout
                 ),
-                f'Could not create pod {self.pvc_name}',
+                f'Could not create PVC {self.pvc_name}',
                 # Each req should be given k8s_api_request_timeout seconds.
                 timeout=self.k8s_api_request_retry_timeout,
             )
