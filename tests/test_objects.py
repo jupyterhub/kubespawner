@@ -219,8 +219,8 @@ def test_set_container_uid_and_gid():
             image='jupyter/singleuser:latest',
             cmd=['jupyterhub-singleuser'],
             port=8888,
-            run_as_uid=0,
-            run_as_gid=0,
+            uid=0,
+            gid=0,
             image_pull_policy='IfNotPresent',
         )
     ) == {
@@ -262,7 +262,7 @@ def test_set_container_uid_and_pod_fs_gid():
             image='jupyter/singleuser:latest',
             cmd=['jupyterhub-singleuser'],
             port=8888,
-            run_as_uid=1000,
+            uid=1000,
             fs_gid=0,
             image_pull_policy='IfNotPresent',
         )
@@ -310,7 +310,7 @@ def test_set_pod_supplemental_gids():
             image='jupyter/singleuser:latest',
             cmd=['jupyterhub-singleuser'],
             port=8888,
-            run_as_uid=1000,
+            uid=1000,
             supplemental_gids=[100],
             image_pull_policy='IfNotPresent',
         )
@@ -348,7 +348,7 @@ def test_set_pod_supplemental_gids():
     }
 
 
-def test_run_privileged_container():
+def test_privileged_container():
     """
     Test specification of the container to run as privileged
     """
@@ -358,7 +358,7 @@ def test_run_privileged_container():
             image='jupyter/singleuser:latest',
             cmd=['jupyterhub-singleuser'],
             port=8888,
-            run_privileged=True,
+            privileged=True,
             image_pull_policy='IfNotPresent',
         )
     ) == {

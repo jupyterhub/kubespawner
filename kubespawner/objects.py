@@ -57,11 +57,11 @@ def make_pod(
     image_pull_policy,
     image_pull_secrets=None,
     node_selector=None,
-    run_as_uid=None,
-    run_as_gid=None,
+    uid=None,
+    gid=None,
     fs_gid=None,
     supplemental_gids=None,
-    run_privileged=False,
+    privileged=False,
     allow_privilege_escalation=True,
     env=None,
     working_dir=None,
@@ -128,16 +128,16 @@ def make_pod(
     node_selector:
         Dictionary Selector to match nodes where to launch the Pods
 
-    run_as_uid:
+    uid:
         The UID used to run single-user pods. The default is to run as the user
         specified in the Dockerfile, if this is set to None.
 
-    run_as_gid:
+    gid:
         The GID used to run single-user pods. The default is to run as the primary
         group of the user specified in the Dockerfile, if this is set to None.
         Setting this parameter requires that *feature-gate* **RunAsGroup** be enabled,
         otherwise the effective GID of the pod will be 0 (root).  In addition, not
-        setting `run_as_gid` once feature-gate RunAsGroup is enabled will also
+        setting `gid` once feature-gate RunAsGroup is enabled will also
         result in an effective GID of 0 (root).
 
     fs_gid
@@ -156,7 +156,7 @@ def make_pod(
         The image must setup all directories/files any application needs access
         to, as group writable.
 
-    run_privileged:
+    privileged:
         Whether the container should be run in privileged mode.
     allow_privilege_escalation:
         Controls whether a process can gain more privileges than its parent process.
@@ -377,11 +377,11 @@ def make_pod(
         pod.spec.security_context = pod_security_context
 
     container_security_context = V1SecurityContext()
-    if run_as_uid is not None:
-        container_security_context.run_as_user = int(run_as_uid)
-    if run_as_gid is not None:
-        container_security_context.run_as_group = int(run_as_gid)
-    if run_privileged:
+    if uid is not None:
+        container_security_context.run_as_user = int(uid)
+    if gid is not None:
+        container_security_context.run_as_group = int(gid)
+    if privileged:
         container_security_context.privileged = True
     if not allow_privilege_escalation:
         container_security_context.allow_privilege_escalation = False
