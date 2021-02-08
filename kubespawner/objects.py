@@ -404,7 +404,7 @@ def make_pod(
         psc.update(pod_security_context)
     try:
         # validate truthy config by casting it
-        pod.spec.security_context = V1PodSecurityContext(**psc) if psc else None
+        pod.spec.security_context = get_k8s_model(V1PodSecurityContext, psc) if psc else None
     except TypeError as err:
         print("Not a valid security context: ", str(psc))
         print("You supplied: ", str(pod_security_context))
@@ -427,7 +427,7 @@ def make_pod(
         csc.update(container_security_context)
     try:
         # validate truthy config by casting it
-        csc = V1SecurityContext(**csc) if csc else None
+        csc = get_k8s_model(V1SecurityContext, csc) if csc else None
     except TypeError as err:
         print("Not a valid security context: ", str(csc))
         print("You supplied: ", str(container_security_context))
