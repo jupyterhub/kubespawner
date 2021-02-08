@@ -831,8 +831,12 @@ class KubeSpawner(Spawner):
         ],
         config=True,
         help="""
-        A Kubernetes security context for the container. It overrides the pod.
-        It takes precedence over values like `runAsUser`.
+        A Kubernetes security context for the container.
+
+        What is configured here has the highest priority, so the alternative
+        configuration `uid`, `gid`, `privileged`, and
+        `allow_privilege_escalation` will be overridden by this.
+
         The supported options are dependent on your own Kubernetes version and
         on whether the Python kubernetes-client library supports them.
         """,
@@ -845,8 +849,15 @@ class KubeSpawner(Spawner):
         ],
         config=True,
         help="""
-        A Kubernetes security context for the pod. It applies to the container
-        unless overriden by container_security_context. It takes precedence over values like `runAsUser`.
+        A Kubernetes security context for the pod.
+
+        What is configured here has higher priority than `fs_gid` and
+        `supplemental_gids`, but lower priority than what is set in the
+        `container_security_context`.
+
+        Note that anything configured on the Pod level will influence all
+        containers, including init containers and sidecar containers.
+
         The supported options are dependent on your own Kubernetes version and
         on whether the Python kubernetes-client library supports them.
         """,
