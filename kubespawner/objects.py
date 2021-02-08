@@ -392,49 +392,44 @@ def make_pod(
     # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core (container)
     # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core (pod)
     #
-    pod_context_dict = {}
+    psc = {}
     # populate with fs_gid  / supplemental_gids
     if fs_gid is not None:
-        pod_context_dict["fs_group"] = int(fs_gid)
+        psc["fs_group"] = int(fs_gid)
     if supplemental_gids is not None:
-        pod_context_dict["supplemental_groups"] = [
+        psc["supplemental_groups"] = [
             int(gid) for gid in supplemental_gids
         ]
     if pod_security_context is not None:
-        pod_context_dict.update(pod_security_context)
+        psc.update(pod_security_context)
     try:
-        # only clutter if actual contents
-        if pod_context_dict:
-            pod.spec.security_context = V1PodSecurityContext(**pod_context_dict)
+        # validate truthy config by casting it
+        pod.spec.security_context = V1PodSecurityContext(**psc) if psc else None
     except TypeError as err:
-        print("Not a valid security context: ", str(pod_context_dict))
+        print("Not a valid security context: ", str(psc))
         print("You supplied: ", str(pod_security_context))
         print(
             """Do check if your Kubernetes versions supports the relevant options, as well as the kubernetes-client library"""
         )
         raise
 
-    container_context_dict = {}
-    # populate with uid / gid  / privileged
+    csc = {}
+    # populate with uid / gid  / privileged / allow_privilege_escalation
     if run_as_uid is not None:
-        container_context_dict["run_as_user"] = int(run_as_uid)
+        csc["run_as_user"] = int(run_as_uid)
     if run_as_gid is not None:
-        container_context_dict["run_as_group"] = int(run_as_gid)
+        csc["run_as_group"] = int(run_as_gid)
     if run_privileged:  # false as default
-        container_context_dict["privileged"] = True
+        csc["privileged"] = True
     if not allow_privilege_escalation:  # true as default
-        container_context_dict["allow_privilege_escalation"] = False
+        csc["allow_privilege_escalation"] = False
     if container_security_context is not None:
-        container_context_dict.update(container_security_context)
+        csc.update(container_security_context)
     try:
-        # only clutter if actual contents
-        v1_container_security_context = (
-            V1SecurityContext(**container_context_dict)
-            if container_context_dict
-            else None
-        )
+        # validate truthy config by casting it
+        csc = V1SecurityContext(**csc) if csc else None
     except TypeError as err:
-        print("Not a valid security context: ", str(container_context_dict))
+        print("Not a valid security context: ", str(csc))
         print("You supplied: ", str(container_security_context))
         print(
             """Do check if your Kubernetes versions supports the relevant options, as well as the kubernetes-client library"""
@@ -466,7 +461,7 @@ def make_pod(
         volume_mounts=[
             get_k8s_model(V1VolumeMount, obj) for obj in (volume_mounts or [])
         ],
-        security_context=v1_container_security_context,
+        security_context=csc,
     )
 
     if service_account is None:
