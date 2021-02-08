@@ -143,7 +143,6 @@ jobs:
           pip install codecov
           codecov
 
-
   # Keep this job synced with the publish job in publish.yaml!
   package-build:
     name: Test package build
