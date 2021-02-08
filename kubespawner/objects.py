@@ -362,18 +362,36 @@ def make_pod(
     if lifecycle_hooks:
         lifecycle_hooks = get_k8s_model(V1Lifecycle, lifecycle_hooks)
 
-    # There are security contexts both on the Pod level or the Container level.
-    # The security settings that you specify for a Pod apply to all Containers
-    # in the Pod, but settings on the container level can override them.
+    # Security contexts can be configured on Pod and Container level. The
+    # Dedicated KubeSpawner API will bootstraps the container_security_context
+    # except for if can only be configured on the Pod level, then it bootstraps
+    # pod_security_context.
     #
-    # We configure the pod to be spawned on the container level unless the
-    # option is only available on the pod level, such as for those relating to
-    # the volumes as compared to the running user of the container. Volumes
-    # belong to the pod and are only mounted by containers after all.
+    # The pod|container_security_context configuration is given a higher
+    # priority.
+    #
+    # | Dedicated KubeSpawner API  | Kubernetes API           | Security contexts |
+    # | -------------------------- | ------------------------ | ----------------- |
+    # | supplemental_gids          | supplementalGroups       | Pod only          |
+    # | fs_gid                     | fsGroup                  | Pod only          |
+    # | -                          | fsGroupChangePolicy      | Pod only          |
+    # | -                          | sysctls                  | Pod only          |
+    # | privileged                 | privileged               | Container only    |
+    # | allow_privilege_escalation | allowPrivilegeEscalation | Container only    |
+    # | -                          | capabilities             | Container only    |
+    # | -                          | procMount                | Container only    |
+    # | -                          | readOnlyRootFilesystem   | Container only    |
+    # | uid                        | runAsUser                | Pod and Container |
+    # | gid                        | runAsGroup               | Pod and Container |
+    # | -                          | runAsNonRoot             | Pod and Container |
+    # | -                          | seLinuxOptions           | Pod and Container |
+    # | -                          | seccompProfile           | Pod and Container |
+    # | -                          | windowsOptions           | Pod and Container |
     #
     # ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
     # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core (container)
     # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core (pod)
+    #
     pod_context_dict = {}
     # populate with fs_gid  / supplemental_gids
     if fs_gid is not None:
