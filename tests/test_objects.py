@@ -575,6 +575,48 @@ def test_container_security_context_container():
     }
 
 
+def test_bad_pod_security_context_container():
+    """
+    Test specification of the container to run with a security context.
+
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core
+    """
+    with pytest.raises(ValueError):
+        assert api_client.sanitize_for_serialization(
+            make_pod(
+                name='test',
+                image='jupyter/singleuser:latest',
+                image_pull_policy='IfNotPresent',
+                cmd=['jupyterhub-singleuser'],
+                port=8888,
+                pod_security_context={
+                    "run_as_user": 1000,
+                },
+            )
+        )
+
+
+def test_bad_container_security_context_container():
+    """
+    Test specification of the container to run with a security context.
+
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core
+    """
+    with pytest.raises(ValueError):
+        assert api_client.sanitize_for_serialization(
+            make_pod(
+                name='test',
+                image='jupyter/singleuser:latest',
+                image_pull_policy='IfNotPresent',
+                cmd=['jupyterhub-singleuser'],
+                port=8888,
+                container_security_context={
+                    "allow_privilege_escalation": True,
+                },
+            )
+        )
+
+
 def test_make_pod_resources_all():
     """
     Test specifying all possible resource limits & guarantees

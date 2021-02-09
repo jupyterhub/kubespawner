@@ -403,6 +403,10 @@ def make_pod(
     if supplemental_gids is not None:
         psc["supplementalGroups"] = [int(gid) for gid in supplemental_gids]
     if pod_security_context is not None:
+        if any("_" in key for key in pod_security_context.keys()):
+            raise ValueError(
+                "pod_security_context's keys should be directly k8s compliant camelCase, but snake_case formatting was detected."
+            )
         psc.update(pod_security_context)
     if not psc:
         psc = None
@@ -419,6 +423,10 @@ def make_pod(
     if not allow_privilege_escalation:  # true as default
         csc["allowPrivilegeEscalation"] = False
     if container_security_context is not None:
+        if any("_" in key for key in container_security_context.keys()):
+            raise ValueError(
+                "container_security_context's keys should be directly k8s compliant camelCase, but snake_case formatting was detected."
+            )
         csc.update(container_security_context)
     if not csc:
         csc = None
