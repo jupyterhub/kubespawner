@@ -1720,14 +1720,14 @@ class KubeSpawner(Spawner):
             supplemental_gids = self.supplemental_gids
 
         if callable(self.container_security_context):
-            container_security_context = await gen.maybe_future(self.container_security_context(self))
+            csc = await gen.maybe_future(self.container_security_context(self))
         else:
-            container_security_context = self.container_security_context
+            csc = self.container_security_context
 
         if callable(self.pod_security_context):
-            pod_security_context = await gen.maybe_future(self.pod_security_context(self))
+            psc = await gen.maybe_future(self.pod_security_context(self))
         else:
-            pod_security_context = self.pod_security_context
+            psc = self.pod_security_context
 
         if self.cmd:
             real_cmd = self.cmd + self.get_args()
@@ -1753,8 +1753,8 @@ class KubeSpawner(Spawner):
             supplemental_gids=supplemental_gids,
             privileged=self.privileged,
             allow_privilege_escalation=self.allow_privilege_escalation,
-            container_security_context=container_security_context,
-            pod_security_context=pod_security_context,
+            container_security_context=csc,
+            pod_security_context=psc,
             env=self.get_env(),
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),

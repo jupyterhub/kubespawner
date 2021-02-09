@@ -397,14 +397,14 @@ def make_pod(
     if fs_gid is not None:
         psc["fs_group"] = int(fs_gid)
     if supplemental_gids is not None:
-        psc["supplemental_groups"] = [
-            int(gid) for gid in supplemental_gids
-        ]
+        psc["supplemental_groups"] = [int(gid) for gid in supplemental_gids]
     if pod_security_context is not None:
         psc.update(pod_security_context)
     try:
         # validate truthy config by casting it
-        pod.spec.security_context = get_k8s_model(V1PodSecurityContext, psc) if psc else None
+        pod.spec.security_context = (
+            get_k8s_model(V1PodSecurityContext, psc) if psc else None
+        )
     except TypeError as err:
         print("Not a valid security context: ", str(psc))
         print("You supplied: ", str(pod_security_context))
