@@ -831,14 +831,16 @@ class KubeSpawner(Spawner):
         ],
         config=True,
         help="""
-        A Kubernetes security context for the container.
+        A Kubernetes security context for the container. Note that all
+        configuration options within here should be camelCased.
 
         What is configured here has the highest priority, so the alternative
         configuration `uid`, `gid`, `privileged`, and
         `allow_privilege_escalation` will be overridden by this.
 
-        The supported options are dependent on your own Kubernetes version and
-        on whether the Python kubernetes-client library supports them.
+        Rely on `the Kubernetes reference
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core>`__
+        for details on allowed configuration.
         """,
     )
 
@@ -849,7 +851,8 @@ class KubeSpawner(Spawner):
         ],
         config=True,
         help="""
-        A Kubernetes security context for the pod.
+        A Kubernetes security context for the pod. Note that all configuration
+        options within here should be camelCased.
 
         What is configured here has higher priority than `fs_gid` and
         `supplemental_gids`, but lower priority than what is set in the
@@ -858,8 +861,9 @@ class KubeSpawner(Spawner):
         Note that anything configured on the Pod level will influence all
         containers, including init containers and sidecar containers.
 
-        The supported options are dependent on your own Kubernetes version and
-        on whether the Python kubernetes-client library supports them.
+        Rely on `the Kubernetes reference
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core>`__
+        for details on allowed configuration.
         """,
     )
 
