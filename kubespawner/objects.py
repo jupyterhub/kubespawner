@@ -415,11 +415,11 @@ def make_pod(
 
     csc = {}
     # populate with uid / gid  / privileged / allow_privilege_escalation
-    if run_as_uid is not None:
-        csc["run_as_user"] = int(run_as_uid)
-    if run_as_gid is not None:
-        csc["run_as_group"] = int(run_as_gid)
-    if run_privileged:  # false as default
+    if uid is not None:
+        csc["run_as_user"] = int(uid)
+    if gid is not None:
+        csc["run_as_group"] = int(gid)
+    if privileged:  # false as default
         csc["privileged"] = True
     if not allow_privilege_escalation:  # true as default
         csc["allow_privilege_escalation"] = False

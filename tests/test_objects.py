@@ -494,7 +494,7 @@ def test_security_context_priority():
             image='jupyter/singleuser:latest',
             cmd=['jupyterhub-singleuser'],
             port=8888,
-            run_as_uid=1001,
+            uid=1001,
             supplemental_gids=[101],
             container_security_context={'run_as_user': 1000},
             pod_security_context={'supplemental_groups': [100]},
