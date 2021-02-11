@@ -1,6 +1,7 @@
 """
 Test functions used to create k8s objects
 """
+import pytest
 from kubernetes.client import ApiClient
 
 from kubespawner.objects import make_ingress
@@ -432,6 +433,188 @@ def test_allow_privilege_escalation_container():
         "kind": "Pod",
         "apiVersion": "v1",
     }
+
+
+def test_pod_security_context_container():
+    """
+    Test specification of the container to run with a security context.
+
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            image_pull_policy='IfNotPresent',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            supplemental_gids=[100],
+            fs_gid=100,
+            pod_security_context={
+                'supplementalGroups': [200],
+                'fsGroup': 200,
+                'fsGroupChangePolicy': "OnRootMismatch",
+                'sysctls': [{"name": "kernel.msgmax", "value": "65536"}],
+                "runAsUser": 2000,
+                "runAsGroup": 200,
+                "runAsNonRoot": False,
+                "seLinuxOptions": {"level": "s0:c123,c456"},
+                "seccompProfile": {"type": "RuntimeDefault"},
+                "windowsOptions": {"gmsaCredentialSpecName": "gmsa-webapp1"},
+            },
+        )
+    ) == {
+        "metadata": {
+            "name": "test",
+            "annotations": {},
+            "labels": {},
+        },
+        "spec": {
+            'automountServiceAccountToken': False,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'securityContext': {
+                'supplementalGroups': [200],
+                'fsGroup': 200,
+                'fsGroupChangePolicy': "OnRootMismatch",
+                'sysctls': [{"name": "kernel.msgmax", "value": "65536"}],
+                "runAsUser": 2000,
+                "runAsGroup": 200,
+                "runAsNonRoot": False,
+                "seLinuxOptions": {"level": "s0:c123,c456"},
+                "seccompProfile": {"type": "RuntimeDefault"},
+                "windowsOptions": {"gmsaCredentialSpecName": "gmsa-webapp1"},
+            },
+            'volumes': [],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_container_security_context_container():
+    """
+    Test specification of the container to run with a security context.
+
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            image_pull_policy='IfNotPresent',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            uid=1000,
+            gid=100,
+            privileged=True,
+            allow_privilege_escalation=False,
+            container_security_context={
+                "privileged": False,
+                "allowPrivilegeEscalation": True,
+                "capabilities": {"add": ["KILL"], "drop": ["SYS_CHROOT"]},
+                "procMount": "DefaultProcMount",
+                "readOnlyRootFilesystem": True,
+                "runAsUser": 2000,
+                "runAsGroup": 200,
+                "runAsNonRoot": False,
+                "seLinuxOptions": {"level": "s0:c123,c456"},
+                "seccompProfile": {"type": "RuntimeDefault"},
+                "windowsOptions": {"gmsaCredentialSpecName": "gmsa-webapp1"},
+            },
+        )
+    ) == {
+        "metadata": {
+            "name": "test",
+            "annotations": {},
+            "labels": {},
+        },
+        "spec": {
+            'automountServiceAccountToken': False,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                    'securityContext': {
+                        "privileged": False,
+                        "allowPrivilegeEscalation": True,
+                        "capabilities": {"add": ["KILL"], "drop": ["SYS_CHROOT"]},
+                        "procMount": "DefaultProcMount",
+                        "readOnlyRootFilesystem": True,
+                        "runAsUser": 2000,
+                        "runAsGroup": 200,
+                        "runAsNonRoot": False,
+                        "seLinuxOptions": {"level": "s0:c123,c456"},
+                        "seccompProfile": {"type": "RuntimeDefault"},
+                        "windowsOptions": {"gmsaCredentialSpecName": "gmsa-webapp1"},
+                    },
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_bad_pod_security_context_container():
+    """
+    Test specification of the container to run with a security context.
+
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core
+    """
+    with pytest.raises(ValueError):
+        assert api_client.sanitize_for_serialization(
+            make_pod(
+                name='test',
+                image='jupyter/singleuser:latest',
+                image_pull_policy='IfNotPresent',
+                cmd=['jupyterhub-singleuser'],
+                port=8888,
+                pod_security_context={
+                    "run_as_user": 1000,
+                },
+            )
+        )
+
+
+def test_bad_container_security_context_container():
+    """
+    Test specification of the container to run with a security context.
+
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core
+    """
+    with pytest.raises(ValueError):
+        assert api_client.sanitize_for_serialization(
+            make_pod(
+                name='test',
+                image='jupyter/singleuser:latest',
+                image_pull_policy='IfNotPresent',
+                cmd=['jupyterhub-singleuser'],
+                port=8888,
+                container_security_context={
+                    "allow_privilege_escalation": True,
+                },
+            )
+        )
 
 
 def test_make_pod_resources_all():
