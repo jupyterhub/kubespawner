@@ -1,0 +1,166 @@
+# This is a GitHub workflow defining a set of jobs with a set of steps.
+# ref: https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions
+#
+name: Test
+
+# Trigger the workflow's on pushed branches, pull requests, and manually run
+# workflows.
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+defaults:
+  run:
+    # Declare bash be used by default in this workflow's "run" steps.
+    #
+    # NOTE: bash will by default run with:
+    #   --noprofile: Ignore ~/.profile etc.
+    #   --norc:      Ignore ~/.bashrc etc.
+    #   -e:          Exit directly on errors
+    #   -o pipefail: Don't mask errors from a command piped into another command
+    shell: bash
+
+jobs:
+  # Run "pre-commit run --all-files"
+  pre-commit:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 2
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      # ref: https://github.com/pre-commit/action
+      - uses: pre-commit/action@v2.0.0
+      - name: Help message if pre-commit fail
+        if: ${{ failure() }}
+        run: |
+          echo "You can install pre-commit hooks to automatically run formatting"
+          echo "on each commit with:"
+          echo "    pre-commit install"
+          echo "or you can run by hand on staged files with"
+          echo "    pre-commit run"
+          echo "or after-the-fact on already committed files with"
+          echo "    pre-commit run --all-files"
+
+  run-pytest:
+    name: Run pytest
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+
+    strategy:
+      # Keep running even if one variation of the job fail
+      fail-fast: false
+      matrix:
+        # We run this job multiple times with different parameterization
+        # specified below, these parameters have no meaning on their own and
+        # gain meaning on how job steps use them.
+        #
+        # k3s:                https://github.com/rancher/k3s/tags
+        # k8s-python-client:  https://github.com/kubernetes-client/python#compatibility
+        #
+        include:
+          # Test k8s-python-client 10 (supports k8s 1.14)
+          - python: 3.7
+            k3s: v1.16.15+k3s1
+            k8s-python-client: 10.1
+          # Test k8s-python-client 11 (supports k8s 1.15)
+          - python: 3.8
+            k3s: v1.16.15+k3s1
+            k8s-python-client: 11
+          # Test k8s-python-client 12 (supports k8s 1.16)
+          - python: 3.9
+            k3s: v1.16.15+k3s1
+            k8s-python-client: 12
+          # Try with latest k8s
+          - python: 3.8
+            k3s: v1.19.3+k3s2
+            k8s-python-client: 12
+          # Try with JupyterHub's current state in git
+          - python: 3.8
+            k3s: v1.16.15+k3s1
+            k8s-python-client: 12
+            jupyterhub: master
+          # Test k8s-python-client etc. in pre-release (supports k8s 1.17)
+          - python: 3.9
+            k3s: v1.17.13+k3s2
+            k8s-python-client: pre
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "${{ matrix.python }}"
+
+      - name: Install package and test dependencies
+        env:
+          K8S_PYTHON_CLIENT_VERSION: ${{ matrix.k8s-python-client }}
+          JUPYTERHUB_VERSION: ${{ matrix.jupyterhub }}
+        run: |
+          if [[ "$K8S_PYTHON_CLIENT_VERSION" == "pre" ]]; then
+              PRE="--pre"
+              PINS=""
+          else
+              PRE=""
+              PINS="kubernetes==${K8S_PYTHON_CLIENT_VERSION}"
+          fi
+          if [ "$JUPYTERHUB_VERSION" == "master" ]; then
+              PINS="$PINS git+https://github.com/jupyterhub/jupyterhub"
+          fi
+
+          pip install --upgrade setuptools pip
+          pip install -e ".[test]" ${PRE} ${PINS}
+          pip freeze
+
+      # flake8 runs a very quick code analysis without running any of the code
+      # it analyses
+      - name: Run flake8
+        run: |
+          flake8 kubespawner
+
+      # Starts a k8s cluster with NetworkPolicy enforcement and installs both
+      # kubectl and helm. We won't need network policy enforcement or helm
+      # though.
+      #
+      # ref: https://github.com/jupyterhub/action-k3s-helm/
+      - uses: jupyterhub/action-k3s-helm@v0.2.2
+        with:
+          k3s-version: ${{ matrix.k3s }}
+          helm-version: v3.4.1
+          metrics-enabled: false
+          traefik-enabled: false
+          docker-enabled: false
+
+      - name: Run pytest
+        run: |
+          pytest -v --durations 10 --cov kubespawner --color=yes
+
+      - name: Submit a codecov report
+        run: |
+          pip install codecov
+          codecov
+
+  # Keep this job synced with the publish job in publish.yaml!
+  package-build:
+    name: Test package build
+    runs-on: ubuntu-20.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: install build package
+        run: |
+          pip install --upgrade pip
+          pip install build
+          pip freeze
+
+      - name: build release
+        run: |
+          python -m build --sdist --wheel .
+          ls -alh dist

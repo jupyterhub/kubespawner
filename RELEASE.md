@@ -5,13 +5,20 @@ PyPI](https://pypi.org/project/jupyterhub-kubespawner/). These are instructions
 on how to make a release on PyPI.
 
 For you to follow along according to these instructions, you need:
+
 - To have push rights to the [kubespawner GitHub
   repository](https://github.com/jupyterhub/kubespawner).
 
 ## Steps to make a release
 
-1. Update [CHANGELOG.md](CHANGELOG.md) if it is not up to date. Make a PR to
-   review the CHANGELOG notes.
+1. Update [CHANGELOG.md](CHANGELOG.md). Doing this can be made easier with the
+   help of the
+   [choldgraf/github-activity](https://github.com/choldgraf/github-activity)
+   utility to list merged PRs and generate a list of contributors.
+
+   ```bash
+   github-activity jupyterhub/kubespawner --output tmp-changelog-prep.md
+   ```
 
 1. Once the changelog is up to date, checkout master and make sure it is up to date and clean.
 
@@ -51,7 +58,7 @@ For you to follow along according to these instructions, you need:
    git push --follow-tags $ORIGIN master
    ```
 
-1. Verify that the [build succeed on
-   TravisCI](https://travis-ci.org/jupyterhub/kubespawner/builds) and that that
-   PyPI received a [new
-   release](https://pypi.org/project/jupyterhub-kubespawner/)
+1. Verify that [the GitHub
+   workflow](https://github.com/jupyterhub/kubespawner/actions?query=workflow%3APublish)
+   triggers and succeeds and that that PyPI received a [new
+   release](https://pypi.org/project/jupyterhub-kubespawner/).

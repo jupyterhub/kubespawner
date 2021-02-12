@@ -1,0 +1,57 @@
+# This is a GitHub workflow defining a set of jobs with a set of steps.
+# ref: https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions
+#
+name: Publish
+
+# Trigger the workflow's on pushed version tags.
+on:
+  push:
+    tags: "[0-9]+.[0-9]+.[0-9]+*"
+
+defaults:
+  run:
+    # Declare bash be used by default in this workflow's "run" steps.
+    #
+    # NOTE: bash will by default run with:
+    #   --noprofile: Ignore ~/.profile etc.
+    #   --norc:      Ignore ~/.bashrc etc.
+    #   -e:          Exit directly on errors
+    #   -o pipefail: Don't mask errors from a command piped into another command
+    shell: bash
+
+jobs:
+  # Builds and pushes docker images to DockerHub and package the Helm chart and
+  # pushes it to jupyterhub/helm-chart@gh-pages where index.yaml represents the
+  # JupyterHub organization Helm chart repository.
+  #
+  # NOTE: Keep this job in sync with the build package test in test.yaml!
+  #
+  # ref: https://github.com/jupyterhub/helm-chart
+  # ref: https://hub.docker.com/orgs/jupyterhub
+  #
+  publish:
+    name: Publish to PyPI
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: install build package
+        run: |
+          pip install --upgrade pip
+          pip install build
+          pip freeze
+
+      - name: build release
+        run: |
+          python -m build --sdist --wheel .
+          ls -alh dist
+
+      # ref: https://github.com/pypa/gh-action-pypi-publish
+      - name: publish to pypi
+        uses: pypa/gh-action-pypi-publish@v1.4.1
+        with:
+          user: __token__
+          password: ${{ secrets.pypi_password }}

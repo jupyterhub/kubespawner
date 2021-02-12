@@ -1,7 +1,7 @@
+pyyaml
+recommonmark==0.4.0
+setuptools
 sphinx>=1.7
+sphinx-copybutton
 sphinx_rtd_theme
 traitlets>=4.1
-recommonmark==0.4.0
-pyyaml
-sphinx-copybutton
-setuptools

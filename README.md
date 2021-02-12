@@ -1,11 +1,11 @@
 # [kubespawner](https://github.com/jupyterhub/kubespawner) (jupyterhub-kubespawner @ PyPI)
 
 [![Documentation status](https://img.shields.io/readthedocs/jupyterhub-kubespawner?logo=read-the-docs)](https://jupyterhub-kubespawner.readthedocs.io/en/latest/?badge=latest)
-[![TravisCI Build status](https://img.shields.io/travis/jupyterhub/kubespawner/master.svg?logo=travis)](https://travis-ci.org/jupyterhub/kubespawner)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/jupyterhub/kubespawner/Test?logo=github)](https://github.com/jupyterhub/kubespawner/actions)
 [![Code coverage](https://codecov.io/gh/jupyterhub/kubespawner/branch/master/graph/badge.svg)](https://codecov.io/gh/jupyterhub/kubespawner)
 [![](https://img.shields.io/pypi/v/jupyterhub-kubespawner.svg?logo=pypi)](https://pypi.python.org/pypi/jupyterhub-kubespawner)
 
-The *kubespawner* (also known as JupyterHub Kubernetes Spawner) enables JupyterHub to spawn
+The _kubespawner_ (also known as JupyterHub Kubernetes Spawner) enables JupyterHub to spawn
 single-user notebook servers on a [Kubernetes](https://kubernetes.io/)
 cluster.
 
@@ -19,16 +19,16 @@ management of containerized applications. If you want to run a JupyterHub
 setup that needs to scale across multiple nodes (anything with over ~50
 simultaneous users), Kubernetes is a wonderful way to do it. Features include:
 
-* Easily and elasticly run anywhere between 2 and thousands of nodes with the
+- Easily and elasticly run anywhere between 2 and thousands of nodes with the
   same set of powerful abstractions. Scale up and down as required by simply
   adding or removing nodes.
 
-* Run JupyterHub itself inside Kubernetes easily. This allows you to manage
+- Run JupyterHub itself inside Kubernetes easily. This allows you to manage
   many JupyterHub deployments with only Kubernetes, without requiring an extra
   layer of Ansible / Puppet / Bash scripts. This also provides easy integrated
   monitoring and failover for the hub process itself.
 
-* Spawn multiple hubs in the same kubernetes cluster, with support for
+- Spawn multiple hubs in the same kubernetes cluster, with support for
   [namespaces](https://kubernetes.io/docs/admin/namespaces/). You can limit the
   amount of resources each namespace can use, effectively limiting the amount
   of resources a single JupyterHub (and its users) can use. This allows
@@ -36,17 +36,17 @@ simultaneous users), Kubernetes is a wonderful way to do it. Features include:
   kubernetes cluster, allowing for easy maintenance & high resource
   utilization.
 
-* Provide guarantees and limits on the amount of resources (CPU / RAM) that
+- Provide guarantees and limits on the amount of resources (CPU / RAM) that
   single-user notebooks can use. Kubernetes has comprehensive [resource control](https://kubernetes.io/docs/user-guide/compute-resources/) that can
   be used from the spawner.
 
-* Mount various types of [persistent volumes](https://kubernetes.io/docs/user-guide/persistent-volumes/)
+- Mount various types of [persistent volumes](https://kubernetes.io/docs/user-guide/persistent-volumes/)
   onto the single-user notebook's container.
 
-* Control various security parameters (such as userid/groupid, SELinux, etc)
+- Control various security parameters (such as userid/groupid, SELinux, etc)
   via flexible [Pod Security Policies](https://kubernetes.io/docs/user-guide/pod-security-policy/).
 
-* Run easily in multiple clouds (or on your own machines). Helps avoid vendor
+- Run easily in multiple clouds (or on your own machines). Helps avoid vendor
   lock-in. You can even spread out your cluster across
   [multiple clouds at the same time](https://kubernetes.io/docs/user-guide/federation/).
 

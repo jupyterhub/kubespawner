@@ -1,8 +1,9 @@
 """
 Misc. general utility functions, not tied to Kubespawner directly
 """
-import hashlib
 import copy
+import hashlib
+
 
 def generate_hashed_slug(slug, limit=63, hash_length=6):
     """
@@ -24,7 +25,7 @@ def generate_hashed_slug(slug, limit=63, hash_length=6):
     slug_hash = hashlib.sha256(slug.encode('utf-8')).hexdigest()
 
     return '{prefix}-{hash}'.format(
-        prefix=slug[:limit - hash_length - 1],
+        prefix=slug[: limit - hash_length - 1],
         hash=slug_hash[:hash_length],
     ).lower()
 
@@ -41,15 +42,26 @@ def update_k8s_model(target, changes, logger=None, target_name=None, changes_nam
     """
     model_type = type(target)
     if not hasattr(target, 'attribute_map'):
-        raise AttributeError("Attribute 'target' ({}) must be an object (such as 'V1PodSpec') with an attribute 'attribute_map'.".format(model_type.__name__))
+        raise AttributeError(
+            "Attribute 'target' ({}) must be an object (such as 'V1PodSpec') with an attribute 'attribute_map'.".format(
+                model_type.__name__
+            )
+        )
     if not isinstance(changes, model_type) and not isinstance(changes, dict):
-        raise AttributeError("Attribute 'changes' ({}) must be an object of the same type as 'target' ({}) or a 'dict'.".format(type(changes).__name__, model_type.__name__))
+        raise AttributeError(
+            "Attribute 'changes' ({}) must be an object of the same type as 'target' ({}) or a 'dict'.".format(
+                type(changes).__name__, model_type.__name__
+            )
+        )
 
     changes_dict = _get_k8s_model_dict(model_type, changes)
     for key, value in changes_dict.items():
         if key not in target.attribute_map:
-            raise ValueError("The attribute 'changes' ({}) contained '{}' not modeled by '{}'.".format(type(changes).__name__, key, model_type.__name__))
-        
+            raise ValueError(
+                "The attribute 'changes' ({}) contained '{}' not modeled by '{}'.".format(
+                    type(changes).__name__, key, model_type.__name__
+                )
+            )
 
         # If changes are passed as a dict, they will only have a few keys/value
         # pairs representing the specific changes. If the changes parameter is a
@@ -60,17 +72,13 @@ def update_k8s_model(target, changes, logger=None, target_name=None, changes_nam
             if getattr(target, key):
                 if logger and changes_name:
                     warning = "'{}.{}' current value: '{}' is overridden with '{}', which is the value of '{}.{}'.".format(
-                        target_name,
-                        key,
-                        getattr(target, key),
-                        value,
-                        changes_name,
-                        key
+                        target_name, key, getattr(target, key), value, changes_name, key
                     )
                     logger.warning(warning)
             setattr(target, key, value)
 
     return target
+
 
 def get_k8s_model(model_type, model_dict):
     """
@@ -87,7 +95,12 @@ def get_k8s_model(model_type, model_dict):
         # use the dictionary keys to initialize a model of given type
         return model_type(**model_dict)
     else:
-        raise AttributeError("Expected object of type 'dict' (or '{}') but got '{}'.".format(model_type.__name__, type(model_dict).__name__))
+        raise AttributeError(
+            "Expected object of type 'dict' (or '{}') but got '{}'.".format(
+                model_type.__name__, type(model_dict).__name__
+            )
+        )
+
 
 def _get_k8s_model_dict(model_type, model):
     """
@@ -100,7 +113,12 @@ def _get_k8s_model_dict(model_type, model):
     elif isinstance(model, dict):
         return _map_dict_keys_to_model_attributes(model_type, model)
     else:
-        raise AttributeError("Expected object of type '{}' (or 'dict') but got '{}'.".format(model_type.__name__, type(model).__name__))
+        raise AttributeError(
+            "Expected object of type '{}' (or 'dict') but got '{}'.".format(
+                model_type.__name__, type(model).__name__
+            )
+        )
+
 
 def _map_dict_keys_to_model_attributes(model_type, model_dict):
     """
@@ -114,6 +132,7 @@ def _map_dict_keys_to_model_attributes(model_type, model_dict):
         new_dict[_get_k8s_model_attribute(model_type, key)] = value
 
     return new_dict
+
 
 def _get_k8s_model_attribute(model_type, field_name):
     """
@@ -162,4 +181,8 @@ def _get_k8s_model_attribute(model_type, field_name):
         if value == field_name:
             return key
     else:
-        raise ValueError("'{}' did not have an attribute matching '{}'".format(model_type.__name__, field_name))
+        raise ValueError(
+            "'{}' did not have an attribute matching '{}'".format(
+                model_type.__name__, field_name
+            )
+        )

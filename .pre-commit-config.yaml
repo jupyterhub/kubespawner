@@ -1,0 +1,53 @@
+# pre-commit is a tool to perform a predefined set of tasks manually and/or
+# automatically before git commits are made.
+#
+# Config reference: https://pre-commit.com/#pre-commit-configyaml---top-level
+#
+# Common tasks
+#
+# - Run on all files:   pre-commit run --all-files
+# - Register git hooks: pre-commit install --install-hooks
+#
+repos:
+  # Autoformat: Python code
+  - repo: https://github.com/ambv/black
+    rev: 20.8b1
+    hooks:
+      - id: black
+        args: [--target-version=py36]
+
+  # Autoformat: markdown, yaml
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v2.2.1
+    hooks:
+      - id: prettier
+
+  # Autoformat: https://github.com/asottile/reorder_python_imports
+  - repo: https://github.com/asottile/reorder_python_imports
+    rev: v2.4.0
+    hooks:
+      - id: reorder-python-imports
+
+  # Misc...
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.4.0
+    # ref: https://github.com/pre-commit/pre-commit-hooks#hooks-available
+    hooks:
+      # Autoformat: Makes sure files end in a newline and only a newline.
+      - id: end-of-file-fixer
+
+      # Autoformat: Sorts entries in requirements.txt.
+      - id: requirements-txt-fixer
+
+      # Lint: Check for files with names that would conflict on a
+      # case-insensitive filesystem like MacOS HFS+ or Windows FAT.
+      - id: check-case-conflict
+
+      # Lint: Checks that non-binary executables have a proper shebang.
+      - id: check-executables-have-shebangs
+
+  # Lint: Python code
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: "3.8.4"
+    hooks:
+      - id: flake8
