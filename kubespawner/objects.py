@@ -674,7 +674,7 @@ def make_ingress(name, ingress, routespec, target, labels, data):
             V1HTTPIngressRuleValue,
             V1HTTPIngressPath,
             V1IngressBackend,
-            V1IngressTLS
+            V1IngressTLS,
         )
     except ImportError:
         try:
@@ -682,10 +682,10 @@ def make_ingress(name, ingress, routespec, target, labels, data):
                 ExtensionsV1beta1Ingress as V1Ingress,
                 ExtensionsV1beta1IngressSpec as V1IngressSpec,
                 ExtensionsV1beta1IngressRule as V1IngressRule,
-                ExtensionsV1beta1HTTPIngressRuleValue as V1IngresRuleValue,
-                ExtensionsV1beta1HTTPIngressPath as V1IngressPath,
+                ExtensionsV1beta1HTTPIngressRuleValue as V1HTTPIngressRuleValue,
+                ExtensionsV1beta1HTTPIngressPath as V1HTTPIngressPath,
                 ExtensionsV1beta1IngressBackend as V1IngressBackend,
-                ExtensionsV1beta1IngressTLS as V1IngressTLS
+                ExtensionsV1beta1IngressTLS as V1IngressTLS,
             )
         except ImportError:
             from kubernetes.client.models import (
@@ -695,9 +695,8 @@ def make_ingress(name, ingress, routespec, target, labels, data):
                 V1beta1HTTPIngressRuleValue as V1HTTPIngressRuleValue,
                 V1beta1HTTPIngressPath as V1HTTPIngressPath,
                 V1beta1IngressBackend as V1IngressBackend,
-                V1beta1IngressTLS as V1IngressTLS
+                V1beta1IngressTLS as V1IngressTLS,
             )
-
 
     meta = V1ObjectMeta(
         name=name,
@@ -757,7 +756,7 @@ def make_ingress(name, ingress, routespec, target, labels, data):
         )
 
     # Make Ingress object
-    rules=[
+    rules = [
         V1IngressRule(
             host=i['host'],
             http=V1HTTPIngressRuleValue(
@@ -772,19 +771,18 @@ def make_ingress(name, ingress, routespec, target, labels, data):
                 ]
             ),
         )
-        for i in ingress if ingress
+        for i in ingress
+        if ingress
     ]
 
-    tls=[
-        V1IngressTLS(
-            hosts=[i['host']],
-            secret_name=i['secret_name']
-        )
-        for i in ingress if ingress
+    tls = [
+        V1IngressTLS(hosts=[i['host']], secret_name=i['secret_name'])
+        for i in ingress
+        if ingress
     ]
 
     if not rules:
-        rules=[
+        rules = [
             V1IngressRule(
                 host=None,
                 http=V1HTTPIngressRuleValue(
@@ -800,12 +798,12 @@ def make_ingress(name, ingress, routespec, target, labels, data):
                 ),
             )
         ]
-        tls=None
+        tls = None
 
     ingress = V1Ingress(
         kind='Ingress',
         metadata=meta,
-        spec=V1IngressSpec(rules=rules,tls=tls),
+        spec=V1IngressSpec(rules=rules, tls=tls),
     )
 
     return endpoint, service, ingress

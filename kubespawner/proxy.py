@@ -9,7 +9,9 @@ from jupyterhub.utils import exponential_backoff
 from kubernetes import client
 from tornado import gen
 from tornado.concurrent import run_on_executor
-from traitlets import Unicode, List, Dict
+from traitlets import Dict
+from traitlets import List
+from traitlets import Unicode
 
 from .clients import shared_client
 from kubespawner.objects import make_ingress
@@ -65,7 +67,7 @@ class KubeIngressProxy(Proxy):
         'tlsSecret': 'tlsSecretName'}.
 
         Wildcard might not work, refer to your ingress controler documentation.
-        """
+        """,
     )
 
     def _namespace_default(self):

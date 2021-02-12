@@ -1694,6 +1694,7 @@ def test_make_ingress():
     endpoint, service, ingress = api_client.sanitize_for_serialization(
         make_ingress(
             name='jupyter-test',
+            ingress=[],
             routespec='/my-path',
             target='http://192.168.1.10:9000',
             labels=labels,
