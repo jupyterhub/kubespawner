@@ -1,6 +1,8 @@
 """
 Test functions used to create k8s objects
 """
+import pytest
+
 from kubernetes.client import ApiClient
 
 from kubespawner.objects import make_ingress
@@ -990,9 +992,10 @@ def test_make_resources_all():
     }
 
 
-def test_make_pod_with_service_account():
+@pytest.mark.parametrize('mount', [False, True])
+def test_make_pod_with_service_account(mount):
     """
-    Test specification of the simplest possible pod specification with non-default service account
+    Test specification of the simplest possible pod specification with service account
     """
     assert api_client.sanitize_for_serialization(
         make_pod(
@@ -1002,11 +1005,12 @@ def test_make_pod_with_service_account():
             port=8888,
             image_pull_policy='IfNotPresent',
             service_account='test',
+            automount_service_account_token=mount,
         )
     ) == {
         "metadata": {"name": "test", "labels": {}, "annotations": {}},
         "spec": {
-            "automountServiceAccountToken": False,
+            "automountServiceAccountToken": mount,
             "containers": [
                 {
                     "env": [],

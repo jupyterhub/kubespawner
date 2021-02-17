@@ -78,6 +78,7 @@ def make_pod(
     lifecycle_hooks=None,
     init_containers=None,
     service_account=None,
+    automount_service_account_token=False,
     extra_container_config=None,
     extra_pod_config=None,
     extra_containers=None,
@@ -417,10 +418,7 @@ def make_pod(
         security_context=container_security_context,
     )
 
-    # This makes sure that we don't accidentally give access to the whole
-    # kubernetes API to the users in the spawned pods.
-    pod.spec.automount_service_account_token = False
-
+    pod.spec.automount_service_account_token = automount_service_account_token
     if service_account is not None:
         pod.spec.service_account_name = service_account
 
