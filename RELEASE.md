@@ -5,6 +5,7 @@ PyPI](https://pypi.org/project/jupyterhub-kubespawner/). These are instructions
 on how to make a release on PyPI.
 
 For you to follow along according to these instructions, you need:
+
 - To have push rights to the [kubespawner GitHub
   repository](https://github.com/jupyterhub/kubespawner).
 

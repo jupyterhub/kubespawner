@@ -57,12 +57,14 @@ def make_pod(
     image_pull_policy,
     image_pull_secrets=None,
     node_selector=None,
-    run_as_uid=None,
-    run_as_gid=None,
+    uid=None,
+    gid=None,
     fs_gid=None,
     supplemental_gids=None,
-    run_privileged=False,
+    privileged=False,
     allow_privilege_escalation=True,
+    container_security_context=None,
+    pod_security_context=None,
     env=None,
     working_dir=None,
     volumes=None,
@@ -129,16 +131,16 @@ def make_pod(
     node_selector:
         Dictionary Selector to match nodes where to launch the Pods
 
-    run_as_uid:
+    uid:
         The UID used to run single-user pods. The default is to run as the user
         specified in the Dockerfile, if this is set to None.
 
-    run_as_gid:
+    gid:
         The GID used to run single-user pods. The default is to run as the primary
         group of the user specified in the Dockerfile, if this is set to None.
         Setting this parameter requires that *feature-gate* **RunAsGroup** be enabled,
         otherwise the effective GID of the pod will be 0 (root).  In addition, not
-        setting `run_as_gid` once feature-gate RunAsGroup is enabled will also
+        setting `gid` once feature-gate RunAsGroup is enabled will also
         result in an effective GID of 0 (root).
 
     fs_gid
@@ -157,10 +159,17 @@ def make_pod(
         The image must setup all directories/files any application needs access
         to, as group writable.
 
-    run_privileged:
+    privileged:
         Whether the container should be run in privileged mode.
+
     allow_privilege_escalation:
         Controls whether a process can gain more privileges than its parent process.
+
+    container_security_context:
+        A kubernetes securityContext to apply to the container.
+
+    pod_security_context:
+        A kubernetes securityContext to apply to the pod.
 
     env:
         Dictionary of environment variables.
@@ -354,41 +363,76 @@ def make_pod(
     if lifecycle_hooks:
         lifecycle_hooks = get_k8s_model(V1Lifecycle, lifecycle_hooks)
 
-    # There are security contexts both on the Pod level or the Container level.
-    # The security settings that you specify for a Pod apply to all Containers
-    # in the Pod, but settings on the container level can override them.
+    # Security contexts can be configured on Pod and Container level. The
+    # Dedicated KubeSpawner API will bootstraps the container_security_context
+    # except for if can only be configured on the Pod level, then it bootstraps
+    # pod_security_context.
     #
-    # We configure the pod to be spawned on the container level unless the
-    # option is only available on the pod level, such as for those relating to
-    # the volumes as compared to the running user of the container. Volumes
-    # belong to the pod and are only mounted by containers after all.
+    # The pod|container_security_context configuration is given a higher
+    # priority than the dedicated KubeSpawner API options.
+    #
+    # Note that validation against the Python kubernetes-client isn't made as
+    # the security contexts has evolved significantly and kubernetes-client is
+    # too outdated.
+    #
+    # | Dedicated KubeSpawner API  | Kubernetes API           | Security contexts |
+    # | -------------------------- | ------------------------ | ----------------- |
+    # | supplemental_gids          | supplementalGroups       | Pod only          |
+    # | fs_gid                     | fsGroup                  | Pod only          |
+    # | -                          | fsGroupChangePolicy      | Pod only          |
+    # | -                          | sysctls                  | Pod only          |
+    # | privileged                 | privileged               | Container only    |
+    # | allow_privilege_escalation | allowPrivilegeEscalation | Container only    |
+    # | -                          | capabilities             | Container only    |
+    # | -                          | procMount                | Container only    |
+    # | -                          | readOnlyRootFilesystem   | Container only    |
+    # | uid                        | runAsUser                | Pod and Container |
+    # | gid                        | runAsGroup               | Pod and Container |
+    # | -                          | runAsNonRoot             | Pod and Container |
+    # | -                          | seLinuxOptions           | Pod and Container |
+    # | -                          | seccompProfile           | Pod and Container |
+    # | -                          | windowsOptions           | Pod and Container |
     #
     # ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
     # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core (container)
     # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core (pod)
-    pod_security_context = V1PodSecurityContext()
+    #
+    psc = {}
+    # populate with fs_gid / supplemental_gids
     if fs_gid is not None:
-        pod_security_context.fs_group = int(fs_gid)
-    if supplemental_gids is not None and supplemental_gids:
-        pod_security_context.supplemental_groups = [
-            int(gid) for gid in supplemental_gids
-        ]
-    # Only clutter pod spec with actual content
-    if not all([e is None for e in pod_security_context.to_dict().values()]):
-        pod.spec.security_context = pod_security_context
+        psc["fsGroup"] = int(fs_gid)
+    if supplemental_gids is not None:
+        psc["supplementalGroups"] = [int(gid) for gid in supplemental_gids]
+    if pod_security_context is not None:
+        for key in pod_security_context.keys():
+            if "_" in key:
+                raise ValueError(
+                    f"pod_security_context's keys should have k8s camelCase names, got '{key}'"
+                )
+        psc.update(pod_security_context)
+    if not psc:
+        psc = None
+    pod.spec.security_context = psc
 
-    container_security_context = V1SecurityContext()
-    if run_as_uid is not None:
-        container_security_context.run_as_user = int(run_as_uid)
-    if run_as_gid is not None:
-        container_security_context.run_as_group = int(run_as_gid)
-    if run_privileged:
-        container_security_context.privileged = True
-    if not allow_privilege_escalation:
-        container_security_context.allow_privilege_escalation = False
-    # Only clutter container spec with actual content
-    if all([e is None for e in container_security_context.to_dict().values()]):
-        container_security_context = None
+    csc = {}
+    # populate with uid / gid / privileged / allow_privilege_escalation
+    if uid is not None:
+        csc["runAsUser"] = int(uid)
+    if gid is not None:
+        csc["runAsGroup"] = int(gid)
+    if privileged:  # false as default
+        csc["privileged"] = True
+    if not allow_privilege_escalation:  # true as default
+        csc["allowPrivilegeEscalation"] = False
+    if container_security_context is not None:
+        for key in container_security_context.keys():
+            if "_" in key:
+                raise ValueError(
+                    f"container_security_context's keys should have k8s camelCase names, got '{key}'"
+                )
+        csc.update(container_security_context)
+    if not csc:
+        csc = None
 
     # Transform a dict into valid Kubernetes EnvVar Python representations. This
     # representation shall always have a "name" field as well as either a
@@ -415,7 +459,7 @@ def make_pod(
         volume_mounts=[
             get_k8s_model(V1VolumeMount, obj) for obj in (volume_mounts or [])
         ],
-        security_context=container_security_context,
+        security_context=csc,
     )
 
     pod.spec.automount_service_account_token = automount_service_account_token

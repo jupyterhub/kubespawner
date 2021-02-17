@@ -836,6 +836,49 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    container_security_context = Union(
+        trait_types=[
+            Dict(),
+            Callable(),
+        ],
+        config=True,
+        help="""
+        A Kubernetes security context for the container. Note that all
+        configuration options within here should be camelCased.
+
+        What is configured here has the highest priority, so the alternative
+        configuration `uid`, `gid`, `privileged`, and
+        `allow_privilege_escalation` will be overridden by this.
+
+        Rely on `the Kubernetes reference
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core>`__
+        for details on allowed configuration.
+        """,
+    )
+
+    pod_security_context = Union(
+        trait_types=[
+            Dict(),
+            Callable(),
+        ],
+        config=True,
+        help="""
+        A Kubernetes security context for the pod. Note that all configuration
+        options within here should be camelCased.
+
+        What is configured here has higher priority than `fs_gid` and
+        `supplemental_gids`, but lower priority than what is set in the
+        `container_security_context`.
+
+        Note that anything configured on the Pod level will influence all
+        containers, including init containers and sidecar containers.
+
+        Rely on `the Kubernetes reference
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core>`__
+        for details on allowed configuration.
+        """,
+    )
+
     modify_pod_hook = Callable(
         None,
         allow_none=True,
@@ -1692,6 +1735,16 @@ class KubeSpawner(Spawner):
         else:
             supplemental_gids = self.supplemental_gids
 
+        if callable(self.container_security_context):
+            csc = await gen.maybe_future(self.container_security_context(self))
+        else:
+            csc = self.container_security_context
+
+        if callable(self.pod_security_context):
+            psc = await gen.maybe_future(self.pod_security_context(self))
+        else:
+            psc = self.pod_security_context
+
         if self.cmd:
             real_cmd = self.cmd + self.get_args()
         else:
@@ -1710,12 +1763,14 @@ class KubeSpawner(Spawner):
             image_pull_policy=self.image_pull_policy,
             image_pull_secrets=self.image_pull_secrets,
             node_selector=self.node_selector,
-            run_as_uid=uid,
-            run_as_gid=gid,
+            uid=uid,
+            gid=gid,
             fs_gid=fs_gid,
             supplemental_gids=supplemental_gids,
-            run_privileged=self.privileged,
+            privileged=self.privileged,
             allow_privilege_escalation=self.allow_privilege_escalation,
+            container_security_context=csc,
+            pod_security_context=psc,
             env=self.get_env(),
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),
@@ -2296,7 +2351,7 @@ class KubeSpawner(Spawner):
                 partial(
                     self._make_create_pvc_request, pvc, self.k8s_api_request_timeout
                 ),
-                f'Could not create pod {self.pvc_name}',
+                f'Could not create PVC {self.pvc_name}',
                 # Each req should be given k8s_api_request_timeout seconds.
                 timeout=self.k8s_api_request_retry_timeout,
             )
