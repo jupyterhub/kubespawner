@@ -992,10 +992,9 @@ def test_make_resources_all():
     }
 
 
-@pytest.mark.parametrize('mount', [False, True])
-def test_make_pod_with_service_account(mount):
+def test_make_pod_with_service_account():
     """
-    Test specification of the simplest possible pod specification with service account
+    Test specification of the simplest possible pod specification with non-default service account.
     """
     assert api_client.sanitize_for_serialization(
         make_pod(
@@ -1005,12 +1004,51 @@ def test_make_pod_with_service_account(mount):
             port=8888,
             image_pull_policy='IfNotPresent',
             service_account='test',
-            automount_service_account_token=mount,
+            automount_service_account_token=False,
         )
     ) == {
         "metadata": {"name": "test", "labels": {}, "annotations": {}},
         "spec": {
-            "automountServiceAccountToken": mount,
+            "automountServiceAccountToken": False,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [],
+            'serviceAccountName': 'test',
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_make_pod_with_automount_service_account_token():
+    """
+    Test specification of the simplest possible pod specification with automount service account token.
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            image_pull_policy='IfNotPresent',
+            service_account='test',
+            automount_service_account_token=True,
+        )
+    ) == {
+        "metadata": {"name": "test", "labels": {}, "annotations": {}},
+        "spec": {
+            "automountServiceAccountToken": True,
             "containers": [
                 {
                     "env": [],
