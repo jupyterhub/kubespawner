@@ -467,6 +467,8 @@ def make_pod(
 
     if automount_service_account_token is None:
         if service_account is None:
+            # This makes sure that we don't accidentally give access to the whole
+            # kubernetes API to the users in the spawned pods.
             pod.spec.automount_service_account_token = False
     else:
         pod.spec.automount_service_account_token = automount_service_account_token
