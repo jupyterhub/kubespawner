@@ -404,12 +404,14 @@ class KubeSpawner(Spawner):
     )
 
     automount_service_account_token = Bool(
-        False,
+        None,
+        allow_none=True,
         config=True,
         help="""
         Whether to mount the service account token in the spawned user pod.
 
-        The default value is False, and the token is NOT mounted.
+        The default value is None, which mounts the token if the service account is explicitly set,
+        but doesn't mount it if not.
 
         WARNING: Be careful with this configuration! Make sure the service account being mounted
         has the minimal permissions needed, and nothing more. When misconfigured, this can easily

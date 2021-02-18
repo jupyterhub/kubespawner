@@ -80,7 +80,7 @@ def make_pod(
     lifecycle_hooks=None,
     init_containers=None,
     service_account=None,
-    automount_service_account_token=False,
+    automount_service_account_token=None,
     extra_container_config=None,
     extra_pod_config=None,
     extra_containers=None,
@@ -462,9 +462,14 @@ def make_pod(
         security_context=csc,
     )
 
-    pod.spec.automount_service_account_token = automount_service_account_token
     if service_account is not None:
         pod.spec.service_account_name = service_account
+
+    if automount_service_account_token is None:
+        if service_account is None:
+            pod.spec.automount_service_account_token = False
+    else:
+        pod.spec.automount_service_account_token = automount_service_account_token
 
     notebook_container.resources.requests = {}
     if cpu_guarantee:
