@@ -1210,7 +1210,7 @@ def test_make_pod_with_service_account():
     }
 
 
-def test_make_pod_with_service_account_and_with_mount_token():
+def test_make_pod_with_service_account_and_with_automount_sa_token():
     """
     Test specification of the simplest possible pod specification with non-default service account and automount service account token.
     """
@@ -1249,9 +1249,9 @@ def test_make_pod_with_service_account_and_with_mount_token():
     }
 
 
-def test_make_pod_with_service_account_and_with_no_mount_token():
+def test_make_pod_with_service_account_and_with_negative_automount_sa_token():
     """
-    Test specification of the simplest possible pod specification with non-default service account and no automount service account token.
+    Test specification of the simplest possible pod specification with non-default service account and negative automount service account token.
     """
     assert api_client.sanitize_for_serialization(
         make_pod(
@@ -1325,9 +1325,9 @@ def test_make_pod_with_automount_service_account_token():
     }
 
 
-def test_make_pod_with_no_automount_service_account_token():
+def test_make_pod_with_negative_automount_service_account_token():
     """
-    Test specification of the simplest possible pod specification with no automount service account token.
+    Test specification of the simplest possible pod specification with negative automount service account token.
     """
     assert api_client.sanitize_for_serialization(
         make_pod(
