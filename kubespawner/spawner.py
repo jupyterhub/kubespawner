@@ -394,10 +394,24 @@ class KubeSpawner(Spawner):
         help="""
         The service account to be mounted in the spawned user pod.
 
-        When set to `None` (the default), no service account is mounted, and the default service account
-        is explicitly disabled.
+        The token of the service account is NOT mounted by default.
+        This makes sure that we don't accidentally give access to the whole
+        kubernetes API to the users in the spawned pods.
+        Set automount_service_account_token True to mount it.
 
         This `serviceaccount` must already exist in the namespace the user pod is being spawned in.
+        """,
+    )
+
+    automount_service_account_token = Bool(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        Whether to mount the service account token in the spawned user pod.
+
+        The default value is None, which mounts the token if the service account is explicitly set,
+        but doesn't mount it if not.
 
         WARNING: Be careful with this configuration! Make sure the service account being mounted
         has the minimal permissions needed, and nothing more. When misconfigured, this can easily
@@ -1774,6 +1788,7 @@ class KubeSpawner(Spawner):
             lifecycle_hooks=self.lifecycle_hooks,
             init_containers=self._expand_all(self.init_containers),
             service_account=self.service_account,
+            automount_service_account_token=self.automount_service_account_token,
             extra_container_config=self.extra_container_config,
             extra_pod_config=self._expand_all(self.extra_pod_config),
             extra_containers=self._expand_all(self.extra_containers),

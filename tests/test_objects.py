@@ -1175,7 +1175,7 @@ def test_make_resources_all():
 
 def test_make_pod_with_service_account():
     """
-    Test specification of the simplest possible pod specification with non-default service account
+    Test specification of the simplest possible pod specification with non-default service account.
     """
     assert api_client.sanitize_for_serialization(
         make_pod(
@@ -1204,6 +1204,158 @@ def test_make_pod_with_service_account():
             'restartPolicy': 'OnFailure',
             'volumes': [],
             'serviceAccountName': 'test',
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_make_pod_with_service_account_and_with_automount_sa_token():
+    """
+    Test specification of the simplest possible pod specification with non-default service account and automount service account token.
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            image_pull_policy='IfNotPresent',
+            service_account='test',
+            automount_service_account_token=True,
+        )
+    ) == {
+        "metadata": {"name": "test", "labels": {}, "annotations": {}},
+        "spec": {
+            "automountServiceAccountToken": True,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [],
+            'serviceAccountName': 'test',
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_make_pod_with_service_account_and_with_negative_automount_sa_token():
+    """
+    Test specification of the simplest possible pod specification with non-default service account and negative automount service account token.
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            image_pull_policy='IfNotPresent',
+            service_account='test',
+            automount_service_account_token=False,
+        )
+    ) == {
+        "metadata": {"name": "test", "labels": {}, "annotations": {}},
+        "spec": {
+            "automountServiceAccountToken": False,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [],
+            'serviceAccountName': 'test',
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_make_pod_with_automount_service_account_token():
+    """
+    Test specification of the simplest possible pod specification with automount service account token.
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            image_pull_policy='IfNotPresent',
+            automount_service_account_token=True,
+        )
+    ) == {
+        "metadata": {"name": "test", "labels": {}, "annotations": {}},
+        "spec": {
+            "automountServiceAccountToken": True,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_make_pod_with_negative_automount_service_account_token():
+    """
+    Test specification of the simplest possible pod specification with negative automount service account token.
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            image_pull_policy='IfNotPresent',
+            automount_service_account_token=False,
+        )
+    ) == {
+        "metadata": {"name": "test", "labels": {}, "annotations": {}},
+        "spec": {
+            "automountServiceAccountToken": False,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1",
