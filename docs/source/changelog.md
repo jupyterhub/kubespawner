@@ -2,6 +2,41 @@
 
 <!-- PR link template: - [#](https://github.com/jupyterhub/kubespawner/pull/) ([@](https://github.com/)) -->
 
+## [0.16]
+
+### [0.16.0] - 2021-02-26
+
+#### Enhancements made
+
+- Add pod_security_context and container_security_context config [#480](https://github.com/jupyterhub/kubespawner/pull/480) ([@cyrilcros](https://github.com/cyrilcros))
+- Allow mounting of service account token to be configurable (automount_service_account_token) [#476](https://github.com/jupyterhub/kubespawner/pull/476) ([@dtaniwaki](https://github.com/dtaniwaki))
+- Add user namespace support [#458](https://github.com/jupyterhub/kubespawner/pull/458) ([@athornton](https://github.com/athornton))
+- Support internal_ssl [#409](https://github.com/jupyterhub/kubespawner/pull/409) ([@minrk](https://github.com/minrk))
+
+#### Bugs fixed
+
+- Fix failure to create a PVC being logged as failure to create a Pod [#481](https://github.com/jupyterhub/kubespawner/pull/481) ([@mriedem](https://github.com/mriedem))
+- handle pod url changes in poll [#408](https://github.com/jupyterhub/kubespawner/pull/408) ([@minrk](https://github.com/minrk))
+
+#### Maintenance and upkeep improvements
+
+- Refactor: remove a third way to name the same thing in make_pod's parameters [#483](https://github.com/jupyterhub/kubespawner/pull/483) ([@consideRatio](https://github.com/consideRatio))
+- pre-commit: use prettier as autoformatter (markdown, yaml) [#482](https://github.com/jupyterhub/kubespawner/pull/482) ([@consideRatio](https://github.com/consideRatio))
+- fix some spurious additions in tests [#474](https://github.com/jupyterhub/kubespawner/pull/474) ([@minrk](https://github.com/minrk))
+- adopt black (via pre-commit) for code formatting [#473](https://github.com/jupyterhub/kubespawner/pull/473) ([@minrk](https://github.com/minrk))
+- remove duplicated secret_mount_path definition [#472](https://github.com/jupyterhub/kubespawner/pull/472) ([@minrk](https://github.com/minrk))
+
+#### Other merged PRs
+
+- [KubeIngressProxy] Fixes following changes to k8s resource reflectors [#484](https://github.com/jupyterhub/kubespawner/pull/484) ([@remche](https://github.com/remche))
+- [KubeIngressProxy] allow singleuser pods to use IPv6 addresses [#403](https://github.com/jupyterhub/kubespawner/pull/403) ([@stv0g](https://github.com/stv0g))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2020-12-15&to=2021-02-26&type=c))
+
+[@athornton](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aathornton+updated%3A2020-12-15..2021-02-26&type=Issues) | [@betatim](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Abetatim+updated%3A2020-12-15..2021-02-26&type=Issues) | [@clkao](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aclkao+updated%3A2020-12-15..2021-02-26&type=Issues) | [@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2020-12-15..2021-02-26&type=Issues) | [@cyrilcros](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Acyrilcros+updated%3A2020-12-15..2021-02-26&type=Issues) | [@dhirschfeld](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adhirschfeld+updated%3A2020-12-15..2021-02-26&type=Issues) | [@dtaniwaki](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adtaniwaki+updated%3A2020-12-15..2021-02-26&type=Issues) | [@lresende](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Alresende+updated%3A2020-12-15..2021-02-26&type=Issues) | [@manics](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2020-12-15..2021-02-26&type=Issues) | [@meeseeksmachine](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ameeseeksmachine+updated%3A2020-12-15..2021-02-26&type=Issues) | [@minrk](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2020-12-15..2021-02-26&type=Issues) | [@mriedem](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amriedem+updated%3A2020-12-15..2021-02-26&type=Issues) | [@remche](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aremche+updated%3A2020-12-15..2021-02-26&type=Issues) | [@shanestarcher-okta](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ashanestarcher-okta+updated%3A2020-12-15..2021-02-26&type=Issues) | [@stv0g](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Astv0g+updated%3A2020-12-15..2021-02-26&type=Issues) | [@tirumerla](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Atirumerla+updated%3A2020-12-15..2021-02-26&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2020-12-15..2021-02-26&type=Issues)
+
 ## [0.15]
 
 ### [0.15.0] - 2020-10-15
