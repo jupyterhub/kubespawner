@@ -4,6 +4,16 @@
 
 ## [0.16]
 
+### [0.16.1] - 2021-03-01
+
+#### Bugs fixed
+
+- fix url-change detection in poll [#489](https://github.com/jupyterhub/kubespawner/pull/489) ([@minrk](https://github.com/minrk))
+
+#### Contributors to this release
+
+[@minrk](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2021-02-26..2021-03-01&type=Issues)
+
 ### [0.16.0] - 2021-02-26
 
 #### Enhancements made
