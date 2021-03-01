@@ -5,21 +5,17 @@ This module exports `KubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
 import asyncio
-import json
 import multiprocessing
 import os
 import string
 import sys
 import warnings
-from asyncio import sleep
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 from datetime import timedelta
-from functools import partial  # noqa
+from functools import partial
+from urllib.parse import urlparse
 
 import escapism
-from async_generator import async_generator
-from async_generator import yield_
 from jinja2 import BaseLoader
 from jinja2 import Environment
 from jupyterhub.spawner import Spawner
@@ -29,7 +25,6 @@ from kubernetes import client
 from kubernetes.client.rest import ApiException
 from slugify import slugify
 from tornado import gen
-from tornado import web
 from tornado.concurrent import run_on_executor
 from tornado.ioloop import IOLoop
 from traitlets import Bool
@@ -1974,12 +1969,30 @@ class KubeSpawner(Spawner):
             # only do this if fully running, not just starting up
             # and there's a stored url in self.server to check against
             if self.is_pod_running(pod) and self.server:
-                pod_url = self._get_pod_url(pod)
-                if self.server.url != pod_url:
+
+                def _normalize_url(url):
+                    """Normalize  url to be comparable
+
+                    - parse with urlparse
+                    - Ensures port is always defined
+                    """
+                    url = urlparse(url)
+                    if url.port is None:
+                        if url.scheme.lower() == "https":
+                            url = url._replace(netloc=f"{url.hostname}:443")
+                        elif url.scheme.lower() == "http":
+                            url = url._replace(netloc=f"{url.hostname}:80")
+                    return url
+
+                pod_url = _normalize_url(self._get_pod_url(pod))
+                server_url = _normalize_url(self.server.url)
+                # netloc: only compare hostname:port, ignore path
+                if server_url.netloc != pod_url.netloc:
                     self.log.warning(
-                        f"Pod {ref_key} url changed! {self.server.url} -> {pod_url}"
+                        f"Pod {ref_key} url changed! {server_url.netloc} -> {pod_url.netloc}"
                     )
-                    self.server.url = pod_url
+                    self.server.ip = pod_url.hostname
+                    self.server.port = pod_url.port
                     self.db.commit()
 
             # None means pod is running or starting up
