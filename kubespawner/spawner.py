@@ -23,6 +23,7 @@ from jupyterhub.traitlets import Command
 from jupyterhub.utils import exponential_backoff
 from kubernetes import client
 from kubernetes.client.rest import ApiException
+import kubernetes.config
 from slugify import slugify
 from tornado import gen
 from tornado.concurrent import run_on_executor
@@ -229,9 +230,9 @@ class KubeSpawner(Spawner):
         # Load kubernetes config here, since this is a Singleton and
         # so this __init__ will be run way before anything else gets run.
         try:
-            config.load_incluster_config()
-        except config.ConfigException:
-            config.load_kube_config()
+            kubernetes.config.load_incluster_config()
+        except kubernetes.config.ConfigException:
+            kubernetes.config.load_kube_config()
         if self.k8s_api_ssl_ca_cert:
             global_conf = client.Configuration.get_default_copy()
             global_conf.ssl_ca_cert = self.k8s_api_ssl_ca_cert
