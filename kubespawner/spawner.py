@@ -198,13 +198,18 @@ class KubeSpawner(Spawner):
                     max_workers=self.k8s_api_threadpool_workers
                 )
 
+            # Set global kubernetes client configurations 
+            # before reflector.py code runs
+            self._set_k8s_client_configuration()
+            self.api = shared_client('CoreV1Api')
+
             # This will start watching in __init__, so it'll start the first
             # time any spawner object is created. Not ideal but works!
             self._start_watching_pods()
             if self.events_enabled:
                 self._start_watching_events()
 
-            self.api = shared_client('CoreV1Api')
+            
 
         # runs during both test and normal execution
         self.pod_name = self._expand_user_properties(self.pod_name_template)
@@ -219,6 +224,48 @@ class KubeSpawner(Spawner):
         if self.port == 0:
             # Our default port is 8888
             self.port = 8888
+
+    def _set_k8s_client_configuration(self):
+        # Load kubernetes config here, since this is a Singleton and
+        # so this __init__ will be run way before anything else gets run.
+        try:
+            config.load_incluster_config()
+        except config.ConfigException:
+            config.load_kube_config()
+        if self.k8s_api_ssl_ca_cert:
+            global_conf = client.Configuration.get_default_copy()
+            global_conf.ssl_ca_cert = self.k8s_api_ssl_ca_cert
+            client.Configuration.set_default(global_conf)
+        if self.k8s_api_host:
+            global_conf = client.Configuration.get_default_copy()
+            global_conf.host = self.k8s_api_host
+            client.Configuration.set_default(global_conf)
+
+    k8s_api_ssl_ca_cert = Unicode(
+        "",
+        config=True,
+        help="""
+        Location (absolute filepath) for CA certs of the k8s API server.
+        
+        Typically this is unnecessary, CA certs are picked up by 
+        config.load_incluster_config() or config.load_kube_config.
+        
+        In rare non-standard cases, such as using custom intermediate CA
+        for your cluster, you may need to mount root CA's elsewhere in
+        your Pod/Container and point this variable to that filepath
+        """
+    )
+
+    k8s_api_host = Unicode(
+        "",
+        config=True,
+        help="""
+        Full host name of the k8s API server ("https://hostname:port").
+        
+        Typically this is unnecessary, the hostname is picked up by 
+        config.load_incluster_config() or config.load_kube_config.
+        """
+    )
 
     k8s_api_threadpool_workers = Integer(
         # Set this explicitly, since this is the default in Python 3.5+
