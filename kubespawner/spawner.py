@@ -254,7 +254,7 @@ class KubeSpawner(Spawner):
         In rare non-standard cases, such as using custom intermediate CA
         for your cluster, you may need to mount root CA's elsewhere in
         your Pod/Container and point this variable to that filepath
-        """
+        """,
     )
 
     k8s_api_host = Unicode(
@@ -265,7 +265,7 @@ class KubeSpawner(Spawner):
         
         Typically this is unnecessary, the hostname is picked up by 
         config.load_incluster_config() or config.load_kube_config.
-        """
+        """,
     )
 
     k8s_api_threadpool_workers = Integer(
