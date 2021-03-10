@@ -7,6 +7,7 @@ import escapism
 from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
 from kubernetes import client
+import kubernetes.config
 from tornado import gen
 from tornado.concurrent import run_on_executor
 from traitlets import Unicode
