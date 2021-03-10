@@ -16,6 +16,7 @@ from functools import partial
 from urllib.parse import urlparse
 
 import escapism
+import kubernetes.config
 from jinja2 import BaseLoader
 from jinja2 import Environment
 from jupyterhub.spawner import Spawner
@@ -23,7 +24,6 @@ from jupyterhub.traitlets import Command
 from jupyterhub.utils import exponential_backoff
 from kubernetes import client
 from kubernetes.client.rest import ApiException
-import kubernetes.config
 from slugify import slugify
 from tornado import gen
 from tornado.concurrent import run_on_executor
@@ -199,7 +199,7 @@ class KubeSpawner(Spawner):
                     max_workers=self.k8s_api_threadpool_workers
                 )
 
-            # Set global kubernetes client configurations 
+            # Set global kubernetes client configurations
             # before reflector.py code runs
             self._set_k8s_client_configuration()
             self.api = shared_client('CoreV1Api')
@@ -209,8 +209,6 @@ class KubeSpawner(Spawner):
             self._start_watching_pods()
             if self.events_enabled:
                 self._start_watching_events()
-
-            
 
         # runs during both test and normal execution
         self.pod_name = self._expand_user_properties(self.pod_name_template)

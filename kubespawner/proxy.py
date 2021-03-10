@@ -4,10 +4,10 @@ import string
 from concurrent.futures import ThreadPoolExecutor
 
 import escapism
+import kubernetes.config
 from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
 from kubernetes import client
-import kubernetes.config
 from tornado import gen
 from tornado.concurrent import run_on_executor
 from traitlets import Unicode
