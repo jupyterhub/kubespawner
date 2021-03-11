@@ -225,8 +225,12 @@ class KubeSpawner(Spawner):
             self.port = 8888
 
     def _set_k8s_client_configuration(self):
-        # Load kubernetes config here, since this is a Singleton and
-        # so this __init__ will be run way before anything else gets run.
+        # The actual (singleton) Kubernetes client will be created
+        # in clients.py shared_client but the configuration
+        # for token / ca_cert / k8s api host is set globally
+        # in kubernetes.py syntax.  It is being set here
+        # and this method called prior to shared_client
+        # for readability / coupling with traitlets values
         try:
             kubernetes.config.load_incluster_config()
         except kubernetes.config.ConfigException:
