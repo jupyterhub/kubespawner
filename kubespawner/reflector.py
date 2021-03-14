@@ -158,12 +158,7 @@ class ResourceReflector(LoggingConfigurable):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Load kubernetes config here, since this is a Singleton and
-        # so this __init__ will be run way before anything else gets run.
-        try:
-            config.load_incluster_config()
-        except config.ConfigException:
-            config.load_kube_config()
+        # client configuration for kubernetes has already taken place
         self.api = shared_client(self.api_group_name)
 
         # FIXME: Protect against malicious labels?
