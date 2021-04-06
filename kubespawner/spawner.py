@@ -2407,9 +2407,13 @@ class KubeSpawner(Spawner):
         # load user options (including profile)
         await self.load_user_options()
 
+        # If we have user_namespaces enabled, create the namespace.
+        #  It's fine if it already exists.
         if self.enable_user_namespaces:
+            self.log.info("On start: enable_user_namespaces: {}".format(self.enable_user_namespaces))
             self.namespace = self._expand_user_properties(self.user_namespace_template)
             self.log.info("Using user namespace: {}".format(self.namespace))
+            await self._ensure_namespace()
 
         # record latest event so we don't include old
         # events from previous pods in self.events
