@@ -2193,7 +2193,7 @@ class KubeSpawner(Spawner):
             kind="events",
             reflector_class=EventReflector,
             fields={"involvedObject.kind": "Pod"},
-            omit_namespace=self.enable_user_namespaces,
+            omit_namespace=True,
             replace=replace,
         )
 
@@ -2211,7 +2211,7 @@ class KubeSpawner(Spawner):
         return self._start_reflector(
             "pods",
             PodReflector,
-            omit_namespace=self.enable_user_namespaces,
+            omit_namespace=True,
             replace=replace,
         )
 
@@ -2407,10 +2407,9 @@ class KubeSpawner(Spawner):
         # load user options (including profile)
         await self.load_user_options()
 
-        # If we have user_namespaces enabled, create the namespace.
-        #  It's fine if it already exists.
         if self.enable_user_namespaces:
-            await self._ensure_namespace()
+            self.namespace = self._expand_user_properties(self.user_namespace_template)
+            self.log.info("Using user namespace: {}".format(self.namespace))
 
         # record latest event so we don't include old
         # events from previous pods in self.events
