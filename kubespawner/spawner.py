@@ -408,9 +408,9 @@ class KubeSpawner(Spawner):
         Either
           - a string containing a single command or path to a startup script
           - a list of the command and arguments
-          - `None` (default) to use the Docker image's `Cmd`
+          - `None` (default) to use the Docker image's `CMD`
 
-        `cmd` will be passed to the image's `Entrypoint`.
+        `cmd` will be passed to the image's `ENTRYPOINT`.
         """,
     )
 
