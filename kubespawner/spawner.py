@@ -410,7 +410,7 @@ class KubeSpawner(Spawner):
           - a list of the command and arguments
           - `None` (default) to use the Docker image's `CMD`
 
-        `cmd` will be passed to the image's `ENTRYPOINT`.
+        If `cmd` is set, it will be augmented with `spawner.get_args(). This will override the `CMD` specified in the Docker image.
         """,
     )
 
