@@ -403,18 +403,14 @@ class KubeSpawner(Spawner):
         minlen=0,
         config=True,
         help="""
-        The command used for starting the single-user server.
+        The command used to start the single-user server.
 
-        Provide either a string or a list containing the path to the startup script command. Extra arguments,
-        other than this path, should be provided via `args`.
+        Either
+          - a string containing a single command or path to a startup script
+          - a list of the command and arguments
+          - `None` (default) to use the Docker image's `CMD`
 
-        This is usually set if you want to start the single-user server in a different python
-        environment (with virtualenv/conda) than JupyterHub itself.
-
-        Some spawners allow shell-style expansion here, allowing you to use environment variables.
-        Most, including the default, do not. Consult the documentation for your spawner to verify!
-
-        If set to `None`, Kubernetes will start the `CMD` that is specified in the Docker image being started.
+        If `cmd` is set, it will be augmented with `spawner.get_args(). This will override the `CMD` specified in the Docker image.
         """,
     )
 
