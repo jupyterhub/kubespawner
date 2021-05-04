@@ -5,21 +5,18 @@ This module exports `KubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
 import asyncio
-import json
 import multiprocessing
 import os
 import string
 import sys
 import warnings
-from asyncio import sleep
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 from datetime import timedelta
-from functools import partial  # noqa
+from functools import partial
+from urllib.parse import urlparse
 
 import escapism
-from async_generator import async_generator
-from async_generator import yield_
+import kubernetes.config
 from jinja2 import BaseLoader
 from jinja2 import Environment
 from jupyterhub.spawner import Spawner
@@ -29,7 +26,6 @@ from kubernetes import client
 from kubernetes.client.rest import ApiException
 from slugify import slugify
 from tornado import gen
-from tornado import web
 from tornado.concurrent import run_on_executor
 from tornado.ioloop import IOLoop
 from traitlets import Bool
@@ -203,13 +199,16 @@ class KubeSpawner(Spawner):
                     max_workers=self.k8s_api_threadpool_workers
                 )
 
+            # Set global kubernetes client configurations
+            # before reflector.py code runs
+            self._set_k8s_client_configuration()
+            self.api = shared_client('CoreV1Api')
+
             # This will start watching in __init__, so it'll start the first
             # time any spawner object is created. Not ideal but works!
             self._start_watching_pods()
             if self.events_enabled:
                 self._start_watching_events()
-
-            self.api = shared_client('CoreV1Api')
 
         # runs during both test and normal execution
         self.pod_name = self._expand_user_properties(self.pod_name_template)
@@ -224,6 +223,52 @@ class KubeSpawner(Spawner):
         if self.port == 0:
             # Our default port is 8888
             self.port = 8888
+
+    def _set_k8s_client_configuration(self):
+        # The actual (singleton) Kubernetes client will be created
+        # in clients.py shared_client but the configuration
+        # for token / ca_cert / k8s api host is set globally
+        # in kubernetes.py syntax.  It is being set here
+        # and this method called prior to shared_client
+        # for readability / coupling with traitlets values
+        try:
+            kubernetes.config.load_incluster_config()
+        except kubernetes.config.ConfigException:
+            kubernetes.config.load_kube_config()
+        if self.k8s_api_ssl_ca_cert:
+            global_conf = client.Configuration.get_default_copy()
+            global_conf.ssl_ca_cert = self.k8s_api_ssl_ca_cert
+            client.Configuration.set_default(global_conf)
+        if self.k8s_api_host:
+            global_conf = client.Configuration.get_default_copy()
+            global_conf.host = self.k8s_api_host
+            client.Configuration.set_default(global_conf)
+
+    k8s_api_ssl_ca_cert = Unicode(
+        "",
+        config=True,
+        help="""
+        Location (absolute filepath) for CA certs of the k8s API server.
+        
+        Typically this is unnecessary, CA certs are picked up by 
+        config.load_incluster_config() or config.load_kube_config.
+        
+        In rare non-standard cases, such as using custom intermediate CA
+        for your cluster, you may need to mount root CA's elsewhere in
+        your Pod/Container and point this variable to that filepath
+        """,
+    )
+
+    k8s_api_host = Unicode(
+        "",
+        config=True,
+        help="""
+        Full host name of the k8s API server ("https://hostname:port").
+        
+        Typically this is unnecessary, the hostname is picked up by 
+        config.load_incluster_config() or config.load_kube_config.
+        """,
+    )
 
     k8s_api_threadpool_workers = Integer(
         # Set this explicitly, since this is the default in Python 3.5+
@@ -358,18 +403,14 @@ class KubeSpawner(Spawner):
         minlen=0,
         config=True,
         help="""
-        The command used for starting the single-user server.
+        The command used to start the single-user server.
 
-        Provide either a string or a list containing the path to the startup script command. Extra arguments,
-        other than this path, should be provided via `args`.
+        Either
+          - a string containing a single command or path to a startup script
+          - a list of the command and arguments
+          - `None` (default) to use the Docker image's `CMD`
 
-        This is usually set if you want to start the single-user server in a different python
-        environment (with virtualenv/conda) than JupyterHub itself.
-
-        Some spawners allow shell-style expansion here, allowing you to use environment variables.
-        Most, including the default, do not. Consult the documentation for your spawner to verify!
-
-        If set to `None`, Kubernetes will start the `CMD` that is specified in the Docker image being started.
+        If `cmd` is set, it will be augmented with `spawner.get_args(). This will override the `CMD` specified in the Docker image.
         """,
     )
 
@@ -394,10 +435,24 @@ class KubeSpawner(Spawner):
         help="""
         The service account to be mounted in the spawned user pod.
 
-        When set to `None` (the default), no service account is mounted, and the default service account
-        is explicitly disabled.
+        The token of the service account is NOT mounted by default.
+        This makes sure that we don't accidentally give access to the whole
+        kubernetes API to the users in the spawned pods.
+        Set automount_service_account_token True to mount it.
 
         This `serviceaccount` must already exist in the namespace the user pod is being spawned in.
+        """,
+    )
+
+    automount_service_account_token = Bool(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        Whether to mount the service account token in the spawned user pod.
+
+        The default value is None, which mounts the token if the service account is explicitly set,
+        but doesn't mount it if not.
 
         WARNING: Be careful with this configuration! Make sure the service account being mounted
         has the minimal permissions needed, and nothing more. When misconfigured, this can easily
@@ -821,6 +876,49 @@ class KubeSpawner(Spawner):
 
         AllowPrivilegeEscalation is true always when the container is:
         1) run as Privileged OR 2) has CAP_SYS_ADMIN.
+        """,
+    )
+
+    container_security_context = Union(
+        trait_types=[
+            Dict(),
+            Callable(),
+        ],
+        config=True,
+        help="""
+        A Kubernetes security context for the container. Note that all
+        configuration options within here should be camelCased.
+
+        What is configured here has the highest priority, so the alternative
+        configuration `uid`, `gid`, `privileged`, and
+        `allow_privilege_escalation` will be overridden by this.
+
+        Rely on `the Kubernetes reference
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core>`__
+        for details on allowed configuration.
+        """,
+    )
+
+    pod_security_context = Union(
+        trait_types=[
+            Dict(),
+            Callable(),
+        ],
+        config=True,
+        help="""
+        A Kubernetes security context for the pod. Note that all configuration
+        options within here should be camelCased.
+
+        What is configured here has higher priority than `fs_gid` and
+        `supplemental_gids`, but lower priority than what is set in the
+        `container_security_context`.
+
+        Note that anything configured on the Pod level will influence all
+        containers, including init containers and sidecar containers.
+
+        Rely on `the Kubernetes reference
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core>`__
+        for details on allowed configuration.
         """,
     )
 
@@ -1680,6 +1778,16 @@ class KubeSpawner(Spawner):
         else:
             supplemental_gids = self.supplemental_gids
 
+        if callable(self.container_security_context):
+            csc = await gen.maybe_future(self.container_security_context(self))
+        else:
+            csc = self.container_security_context
+
+        if callable(self.pod_security_context):
+            psc = await gen.maybe_future(self.pod_security_context(self))
+        else:
+            psc = self.pod_security_context
+
         if self.cmd:
             real_cmd = self.cmd + self.get_args()
         else:
@@ -1698,12 +1806,14 @@ class KubeSpawner(Spawner):
             image_pull_policy=self.image_pull_policy,
             image_pull_secrets=self.image_pull_secrets,
             node_selector=self.node_selector,
-            run_as_uid=uid,
-            run_as_gid=gid,
+            uid=uid,
+            gid=gid,
             fs_gid=fs_gid,
             supplemental_gids=supplemental_gids,
-            run_privileged=self.privileged,
+            privileged=self.privileged,
             allow_privilege_escalation=self.allow_privilege_escalation,
+            container_security_context=csc,
+            pod_security_context=psc,
             env=self.get_env(),
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),
@@ -1719,6 +1829,7 @@ class KubeSpawner(Spawner):
             lifecycle_hooks=self.lifecycle_hooks,
             init_containers=self._expand_all(self.init_containers),
             service_account=self.service_account,
+            automount_service_account_token=self.automount_service_account_token,
             extra_container_config=self.extra_container_config,
             extra_pod_config=self._expand_all(self.extra_pod_config),
             extra_containers=self._expand_all(self.extra_containers),
@@ -1882,11 +1993,11 @@ class KubeSpawner(Spawner):
         if not self.pod_reflector.first_load_future.done():
             await asyncio.wrap_future(self.pod_reflector.first_load_future)
         ref_key = "{}/{}".format(self.namespace, self.pod_name)
-        data = self.pod_reflector.pods.get(ref_key, None)
-        if data is not None:
-            if data["status"]["phase"] == 'Pending':
+        pod = self.pod_reflector.pods.get(ref_key, None)
+        if pod is not None:
+            if pod["status"]["phase"] == 'Pending':
                 return None
-            ctr_stat = data["status"].get("containerStatuses")
+            ctr_stat = pod["status"].get("containerStatuses")
             if ctr_stat is None:  # No status, no container (we hope)
                 # This seems to happen when a pod is idle-culled.
                 return 1
@@ -1899,6 +2010,37 @@ class KubeSpawner(Spawner):
                             await self.stop(now=True)
                         return c["state"]["terminated"]["exitCode"]
                     break
+
+            # pod running. Check and update server url if it changed!
+            # only do this if fully running, not just starting up
+            # and there's a stored url in self.server to check against
+            if self.is_pod_running(pod) and self.server:
+
+                def _normalize_url(url):
+                    """Normalize  url to be comparable
+
+                    - parse with urlparse
+                    - Ensures port is always defined
+                    """
+                    url = urlparse(url)
+                    if url.port is None:
+                        if url.scheme.lower() == "https":
+                            url = url._replace(netloc=f"{url.hostname}:443")
+                        elif url.scheme.lower() == "http":
+                            url = url._replace(netloc=f"{url.hostname}:80")
+                    return url
+
+                pod_url = _normalize_url(self._get_pod_url(pod))
+                server_url = _normalize_url(self.server.url)
+                # netloc: only compare hostname:port, ignore path
+                if server_url.netloc != pod_url.netloc:
+                    self.log.warning(
+                        f"Pod {ref_key} url changed! {server_url.netloc} -> {pod_url.netloc}"
+                    )
+                    self.server.ip = pod_url.hostname
+                    self.server.port = pod_url.port
+                    self.db.commit()
+
             # None means pod is running or starting up
             return None
         # pod doesn't exist or has been deleted
@@ -2283,7 +2425,7 @@ class KubeSpawner(Spawner):
                 partial(
                     self._make_create_pvc_request, pvc, self.k8s_api_request_timeout
                 ),
-                f'Could not create pod {self.pvc_name}',
+                f'Could not create PVC {self.pvc_name}',
                 # Each req should be given k8s_api_request_timeout seconds.
                 timeout=self.k8s_api_request_retry_timeout,
             )
@@ -2506,7 +2648,11 @@ class KubeSpawner(Spawner):
         else:
             return self._render_options_form(self.profile_list)
 
-    def options_from_form(self, formdata):
+    @default('options_from_form')
+    def _options_from_form_default(self):
+        return self._options_from_form
+
+    def _options_from_form(self, formdata):
         """get the option selected by the user on the form
 
         This only constructs the user_options dict,

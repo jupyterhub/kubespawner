@@ -1,6 +1,7 @@
 """
 Test functions used to create k8s objects
 """
+import pytest
 from kubernetes.client import ApiClient
 
 from kubespawner.objects import make_ingress
@@ -219,8 +220,8 @@ def test_set_container_uid_and_gid():
             image='jupyter/singleuser:latest',
             cmd=['jupyterhub-singleuser'],
             port=8888,
-            run_as_uid=0,
-            run_as_gid=0,
+            uid=0,
+            gid=0,
             image_pull_policy='IfNotPresent',
         )
     ) == {
@@ -262,7 +263,7 @@ def test_set_container_uid_and_pod_fs_gid():
             image='jupyter/singleuser:latest',
             cmd=['jupyterhub-singleuser'],
             port=8888,
-            run_as_uid=1000,
+            uid=1000,
             fs_gid=0,
             image_pull_policy='IfNotPresent',
         )
@@ -310,7 +311,7 @@ def test_set_pod_supplemental_gids():
             image='jupyter/singleuser:latest',
             cmd=['jupyterhub-singleuser'],
             port=8888,
-            run_as_uid=1000,
+            uid=1000,
             supplemental_gids=[100],
             image_pull_policy='IfNotPresent',
         )
@@ -348,7 +349,7 @@ def test_set_pod_supplemental_gids():
     }
 
 
-def test_run_privileged_container():
+def test_privileged_container():
     """
     Test specification of the container to run as privileged
     """
@@ -358,7 +359,7 @@ def test_run_privileged_container():
             image='jupyter/singleuser:latest',
             cmd=['jupyterhub-singleuser'],
             port=8888,
-            run_privileged=True,
+            privileged=True,
             image_pull_policy='IfNotPresent',
         )
     ) == {
@@ -432,6 +433,188 @@ def test_allow_privilege_escalation_container():
         "kind": "Pod",
         "apiVersion": "v1",
     }
+
+
+def test_pod_security_context_container():
+    """
+    Test specification of the container to run with a security context.
+
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            image_pull_policy='IfNotPresent',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            supplemental_gids=[100],
+            fs_gid=100,
+            pod_security_context={
+                'supplementalGroups': [200],
+                'fsGroup': 200,
+                'fsGroupChangePolicy': "OnRootMismatch",
+                'sysctls': [{"name": "kernel.msgmax", "value": "65536"}],
+                "runAsUser": 2000,
+                "runAsGroup": 200,
+                "runAsNonRoot": False,
+                "seLinuxOptions": {"level": "s0:c123,c456"},
+                "seccompProfile": {"type": "RuntimeDefault"},
+                "windowsOptions": {"gmsaCredentialSpecName": "gmsa-webapp1"},
+            },
+        )
+    ) == {
+        "metadata": {
+            "name": "test",
+            "annotations": {},
+            "labels": {},
+        },
+        "spec": {
+            'automountServiceAccountToken': False,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'securityContext': {
+                'supplementalGroups': [200],
+                'fsGroup': 200,
+                'fsGroupChangePolicy': "OnRootMismatch",
+                'sysctls': [{"name": "kernel.msgmax", "value": "65536"}],
+                "runAsUser": 2000,
+                "runAsGroup": 200,
+                "runAsNonRoot": False,
+                "seLinuxOptions": {"level": "s0:c123,c456"},
+                "seccompProfile": {"type": "RuntimeDefault"},
+                "windowsOptions": {"gmsaCredentialSpecName": "gmsa-webapp1"},
+            },
+            'volumes': [],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_container_security_context_container():
+    """
+    Test specification of the container to run with a security context.
+
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            image_pull_policy='IfNotPresent',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            uid=1000,
+            gid=100,
+            privileged=True,
+            allow_privilege_escalation=False,
+            container_security_context={
+                "privileged": False,
+                "allowPrivilegeEscalation": True,
+                "capabilities": {"add": ["KILL"], "drop": ["SYS_CHROOT"]},
+                "procMount": "DefaultProcMount",
+                "readOnlyRootFilesystem": True,
+                "runAsUser": 2000,
+                "runAsGroup": 200,
+                "runAsNonRoot": False,
+                "seLinuxOptions": {"level": "s0:c123,c456"},
+                "seccompProfile": {"type": "RuntimeDefault"},
+                "windowsOptions": {"gmsaCredentialSpecName": "gmsa-webapp1"},
+            },
+        )
+    ) == {
+        "metadata": {
+            "name": "test",
+            "annotations": {},
+            "labels": {},
+        },
+        "spec": {
+            'automountServiceAccountToken': False,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                    'securityContext': {
+                        "privileged": False,
+                        "allowPrivilegeEscalation": True,
+                        "capabilities": {"add": ["KILL"], "drop": ["SYS_CHROOT"]},
+                        "procMount": "DefaultProcMount",
+                        "readOnlyRootFilesystem": True,
+                        "runAsUser": 2000,
+                        "runAsGroup": 200,
+                        "runAsNonRoot": False,
+                        "seLinuxOptions": {"level": "s0:c123,c456"},
+                        "seccompProfile": {"type": "RuntimeDefault"},
+                        "windowsOptions": {"gmsaCredentialSpecName": "gmsa-webapp1"},
+                    },
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_bad_pod_security_context_container():
+    """
+    Test specification of the container to run with a security context.
+
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core
+    """
+    with pytest.raises(ValueError):
+        assert api_client.sanitize_for_serialization(
+            make_pod(
+                name='test',
+                image='jupyter/singleuser:latest',
+                image_pull_policy='IfNotPresent',
+                cmd=['jupyterhub-singleuser'],
+                port=8888,
+                pod_security_context={
+                    "run_as_user": 1000,
+                },
+            )
+        )
+
+
+def test_bad_container_security_context_container():
+    """
+    Test specification of the container to run with a security context.
+
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core
+    """
+    with pytest.raises(ValueError):
+        assert api_client.sanitize_for_serialization(
+            make_pod(
+                name='test',
+                image='jupyter/singleuser:latest',
+                image_pull_policy='IfNotPresent',
+                cmd=['jupyterhub-singleuser'],
+                port=8888,
+                container_security_context={
+                    "allow_privilege_escalation": True,
+                },
+            )
+        )
 
 
 def test_make_pod_resources_all():
@@ -992,7 +1175,7 @@ def test_make_resources_all():
 
 def test_make_pod_with_service_account():
     """
-    Test specification of the simplest possible pod specification with non-default service account
+    Test specification of the simplest possible pod specification with non-default service account.
     """
     assert api_client.sanitize_for_serialization(
         make_pod(
@@ -1021,6 +1204,158 @@ def test_make_pod_with_service_account():
             'restartPolicy': 'OnFailure',
             'volumes': [],
             'serviceAccountName': 'test',
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_make_pod_with_service_account_and_with_automount_sa_token():
+    """
+    Test specification of the simplest possible pod specification with non-default service account and automount service account token.
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            image_pull_policy='IfNotPresent',
+            service_account='test',
+            automount_service_account_token=True,
+        )
+    ) == {
+        "metadata": {"name": "test", "labels": {}, "annotations": {}},
+        "spec": {
+            "automountServiceAccountToken": True,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [],
+            'serviceAccountName': 'test',
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_make_pod_with_service_account_and_with_negative_automount_sa_token():
+    """
+    Test specification of the simplest possible pod specification with non-default service account and negative automount service account token.
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            image_pull_policy='IfNotPresent',
+            service_account='test',
+            automount_service_account_token=False,
+        )
+    ) == {
+        "metadata": {"name": "test", "labels": {}, "annotations": {}},
+        "spec": {
+            "automountServiceAccountToken": False,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [],
+            'serviceAccountName': 'test',
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_make_pod_with_automount_service_account_token():
+    """
+    Test specification of the simplest possible pod specification with automount service account token.
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            image_pull_policy='IfNotPresent',
+            automount_service_account_token=True,
+        )
+    ) == {
+        "metadata": {"name": "test", "labels": {}, "annotations": {}},
+        "spec": {
+            "automountServiceAccountToken": True,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_make_pod_with_negative_automount_service_account_token():
+    """
+    Test specification of the simplest possible pod specification with negative automount service account token.
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            image_pull_policy='IfNotPresent',
+            automount_service_account_token=False,
+        )
+    ) == {
+        "metadata": {"name": "test", "labels": {}, "annotations": {}},
+        "spec": {
+            "automountServiceAccountToken": False,
+            "containers": [
+                {
+                    "env": [],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [],
         },
         "kind": "Pod",
         "apiVersion": "v1",
@@ -1499,7 +1834,14 @@ def test_make_pod_with_priority_class_name():
     }
 
 
-def test_make_ingress():
+@pytest.mark.parametrize(
+    'target,ip',
+    [
+        ('http://192.168.1.10:9000', '192.168.1.10'),
+        ('http://[2001:db8::dead:babe]:9000', '2001:db8::dead:babe'),
+    ],
+)
+def test_make_ingress(target, ip):
     """
     Test specification of the ingress objects
     """
@@ -1512,7 +1854,7 @@ def test_make_ingress():
         make_ingress(
             name='jupyter-test',
             routespec='/my-path',
-            target='http://192.168.1.10:9000',
+            target=target,
             labels=labels,
             data={"mykey": "myvalue"},
         )
@@ -1524,7 +1866,7 @@ def test_make_ingress():
             'annotations': {
                 'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
                 'hub.jupyter.org/proxy-routespec': '/my-path',
-                'hub.jupyter.org/proxy-target': 'http://192.168.1.10:9000',
+                'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
                 'component': 'singleuser-server',
@@ -1533,7 +1875,7 @@ def test_make_ingress():
             },
             'name': 'jupyter-test',
         },
-        'subsets': [{'addresses': [{'ip': '192.168.1.10'}], 'ports': [{'port': 9000}]}],
+        'subsets': [{'addresses': [{'ip': ip}], 'ports': [{'port': 9000}]}],
     }
 
     assert service == {
@@ -1542,7 +1884,7 @@ def test_make_ingress():
             'annotations': {
                 'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
                 'hub.jupyter.org/proxy-routespec': '/my-path',
-                'hub.jupyter.org/proxy-target': 'http://192.168.1.10:9000',
+                'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
                 'component': 'singleuser-server',
@@ -1563,7 +1905,85 @@ def test_make_ingress():
             'annotations': {
                 'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
                 'hub.jupyter.org/proxy-routespec': '/my-path',
-                'hub.jupyter.org/proxy-target': 'http://192.168.1.10:9000',
+                'hub.jupyter.org/proxy-target': target,
+            },
+            'labels': {
+                'component': 'singleuser-server',
+                'heritage': 'jupyterhub',
+                'hub.jupyter.org/proxy-route': 'true',
+            },
+            'name': 'jupyter-test',
+        },
+        'spec': {
+            'rules': [
+                {
+                    'http': {
+                        'paths': [
+                            {
+                                'backend': {
+                                    'serviceName': 'jupyter-test',
+                                    'servicePort': 9000,
+                                },
+                                'path': '/my-path',
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+    }
+
+
+def test_make_ingress_external_name():
+    """
+    Test specification of the ingress objects
+    """
+    labels = {
+        'heritage': 'jupyterhub',
+        'component': 'singleuser-server',
+        'hub.jupyter.org/proxy-route': 'true',
+    }
+    endpoint, service, ingress = api_client.sanitize_for_serialization(
+        make_ingress(
+            name='jupyter-test',
+            routespec='/my-path',
+            target='http://my-pod-name:9000',
+            labels=labels,
+            data={"mykey": "myvalue"},
+        )
+    )
+
+    assert endpoint == None
+
+    assert service == {
+        'kind': 'Service',
+        'metadata': {
+            'annotations': {
+                'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
+                'hub.jupyter.org/proxy-routespec': '/my-path',
+                'hub.jupyter.org/proxy-target': 'http://my-pod-name:9000',
+            },
+            'labels': {
+                'component': 'singleuser-server',
+                'heritage': 'jupyterhub',
+                'hub.jupyter.org/proxy-route': 'true',
+            },
+            'name': 'jupyter-test',
+        },
+        'spec': {
+            'externalName': 'my-pod-name',
+            'clusterIP': '',
+            'ports': [{'port': 9000, 'targetPort': 9000}],
+            'type': 'ExternalName',
+        },
+    }
+    assert ingress == {
+        'kind': 'Ingress',
+        'metadata': {
+            'annotations': {
+                'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
+                'hub.jupyter.org/proxy-routespec': '/my-path',
+                'hub.jupyter.org/proxy-target': 'http://my-pod-name:9000',
             },
             'labels': {
                 'component': 'singleuser-server',

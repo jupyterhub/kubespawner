@@ -12,5 +12,5 @@ in your `jupyterhub_config.py` file.
 # instead of the more verbose import kubespawner.spawner.KubeSpawner.
 from kubespawner.spawner import KubeSpawner
 
-__version__ = '0.15.1.dev'
+__version__ = '0.16.2.dev'
 __all__ = ["KubeSpawner"]

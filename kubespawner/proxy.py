@@ -4,6 +4,7 @@ import string
 from concurrent.futures import ThreadPoolExecutor
 
 import escapism
+import kubernetes.config
 from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
 from kubernetes import client
@@ -12,12 +13,12 @@ from tornado.concurrent import run_on_executor
 from traitlets import Unicode
 
 from .clients import shared_client
-from kubespawner.objects import make_ingress
-from kubespawner.reflector import NamespacedResourceReflector
-from kubespawner.utils import generate_hashed_slug
+from .objects import make_ingress
+from .reflector import ResourceReflector
+from .utils import generate_hashed_slug
 
 
-class IngressReflector(NamespacedResourceReflector):
+class IngressReflector(ResourceReflector):
     kind = 'ingresses'
     list_method_name = 'list_namespaced_ingress'
     api_group_name = 'ExtensionsV1beta1Api'
@@ -27,7 +28,7 @@ class IngressReflector(NamespacedResourceReflector):
         return self.resources
 
 
-class ServiceReflector(NamespacedResourceReflector):
+class ServiceReflector(ResourceReflector):
     kind = 'services'
     list_method_name = 'list_namespaced_service'
 
@@ -36,7 +37,7 @@ class ServiceReflector(NamespacedResourceReflector):
         return self.resources
 
 
-class EndpointsReflector(NamespacedResourceReflector):
+class EndpointsReflector(ResourceReflector):
     kind = 'endpoints'
     list_method_name = 'list_namespaced_endpoints'
 
@@ -79,6 +80,32 @@ class KubeIngressProxy(Proxy):
         """,
     )
 
+    k8s_api_ssl_ca_cert = Unicode(
+        "",
+        config=True,
+        help="""
+        Location (absolute filepath) for CA certs of the k8s API server.
+        
+        Typically this is unnecessary, CA certs are picked up by 
+        config.load_incluster_config() or config.load_kube_config.
+        
+        In rare non-standard cases, such as using custom intermediate CA
+        for your cluster, you may need to mount root CA's elsewhere in
+        your Pod/Container and point this variable to that filepath
+        """,
+    )
+
+    k8s_api_host = Unicode(
+        "",
+        config=True,
+        help="""
+        Full host name of the k8s API server ("https://hostname:port").
+        
+        Typically this is unnecessary, the hostname is picked up by 
+        config.load_incluster_config() or config.load_kube_config.
+        """,
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -101,8 +128,30 @@ class KubeIngressProxy(Proxy):
             parent=self, namespace=self.namespace, labels=labels
         )
 
+        # Global configuration before reflector.py code runs
+        self._set_k8s_client_configuration()
         self.core_api = shared_client('CoreV1Api')
         self.extension_api = shared_client('ExtensionsV1beta1Api')
+
+    def _set_k8s_client_configuration(self):
+        # The actual (singleton) Kubernetes client will be created
+        # in clients.py shared_client but the configuration
+        # for token / ca_cert / k8s api host is set globally
+        # in kubernetes.py syntax.  It is being set here
+        # and this method called prior to shared_client
+        # for readability / coupling with traitlets values
+        try:
+            kubernetes.config.load_incluster_config()
+        except kubernetes.config.ConfigException:
+            kubernetes.config.load_kube_config()
+        if self.k8s_api_ssl_ca_cert:
+            global_conf = client.Configuration.get_default_copy()
+            global_conf.ssl_ca_cert = self.k8s_api_ssl_ca_cert
+            client.Configuration.set_default(global_conf)
+        if self.k8s_api_host:
+            global_conf = client.Configuration.get_default_copy()
+            global_conf.host = self.k8s_api_host
+            client.Configuration.set_default(global_conf)
 
     @run_on_executor
     def asynchronize(self, method, *args, **kwargs):
@@ -170,7 +219,8 @@ class KubeIngressProxy(Proxy):
             )
 
             await exponential_backoff(
-                lambda: safe_name in self.endpoint_reflector.endpoints,
+                lambda: f'{self.namespace}/{safe_name}'
+                in self.endpoint_reflector.endpoints.keys(),
                 'Could not find endpoints/%s after creating it' % safe_name,
             )
         else:
@@ -190,7 +240,8 @@ class KubeIngressProxy(Proxy):
         )
 
         await exponential_backoff(
-            lambda: safe_name in self.service_reflector.services,
+            lambda: f'{self.namespace}/{safe_name}'
+            in self.service_reflector.services.keys(),
             'Could not find service/%s after creating it' % safe_name,
         )
 
@@ -202,7 +253,8 @@ class KubeIngressProxy(Proxy):
         )
 
         await exponential_backoff(
-            lambda: safe_name in self.ingress_reflector.ingresses,
+            lambda: f'{self.namespace}/{safe_name}'
+            in self.ingress_reflector.ingresses.keys(),
             'Could not find ingress/%s after creating it' % safe_name,
         )
 

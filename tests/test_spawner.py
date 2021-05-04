@@ -588,6 +588,45 @@ def test_get_pvc_manifest():
     }
     assert manifest.spec.selector == {"matchLabels": {"user": "mock-5fname"}}
 
+    
+async def test_url_changed(kube_ns, kube_client, config, hub_pod, hub):
+    user = MockUser(name="url")
+    config.KubeSpawner.pod_connect_ip = (
+        "jupyter-{username}--{servername}.foo.example.com"
+    )
+    spawner = KubeSpawner(hub=hub, user=user, config=config)
+    spawner.db = Mock()
+
+    # start the spawner
+    res = await spawner.start()
+    pod_host = "http://jupyter-url.foo.example.com:8888"
+    assert res == pod_host
+
+    # Mock an incorrect value in the db
+    # Can occur e.g. by interrupting a launch with a hub restart
+    # or possibly weird network things in kubernetes
+    spawner.server = Server.from_url(res + "/users/url/")
+    spawner.server.ip = "1.2.3.4"
+    spawner.server.port = 0
+    assert spawner.server.host == "http://1.2.3.4:0"
+    assert spawner.server.base_url == "/users/url/"
+
+    # poll checks the url, and should restore the correct value
+    await spawner.poll()
+    # verify change noticed and persisted to db
+    assert spawner.server.host == pod_host
+    assert spawner.db.commit.call_count == 1
+    # base_url should be left alone
+    assert spawner.server.base_url == "/users/url/"
+
+    previous_commit_count = spawner.db.commit.call_count
+    # run it again, to make sure we aren't incorrectly detecting and committing
+    # changes on every poll
+    await spawner.poll()
+    assert spawner.db.commit.call_count == previous_commit_count
+
+    await spawner.stop()
+
 
 @pytest.mark.asyncio
 async def test_delete_pvc(kube_ns, kube_client, hub, config):

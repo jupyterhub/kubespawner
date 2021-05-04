@@ -8,31 +8,30 @@ Welcome! As a [Jupyter](https://jupyter.org) project, we follow the [Jupyter con
 
 There are many ways to contribute to kubespawner, here are some of them:
 
-* **Update the documentation.**
+- **Update the documentation.**
   If you're reading a page or docstring and it doesn't make sense (or doesn't exist!), please let us know by opening a bug report.
   It's even more amazing if you can give us a suggested change.
-* **Fix bugs or add requested features.**
+- **Fix bugs or add requested features.**
   Have a look through the [issue tracker](https://github.com/jupyterhub/kubespawner/issues) and see if there are any tagged as ["help wanted"](https://github.com/jupyterhub/kubespawner/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
   As the label suggests, we'd love your help!
-* **Report a bug.**
+- **Report a bug.**
   If kubespawner isn't doing what you thought it would do then open a [bug report](https://github.com/jupyterhub/kubespawner/issues/new).
   Please provide details on what you were trying to do, what goal you were trying to achieve and how we can reproduce the problem.
-* **Suggest a new feature.**
+- **Suggest a new feature.**
   We know that there are lots of ways to extend kubespawner!
   If you're interested in adding a feature then please open a [feature request](https://github.com/jupyterhub/kubespawner/issues/new?template=feature_request.md).
   Try to explain what the feature is, what alternatives you have though about, what skills are required to work on this task and how big a task you estimate it to be.
-* **Review someone's Pull Request.**
+- **Review someone's Pull Request.**
   Whenever somebody proposes changes to the kubespawner codebase, the community reviews
   the changes, and provides feedback, edits, and suggestions. Check out the
   [open pull requests](https://github.com/jupyterhub/kubespawner/pulls?q=is%3Apr+is%3Aopen+sort%3Aupdated-desc)
   and provide feedback that helps improve the PR and get it merged. Please keep your
   feedback positive and constructive!
-* **Tell people about kubespawner.**
+- **Tell people about kubespawner.**
   Kubespawner is built by and for its community.
   If you know anyone who would like to use kubespawner, please tell them about the project!
   You could give a talk about it or run a demonstration or make a poster.
   The sky is the limit :rocket::star2:.
-
 
 ## Setting up for documentation changes
 
@@ -47,6 +46,7 @@ To make edits through the GitHub website visit https://github.com/jupyterhub/kub
 walk you through the process of proposing your change ("making a Pull Request").
 
 A brief guide to setting up for local development
+
 ```sh
 git clone https://github.com/jupyterhub/kubespawner.git
 cd kubespawner/docs
@@ -98,6 +98,7 @@ rules on your computer. We will now walk you through the steps to get going:
     ```
 
     ### Troubleshooting
+
     Got an error like below?
 
     ```
@@ -110,7 +111,7 @@ rules on your computer. We will now walk you through the steps to get going:
 
     ```json
     {
-        "bip": "172.19.1.1/16"
+      "bip": "172.19.1.1/16"
     }
     ```
 
@@ -123,47 +124,51 @@ rules on your computer. We will now walk you through the steps to get going:
     `sudo ip route add` command again. Note that restarting docker will
     restart all your running containers by default.
 
-1. Clone this repository
-   ```sh
-   git clone https://github.com/jupyterhub/kubespawner.git
-   ```
+1.  Clone this repository
 
-1. Setup a virtual environment. After cloning the repository, you should set up an
-   isolated environment to install libraries required for running / developing
-   kubespawner.
+    ```sh
+    git clone https://github.com/jupyterhub/kubespawner.git
+    ```
 
-   There are many ways of doing this: conda envs, virtualenv, pipenv, etc. Pick
-   your favourite. We show you how to use venv:
-   ```sh
-   cd kubespawner
+1.  Setup a virtual environment. After cloning the repository, you should set up an
+    isolated environment to install libraries required for running / developing
+    kubespawner.
 
-   python3 -m venv .
-   source bin/activate
-   ```
+    There are many ways of doing this: conda envs, virtualenv, pipenv, etc. Pick
+    your favourite. We show you how to use venv:
 
-3. Install a locally editable version of kubespawner and its dependencies for
-   running it and testing it.
-   ```sh
-   pip install -e ".[test]"
-   ```
+    ```sh
+    cd kubespawner
 
-1. Install the nodejs based [Configurable HTTP Proxy
-   (CHP)](https://github.com/jupyterhub/configurable-http-proxy), and make it
-   accessible to JupyterHub.
+    python3 -m venv .
+    source bin/activate
+    ```
 
-   ```sh
-   npm install configurable-http-proxy
-   export PATH=$(pwd)/node_modules/.bin:$PATH
-   ```
+1.  Install a locally editable version of kubespawner and its dependencies for
+    running it and testing it.
 
-1. Start JupyterHub
-   ```sh
-   # Run this from the repo's root directory where the preconfigured
-   # jupyterhub_config.py file resides!
-   jupyterhub
-   ```
+    ```sh
+    pip install -e ".[test]"
+    ```
 
-1. Visit [http://localhost:8000/](http://localhost:8000/)!
+1.  Install the nodejs based [Configurable HTTP Proxy
+    (CHP)](https://github.com/jupyterhub/configurable-http-proxy), and make it
+    accessible to JupyterHub.
+
+    ```sh
+    npm install configurable-http-proxy
+    export PATH=$(pwd)/node_modules/.bin:$PATH
+    ```
+
+1.  Start JupyterHub
+
+    ```sh
+    # Run this from the repo's root directory where the preconfigured
+    # jupyterhub_config.py file resides!
+    jupyterhub
+    ```
+
+1.  Visit [http://localhost:8000/](http://localhost:8000/)!
 
 You should now have a JupyterHub running directly on your computer outside of
 the Kubernetes cluster, using a locally editable kubespawner code base. The
@@ -172,17 +177,18 @@ JupyterHub is setup with
 so any user + password combination will allow you to log in. You can make changes to
 kubespawner and restart the jupyterhub, and rapidly iterate :)
 
-
 ## Running tests
 
 To run our automated test-suite you need to have a local development setup.
 
 Run all tests with:
+
 ```sh
 pytest
 ```
 
 ### Troubleshooting
+
 If you a huge amount of errors, make sure your minikube is up and running and see it if helps to clear your .eggs
 directory.
 
