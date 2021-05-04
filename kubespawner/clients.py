@@ -38,6 +38,9 @@ def shared_client(ClientType, *args, **kwargs):
         client = _client_cache[cache_key]()
 
     if client is None:
+        # Kubernetes client configuration is handled globally
+        # in kubernetes.py and is already called in spawner.py
+        # or proxy.py prior to a shared_client being instantiated
         Client = getattr(kubernetes.client, ClientType)
         client = Client(*args, **kwargs)
         # cache weakref so that clients can be garbage collected
