@@ -2779,3 +2779,28 @@ class KubeSpawner(Spawner):
                 # It's fine if it already exists
                 self.log.exception("Failed to create namespace %s", self.namespace)
                 raise
+
+    async def delete_forever(self):
+        """Called when a user is deleted.
+
+        This can do things like request removal of resources such as persistent storage.
+        Only called on stopped spawners, and is likely the last action ever taken for the user.
+
+        This will only be called once on the user's default Spawner.
+        Supported by JupyterHub 1.4.0+.
+        """
+        try:
+            self.api.read_namespaced_persistent_volume_claim(
+                self.pvc_name, self.namespace
+            )
+        except ApiException as e:
+            if e.status == 404:
+                self.log.warning(
+                    "Could not delete %s. This PVC does not exist.", self.pvc_name
+                )
+            else:
+                raise
+        else:
+            self.api.delete_namespaced_persistent_volume_claim(
+                self.pvc_name, self.namespace
+            )
