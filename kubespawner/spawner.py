@@ -2577,6 +2577,41 @@ class KubeSpawner(Spawner):
             else:
                 raise
 
+    async def _make_delete_pvc_request(
+        self, pvc_name, delete_options, grace_seconds, request_timeout
+    ):
+        """
+        Make an HTTP request to delete the given PVC
+
+        Designed to be used with exponential_backoff, so returns
+        True / False on success / failure
+        """
+        self.log.info("Deleting pvc %s", pvc_name)
+        try:
+            await gen.with_timeout(
+                timedelta(seconds=request_timeout),
+                self.asynchronize(
+                    self.api.delete_namespaced_persistent_volume_claim,
+                    name=pvc_name,
+                    namespace=self.namespace,
+                    body=delete_options,
+                    grace_period_seconds=grace_seconds,
+                ),
+            )
+            return True
+        except gen.TimeoutError:
+            return False
+        except ApiException as e:
+            if e.status == 404:
+                self.log.warning(
+                    "No pvc %s to delete. Assuming already deleted.",
+                    pvc_name,
+                )
+                # If there isn't a PVC to delete, that's ok too!
+                return True
+            else:
+                raise
+
     async def stop(self, now=False):
         delete_options = client.V1DeleteOptions()
 
@@ -2780,7 +2815,7 @@ class KubeSpawner(Spawner):
                 self.log.exception("Failed to create namespace %s", self.namespace)
                 raise
 
-    async def delete_forever(self):
+    async def delete_forever(self, now=False):
         """Called when a user is deleted.
 
         This can do things like request removal of resources such as persistent storage.
@@ -2789,18 +2824,23 @@ class KubeSpawner(Spawner):
         This will only be called once on the user's default Spawner.
         Supported by JupyterHub 1.4.0+.
         """
-        try:
-            self.api.read_namespaced_persistent_volume_claim(
-                self.pvc_name, self.namespace
-            )
-        except ApiException as e:
-            if e.status == 404:
-                self.log.warning(
-                    "Could not delete %s. This PVC does not exist.", self.pvc_name
-                )
-            else:
-                raise
+        delete_options = client.V1DeleteOptions()
+
+        if now:
+            grace_seconds = 0
         else:
-            self.api.delete_namespaced_persistent_volume_claim(
-                self.pvc_name, self.namespace
-            )
+            grace_seconds = self.delete_grace_period
+
+        delete_options.grace_period_seconds = grace_seconds
+
+        await exponential_backoff(
+            partial(
+                self._make_delete_pvc_request,
+                self.pvc_name,
+                delete_options,
+                grace_seconds,
+                self.k8s_api_request_timeout,
+            ),
+            f'Could not delete pvc {self.pvc_name}',
+            timeout=self.k8s_api_request_retry_timeout,
+        )
