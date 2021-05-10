@@ -2329,7 +2329,7 @@ class KubeSpawner(Spawner):
         delete = getattr(self.api, "delete_namespaced_{}".format(kind))
         read = getattr(self.api, "read_namespaced_{}".format(kind))
 
-        # first, attempt to delete the resouce
+        # first, attempt to delete the resource
         try:
             self.log.info(f"Deleting {kind}/{name}")
             await gen.with_timeout(
@@ -2577,9 +2577,7 @@ class KubeSpawner(Spawner):
             else:
                 raise
 
-    async def _make_delete_pvc_request(
-        self, pvc_name, delete_options, grace_seconds, request_timeout
-    ):
+    async def _make_delete_pvc_request(self, pvc_name, request_timeout):
         """
         Make an HTTP request to delete the given PVC
 
@@ -2594,8 +2592,6 @@ class KubeSpawner(Spawner):
                     self.api.delete_namespaced_persistent_volume_claim,
                     name=pvc_name,
                     namespace=self.namespace,
-                    body=delete_options,
-                    grace_period_seconds=grace_seconds,
                 ),
             )
             return True
@@ -2815,7 +2811,7 @@ class KubeSpawner(Spawner):
                 self.log.exception("Failed to create namespace %s", self.namespace)
                 raise
 
-    async def delete_forever(self, now=False):
+    async def delete_forever(self):
         """Called when a user is deleted.
 
         This can do things like request removal of resources such as persistent storage.
@@ -2824,21 +2820,10 @@ class KubeSpawner(Spawner):
         This will only be called once on the user's default Spawner.
         Supported by JupyterHub 1.4.0+.
         """
-        delete_options = client.V1DeleteOptions()
-
-        if now:
-            grace_seconds = 0
-        else:
-            grace_seconds = self.delete_grace_period
-
-        delete_options.grace_period_seconds = grace_seconds
-
         await exponential_backoff(
             partial(
                 self._make_delete_pvc_request,
                 self.pvc_name,
-                delete_options,
-                grace_seconds,
                 self.k8s_api_request_timeout,
             ),
             f'Could not delete pvc {self.pvc_name}',
