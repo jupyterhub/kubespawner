@@ -249,10 +249,10 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         Location (absolute filepath) for CA certs of the k8s API server.
-        
-        Typically this is unnecessary, CA certs are picked up by 
+
+        Typically this is unnecessary, CA certs are picked up by
         config.load_incluster_config() or config.load_kube_config.
-        
+
         In rare non-standard cases, such as using custom intermediate CA
         for your cluster, you may need to mount root CA's elsewhere in
         your Pod/Container and point this variable to that filepath
@@ -264,8 +264,8 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         Full host name of the k8s API server ("https://hostname:port").
-        
-        Typically this is unnecessary, the hostname is picked up by 
+
+        Typically this is unnecessary, the hostname is picked up by
         config.load_incluster_config() or config.load_kube_config.
         """,
     )
@@ -521,6 +521,22 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    delete_pvc = Bool(
+        True,
+        config=True,
+        help="""Delete PVCs when deleting Spawners.
+
+        When a Spawner is deleted (not just stopped),
+        delete its associated PVC.
+
+        This occurs when a named server is deleted,
+        or when the user itself is deleted for the default Spawner.
+
+        Requires JupyterHub 1.4.1 for Spawner.delete_forever support.
+
+        .. versionadded: 0.17
+        """,
+    )
     pvc_name_template = Unicode(
         'claim-{username}--{servername}',
         config=True,
@@ -2817,9 +2833,30 @@ class KubeSpawner(Spawner):
         This can do things like request removal of resources such as persistent storage.
         Only called on stopped spawners, and is likely the last action ever taken for the user.
 
-        This will only be called once on the user's default Spawner.
-        Supported by JupyterHub 1.4.1+.
+        Called on each spawner after deletion,
+        i.e. on named server deletion (not just stop),
+        and on the default Spawner when the user is being deleted.
+
+        Requires JupyterHub 1.4.1+
+
+        .. versionadded: 0.17
         """
+        log_name = self.user.name
+        if self.name:
+            log_name = f"{log_name}/{self.name}"
+
+        if not self.delete_pvc:
+            self.log.info(f"Not deleting pvc for {log_name}: {self.pvc_name}")
+            return
+
+        if self.name and '{servername}' not in self.pvc_name_template:
+            # named server has the same PVC as the default server
+            # don't delete the default server's PVC!
+            self.log.info(
+                f"Not deleting shared pvc for named server {log_name}: {self.pvc_name}"
+            )
+            return
+
         await exponential_backoff(
             partial(
                 self._make_delete_pvc_request,
