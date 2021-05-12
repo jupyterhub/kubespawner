@@ -627,3 +627,53 @@ async def test_url_changed(kube_ns, kube_client, config, hub_pod, hub):
     assert spawner.db.commit.call_count == previous_commit_count
 
     await spawner.stop()
+
+
+@pytest.mark.asyncio
+async def test_delete_pvc(kube_ns, kube_client, hub, config):
+    config.KubeSpawner.storage_pvc_ensure = True
+    config.KubeSpawner.storage_capacity = '1M'
+
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="mockuser"),
+        config=config,
+        _mock=True,
+    )
+    spawner.api = kube_client
+
+    # start the spawner
+    await spawner.start()
+
+    # verify the pod exists
+    pod_name = "jupyter-%s" % spawner.user.name
+    pods = kube_client.list_namespaced_pod(kube_ns).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+
+    # verify PVC is created
+    pvc_name = spawner.pvc_name
+    pvc_list = kube_client.list_namespaced_persistent_volume_claim(kube_ns).items
+    pvc_names = [s.metadata.name for s in pvc_list]
+    assert pvc_name in pvc_names
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = kube_client.list_namespaced_pod(kube_ns).items
+    pod_names = [p.metadata.name for p in pods]
+    assert "jupyter-%s" % spawner.user.name not in pod_names
+
+    # delete the PVC
+    await spawner.delete_forever()
+
+    # verify PVC is deleted, it may take a little while
+    for i in range(5):
+        pvc_list = kube_client.list_namespaced_persistent_volume_claim(kube_ns).items
+        pvc_names = [s.metadata.name for s in pvc_list]
+        if pvc_name in pvc_names:
+            time.sleep(1)
+        else:
+            break
+    assert pvc_name not in pvc_names

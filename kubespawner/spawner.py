@@ -249,10 +249,10 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         Location (absolute filepath) for CA certs of the k8s API server.
-        
-        Typically this is unnecessary, CA certs are picked up by 
+
+        Typically this is unnecessary, CA certs are picked up by
         config.load_incluster_config() or config.load_kube_config.
-        
+
         In rare non-standard cases, such as using custom intermediate CA
         for your cluster, you may need to mount root CA's elsewhere in
         your Pod/Container and point this variable to that filepath
@@ -264,8 +264,8 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         Full host name of the k8s API server ("https://hostname:port").
-        
-        Typically this is unnecessary, the hostname is picked up by 
+
+        Typically this is unnecessary, the hostname is picked up by
         config.load_incluster_config() or config.load_kube_config.
         """,
     )
@@ -521,6 +521,22 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    delete_pvc = Bool(
+        True,
+        config=True,
+        help="""Delete PVCs when deleting Spawners.
+
+        When a Spawner is deleted (not just stopped),
+        delete its associated PVC.
+
+        This occurs when a named server is deleted,
+        or when the user itself is deleted for the default Spawner.
+
+        Requires JupyterHub 1.4.1 for Spawner.delete_forever support.
+
+        .. versionadded: 0.17
+        """,
+    )
     pvc_name_template = Unicode(
         'claim-{username}--{servername}',
         config=True,
@@ -2329,7 +2345,7 @@ class KubeSpawner(Spawner):
         delete = getattr(self.api, "delete_namespaced_{}".format(kind))
         read = getattr(self.api, "read_namespaced_{}".format(kind))
 
-        # first, attempt to delete the resouce
+        # first, attempt to delete the resource
         try:
             self.log.info(f"Deleting {kind}/{name}")
             await gen.with_timeout(
@@ -2577,6 +2593,37 @@ class KubeSpawner(Spawner):
             else:
                 raise
 
+    async def _make_delete_pvc_request(self, pvc_name, request_timeout):
+        """
+        Make an HTTP request to delete the given PVC
+
+        Designed to be used with exponential_backoff, so returns
+        True / False on success / failure
+        """
+        self.log.info("Deleting pvc %s", pvc_name)
+        try:
+            await gen.with_timeout(
+                timedelta(seconds=request_timeout),
+                self.asynchronize(
+                    self.api.delete_namespaced_persistent_volume_claim,
+                    name=pvc_name,
+                    namespace=self.namespace,
+                ),
+            )
+            return True
+        except gen.TimeoutError:
+            return False
+        except ApiException as e:
+            if e.status == 404:
+                self.log.warning(
+                    "No pvc %s to delete. Assuming already deleted.",
+                    pvc_name,
+                )
+                # If there isn't a PVC to delete, that's ok too!
+                return True
+            else:
+                raise
+
     async def stop(self, now=False):
         delete_options = client.V1DeleteOptions()
 
@@ -2779,3 +2826,43 @@ class KubeSpawner(Spawner):
                 # It's fine if it already exists
                 self.log.exception("Failed to create namespace %s", self.namespace)
                 raise
+
+    async def delete_forever(self):
+        """Called when a user is deleted.
+
+        This can do things like request removal of resources such as persistent storage.
+        Only called on stopped spawners, and is likely the last action ever taken for the user.
+
+        Called on each spawner after deletion,
+        i.e. on named server deletion (not just stop),
+        and on the default Spawner when the user is being deleted.
+
+        Requires JupyterHub 1.4.1+
+
+        .. versionadded: 0.17
+        """
+        log_name = self.user.name
+        if self.name:
+            log_name = f"{log_name}/{self.name}"
+
+        if not self.delete_pvc:
+            self.log.info(f"Not deleting pvc for {log_name}: {self.pvc_name}")
+            return
+
+        if self.name and '{servername}' not in self.pvc_name_template:
+            # named server has the same PVC as the default server
+            # don't delete the default server's PVC!
+            self.log.info(
+                f"Not deleting shared pvc for named server {log_name}: {self.pvc_name}"
+            )
+            return
+
+        await exponential_backoff(
+            partial(
+                self._make_delete_pvc_request,
+                self.pvc_name,
+                self.k8s_api_request_timeout,
+            ),
+            f'Could not delete pvc {self.pvc_name}',
+            timeout=self.k8s_api_request_retry_timeout,
+        )
