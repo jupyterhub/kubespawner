@@ -2818,7 +2818,7 @@ class KubeSpawner(Spawner):
         Only called on stopped spawners, and is likely the last action ever taken for the user.
 
         This will only be called once on the user's default Spawner.
-        Supported by JupyterHub 1.4.0+.
+        Supported by JupyterHub 1.4.1+.
         """
         await exponential_backoff(
             partial(
