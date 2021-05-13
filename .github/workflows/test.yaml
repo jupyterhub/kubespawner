@@ -55,16 +55,16 @@ jobs:
           # Tests with various k8s-python-client versions
           - python: 3.7
             k3s: v1.16
-            k8s-python-client: 10.1 # supports k8s 1.14
+            k8s-python-client: 10.* # supports k8s 1.14
           - python: 3.8
             k3s: v1.16
-            k8s-python-client: 11 # supports k8s 1.15
+            k8s-python-client: 11.* # supports k8s 1.15
           - python: 3.9
             k3s: v1.16
-            k8s-python-client: 12 # supports k8s 1.16
+            k8s-python-client: 12.* # supports k8s 1.16
           - python: 3.9
             k3s: v1.17
-            k8s-python-client: 17 # supports k8s 1.17
+            k8s-python-client: 17.* # supports k8s 1.17
 
           # Test with pre-releases of k8s-python-client
           - python: 3.9
@@ -74,15 +74,15 @@ jobs:
           # Test with various recent k8s versions
           - python: 3.8
             k3s: stable
-            k8s-python-client: 17
+            k8s-python-client: 17.*
           - python: 3.8
             k3s: latest
-            k8s-python-client: 17
+            k8s-python-client: 17.*
 
           # Test with JupyterHub in main branch
           - python: 3.8
             k3s: v1.16
-            k8s-python-client: 17
+            k8s-python-client: 17.*
             jupyterhub: main
 
     steps:
@@ -93,7 +93,7 @@ jobs:
 
       - name: Install package and test dependencies
         env:
-          K8S_PYTHON_CLIENT_VERSION: ${{ matrix.k8s-python-client }}
+          K8S_PYTHON_CLIENT_VERSION: "${{ matrix.k8s-python-client }}"
           JUPYTERHUB_VERSION: ${{ matrix.jupyterhub }}
         run: |
           if [[ "$K8S_PYTHON_CLIENT_VERSION" == "pre" ]]; then
