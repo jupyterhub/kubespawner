@@ -133,6 +133,11 @@ jobs:
         run: |
           pytest -v --durations 10 --cov kubespawner --color=yes
 
+      # ref: https://github.com/jupyterhub/action-k8s-namespace-report
+      - name: Kubernetes namespace report
+        uses: jupyterhub/action-k8s-namespace-report@v1
+        if: always()
+
       - name: Submit a codecov report
         run: |
           pip install codecov
