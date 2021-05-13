@@ -2,6 +2,50 @@
 
 <!-- PR link template: - [#](https://github.com/jupyterhub/kubespawner/pull/) ([@](https://github.com/)) -->
 
+### [1.0]
+
+### [1.0.0]
+
+This release is the continuation of version 0.16.1 and could have been 0.17.0 in
+practice. We opted to release 1.0.0 as it enables us to communicate changes
+according to [SemVer](https://semver.org/). Using SemVer versioning, a change in
+each of the three version numbers (major.minor.patch) represents a different
+kind of change.
+
+### Breaking changes
+
+- When using KubeSpawner 1.0.0 or later together with JupyterHub 1.4.1 or later,
+  deleting a JupyterHub user or deleting (not just stopping) a named server will
+  lead to removing the associated PVC resource. To opt out of this behavior set
+  the `delete_pvc` configuration to `False`.
+
+#### New features added
+
+- Allow configuration of kubernetes client's options: ssl_ca_cert, host [#494](https://github.com/jupyterhub/kubespawner/pull/494) ([@kafonek](https://github.com/kafonek))
+- add method to delete namespaced PVC in spawner base class [#475](https://github.com/jupyterhub/kubespawner/pull/475) ([@nsshah1288](https://github.com/nsshah1288))
+
+#### Enhancements made
+
+- Add options_from_form as configurable [#477](https://github.com/jupyterhub/kubespawner/pull/477) ([@cbanek](https://github.com/cbanek))
+
+#### Maintenance and upkeep improvements
+
+- Add MANIFEST.in (LICENCE, README.md) [#495](https://github.com/jupyterhub/kubespawner/pull/495) ([@dhirschfeld](https://github.com/dhirschfeld))
+
+#### Documentation improvements
+
+- Rewrite help for Kubespawner.cmd [#502](https://github.com/jupyterhub/kubespawner/pull/502) ([@manics](https://github.com/manics))
+
+#### Continuous integration
+
+- ci: test against recent k8s versions and misc workflow updates [#506](https://github.com/jupyterhub/kubespawner/pull/506) ([@consideRatio](https://github.com/consideRatio))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2021-03-01&to=2021-05-13&type=c))
+
+[@cbanek](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Acbanek+updated%3A2021-03-01..2021-05-13&type=Issues) | [@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2021-03-01..2021-05-13&type=Issues) | [@dhirschfeld](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adhirschfeld+updated%3A2021-03-01..2021-05-13&type=Issues) | [@jabbera](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajabbera+updated%3A2021-03-01..2021-05-13&type=Issues) | [@kafonek](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Akafonek+updated%3A2021-03-01..2021-05-13&type=Issues) | [@manics](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2021-03-01..2021-05-13&type=Issues) | [@meeseeksmachine](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ameeseeksmachine+updated%3A2021-03-01..2021-05-13&type=Issues) | [@minrk](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2021-03-01..2021-05-13&type=Issues) | [@nsshah1288](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ansshah1288+updated%3A2021-03-01..2021-05-13&type=Issues) | [@octavd](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aoctavd+updated%3A2021-03-01..2021-05-13&type=Issues)
+
 ## [0.16]
 
 ### [0.16.1] - 2021-03-01
