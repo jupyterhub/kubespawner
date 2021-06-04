@@ -675,8 +675,11 @@ def test_make_pod_with_env():
             name='test',
             image='jupyter/singleuser:latest',
             env={
-                'TEST_KEY_1': 'TEST_VALUE',
-                'TEST_KEY_2': {
+                'NAME_1': 'TEST_VALUE',
+                'NAME_2': {
+                    'value': 'TEST_VALUE',
+                },
+                'NAME_3': {
                     'valueFrom': {
                         'secretKeyRef': {
                             'name': 'my-k8s-secret',
@@ -684,8 +687,12 @@ def test_make_pod_with_env():
                         },
                     },
                 },
-                'TEST_KEY_NAME_IGNORED': {
-                    'name': 'TEST_KEY_3',
+                'IGNORED_NAME_1': {
+                    'name': 'NAME_4',
+                    'value': 'TEST_VALUE',
+                },
+                'IGNORED_NAME_2': {
+                    'name': 'NAME_5',
                     'valueFrom': {
                         'secretKeyRef': {
                             'name': 'my-k8s-secret',
@@ -710,11 +717,11 @@ def test_make_pod_with_env():
                 {
                     "env": [
                         {
-                            'name': 'TEST_KEY_1',
+                            'name': 'NAME_4',
                             'value': 'TEST_VALUE',
                         },
                         {
-                            'name': 'TEST_KEY_2',
+                            'name': 'NAME_5',
                             'valueFrom': {
                                 'secretKeyRef': {
                                     'name': 'my-k8s-secret',
@@ -723,13 +730,107 @@ def test_make_pod_with_env():
                             },
                         },
                         {
-                            'name': 'TEST_KEY_3',
+                            'name': 'NAME_1',
+                            'value': 'TEST_VALUE',
+                        },
+                        {
+                            'name': 'NAME_2',
+                            'value': 'TEST_VALUE',
+                        },
+                        {
+                            'name': 'NAME_3',
                             'valueFrom': {
                                 'secretKeyRef': {
                                     'name': 'my-k8s-secret',
                                     'key': 'password',
                                 },
                             },
+                        },
+                    ],
+                    "name": "notebook",
+                    "image": "jupyter/singleuser:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "args": ["jupyterhub-singleuser"],
+                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    'volumeMounts': [],
+                    "resources": {"limits": {}, "requests": {}},
+                }
+            ],
+            'restartPolicy': 'OnFailure',
+            'volumes': [],
+        },
+        "kind": "Pod",
+        "apiVersion": "v1",
+    }
+
+
+def test_make_pod_with_env_dependency_sorted():
+    """
+    Test specification of a pod with custom environment variables that involve
+    references to other environment variables. Note that KubeSpawner also tries
+    to sort the environment variables in the rendered list in a way that helps
+    maximize the amount of variables that are resolved.
+    """
+    assert api_client.sanitize_for_serialization(
+        make_pod(
+            name='test',
+            image='jupyter/singleuser:latest',
+            env={
+                'NAME_1B': '$(NAME_2)',
+                'NAME_1A': '$(NAME_2)',
+                'NAME_1C': {"name": "NAME_0", "value": "$(NAME_2)"},
+                'NAME_2': '$(NAME_3A)',
+                'NAME_3B': 'NAME_3B_VALUE',
+                'NAME_3A': 'NAME_3A_VALUE',
+                'NAME_CIRCLE_B': '$(NAME_CIRCLE_A)',
+                'NAME_CIRCLE_A': '$(NAME_CIRCLE_B)',
+            },
+            cmd=['jupyterhub-singleuser'],
+            port=8888,
+            image_pull_policy='IfNotPresent',
+        )
+    ) == {
+        "metadata": {
+            "name": "test",
+            "annotations": {},
+            "labels": {},
+        },
+        "spec": {
+            'automountServiceAccountToken': False,
+            "containers": [
+                {
+                    "env": [
+                        {
+                            'name': 'NAME_3A',
+                            'value': 'NAME_3A_VALUE',
+                        },
+                        {
+                            'name': 'NAME_3B',
+                            'value': 'NAME_3B_VALUE',
+                        },
+                        {
+                            'name': 'NAME_2',
+                            'value': '$(NAME_3A)',
+                        },
+                        {
+                            'name': 'NAME_1A',
+                            'value': '$(NAME_2)',
+                        },
+                        {
+                            'name': 'NAME_1B',
+                            'value': '$(NAME_2)',
+                        },
+                        {
+                            'name': 'NAME_0',
+                            'value': '$(NAME_2)',
+                        },
+                        {
+                            'name': 'NAME_CIRCLE_A',
+                            'value': '$(NAME_CIRCLE_B)',
+                        },
+                        {
+                            'name': 'NAME_CIRCLE_B',
+                            'value': '$(NAME_CIRCLE_A)',
                         },
                     ],
                     "name": "notebook",
