@@ -2165,18 +2165,18 @@ def test_make_pod_with_ssl():
                 {
                     "env": [
                         {
-                            'name': 'JUPYTERHUB_SSL_KEYFILE',
-                            'value': '/etc/jupyterhub/ssl/ssl.key',
-                        },
-                        {
                             'name': 'JUPYTERHUB_SSL_CERTFILE',
                             'value': '/etc/jupyterhub/ssl/ssl.crt',
                         },
-                        {'name': 'JUPYTERHUB_USER', 'value': 'TEST'},
                         {
                             'name': 'JUPYTERHUB_SSL_CLIENT_CA',
                             'value': '/etc/jupyterhub/ssl/notebooks-ca_trust.crt',
                         },
+                        {
+                            'name': 'JUPYTERHUB_SSL_KEYFILE',
+                            'value': '/etc/jupyterhub/ssl/ssl.key',
+                        },
+                        {'name': 'JUPYTERHUB_USER', 'value': 'TEST'},
                     ],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
