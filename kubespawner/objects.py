@@ -435,24 +435,82 @@ def make_pod(
     if not csc:
         csc = None
 
-    # Transform a dict into valid Kubernetes EnvVar Python representations. This
-    # representation shall always have a "name" field as well as either a
+    # Transform KubeSpawners env input to valid Kubernetes EnvVar Python
+    # representations. They should have a "name" field as well as either a
     # "value" field or "value_from" field. For examples see the
     # test_make_pod_with_env function.
-    prepared_env = []
-    for k, v in (env or {}).items():
-        if type(v) == dict:
-            if not "name" in v:
-                v["name"] = k
-            prepared_env.append(get_k8s_model(V1EnvVar, v))
+    #
+    # While doing this, also extract information about references to other envs
+    # as we want to use those to make an intelligent sorting before we render
+    # this into a list with an order that matters.
+    #
+    def _get_env_var_deps(env_var_obj):
+        # only env var objects with explicit string values set will be evaluated
+        if not env_var_obj.value:
+            return set()
+        # $(MY_ENV) pattern: $( followed by non-)-characters to be captured, followed by )
+        re_k8s_env_reference_pattern = r"\$\(([^\)]+)\)"
+        return set(re.findall(re_k8s_env_reference_pattern, env_var_obj.value))
+
+    unsorted_env = {}
+    for env_var_key, env_var_obj in (env or {}).items():
+        if type(env_var_obj) == dict:
+            if not "name" in env_var_obj:
+                env_var_obj["name"] = env_var_key
+            env_var_obj = get_k8s_model(V1EnvVar, env_var_obj)
         else:
-            prepared_env.append(V1EnvVar(name=k, value=v))
+            env_var_obj = V1EnvVar(name=env_var_key, value=env_var_obj)
+
+        unsorted_env[env_var_obj.name] = {
+            "deps": _get_env_var_deps(env_var_obj),
+            "env_var_key": env_var_key,
+            "env_var_obj": env_var_obj,
+        }
+
+    # We also want to sort environment variables in a way that allows
+    # dependencies to other env to resolve as much as possible. There could be
+    # circular dependencies so we will just do our best and settle with that.
+    #
+    # Algorithm description:
+    # - assumption: an env can depend on 0-X other env
+    # - init: unsorted_env = [<all-env>]
+    # - init: sorted_env = []
+    # - init: make dependencies for each env explicit
+    # - loop step:
+    #   - pop all unsorted_env entries with dependencies in sorted_env
+    #   - sort popped env and extend the sorted_env list
+    # - loop exit:
+    #   - exit if loop step didn't pop anything from unsorted_env
+    #   - then finish by sorting what remains and extending the sorted_env list
+    #
+    sorted_env = []
+    while True:
+        extracted_env = {}
+        resolved_env = [e.name for e in sorted_env]
+        for k, v in unsorted_env.copy().items():
+            if v["deps"].issubset(resolved_env):
+                extracted_env[k] = unsorted_env.pop(k)
+
+        extracted_env = [
+            d["env_var_obj"]
+            for d in sorted(extracted_env.values(), key=lambda d: d["env_var_key"])
+        ]
+        if extracted_env:
+            sorted_env.extend(extracted_env)
+        else:
+            remaining_env = [
+                d["env_var_obj"]
+                for d in sorted(unsorted_env.values(), key=lambda d: d["env_var_key"])
+            ]
+            sorted_env.extend(remaining_env)
+            break
+
     notebook_container = V1Container(
         name='notebook',
         image=image,
         working_dir=working_dir,
         ports=[V1ContainerPort(name='notebook-port', container_port=port)],
-        env=prepared_env,
+        env=sorted_env,
         args=cmd,
         image_pull_policy=image_pull_policy,
         lifecycle=lifecycle_hooks,
