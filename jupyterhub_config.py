@@ -1,7 +1,6 @@
 import os
 import socket
 
-
 c.JupyterHub.spawner_class = 'kubespawner.KubeSpawner'
 
 c.JupyterHub.ip = '127.0.0.1'
@@ -17,7 +16,7 @@ c.KubeSpawner.start_timeout = 60 * 5
 # Our simplest user image! Optimized to just... start, and be small!
 c.KubeSpawner.image = 'jupyterhub/singleuser:1.0'
 
-if os.env.get("CI"):
+if os.environ.get("CI"):
     # In the CI system we use k3s which will be accessible on localhost.
     c.JupyterHub.hub_connect_ip = "127.0.0.1"
 else:
@@ -32,7 +31,7 @@ else:
 
 c.KubeSpawner.service_account = 'default'
 # Do not use any authentication at all - any username / password will work.
-c.JupyterHub.authenticator_class = 'dummyauthenticator.DummyAuthenticator'
+c.JupyterHub.authenticator_class = 'dummy'
 
 c.KubeSpawner.storage_pvc_ensure = False
 
