@@ -2105,18 +2105,27 @@ class KubeSpawner(Spawner):
             return
 
         self.log.debug('progress generator: %s', self.pod_name)
-        start_future = self._start_future
+        start_future = None
         progress = 0
         next_event = 0
 
         break_while_loop = False
         while True:
-            # Ensure we always capture events following the start_future
-            # signal has fired.
-            if start_future.done():
-                break_while_loop = True
-            events = self.events
+            # This logic avoids a race condition. self._start() will invoke
+            # self.start() and almost directly set self._start_future. But,
+            # progress() will be invoked via self.start(), so what happen first?
+            # Due to this, the logic below is to avoid making an assumption that
+            # self._start_future was set before this function was called.
+            if start_future == None and self._start_future:
+                start_future = self._start_future
 
+            # Ensure we capture all events by inspecting events a final time
+            # after the start_future signal has fired, we could have been in
+            # .sleep() and missed something.
+            if start_future and start_future.done():
+                break_while_loop = True
+
+            events = self.events
             len_events = len(events)
             if next_event < len_events:
                 for i in range(next_event, len_events):
