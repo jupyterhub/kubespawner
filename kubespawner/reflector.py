@@ -172,26 +172,24 @@ class ResourceReflector(LoggingConfigurable):
         self.first_load_future = Future()
         self._stop_event = threading.Event()
 
-        # Make sure that we know kind, whether we should omit the namespace,
-        #  and what our list_method_name is.  For the things we already
-        #  know about (that is, Pod and Event reflectors) we can derive
-        #  list_method_name from those two things.  New reflector types
-        #  should also update their __init__() methods to derive
-        #  list_method_name, but you could just set it directly in the
-        #  subclass.
+        # Make sure that we know kind, whether we should omit the
+        #  namespace, and what our list_method_name is.  For the things
+        #  we already know about, we can derive list_method_name from
+        #  those two things.  New reflector types should also update
+        #  their __init__() methods to derive list_method_name, but you
+        #  could just set it directly in the subclass.
         if not self.list_method_name:
             # This logic can be extended if we add other reflector types or
             #  it can be directly supplied or overridden in a subclass.
-            if self.kind == "pods":
+            if self.kind in ["pods", "events", "services", "ingresses", "endpoints"]:
+                singular_kind = self.kind[:-1]
+                if self.kind == "ingresses":
+                    singular_kind = self.kind[:-2]
+
                 if self.omit_namespace:
-                    self.list_method_name = "list_pod_for_all_namespaces"
+                    self.list_method_name = f"list_{singular_kind}_for_all_namespaces"
                 else:
-                    self.list_method_name = "list_namespaced_pod"
-            elif self.kind == "events":
-                if self.omit_namespace:
-                    self.list_method_name = "list_event_for_all_namespaces"
-                else:
-                    self.list_method_name = "list_namespaced_event"
+                    self.list_method_name = f"list_namespaced_{singular_kind}"
 
         # Make sure we have the required values.
         if not self.kind:

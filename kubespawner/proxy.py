@@ -20,7 +20,6 @@ from .utils import generate_hashed_slug
 
 class IngressReflector(ResourceReflector):
     kind = 'ingresses'
-    list_method_name = 'list_namespaced_ingress'
     api_group_name = 'ExtensionsV1beta1Api'
 
     @property
@@ -30,7 +29,6 @@ class IngressReflector(ResourceReflector):
 
 class ServiceReflector(ResourceReflector):
     kind = 'services'
-    list_method_name = 'list_namespaced_service'
 
     @property
     def services(self):
@@ -39,7 +37,6 @@ class ServiceReflector(ResourceReflector):
 
 class EndpointsReflector(ResourceReflector):
     kind = 'endpoints'
-    list_method_name = 'list_namespaced_endpoints'
 
     @property
     def endpoints(self):
