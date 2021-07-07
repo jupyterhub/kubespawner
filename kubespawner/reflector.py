@@ -184,6 +184,10 @@ class ResourceReflector(LoggingConfigurable):
             if self.kind in ["pods", "events", "services", "ingresses", "endpoints"]:
                 if self.kind == "ingresses":
                     singular_kind = "ingress"
+                if self.kind == "endpoints":
+                    # This handles inconsistent nomenclature in the
+                    # Python Kubernetes client.
+                    singular_kind = self.kind
                 else:
                     singular_kind = self.kind[:-1]
 
