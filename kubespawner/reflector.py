@@ -182,9 +182,10 @@ class ResourceReflector(LoggingConfigurable):
             # This logic can be extended if we add other reflector types or
             #  it can be directly supplied or overridden in a subclass.
             if self.kind in ["pods", "events", "services", "ingresses", "endpoints"]:
-                singular_kind = self.kind[:-1]
                 if self.kind == "ingresses":
-                    singular_kind = self.kind[:-2]
+                    singular_kind = "ingress"
+                else:
+                    singular_kind = self.kind[:-1]
 
                 if self.omit_namespace:
                     self.list_method_name = f"list_{singular_kind}_for_all_namespaces"
