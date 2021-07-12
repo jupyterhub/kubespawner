@@ -179,22 +179,23 @@ class ResourceReflector(LoggingConfigurable):
         #  their __init__() methods to derive list_method_name, but you
         #  could just set it directly in the subclass.
         if not self.list_method_name:
-            # This logic can be extended if we add other reflector types or
-            #  it can be directly supplied or overridden in a subclass.
-            if self.kind in ["pods", "events", "services", "ingresses", "endpoints"]:
-                if self.kind == "ingresses":
-                    singular_kind = "ingress"
-                if self.kind == "endpoints":
-                    # This handles inconsistent nomenclature in the
-                    # Python Kubernetes client.
-                    singular_kind = self.kind
-                else:
-                    singular_kind = self.kind[:-1]
+            plural_to_singular = {
+                "endpoints": "endpoints",
+                "events": "event",
+                "ingresses": "ingress",
+                "pods": "pod",
+                "services": "service",
+            }
 
+            if self.kind in plural_to_singular:
                 if self.omit_namespace:
-                    self.list_method_name = f"list_{singular_kind}_for_all_namespaces"
+                    self.list_method_name = (
+                        f"list_{plural_to_singular[self.kind]}_for_all_namespaces"
+                    )
                 else:
-                    self.list_method_name = f"list_namespaced_{singular_kind}"
+                    self.list_method_name = (
+                        f"list_namespaced_{plural_to_singular[self.kind]}"
+                    )
 
         # Make sure we have the required values.
         if not self.kind:
