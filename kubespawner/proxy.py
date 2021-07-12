@@ -114,6 +114,12 @@ class KubeIngressProxy(Proxy):
         # an accidental bottleneck. Since we serialize our create operations, we only
         # need 1x concurrent_spawn_limit, not 3x.
         self.executor = ThreadPoolExecutor(max_workers=self.app.concurrent_spawn_limit)
+
+        # Global configuration before reflector.py code runs
+        self._set_k8s_client_configuration()
+        self.core_api = shared_client('CoreV1Api')
+        self.extension_api = shared_client('ExtensionsV1beta1Api')
+
         labels = {
             'component': self.component_label,
             'hub.jupyter.org/proxy-route': 'true',
@@ -127,11 +133,6 @@ class KubeIngressProxy(Proxy):
         self.endpoint_reflector = EndpointsReflector(
             parent=self, namespace=self.namespace, labels=labels
         )
-
-        # Global configuration before reflector.py code runs
-        self._set_k8s_client_configuration()
-        self.core_api = shared_client('CoreV1Api')
-        self.extension_api = shared_client('ExtensionsV1beta1Api')
 
     def _set_k8s_client_configuration(self):
         # The actual (singleton) Kubernetes client will be created
