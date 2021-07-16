@@ -589,6 +589,136 @@ def test_get_pvc_manifest():
     assert manifest.spec.selector == {"matchLabels": {"user": "mock-5fname"}}
 
 
+async def test_variable_expansion(ssl_app):
+    """
+    Variable expansion not tested here:
+    - pod_connect_ip: is tested in test_url_changed
+    - user_namespace_template: isn't tested because it isn't set as part of the
+      Pod manifest but.
+    """
+    config_to_test = {
+        "pod_name_template": {
+            "configured_value": "pod-name-template-{username}",
+            "findable_in": ["pod"],
+        },
+        "pvc_name_template": {
+            "configured_value": "pvc-name-template-{username}",
+            "findable_in": ["pvc"],
+        },
+        "secret_name_template": {
+            "configured_value": "secret-name-template-{username}",
+            "findable_in": ["secret"],
+        },
+        "storage_selector": {
+            "configured_value": {
+                "matchLabels": {"dummy": "storage-selector-{username}"}
+            },
+            "findable_in": ["pvc"],
+        },
+        "storage_extra_labels": {
+            "configured_value": {"dummy": "storage-extra-labels-{username}"},
+            "findable_in": ["pvc"],
+        },
+        "extra_labels": {
+            "configured_value": {"dummy": "common-extra-labels-{username}"},
+            "findable_value": "common-extra-labels-user1",
+            "findable_in": ["pod", "service", "secret"],
+        },
+        "extra_annotations": {
+            "configured_value": {"dummy": "common-extra-annotations-{username}"},
+            "findable_value": "common-extra-annotations-user1",
+            "findable_in": ["pod", "service", "secret"],
+        },
+        "working_dir": {
+            "configured_value": "working-dir-{username}",
+            "findable_in": ["pod"],
+        },
+        "service_account": {
+            "configured_value": "service-account-{username}",
+            "findable_in": ["pod"],
+        },
+        "volumes": {
+            "configured_value": [
+                {
+                    'name': 'volumes-{username}',
+                    'secret': {'secretName': 'dummy'},
+                }
+            ],
+            "findable_in": ["pod"],
+        },
+        "volume_mounts": {
+            "configured_value": [
+                {
+                    'name': 'volume-mounts-{username}',
+                    'mountPath': '/tmp/',
+                }
+            ],
+            "findable_in": ["pod"],
+        },
+        "init_containers": {
+            "configured_value": [
+                {
+                    'name': 'init-containers-{username}',
+                    'image': 'busybox',
+                }
+            ],
+            "findable_in": ["pod"],
+        },
+        "extra_containers": {
+            "configured_value": [
+                {
+                    'name': 'extra-containers-{username}',
+                    'image': 'busybox',
+                }
+            ],
+            "findable_in": ["pod"],
+        },
+        "extra_pod_config": {
+            "configured_value": {"schedulerName": "extra-pod-config-{username}"},
+            "findable_in": ["pod"],
+        },
+    }
+
+    c = Config()
+    for key, value in config_to_test.items():
+        c.KubeSpawner[key] = value["configured_value"]
+
+        if "findable_value" not in value:
+            value["findable_value"] = key.replace("_", "-") + "-user1"
+
+    user = MockUser(name="user1")
+    spawner = KubeSpawner(
+        config=c,
+        user=user,
+        internal_trust_bundles=ssl_app.internal_trust_bundles,
+        internal_certs_location=ssl_app.internal_certs_location,
+        _mock=True,
+    )
+    hub_paths = await spawner.create_certs()
+    spawner.cert_paths = await spawner.move_certs(hub_paths)
+
+    manifests = {
+        "pod": await spawner.get_pod_manifest(),
+        "pvc": spawner.get_pvc_manifest(),
+        "secret": spawner.get_secret_manifest("dummy-owner-ref"),
+        "service": spawner.get_service_manifest("dummy-owner-ref"),
+    }
+
+    for resource_kind, manifest in manifests.items():
+        manifest_string = str(manifest)
+        for config in config_to_test.values():
+            if resource_kind in config["findable_in"]:
+                assert config["findable_value"] in manifest_string, (
+                    manifest_string
+                    + "\n\n"
+                    + "finable_value: "
+                    + config["findable_value"]
+                    + "\n"
+                    + "resource_kind: "
+                    + resource_kind
+                )
+
+
 @pytest.mark.asyncio
 async def test_url_changed(kube_ns, kube_client, config, hub_pod, hub):
     user = MockUser(name="url")
