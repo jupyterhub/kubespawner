@@ -402,9 +402,9 @@ def make_pod(
     # populate with fs_gid / supplemental_gids
     if fs_gid is not None:
         psc["fsGroup"] = int(fs_gid)
-    if supplemental_gids is not None:
+    if supplemental_gids:
         psc["supplementalGroups"] = [int(gid) for gid in supplemental_gids]
-    if pod_security_context is not None:
+    if pod_security_context:
         for key in pod_security_context.keys():
             if "_" in key:
                 raise ValueError(
@@ -425,7 +425,7 @@ def make_pod(
         csc["privileged"] = True
     if not allow_privilege_escalation:  # true as default
         csc["allowPrivilegeEscalation"] = False
-    if container_security_context is not None:
+    if container_security_context:
         for key in container_security_context.keys():
             if "_" in key:
                 raise ValueError(
