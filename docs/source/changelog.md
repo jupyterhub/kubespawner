@@ -2,9 +2,43 @@
 
 <!-- PR link template: - [#](https://github.com/jupyterhub/kubespawner/pull/) ([@](https://github.com/)) -->
 
-### [1.0]
+## [Unreleased]
 
-### [1.0.0]
+## 1.1
+
+### [1.1.0] - 2021-07-21
+
+#### Enhancements made
+
+- Expand username etc. in configured service_account [#518](https://github.com/jupyterhub/kubespawner/pull/518) ([@consideRatio](https://github.com/consideRatio))
+- Sort env to reliably expand nested env references [#510](https://github.com/jupyterhub/kubespawner/pull/510) ([@consideRatio](https://github.com/consideRatio))
+
+#### Bugs fixed
+
+- Ensure to omit empty lists in security contexts [#517](https://github.com/jupyterhub/kubespawner/pull/517) ([@consideRatio](https://github.com/consideRatio))
+
+#### Maintenance and upkeep improvements
+
+- Generalize omit_namespace functionality [#514](https://github.com/jupyterhub/kubespawner/pull/514) ([@droctothorpe](https://github.com/droctothorpe))
+- Remove unneeded dep [#508](https://github.com/jupyterhub/kubespawner/pull/508) ([@dhirschfeld](https://github.com/dhirschfeld))
+
+#### Documentation improvements
+
+- Fix the errors followed by the contributing steps [#509](https://github.com/jupyterhub/kubespawner/pull/509) ([@mggger](https://github.com/mggger))
+
+#### Other merged PRs
+
+- [KubeIngressProxy] Set configuration before instantiating reflectors [#515](https://github.com/jupyterhub/kubespawner/pull/515) ([@droctothorpe](https://github.com/droctothorpe))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2021-05-14&to=2021-07-21&type=c))
+
+[@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2021-05-14..2021-07-18&type=Issues) | [@dhirschfeld](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adhirschfeld+updated%3A2021-05-14..2021-07-18&type=Issues) | [@droctothorpe](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adroctothorpe+updated%3A2021-05-14..2021-07-18&type=Issues) | [@mggger](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amggger+updated%3A2021-05-14..2021-07-18&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2021-05-14..2021-07-18&type=Issues)
+
+## 1.0
+
+### [1.0.0] - 2021-05-14
 
 This release is the continuation of version 0.16.1 and could have been 0.17.0 in
 practice. We opted to release 1.0.0 as it enables us to communicate changes
@@ -12,7 +46,7 @@ according to [SemVer](https://semver.org/). Using SemVer versioning, a change in
 each of the three version numbers (major.minor.patch) represents a different
 kind of change.
 
-### Breaking changes
+#### Breaking changes
 
 - When using KubeSpawner 1.0.0 or later together with JupyterHub 1.4.1 or later,
   deleting a JupyterHub user or deleting (not just stopping) a named server will
@@ -46,7 +80,7 @@ kind of change.
 
 [@cbanek](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Acbanek+updated%3A2021-03-01..2021-05-13&type=Issues) | [@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2021-03-01..2021-05-13&type=Issues) | [@dhirschfeld](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adhirschfeld+updated%3A2021-03-01..2021-05-13&type=Issues) | [@jabbera](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajabbera+updated%3A2021-03-01..2021-05-13&type=Issues) | [@kafonek](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Akafonek+updated%3A2021-03-01..2021-05-13&type=Issues) | [@manics](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2021-03-01..2021-05-13&type=Issues) | [@meeseeksmachine](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ameeseeksmachine+updated%3A2021-03-01..2021-05-13&type=Issues) | [@minrk](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2021-03-01..2021-05-13&type=Issues) | [@nsshah1288](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ansshah1288+updated%3A2021-03-01..2021-05-13&type=Issues) | [@octavd](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aoctavd+updated%3A2021-03-01..2021-05-13&type=Issues)
 
-## [0.16]
+## 0.16
 
 ### [0.16.1] - 2021-03-01
 
@@ -91,7 +125,7 @@ kind of change.
 
 [@athornton](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aathornton+updated%3A2020-12-15..2021-02-26&type=Issues) | [@betatim](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Abetatim+updated%3A2020-12-15..2021-02-26&type=Issues) | [@clkao](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aclkao+updated%3A2020-12-15..2021-02-26&type=Issues) | [@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2020-12-15..2021-02-26&type=Issues) | [@cyrilcros](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Acyrilcros+updated%3A2020-12-15..2021-02-26&type=Issues) | [@dhirschfeld](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adhirschfeld+updated%3A2020-12-15..2021-02-26&type=Issues) | [@dtaniwaki](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adtaniwaki+updated%3A2020-12-15..2021-02-26&type=Issues) | [@lresende](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Alresende+updated%3A2020-12-15..2021-02-26&type=Issues) | [@manics](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2020-12-15..2021-02-26&type=Issues) | [@meeseeksmachine](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ameeseeksmachine+updated%3A2020-12-15..2021-02-26&type=Issues) | [@minrk](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2020-12-15..2021-02-26&type=Issues) | [@mriedem](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amriedem+updated%3A2020-12-15..2021-02-26&type=Issues) | [@remche](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aremche+updated%3A2020-12-15..2021-02-26&type=Issues) | [@shanestarcher-okta](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ashanestarcher-okta+updated%3A2020-12-15..2021-02-26&type=Issues) | [@stv0g](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Astv0g+updated%3A2020-12-15..2021-02-26&type=Issues) | [@tirumerla](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Atirumerla+updated%3A2020-12-15..2021-02-26&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2020-12-15..2021-02-26&type=Issues)
 
-## [0.15]
+## 0.15
 
 ### [0.15.0] - 2020-10-15
 
@@ -157,9 +191,9 @@ kind of change.
 - Add an explicit dependency on urllib3 [#437](https://github.com/jupyterhub/kubespawner/pull/437) ([@yuvipanda](https://github.com/yuvipanda))
 - Delete remnant now unused parts in spawner.py [#382](https://github.com/jupyterhub/kubespawner/pull/382) ([@bitnik](https://github.com/bitnik))
 
-## [0.13]
+## 0.13
 
-### [0.13.0] - 2020-09-XX
+### [0.13.0] - 2020-09-20
 
 Noteworthy for this release are: performance improvements, Kubernetes native environment variable specification, the possibility to run multiple JupyterHub's in the same namespace.
 
@@ -191,7 +225,7 @@ The following changes probably won't break typical usage of KubeSpawner, but cou
 
 This list of contributors were generated by [`github-activity`](https://github.com/executablebooks/github-activity) according to [these criteria](https://github-activity.readthedocs.io/en/latest/#how-does-this-tool-define-contributions-in-the-reports).
 
-## [0.12]
+## 0.12
 
 ### [0.12.0] - 2020-07-17
 
@@ -229,7 +263,7 @@ This list of contributors were generated by [`github-activity`](https://github.c
 - test with JupyterHub master [#380](https://github.com/jupyterhub/kubespawner/pull/380) ([@consideRatio](https://github.com/consideRatio))
 - update contributing guide [#391](https://github.com/jupyterhub/kubespawner/pull/391) ([@betatim](https://github.com/betatim))
 
-## [0.11]
+## 0.11
 
 ### [0.11.1] - 2019-11-29
 
@@ -290,16 +324,16 @@ compatible with k8s 1.11-1.15.
 - build docs with python 3.6 [#295](https://github.com/jupyterhub/kubespawner/pull/295) ([@minrk](https://github.com/minrk))
 - making kubespawner docs links more discoverable [#287](https://github.com/jupyterhub/kubespawner/pull/287) ([@choldgraf](https://github.com/choldgraf))
 
-## [0.10]
+## 0.10
 
-### [0.10.1] 2018-12-11
+### [0.10.1] - 2018-12-11
 
 0.10.1 is a tiny bugfix release, fixing regressions in 0.10.0.
 
 - Fix deprecation of `KubeSpawner.hub_connect_ip`,
   which caused errors in 0.10 when the deprecated config was used.
 
-### [0.10.1] 2018-12-05
+### [0.10.0] - 2018-12-05
 
 0.10.0 is a small release, with minor changes and fixes.
 
@@ -313,9 +347,9 @@ compatible with k8s 1.11-1.15.
   in favor of `JupyterHub.hub_connect_ip`,
   available in jupyterhub >= 0.8
 
-## [0.9]
+## 0.9
 
-### [0.9.0] 2018-09-03
+### [0.9.0] - 2018-09-03
 
 KubeSpawner 0.9.0 is a big release of KubeSpawner.
 
@@ -329,3 +363,17 @@ Change highlights:
 - Support Kubernetes events for the progress API in JupyterHub 0.9.
 - Update Kubernetes Python client to 6.0 (supporting Kubernetes 1.10 APIs)
 - Numerous bugfixes
+
+[unreleased]: https://github.com/jupyterhub/kubespawner/compare/1.1.0...HEAD
+[1.1.0]: https://github.com/jupyterhub/kubespawner/compare/1.0.0...1.1.0
+[1.0.0]: https://github.com/jupyterhub/kubespawner/compare/0.16.1...1.0.0
+[0.16.1]: https://github.com/jupyterhub/kubespawner/compare/0.16.0...0.16.1
+[0.16.0]: https://github.com/jupyterhub/kubespawner/compare/0.15.0...0.16.0
+[0.15.0]: https://github.com/jupyterhub/kubespawner/compare/0.14.1...0.15.0
+[0.14.1]: https://github.com/jupyterhub/kubespawner/compare/0.14.0...0.14.1
+[0.14.0]: https://github.com/jupyterhub/kubespawner/compare/0.13.0...0.14.0
+[0.13.0]: https://github.com/jupyterhub/kubespawner/compare/0.12.0...0.13.0
+[0.12.0]: https://github.com/jupyterhub/kubespawner/compare/0.10.1...0.12.0
+[0.10.1]: https://github.com/jupyterhub/kubespawner/compare/0.10.0...0.10.1
+[0.10.0]: https://github.com/jupyterhub/kubespawner/compare/0.9.0...0.10.0
+[0.9.0]: https://github.com/jupyterhub/kubespawner/compare/v0.8.1...0.9.0
