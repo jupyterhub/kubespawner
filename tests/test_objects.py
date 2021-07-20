@@ -776,6 +776,7 @@ def test_make_pod_with_env_dependency_sorted():
             name='test',
             image='jupyter/singleuser:latest',
             env={
+                'NAME_SELF_REF': '$(NAME_SELF_REF)',
                 'NAME_1B': '$(NAME_2)',
                 'NAME_1A': '$(NAME_2)',
                 'NAME_1C': {"name": "NAME_0", "value": "$(NAME_2)"},
@@ -807,6 +808,10 @@ def test_make_pod_with_env_dependency_sorted():
                         {
                             'name': 'NAME_3B',
                             'value': 'NAME_3B_VALUE',
+                        },
+                        {
+                            'name': 'NAME_SELF_REF',
+                            'value': '$(NAME_SELF_REF)',
                         },
                         {
                             'name': 'NAME_2',

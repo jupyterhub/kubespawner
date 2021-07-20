@@ -450,7 +450,8 @@ def make_pod(
             return set()
         # $(MY_ENV) pattern: $( followed by non-)-characters to be captured, followed by )
         re_k8s_env_reference_pattern = r"\$\(([^\)]+)\)"
-        return set(re.findall(re_k8s_env_reference_pattern, env_var_obj.value))
+        deps = set(re.findall(re_k8s_env_reference_pattern, env_var_obj.value))
+        return deps - {env_var_obj.name}
 
     unsorted_env = {}
     for env_var_key, env_var_obj in (env or {}).items():
