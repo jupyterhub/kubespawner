@@ -4,6 +4,7 @@ Helper methods for generating k8s API objects.
 import base64
 import ipaddress
 import json
+import operator
 import os
 import re
 from urllib.parse import urlparse
@@ -435,73 +436,69 @@ def make_pod(
     if not csc:
         csc = None
 
-    # Transform KubeSpawners env input to valid Kubernetes EnvVar Python
-    # representations. They should have a "name" field as well as either a
-    # "value" field or "value_from" field. For examples see the
-    # test_make_pod_with_env function.
-    #
-    # While doing this, also extract information about references to other envs
-    # as we want to use those to make an intelligent sorting before we render
-    # this into a list with an order that matters.
-    #
-    def _get_env_var_deps(env_var_obj):
-        # only env var objects with explicit string values set will be evaluated
-        if not env_var_obj.value:
+    def _get_env_var_deps(env):
+        # only consider env var objects with an explicit string value
+        if not env.value:
             return set()
         # $(MY_ENV) pattern: $( followed by non-)-characters to be captured, followed by )
         re_k8s_env_reference_pattern = r"\$\(([^\)]+)\)"
-        deps = set(re.findall(re_k8s_env_reference_pattern, env_var_obj.value))
-        return deps - {env_var_obj.name}
+        deps = set(re.findall(re_k8s_env_reference_pattern, env.value))
+        return deps - {env.name}
 
     unsorted_env = {}
-    for env_var_key, env_var_obj in (env or {}).items():
-        if type(env_var_obj) == dict:
-            if not "name" in env_var_obj:
-                env_var_obj["name"] = env_var_key
-            env_var_obj = get_k8s_model(V1EnvVar, env_var_obj)
+    for key, env in (env or {}).items():
+        # Normalize KubeSpawners env input to valid Kubernetes EnvVar Python
+        # representations. They should have a "name" field as well as either a
+        # "value" field or "value_from" field. For examples see the
+        # test_make_pod_with_env function.
+        if type(env) == dict:
+            if not "name" in env:
+                env["name"] = key
+            env = get_k8s_model(V1EnvVar, env)
         else:
-            env_var_obj = V1EnvVar(name=env_var_key, value=env_var_obj)
+            env = V1EnvVar(name=key, value=env)
 
-        unsorted_env[env_var_obj.name] = {
-            "deps": _get_env_var_deps(env_var_obj),
-            "env_var_key": env_var_key,
-            "env_var_obj": env_var_obj,
+        # Extract information about references to other envs as we want to use
+        # those to make an intelligent sorting before we render this into a list
+        # with an order that matters.
+        unsorted_env[env.name] = {
+            "deps": _get_env_var_deps(env),
+            "key": key,
+            "env": env,
         }
 
-    # We also want to sort environment variables in a way that allows
-    # dependencies to other env to resolve as much as possible. There could be
-    # circular dependencies so we will just do our best and settle with that.
+    # We sort environment variables in a way that allows dependencies to other
+    # env to resolve as much as possible. There could be circular dependencies
+    # so we will just do our best and settle with that.
     #
     # Algorithm description:
-    # - assumption: an env can depend on 0-X other env
-    # - init: unsorted_env = [<all-env>]
-    # - init: sorted_env = []
-    # - init: make dependencies for each env explicit
+    #
     # - loop step:
     #   - pop all unsorted_env entries with dependencies in sorted_env
-    #   - sort popped env and extend the sorted_env list
+    #   - sort popped env based on key and extend the sorted_env list
     # - loop exit:
     #   - exit if loop step didn't pop anything from unsorted_env
-    #   - then finish by sorting what remains and extending the sorted_env list
+    #   - before exit, sort what remains and extending the sorted_env list
     #
     sorted_env = []
     while True:
+        already_resolved_env_names = [e.name for e in sorted_env]
+
         extracted_env = {}
-        resolved_env = [e.name for e in sorted_env]
         for k, v in unsorted_env.copy().items():
-            if v["deps"].issubset(resolved_env):
+            if v["deps"].issubset(already_resolved_env_names):
                 extracted_env[k] = unsorted_env.pop(k)
 
-        extracted_env = [
-            d["env_var_obj"]
-            for d in sorted(extracted_env.values(), key=lambda d: d["env_var_key"])
-        ]
         if extracted_env:
+            extracted_env = [
+                d["env"]
+                for d in sorted(extracted_env.values(), key=operator.itemgetter("key"))
+            ]
             sorted_env.extend(extracted_env)
         else:
             remaining_env = [
-                d["env_var_obj"]
-                for d in sorted(unsorted_env.values(), key=lambda d: d["env_var_key"])
+                d["env"]
+                for d in sorted(unsorted_env.values(), key=operator.itemgetter("key"))
             ]
             sorted_env.extend(remaining_env)
             break
