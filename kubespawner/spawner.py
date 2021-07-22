@@ -5,6 +5,7 @@ This module exports `KubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
 import asyncio
+import ipaddress
 import multiprocessing
 import os
 import string
@@ -1802,15 +1803,22 @@ class KubeSpawner(Spawner):
             hostname = self.dns_name
         else:
             proto = "http"
-            hostname = pod["status"]["podIP"]
-
+            _address_str = pod["status"]["podIP"]
+            _address = ipaddress.ip_address(_address_str)
+            if type(_address) == ipaddress.IPv6Address:
+                hostname = f"[{_address_str}]"
+            elif type(_address) == ipaddress.IPv4Address:
+                hostname = _address_str
+            else:
+                hostname = _address_str
         if self.pod_connect_ip:
+            # ToDo: need to change for supporting IPv6 single stack
             hostname = ".".join(
                 [
                     s.rstrip("-")
                     for s in self._expand_user_properties(self.pod_connect_ip).split(
-                        "."
-                    )
+                    "."
+                )
                 ]
             )
 
@@ -1982,11 +1990,11 @@ class KubeSpawner(Spawner):
         """
         # FIXME: Validate if this is really the best way
         is_running = (
-            pod is not None
-            and pod["status"]["phase"] == 'Running'
-            and pod["status"]["podIP"] is not None
-            and "deletionTimestamp" not in pod["metadata"]
-            and all([cs["ready"] for cs in pod["status"]["containerStatuses"]])
+                pod is not None
+                and pod["status"]["phase"] == 'Running'
+                and pod["status"]["podIP"] is not None
+                and "deletionTimestamp" not in pod["metadata"]
+                and all([cs["ready"] for cs in pod["status"]["containerStatuses"]])
         )
         return is_running
 
@@ -2182,11 +2190,11 @@ class KubeSpawner(Spawner):
                         'progress': int(progress),
                         'raw_event': event,
                         'message': "%s [%s] %s"
-                        % (
-                            event["lastTimestamp"] or event["eventTime"],
-                            event["type"],
-                            event["message"],
-                        ),
+                                   % (
+                                       event["lastTimestamp"] or event["eventTime"],
+                                       event["type"],
+                                       event["message"],
+                                   ),
                     }
                 next_event = len_events
 
@@ -2195,11 +2203,11 @@ class KubeSpawner(Spawner):
             await asyncio.sleep(1)
 
     def _start_reflector(
-        self,
-        kind=None,
-        reflector_class=ResourceReflector,
-        replace=False,
-        **kwargs,
+            self,
+            kind=None,
+            reflector_class=ResourceReflector,
+            replace=False,
+            **kwargs,
     ):
         """Start a shared reflector on the KubeSpawner class
 
@@ -2608,7 +2616,7 @@ class KubeSpawner(Spawner):
         return self._get_pod_url(pod)
 
     async def _make_delete_pod_request(
-        self, pod_name, delete_options, grace_seconds, request_timeout
+            self, pod_name, delete_options, grace_seconds, request_timeout
     ):
         """
         Make an HTTP request to delete the given pod
