@@ -1803,7 +1803,7 @@ class KubeSpawner(Spawner):
     def _get_pod_url(self, pod):
         """Return the pod url
 
-        Default: use pod.status.pod_ip (dns_name if ssl is enabled)
+        Default: use pod.status.pod_ip (dns_name if ssl or services_enabled is enabled)
         """
         if self.get_pod_url:
             # custom get_pod_url hook
