@@ -397,7 +397,7 @@ class KubeSpawner(Spawner):
         This is useful in cases when network rules don't allow direct traffic
         routing to pods in a cluster. Should be enabled when using jupyterhub
         with a service mesh like istio with mTLS enabled.
-        """
+        """,
     )
 
     ip = Unicode(
@@ -2547,13 +2547,17 @@ class KubeSpawner(Spawner):
                     secret_manifest = self.get_secret_manifest(owner_reference)
                     await exponential_backoff(
                         partial(
-                            self._ensure_not_exists, "secret", secret_manifest.metadata.name
+                            self._ensure_not_exists,
+                            "secret",
+                            secret_manifest.metadata.name,
                         ),
                         f"Failed to delete secret {secret_manifest.metadata.name}",
                     )
                     await exponential_backoff(
                         partial(
-                            self._make_create_resource_request, "secret", secret_manifest
+                            self._make_create_resource_request,
+                            "secret",
+                            secret_manifest,
                         ),
                         f"Failed to create secret {secret_manifest.metadata.name}",
                     )
