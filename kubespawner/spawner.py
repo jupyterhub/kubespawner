@@ -9,9 +9,9 @@ import asyncio
 import json
 import multiprocessing
 import os
+import signal
 import string
 import sys
-import signal
 import warnings
 from asyncio import sleep
 from concurrent.futures import ThreadPoolExecutor
