@@ -6,6 +6,22 @@
 
 ## 1.1
 
+### 1.1.1
+
+#### Bugs fixed
+
+- Terminate process correctly from reflector thread [#525](https://github.com/jupyterhub/kubespawner/pull/525) ([@yuvipanda](https://github.com/yuvipanda))
+
+#### Continuous integration
+
+- [pre-commit.ci] pre-commit autoupdate [#526](https://github.com/jupyterhub/kubespawner/pull/526) ([@pre-commit-ci](https://github.com/pre-commit-ci))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2021-07-21&to=2021-10-04&type=c))
+
+[@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2021-07-21..2021-10-04&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2021-07-21..2021-10-04&type=Issues)
+
 ### [1.1.0] - 2021-07-21
 
 #### Enhancements made
