@@ -7,6 +7,7 @@ implementation that should be used by JupyterHub.
 import asyncio
 import multiprocessing
 import os
+import signal
 import string
 import sys
 import warnings
@@ -2223,7 +2224,10 @@ class KubeSpawner(Spawner):
                 "%s reflector failed, halting Hub.",
                 key.title(),
             )
-            sys.exit(1)
+            # This won't be called from the main thread, so sys.exit
+            # will only kill current thread - not process.
+            # https://stackoverflow.com/a/7099229
+            os.kill(os.getpid(), signal.SIGINT)
 
         previous_reflector = self.__class__.reflectors.get(key)
 
