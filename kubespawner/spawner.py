@@ -1861,7 +1861,7 @@ class KubeSpawner(Spawner):
             real_cmd = self.cmd + args
         elif args:
             self.log.warning(
-                f"Ignoring argumetns when using implicit command from image: {args}."
+                f"Ignoring arguments when using implicit command from image: {args}."
                 " Set KubeSpawner.cmd explicitly to support passing cli arguments."
             )
 
