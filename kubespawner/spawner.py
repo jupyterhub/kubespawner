@@ -1855,10 +1855,15 @@ class KubeSpawner(Spawner):
         else:
             psc = self.pod_security_context
 
+        args = self.get_args()
+        real_cmd = None
         if self.cmd:
-            real_cmd = self.cmd + self.get_args()
-        else:
-            real_cmd = None
+            real_cmd = self.cmd + args
+        elif args:
+            self.log.warning(
+                f"Ignoring argumetns when using implicit command from image: {args}."
+                " Set KubeSpawner.cmd explicitly to support passing cli arguments."
+            )
 
         labels = self._build_pod_labels(self._expand_all(self.extra_labels))
         annotations = self._build_common_annotations(
