@@ -66,7 +66,7 @@ root_doc = master_doc = 'index'
 
 # General information about the project.
 project = 'kubespawner'
-copyright = '2017, Project Jupyter'
+copyright = '2021, Project Jupyter'
 author = 'Project Jupyter'
 
 
@@ -117,68 +117,6 @@ html_theme = 'sphinx_rtd_theme'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
-
-
-# -- Options for HTMLHelp output ------------------------------------------
-
-# Output file base name for HTML help builder.
-htmlhelp_basename = 'Kubespawnerdoc'
-
-
-# -- Options for LaTeX output ---------------------------------------------
-
-latex_elements = {
-    # The paper size ('letterpaper' or 'a4paper').
-    #
-    # 'papersize': 'letterpaper',
-    # The font size ('10pt', '11pt' or '12pt').
-    #
-    # 'pointsize': '10pt',
-    # Additional stuff for the LaTeX preamble.
-    #
-    # 'preamble': '',
-    # Latex figure (float) alignment
-    #
-    # 'figure_align': 'htbp',
-}
-
-# Grouping the document tree into LaTeX files. List of tuples
-# (source start file, target name, title,
-#  author, documentclass [howto, manual, or own class]).
-latex_documents = [
-    (
-        root_doc,
-        'Kubespawner.tex',
-        'Kubespawner Documentation',
-        'Project Jupyter',
-        'manual',
-    ),
-]
-
-
-# -- Options for manual page output ---------------------------------------
-
-# One entry per manual page. List of tuples
-# (source start file, name, description, authors, manual section).
-man_pages = [(root_doc, 'kubespawner', 'Kubespawner Documentation', [author], 1)]
-
-
-# -- Options for Texinfo output -------------------------------------------
-
-# Grouping the document tree into Texinfo files. List of tuples
-# (source start file, target name, title, author,
-#  dir menu entry, description, category)
-texinfo_documents = [
-    (
-        root_doc,
-        'Kubespawner',
-        'Kubespawner Documentation',
-        author,
-        'Kubespawner',
-        'One line description of project.',
-        'Miscellaneous',
-    ),
-]
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
