@@ -42,7 +42,7 @@ For small changes (like typos) you do not need to setup anything locally. For
 larger changes we recommend you build the documentation locally so you can see
 the end product in its full glory.
 
-To make edits through the GitHub website visit https://github.com/jupyterhub/kubespawner/tree/master/docs/source, open the file you would like to edit and then click "edit". GitHub will
+To make edits through the GitHub website visit https://github.com/jupyterhub/kubespawner/tree/HEAD/docs/source, open the file you would like to edit and then click "edit". GitHub will
 walk you through the process of proposing your change ("making a Pull Request").
 
 A brief guide to setting up for local development
