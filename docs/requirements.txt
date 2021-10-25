@@ -1,7 +1,8 @@
+autodoc_traits
 pyyaml
 recommonmark==0.4.0
 setuptools
-sphinx>=1.7
+sphinx>=1.7,<4
 sphinx-copybutton
 sphinx_rtd_theme
 traitlets>=4.1

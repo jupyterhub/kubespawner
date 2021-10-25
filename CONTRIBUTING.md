@@ -48,15 +48,13 @@ walk you through the process of proposing your change ("making a Pull Request").
 A brief guide to setting up for local development
 
 ```sh
-git clone https://github.com/jupyterhub/kubespawner.git
-cd kubespawner/docs
-# create a new environment ...
-conda create -n kubespawner --file environment.yml
-# ... or update your environment
-conda env update --file environment.yml
-# activate the environment
-conda activate kubespawner
-# build the documentation
+# Installing kubespawner itself is required as its source code
+# is inspected to construct the reference documentation.
+pip install -e .
+
+cd docs
+pip install -r requirements.txt
+
 make html
 ```
 
