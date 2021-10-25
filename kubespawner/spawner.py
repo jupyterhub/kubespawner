@@ -1734,7 +1734,7 @@ class KubeSpawner(Spawner):
 
     def _build_common_labels(self, extra_labels):
         # Default set of labels, picked up from
-        # https://github.com/kubernetes/helm/blob/master/docs/chart_best_practices/labels.md
+        # https://github.com/helm/helm-www/blob/HEAD/content/en/docs/chart_best_practices/labels.md
         labels = {
             'hub.jupyter.org/username': escapism.escape(
                 self.user.name, safe=self.safe_chars, escape_char='-'

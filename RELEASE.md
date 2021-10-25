@@ -20,13 +20,13 @@ For you to follow along according to these instructions, you need:
    github-activity jupyterhub/kubespawner --output tmp-changelog-prep.md
    ```
 
-1. Once the changelog is up to date, checkout master and make sure it is up to date and clean.
+1. Once the changelog is up to date, checkout main and make sure it is up to date and clean.
 
    ```bash
    ORIGIN=${ORIGIN:-origin} # set to the canonical remote, e.g. 'upstream' if 'origin' is not the official repo
-   git checkout master
-   git fetch $ORIGIN master
-   git reset --hard $ORIGIN/master
+   git checkout main
+   git fetch $ORIGIN main
+   git reset --hard $ORIGIN/main
    # WARNING! This next command deletes any untracked files in the repo
    git clean -xfd
    ```
@@ -42,20 +42,20 @@ For you to follow along according to these instructions, you need:
    git log
    ```
 
-1. Push your two commits to master along with the annotated tags referencing
-   commits on master. TravisCI will trigger automatic deployment of the pushed
-   tag.
+1. Push your two commits to main along with the annotated tags referencing
+   commits on main. A GitHub workflow will trigger on the pushed git tag and
+   publish to PyPI.
 
    ```bash
    # pushing the commits standalone allows you to
    # ensure you don't end up only pushing the tag
    # because the commit were rejected but the tag
    # wasn't
-   git push $ORIGIN master
+   git push $ORIGIN main
 
    # if you could push the commits without issues
    # go ahead and push the tag also
-   git push --follow-tags $ORIGIN master
+   git push --follow-tags $ORIGIN main
    ```
 
 1. Verify that [the GitHub

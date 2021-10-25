@@ -61,8 +61,8 @@ source_parsers = {
 # source_suffix = ['.rst', '.md']
 source_suffix = ['.rst', '.md']
 
-# The master toctree document.
-master_doc = 'index'
+# The root toctree document.
+root_doc = master_doc = 'index'
 
 # General information about the project.
 project = 'kubespawner'
@@ -147,7 +147,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (
-        master_doc,
+        root_doc,
         'Kubespawner.tex',
         'Kubespawner Documentation',
         'Project Jupyter',
@@ -160,7 +160,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, 'kubespawner', 'Kubespawner Documentation', [author], 1)]
+man_pages = [(root_doc, 'kubespawner', 'Kubespawner Documentation', [author], 1)]
 
 
 # -- Options for Texinfo output -------------------------------------------
@@ -170,7 +170,7 @@ man_pages = [(master_doc, 'kubespawner', 'Kubespawner Documentation', [author], 
 #  dir menu entry, description, category)
 texinfo_documents = [
     (
-        master_doc,
+        root_doc,
         'Kubespawner',
         'Kubespawner Documentation',
         author,
