@@ -1,5 +1,5 @@
 # This is a GitHub workflow defining a set of jobs with a set of steps.
-# ref: https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions
+# ref: https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions
 #
 name: Publish
 
@@ -7,17 +7,6 @@ name: Publish
 on:
   push:
     tags: "[0-9]+.[0-9]+.[0-9]+*"
-
-defaults:
-  run:
-    # Declare bash be used by default in this workflow's "run" steps.
-    #
-    # NOTE: bash will by default run with:
-    #   --noprofile: Ignore ~/.profile etc.
-    #   --norc:      Ignore ~/.bashrc etc.
-    #   -e:          Exit directly on errors
-    #   -o pipefail: Don't mask errors from a command piped into another command
-    shell: bash
 
 jobs:
   # Builds and pushes docker images to DockerHub and package the Helm chart and
