@@ -2105,7 +2105,7 @@ class KubeSpawner(Spawner):
             return
 
         self.log.debug('progress generator: %s', self.pod_name)
-        start_future = None
+        start_future = self._start_future
         progress = 0
         next_event = 0
 
@@ -2116,7 +2116,7 @@ class KubeSpawner(Spawner):
             # progress() will be invoked via self.start(), so what happen first?
             # Due to this, the logic below is to avoid making an assumption that
             # self._start_future was set before this function was called.
-            if start_future == None and self._start_future:
+            if start_future is None and self._start_future:
                 start_future = self._start_future
 
             # Ensure we capture all events by inspecting events a final time
