@@ -6,7 +6,33 @@
 
 ## 1.1
 
-### 1.1.1
+### [1.1.2] - 2021-11-03
+
+#### Bugs fixed
+
+- Fix race condition between spawn() calling \_start() and progress() [#511](https://github.com/jupyterhub/kubespawner/pull/511) ([@consideRatio](https://github.com/consideRatio))
+
+#### Maintenance and upkeep improvements
+
+- Rename master to main [#535](https://github.com/jupyterhub/kubespawner/pull/535) ([@consideRatio](https://github.com/consideRatio))
+- Remove .pylintrc config [#534](https://github.com/jupyterhub/kubespawner/pull/534) ([@consideRatio](https://github.com/consideRatio))
+- Warn about cli args being ignored when KubeSpawner.cmd is not set [#533](https://github.com/jupyterhub/kubespawner/pull/533) ([@minrk](https://github.com/minrk))
+
+#### Other merged PRs
+
+- ci: misc fixes, don't run tests on markdown changes, etc [#539](https://github.com/jupyterhub/kubespawner/pull/539) ([@consideRatio](https://github.com/consideRatio))
+- docs: require sphinx >=2 [#538](https://github.com/jupyterhub/kubespawner/pull/538) ([@consideRatio](https://github.com/consideRatio))
+- [pre-commit.ci] pre-commit autoupdate [#537](https://github.com/jupyterhub/kubespawner/pull/537) ([@pre-commit-ci](https://github.com/pre-commit-ci))
+- Update our docs config [#536](https://github.com/jupyterhub/kubespawner/pull/536) ([@consideRatio](https://github.com/consideRatio))
+- [pre-commit.ci] pre-commit autoupdate [#530](https://github.com/jupyterhub/kubespawner/pull/530) ([@pre-commit-ci](https://github.com/pre-commit-ci))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2021-10-04&to=2021-11-03&type=c))
+
+[@athornton](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aathornton+updated%3A2021-10-04..2021-11-03&type=Issues) | [@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2021-10-04..2021-11-03&type=Issues) | [@manics](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2021-10-04..2021-11-03&type=Issues) | [@minrk](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2021-10-04..2021-11-03&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Apre-commit-ci+updated%3A2021-10-04..2021-11-03&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2021-10-04..2021-11-03&type=Issues)
+
+### [1.1.1] - 2021-10-04
 
 #### Bugs fixed
 
@@ -381,6 +407,8 @@ Change highlights:
 - Numerous bugfixes
 
 [unreleased]: https://github.com/jupyterhub/kubespawner/compare/1.1.0...HEAD
+[1.1.2]: https://github.com/jupyterhub/kubespawner/compare/1.1.1...1.1.2
+[1.1.1]: https://github.com/jupyterhub/kubespawner/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/jupyterhub/kubespawner/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/jupyterhub/kubespawner/compare/0.16.1...1.0.0
 [0.16.1]: https://github.com/jupyterhub/kubespawner/compare/0.16.0...0.16.1
