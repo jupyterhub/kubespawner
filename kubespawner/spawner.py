@@ -224,6 +224,8 @@ class KubeSpawner(Spawner):
         if self.port == 0:
             # Our default port is 8888
             self.port = 8888
+        # The attribute needs to exist, even though it is unset to start with
+        self._start_future = None
 
     def _set_k8s_client_configuration(self):
         # The actual (singleton) Kubernetes client will be created
