@@ -64,7 +64,7 @@ def make_pod(
     fs_gid=None,
     supplemental_gids=None,
     privileged=False,
-    allow_privilege_escalation=True,
+    allow_privilege_escalation=False,
     container_security_context=None,
     pod_security_context=None,
     env=None,
@@ -166,6 +166,7 @@ def make_pod(
 
     allow_privilege_escalation:
         Controls whether a process can gain more privileges than its parent process.
+        Functionally, determines if setuid binaries (like sudo) work.
 
     container_security_context:
         A kubernetes securityContext to apply to the container.
@@ -424,8 +425,8 @@ def make_pod(
         csc["runAsGroup"] = int(gid)
     if privileged:  # false as default
         csc["privileged"] = True
-    if not allow_privilege_escalation:  # true as default
-        csc["allowPrivilegeEscalation"] = False
+    if allow_privilege_escalation is not None:  # false as default
+        csc["allowPrivilegeEscalation"] = allow_privilege_escalation
     if container_security_context:
         for key in container_security_context.keys():
             if "_" in key:

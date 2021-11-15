@@ -913,13 +913,18 @@ class KubeSpawner(Spawner):
     )
 
     allow_privilege_escalation = Bool(
-        True,
+        False,
+        allow_none=True,
         config=True,
         help="""
         Controls whether a process can gain more privileges than its parent process.
 
+        When set to False (the default), the primary user visible effect is that
+        setuid binaries (like sudo) will no longer work.
+
+        When set to None, the defaults for the cluster are respected.
+
         This bool directly controls whether the no_new_privs flag gets set on the container
-        process.
 
         AllowPrivilegeEscalation is true always when the container is:
         1) run as Privileged OR 2) has CAP_SYS_ADMIN.
