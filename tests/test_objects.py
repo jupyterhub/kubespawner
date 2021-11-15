@@ -38,6 +38,7 @@ def test_make_simplest_pod():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -75,6 +76,7 @@ def test_make_labeled_pod():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -116,6 +118,7 @@ def test_make_annotated_pod():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -158,6 +161,7 @@ def test_make_pod_with_image_pull_secrets_simplified_format():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -200,6 +204,7 @@ def test_make_pod_with_image_pull_secrets_k8s_native_format():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -234,7 +239,11 @@ def test_set_container_uid_and_gid():
             'automountServiceAccountToken': False,
             "containers": [
                 {
-                    "securityContext": {"runAsUser": 0, "runAsGroup": 0},
+                    "securityContext": {
+                        "runAsUser": 0,
+                        "runAsGroup": 0,
+                        "allowPrivilegeEscalation": False,
+                    },
                     "env": [],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
@@ -279,6 +288,7 @@ def test_set_container_uid_and_pod_fs_gid():
                 {
                     "securityContext": {
                         "runAsUser": 1000,
+                        "allowPrivilegeEscalation": False,
                     },
                     "env": [],
                     "name": "notebook",
@@ -327,6 +337,7 @@ def test_set_pod_supplemental_gids():
                 {
                     "securityContext": {
                         "runAsUser": 1000,
+                        "allowPrivilegeEscalation": False,
                     },
                     "env": [],
                     "name": "notebook",
@@ -381,6 +392,7 @@ def test_privileged_container():
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {
                         "privileged": True,
+                        "allowPrivilegeEscalation": False,
                     },
                     'volumeMounts': [],
                 }
@@ -481,6 +493,7 @@ def test_pod_security_context_container():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -656,6 +669,7 @@ def test_make_pod_resources_all():
                         "limits": {"cpu": 2, "memory": '1Gi'},
                         "requests": {"cpu": 1, "memory": '512Mi'},
                     },
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -754,6 +768,7 @@ def test_make_pod_with_env():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -845,6 +860,7 @@ def test_make_pod_with_env_dependency_sorted():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -889,6 +905,7 @@ def test_make_pod_with_lifecycle():
                     "lifecycle": {
                         "preStop": {"exec": {"command": ["/bin/sh", "test"]}}
                     },
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -949,6 +966,7 @@ def test_make_pod_with_init_containers():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             "initContainers": [
@@ -1013,6 +1031,7 @@ def test_make_pod_with_extra_container_config():
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     'envFrom': [{'configMapRef': {'name': 'special-config'}}],
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -1067,6 +1086,7 @@ def test_make_pod_with_extra_pod_config():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'volumes': [],
@@ -1122,6 +1142,7 @@ def test_make_pod_with_extra_containers():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 },
                 {
                     'name': 'crontab',
@@ -1187,6 +1208,7 @@ def test_make_pod_with_extra_resources():
                             "nvidia.com/gpu": "3",
                         },
                     },
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -1305,6 +1327,7 @@ def test_make_pod_with_service_account():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -1344,6 +1367,7 @@ def test_make_pod_with_service_account_and_with_automount_sa_token():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -1383,6 +1407,7 @@ def test_make_pod_with_service_account_and_with_negative_automount_sa_token():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -1421,6 +1446,7 @@ def test_make_pod_with_automount_service_account_token():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -1458,6 +1484,7 @@ def test_make_pod_with_negative_automount_service_account_token():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -1499,6 +1526,7 @@ def test_make_pod_with_scheduler_name():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -1546,6 +1574,7 @@ def test_make_pod_with_tolerations():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -1598,6 +1627,7 @@ def test_make_pod_with_node_affinity_preferred():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -1651,6 +1681,7 @@ def test_make_pod_with_node_affinity_required():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -1712,6 +1743,7 @@ def test_make_pod_with_pod_affinity_preferred():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -1768,6 +1800,7 @@ def test_make_pod_with_pod_affinity_required():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -1827,6 +1860,7 @@ def test_make_pod_with_pod_anti_affinity_preferred():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -1883,6 +1917,7 @@ def test_make_pod_with_pod_anti_affinity_required():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -1929,6 +1964,7 @@ def test_make_pod_with_priority_class_name():
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
@@ -2196,6 +2232,7 @@ def test_make_pod_with_ssl():
                     ],
                     'workingDir': '/',
                     "resources": {"limits": {}, "requests": {}},
+                    "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
             'restartPolicy': 'OnFailure',
