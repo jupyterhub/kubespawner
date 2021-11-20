@@ -10,7 +10,7 @@
 
 #### Breaking changes
 
-A breaking change was introduced in [#545](https://github.com/jupyterhub/kubespawner/pull/545), making the default value of `allow_privilege_escalation` be `False`. Practically a consequence of this is that a user can't use `sudo` unless `allow_privilege_escalation` is explicitly set to `True`. Technically it means that the JupyterHub user Pod that KubeSpawner creates will have a container with a `securityContext` that has `allowPrivilegeEscalation` set to `false` by default now.
+A breaking change was introduced in [#545](https://github.com/jupyterhub/kubespawner/pull/545), making the default value of `allow_privilege_escalation` be `False`. This means a user can't use `sudo` unless `allow_privilege_escalation` is explicitly set to `True`. The JupyterHub user Pod that KubeSpawner creates will have a container with a `securityContext` that has `allowPrivilegeEscalation` set to `false` by default.
 
 For reference, the following can be read about `allowPrivilegeEscalation` in [Kubernetes official documentation](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/):
 
