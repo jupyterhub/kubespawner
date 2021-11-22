@@ -16,7 +16,7 @@ For reference, the following can be read about `allowPrivilegeEscalation` in [Ku
 
 > AllowPrivilegeEscalation: Controls whether a process can gain more privileges than its parent process. This bool directly controls whether the `no_new_privs` flag gets set on the container process. AllowPrivilegeEscalation is true always when the container is: 1) run as `Privileged` OR 2) has `CAP_SYS_ADMIN`.
 
-To revert to the previous behavior, set `allow_privilege_escalation` explicitly to `None`.
+To revert to the previous behavior of using the cluster's default, set `allow_privilege_escalation` explicitly to `None`.
 
 #### Bugs fixed
 
