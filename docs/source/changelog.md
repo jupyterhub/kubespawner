@@ -4,6 +4,31 @@
 
 ## [Unreleased]
 
+## 2.0
+
+### 2.0.0 - 2021-11-28
+
+#### Breaking changes
+
+A breaking change was introduced in [#545](https://github.com/jupyterhub/kubespawner/pull/545), making the default value of `allow_privilege_escalation` be `False`. This means a user can't use `sudo` unless `allow_privilege_escalation` is explicitly set to `True`. The JupyterHub user Pod that KubeSpawner creates will have a container with a `securityContext` that has `allowPrivilegeEscalation` set to `false` by default.
+
+For reference, the following can be read about `allowPrivilegeEscalation` in [Kubernetes official documentation](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/):
+
+> AllowPrivilegeEscalation: Controls whether a process can gain more privileges than its parent process. This bool directly controls whether the `no_new_privs` flag gets set on the container process. AllowPrivilegeEscalation is true always when the container is: 1) run as `Privileged` OR 2) has `CAP_SYS_ADMIN`.
+
+To revert to the previous behavior of using the cluster's default, set `allow_privilege_escalation` explicitly to `None`.
+
+#### Bugs fixed
+
+- Default allow_privilege_escalation to False [#545](https://github.com/jupyterhub/kubespawner/pull/545) ([@yuvipanda](https://github.com/yuvipanda))
+- Ensure that the \_start_future attribute exists. [#541](https://github.com/jupyterhub/kubespawner/pull/541) ([@athornton](https://github.com/athornton))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2021-11-03&to=2021-11-19&type=c))
+
+[@athornton](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aathornton+updated%3A2021-11-03..2021-11-19&type=Issues) | [@minrk](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2021-11-03..2021-11-19&type=Issues) | [@mriedem](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amriedem+updated%3A2021-11-03..2021-11-19&type=Issues) | [@welcome](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Awelcome+updated%3A2021-11-03..2021-11-19&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2021-11-03..2021-11-19&type=Issues)
+
 ## 1.1
 
 ### [1.1.2] - 2021-11-03
