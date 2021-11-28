@@ -2174,7 +2174,7 @@ class KubeSpawner(Spawner):
 
         break_while_loop = False
         while True:
-            # This logic avoids a race condition. self._start() will invoke
+            # This logic avoids a race condition. self._start() will be invoked by
             # self.start() and almost directly set self._start_future. But,
             # progress() will be invoked via self.start(), so what happen first?
             # Due to this, the logic below is to avoid making an assumption that
