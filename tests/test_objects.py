@@ -2,7 +2,7 @@
 Test functions used to create k8s objects
 """
 import pytest
-from kubernetes.client import ApiClient
+from kubernetes_asyncio.client import ApiClient
 
 from kubespawner.objects import make_ingress
 from kubespawner.objects import make_namespace
@@ -12,7 +12,8 @@ from kubespawner.objects import make_pvc
 api_client = ApiClient()
 
 
-def test_make_simplest_pod():
+@pytest.mark.asyncio
+async def test_make_simplest_pod():
     """
     Test specification of the simplest possible pod specification
     """
@@ -49,7 +50,8 @@ def test_make_simplest_pod():
     }
 
 
-def test_make_labeled_pod():
+@pytest.mark.asyncio
+async def test_make_labeled_pod():
     """
     Test specification of the simplest possible pod specification with labels
     """
@@ -87,7 +89,8 @@ def test_make_labeled_pod():
     }
 
 
-def test_make_annotated_pod():
+@pytest.mark.asyncio
+async def test_make_annotated_pod():
     """
     Test specification of the simplest possible pod specification with annotations
     """
@@ -129,7 +132,8 @@ def test_make_annotated_pod():
     }
 
 
-def test_make_pod_with_image_pull_secrets_simplified_format():
+@pytest.mark.asyncio
+async def test_make_pod_with_image_pull_secrets_simplified_format():
     """
     Test specification of the simplest possible pod specification
     """
@@ -172,7 +176,8 @@ def test_make_pod_with_image_pull_secrets_simplified_format():
     }
 
 
-def test_make_pod_with_image_pull_secrets_k8s_native_format():
+@pytest.mark.asyncio
+async def test_make_pod_with_image_pull_secrets_k8s_native_format():
     """
     Test specification of the simplest possible pod specification
     """
@@ -215,7 +220,8 @@ def test_make_pod_with_image_pull_secrets_k8s_native_format():
     }
 
 
-def test_set_container_uid_and_gid():
+@pytest.mark.asyncio
+async def test_set_container_uid_and_gid():
     """
     Test specification of the simplest possible pod specification
     """
@@ -262,7 +268,8 @@ def test_set_container_uid_and_gid():
     }
 
 
-def test_set_container_uid_and_pod_fs_gid():
+@pytest.mark.asyncio
+async def test_set_container_uid_and_pod_fs_gid():
     """
     Test specification of the simplest possible pod specification
     """
@@ -311,7 +318,8 @@ def test_set_container_uid_and_pod_fs_gid():
     }
 
 
-def test_set_pod_supplemental_gids():
+@pytest.mark.asyncio
+async def test_set_pod_supplemental_gids():
     """
     Test specification of the simplest possible pod specification
     """
@@ -360,7 +368,8 @@ def test_set_pod_supplemental_gids():
     }
 
 
-def test_privileged_container():
+@pytest.mark.asyncio
+async def test_privileged_container():
     """
     Test specification of the container to run as privileged
     """
@@ -405,7 +414,8 @@ def test_privileged_container():
     }
 
 
-def test_allow_privilege_escalation_container():
+@pytest.mark.asyncio
+async def test_allow_privilege_escalation_container():
     """
     Test specification of the container to run without privilege escalation (AllowPrivilegeEscalation=False).
     """
@@ -447,7 +457,8 @@ def test_allow_privilege_escalation_container():
     }
 
 
-def test_pod_security_context_container():
+@pytest.mark.asyncio
+async def test_pod_security_context_container():
     """
     Test specification of the container to run with a security context.
 
@@ -516,7 +527,8 @@ def test_pod_security_context_container():
     }
 
 
-def test_container_security_context_container():
+@pytest.mark.asyncio
+async def test_container_security_context_container():
     """
     Test specification of the container to run with a security context.
 
@@ -588,7 +600,8 @@ def test_container_security_context_container():
     }
 
 
-def test_bad_pod_security_context_container():
+@pytest.mark.asyncio
+async def test_bad_pod_security_context_container():
     """
     Test specification of the container to run with a security context.
 
@@ -609,7 +622,8 @@ def test_bad_pod_security_context_container():
         )
 
 
-def test_bad_container_security_context_container():
+@pytest.mark.asyncio
+async def test_bad_container_security_context_container():
     """
     Test specification of the container to run with a security context.
 
@@ -630,7 +644,8 @@ def test_bad_container_security_context_container():
         )
 
 
-def test_make_pod_resources_all():
+@pytest.mark.asyncio
+async def test_make_pod_resources_all():
     """
     Test specifying all possible resource limits & guarantees
     """
@@ -680,7 +695,8 @@ def test_make_pod_resources_all():
     }
 
 
-def test_make_pod_with_env():
+@pytest.mark.asyncio
+async def test_make_pod_with_env():
     """
     Test specification of a pod with custom environment variables.
     """
@@ -779,7 +795,8 @@ def test_make_pod_with_env():
     }
 
 
-def test_make_pod_with_env_dependency_sorted():
+@pytest.mark.asyncio
+async def test_make_pod_with_env_dependency_sorted():
     """
     Test specification of a pod with custom environment variables that involve
     references to other environment variables. Note that KubeSpawner also tries
@@ -871,7 +888,8 @@ def test_make_pod_with_env_dependency_sorted():
     }
 
 
-def test_make_pod_with_lifecycle():
+@pytest.mark.asyncio
+async def test_make_pod_with_lifecycle():
     """
     Test specification of a pod with lifecycle
     """
@@ -916,7 +934,8 @@ def test_make_pod_with_lifecycle():
     }
 
 
-def test_make_pod_with_init_containers():
+@pytest.mark.asyncio
+async def test_make_pod_with_init_containers():
     """
     Test specification of a pod with initContainers
     """
@@ -997,7 +1016,8 @@ def test_make_pod_with_init_containers():
     }
 
 
-def test_make_pod_with_extra_container_config():
+@pytest.mark.asyncio
+async def test_make_pod_with_extra_container_config():
     """
     Test specification of a pod with initContainers
     """
@@ -1042,7 +1062,8 @@ def test_make_pod_with_extra_container_config():
     }
 
 
-def test_make_pod_with_extra_pod_config():
+@pytest.mark.asyncio
+async def test_make_pod_with_extra_pod_config():
     """
     Test specification of a pod with initContainers
     """
@@ -1105,7 +1126,8 @@ def test_make_pod_with_extra_pod_config():
     }
 
 
-def test_make_pod_with_extra_containers():
+@pytest.mark.asyncio
+async def test_make_pod_with_extra_containers():
     """
     Test specification of a pod with initContainers
     """
@@ -1158,7 +1180,8 @@ def test_make_pod_with_extra_containers():
     }
 
 
-def test_make_pod_with_extra_resources():
+@pytest.mark.asyncio
+async def test_make_pod_with_extra_resources():
     """
     Test specification of extra resources (like GPUs)
     """
@@ -1219,7 +1242,8 @@ def test_make_pod_with_extra_resources():
     }
 
 
-def test_make_pvc_simple():
+@pytest.mark.asyncio
+async def test_make_pvc_simple():
     """
     Test specification of the simplest possible pvc specification
     """
@@ -1240,7 +1264,8 @@ def test_make_pvc_simple():
     }
 
 
-def test_make_pvc_empty_storage_class():
+@pytest.mark.asyncio
+async def test_make_pvc_empty_storage_class():
     """
     Test specification of pvc with empty storage class
     """
@@ -1269,7 +1294,8 @@ def test_make_pvc_empty_storage_class():
     }
 
 
-def test_make_resources_all():
+@pytest.mark.asyncio
+async def test_make_resources_all():
     """
     Test specifying all possible resource limits & guarantees
     """
@@ -1301,7 +1327,8 @@ def test_make_resources_all():
     }
 
 
-def test_make_pod_with_service_account():
+@pytest.mark.asyncio
+async def test_make_pod_with_service_account():
     """
     Test specification of the simplest possible pod specification with non-default service account.
     """
@@ -1339,7 +1366,8 @@ def test_make_pod_with_service_account():
     }
 
 
-def test_make_pod_with_service_account_and_with_automount_sa_token():
+@pytest.mark.asyncio
+async def test_make_pod_with_service_account_and_with_automount_sa_token():
     """
     Test specification of the simplest possible pod specification with non-default service account and automount service account token.
     """
@@ -1379,7 +1407,8 @@ def test_make_pod_with_service_account_and_with_automount_sa_token():
     }
 
 
-def test_make_pod_with_service_account_and_with_negative_automount_sa_token():
+@pytest.mark.asyncio
+async def test_make_pod_with_service_account_and_with_negative_automount_sa_token():
     """
     Test specification of the simplest possible pod specification with non-default service account and negative automount service account token.
     """
@@ -1419,7 +1448,8 @@ def test_make_pod_with_service_account_and_with_negative_automount_sa_token():
     }
 
 
-def test_make_pod_with_automount_service_account_token():
+@pytest.mark.asyncio
+async def test_make_pod_with_automount_service_account_token():
     """
     Test specification of the simplest possible pod specification with automount service account token.
     """
@@ -1457,7 +1487,8 @@ def test_make_pod_with_automount_service_account_token():
     }
 
 
-def test_make_pod_with_negative_automount_service_account_token():
+@pytest.mark.asyncio
+async def test_make_pod_with_negative_automount_service_account_token():
     """
     Test specification of the simplest possible pod specification with negative automount service account token.
     """
@@ -1495,7 +1526,8 @@ def test_make_pod_with_negative_automount_service_account_token():
     }
 
 
-def test_make_pod_with_scheduler_name():
+@pytest.mark.asyncio
+async def test_make_pod_with_scheduler_name():
     """
     Test specification of the simplest possible pod specification with non-default scheduler name
     """
@@ -1538,7 +1570,8 @@ def test_make_pod_with_scheduler_name():
     }
 
 
-def test_make_pod_with_tolerations():
+@pytest.mark.asyncio
+async def test_make_pod_with_tolerations():
     """
     Test specification of the simplest possible pod specification with non-empty tolerations
     """
@@ -1586,7 +1619,8 @@ def test_make_pod_with_tolerations():
     }
 
 
-def test_make_pod_with_node_affinity_preferred():
+@pytest.mark.asyncio
+async def test_make_pod_with_node_affinity_preferred():
     """
     Test specification of the simplest possible pod specification with non-empty node_affinity_preferred
     """
@@ -1643,7 +1677,8 @@ def test_make_pod_with_node_affinity_preferred():
     }
 
 
-def test_make_pod_with_node_affinity_required():
+@pytest.mark.asyncio
+async def test_make_pod_with_node_affinity_required():
     """
     Test specification of the simplest possible pod specification with non-empty node_affinity_required
     """
@@ -1699,7 +1734,8 @@ def test_make_pod_with_node_affinity_required():
     }
 
 
-def test_make_pod_with_pod_affinity_preferred():
+@pytest.mark.asyncio
+async def test_make_pod_with_pod_affinity_preferred():
     """
     Test specification of the simplest possible pod specification with non-empty pod_affinity_preferred
     """
@@ -1759,7 +1795,8 @@ def test_make_pod_with_pod_affinity_preferred():
     }
 
 
-def test_make_pod_with_pod_affinity_required():
+@pytest.mark.asyncio    
+async def test_make_pod_with_pod_affinity_required():
     """
     Test specification of the simplest possible pod specification with non-empty pod_affinity_required
     """
@@ -1816,7 +1853,8 @@ def test_make_pod_with_pod_affinity_required():
     }
 
 
-def test_make_pod_with_pod_anti_affinity_preferred():
+@pytest.mark.asyncio
+async def test_make_pod_with_pod_anti_affinity_preferred():
     """
     Test specification of the simplest possible pod specification with non-empty pod_anti_affinity_preferred
     """
@@ -1876,7 +1914,8 @@ def test_make_pod_with_pod_anti_affinity_preferred():
     }
 
 
-def test_make_pod_with_pod_anti_affinity_required():
+@pytest.mark.asyncio
+async def test_make_pod_with_pod_anti_affinity_required():
     """
     Test specification of the simplest possible pod specification with non-empty pod_anti_affinity_required
     """
@@ -1933,7 +1972,8 @@ def test_make_pod_with_pod_anti_affinity_required():
     }
 
 
-def test_make_pod_with_priority_class_name():
+@pytest.mark.asyncio
+async def test_make_pod_with_priority_class_name():
     """
     Test specification of the simplest possible pod specification with non-default priorityClassName set
     """
@@ -1983,7 +2023,8 @@ def test_make_pod_with_priority_class_name():
         ('http://[2001:db8::dead:babe]:9000', '2001:db8::dead:babe'),
     ],
 )
-def test_make_ingress(target, ip):
+@pytest.mark.asyncio
+async def test_make_ingress(target, ip):
     """
     Test specification of the ingress objects
     """
@@ -2076,7 +2117,8 @@ def test_make_ingress(target, ip):
     }
 
 
-def test_make_ingress_external_name():
+@pytest.mark.asyncio
+async def test_make_ingress_external_name():
     """
     Test specification of the ingress objects
     """
@@ -2154,7 +2196,8 @@ def test_make_ingress_external_name():
     }
 
 
-def test_make_namespace():
+@pytest.mark.asyncio
+async def test_make_namespace():
     labels = {
         'heritage': 'jupyterhub',
         'component': 'singleuser-server',
@@ -2174,7 +2217,8 @@ def test_make_namespace():
     }
 
 
-def test_make_pod_with_ssl():
+@pytest.mark.asyncio
+async def test_make_pod_with_ssl():
     """
     Test specification of a pod with ssl enabled
     """

@@ -13,14 +13,14 @@ if v[:2] < (3, 6):
 
 setup(
     name='jupyterhub-kubespawner',
-    version='2.0.1.dev',
+    version='2.1.0.dev',
     install_requires=[
         'async_generator>=1.8',
         'escapism',
         'python-slugify',
         'jupyterhub>=0.8',
         'jinja2',
-        'kubernetes>=10.1.0',
+        'kubernetes_asyncio',
         'urllib3',
         'pyYAML',
     ],

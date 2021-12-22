@@ -2,11 +2,11 @@ import copy
 
 import pytest
 from conftest import ExecError
-from kubernetes.client.models import V1Capabilities
-from kubernetes.client.models import V1Container
-from kubernetes.client.models import V1Lifecycle
-from kubernetes.client.models import V1PodSpec
-from kubernetes.client.models import V1SecurityContext
+from kubernetes_asyncio.client.models import V1Capabilities
+from kubernetes_asyncio.client.models import V1Container
+from kubernetes_asyncio.client.models import V1Lifecycle
+from kubernetes_asyncio.client.models import V1PodSpec
+from kubernetes_asyncio.client.models import V1SecurityContext
 
 from kubespawner.utils import _get_k8s_model_attribute
 from kubespawner.utils import get_k8s_model
@@ -33,16 +33,18 @@ def exec_error():
     1 / 0
 
 
-def test_exec(exec_python):
+@pytest.mark.asyncio
+async def test_exec(exec_python):
     """Test the exec fixture itself"""
-    r = exec_python(print_hello)
+    r = await exec_python(print_hello)
     print("result: %r" % r)
 
 
-def test_exec_error(exec_python):
+@pytest.mark.asyncio
+async def test_exec_error(exec_python):
     """Test the exec fixture error handling"""
     with pytest.raises(ExecError) as e:
-        exec_python(exec_error)
+        await exec_python(exec_error)
 
 
 def test__get_k8s_model_attribute():
@@ -98,8 +100,8 @@ def test_update_k8s_models_logger_warning():
 
 
 def test_get_k8s_model():
-    """Thest that passing either a kubernetes.client.models object or as a
-    dictionary to representing it get_k8s_model should work."""
+    """Test that passing either a kubernetes_asyncio.client.models object or
+    a dictionary to representing it get_k8s_model works."""
     # verify get_k8s_model for when passing dict objects
     v1_lifecycle_from_dict = get_k8s_model(
         V1Lifecycle,

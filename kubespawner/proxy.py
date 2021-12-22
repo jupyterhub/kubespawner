@@ -4,15 +4,15 @@ import string
 from concurrent.futures import ThreadPoolExecutor
 
 import escapism
-import kubernetes.config
 from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
 from kubernetes import client
 from tornado import gen
 from tornado.concurrent import run_on_executor
 from traitlets import Unicode
+from traitlets import default
 
-from .clients import shared_client
+from .clients import shared_client, K8sAsyncClientMixin
 from .objects import make_ingress
 from .reflector import ResourceReflector
 from .utils import generate_hashed_slug
@@ -43,30 +43,37 @@ class EndpointsReflector(ResourceReflector):
         return self.resources
 
 
-class KubeIngressProxy(Proxy):
-    namespace = Unicode(
-        config=True,
-        help="""
-        Kubernetes namespace to spawn ingresses for single-user servers in.
+class KubeIngressProxy(Proxy, K8sAsyncClientMixin):
 
-        If running inside a kubernetes cluster with service accounts enabled,
-        defaults to the current namespace. If not, defaults to 'default'
-        """,
-    )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    def _namespace_default(self):
-        """
-        Set namespace default to current namespace if running in a k8s cluster
+        # We use the maximum number of concurrent user server starts (and thus proxy adds)
+        # as our threadpool maximum. This ensures that contention here does not become
+        # an accidental bottleneck. Since we serialize our create operations, we only
+        # need 1x concurrent_spawn_limit, not 3x.
+        self.executor = ThreadPoolExecutor(max_workers=self.app.concurrent_spawn_limit)
 
-        If not in a k8s cluster with service accounts enabled, default to
-        'default'
-        """
-        ns_path = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
-        if os.path.exists(ns_path):
-            with open(ns_path) as f:
-                return f.read().strip()
-        return 'default'
+        # Global configuration before reflector.py code runs
+        self._set_k8s_client_configuration()
+        self.core_api = None  # defer until use: shared_client('CoreV1Api')
+        self.extension_api = None  # defer until use: shared_client('ExtensionsV1beta1Api')
 
+        labels = {
+            'component': self.component_label,
+            'hub.jupyter.org/proxy-route': 'true',
+        }
+        self.ingress_reflector = IngressReflector(
+            parent=self, namespace=self.namespace, labels=labels
+        )
+        self.service_reflector = ServiceReflector(
+            parent=self, namespace=self.namespace, labels=labels
+        )
+        self.endpoint_reflector = EndpointsReflector(
+            parent=self, namespace=self.namespace, labels=labels
+        )
+
+    ### Here through _namespace_default are traitlets shared with the spawner
     component_label = Unicode(
         'singleuser-server',
         config=True,
@@ -103,57 +110,40 @@ class KubeIngressProxy(Proxy):
         """,
     )
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    namespace = Unicode(
+        config=True,
+        help="""
+        Kubernetes namespace to spawn user pods in.
 
-        # We use the maximum number of concurrent user server starts (and thus proxy adds)
-        # as our threadpool maximum. This ensures that contention here does not become
-        # an accidental bottleneck. Since we serialize our create operations, we only
-        # need 1x concurrent_spawn_limit, not 3x.
-        self.executor = ThreadPoolExecutor(max_workers=self.app.concurrent_spawn_limit)
+        Assuming that you are not running with enable_user_namespaces
+        turned on, if running inside a kubernetes cluster with service
+        accounts enabled, defaults to the current namespace, and if not,
+        defaults to `default`.
 
-        # Global configuration before reflector.py code runs
-        self._set_k8s_client_configuration()
-        self.core_api = shared_client('CoreV1Api')
-        self.extension_api = shared_client('ExtensionsV1beta1Api')
+        If you are running with enable_user_namespaces, this parameter
+        is ignored in favor of the `user_namespace_template` template
+        resolved with the hub namespace and the user name, with the
+        caveat that if the hub namespace is `default` the user
+        namespace will have the prefix `user` rather than `default`.
+        """,
+    )
 
-        labels = {
-            'component': self.component_label,
-            'hub.jupyter.org/proxy-route': 'true',
-        }
-        self.ingress_reflector = IngressReflector(
-            parent=self, namespace=self.namespace, labels=labels
-        )
-        self.service_reflector = ServiceReflector(
-            parent=self, namespace=self.namespace, labels=labels
-        )
-        self.endpoint_reflector = EndpointsReflector(
-            parent=self, namespace=self.namespace, labels=labels
-        )
+    @default('namespace')
+    def _namespace_default(self):
+        """
+        Set namespace default to current namespace if running in a k8s cluster
+        with service accounts enabled.
 
-    def _set_k8s_client_configuration(self):
-        # The actual (singleton) Kubernetes client will be created
-        # in clients.py shared_client but the configuration
-        # for token / ca_cert / k8s api host is set globally
-        # in kubernetes.py syntax.  It is being set here
-        # and this method called prior to shared_client
-        # for readability / coupling with traitlets values
-        try:
-            kubernetes.config.load_incluster_config()
-        except kubernetes.config.ConfigException:
-            kubernetes.config.load_kube_config()
-        if self.k8s_api_ssl_ca_cert:
-            global_conf = client.Configuration.get_default_copy()
-            global_conf.ssl_ca_cert = self.k8s_api_ssl_ca_cert
-            client.Configuration.set_default(global_conf)
-        if self.k8s_api_host:
-            global_conf = client.Configuration.get_default_copy()
-            global_conf.host = self.k8s_api_host
-            client.Configuration.set_default(global_conf)
+        If not in a k8s cluster with service accounts enabled, default to
+        'default'
+        """
+        ns_path = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
+        if os.path.exists(ns_path):
+            with open(ns_path) as f:
+                return f.read().strip()
+        return 'default'
 
-    @run_on_executor
-    def asynchronize(self, method, *args, **kwargs):
-        return method(*args, **kwargs)
+    #### End shared-with-spawner traitlets
 
     def safe_name_for_routespec(self, routespec):
         safe_chars = set(string.ascii_lowercase + string.digits)
@@ -189,9 +179,7 @@ class KubeIngressProxy(Proxy):
 
         async def ensure_object(create_func, patch_func, body, kind):
             try:
-                resp = await self.asynchronize(
-                    create_func, namespace=self.namespace, body=body
-                )
+                resp = await create_func(namespace=self.namespace, body=body)
                 self.log.info('Created %s/%s', kind, safe_name)
             except client.rest.ApiException as e:
                 if e.status == 409:
@@ -199,8 +187,7 @@ class KubeIngressProxy(Proxy):
                     self.log.warn(
                         "Trying to patch %s/%s, it already exists", kind, safe_name
                     )
-                    resp = await self.asynchronize(
-                        patch_func,
+                    resp = await patch_func(
                         namespace=self.namespace,
                         body=body,
                         name=body.metadata.name,
@@ -209,6 +196,8 @@ class KubeIngressProxy(Proxy):
                     raise
 
         if endpoint is not None:
+            await self._ensure_core_api()
+            await self._ensure_extension_api()
             await ensure_object(
                 self.core_api.create_namespaced_endpoints,
                 self.core_api.patch_namespaced_endpoints,
@@ -222,12 +211,12 @@ class KubeIngressProxy(Proxy):
                 'Could not find endpoints/%s after creating it' % safe_name,
             )
         else:
-            delete_endpoint = self.asynchronize(
-                self.core_api.delete_namespaced_endpoints,
+            delete_endpoint = self.core_api.delete_namespaced_endpoints(
                 name=safe_name,
                 namespace=self.namespace,
                 body=client.V1DeleteOptions(grace_period_seconds=0),
-            )
+            )  # We want the future back, for the delete_if_exists call
+            # That sounded way more philosophical than I meant it to.
             await self.delete_if_exists('endpoint', safe_name, delete_endpoint)
 
         await ensure_object(
@@ -264,22 +253,21 @@ class KubeIngressProxy(Proxy):
 
         delete_options = client.V1DeleteOptions(grace_period_seconds=0)
 
-        delete_endpoint = self.asynchronize(
-            self.core_api.delete_namespaced_endpoints,
+        await self._ensure_core_api()
+        await self._ensure_extension_api()
+        delete_endpoint = self.core_api.delete_namespaced_endpoints(
             name=safe_name,
             namespace=self.namespace,
             body=delete_options,
         )
 
-        delete_service = self.asynchronize(
-            self.core_api.delete_namespaced_service,
+        delete_service = self.core_api.delete_namespaced_service(
             name=safe_name,
             namespace=self.namespace,
             body=delete_options,
         )
 
-        delete_ingress = self.asynchronize(
-            self.extension_api.delete_namespaced_ingress,
+        delete_ingress = self.extension_api.delete_namespaced_ingress(
             name=safe_name,
             namespace=self.namespace,
             body=delete_options,
