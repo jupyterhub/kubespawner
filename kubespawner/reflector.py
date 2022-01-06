@@ -330,6 +330,7 @@ class ResourceReflector(LoggingConfigurable):
                         resource.metadata.namespace,
                         resource.metadata.name
                     )
+                    wtype = watch_event['type']
                     if watch_event['type'] == 'DELETED':
                         # This is an atomic delete operation on the dictionary!
                         self.resources.pop(ref_key, None)

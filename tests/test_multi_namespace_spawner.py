@@ -73,17 +73,20 @@ async def test_multi_namespace_spawn():
     try:
         # start the spawner
         await spawner.start()
-
+        print("after start()")
         # verify the pod exists
         p_list = await client.list_namespaced_pod(kube_ns) 
         pods = p_list.items
         pod_names = [p.metadata.name for p in pods]
         assert "jupyter-%s" % spawner.user.name in pod_names
+        print("running")
         # verify poll while running
         status = await spawner.poll()
         assert status is None
+        print("polled")
         # stop the pod
         await spawner.stop()
+        print ("stopped")
         # verify pod is gone
         p_list = await client.list_namespaced_pod(kube_ns) 
         pods = p_list.items

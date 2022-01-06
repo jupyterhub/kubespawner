@@ -4,6 +4,7 @@ Test functions used to create k8s objects
 import pytest
 from kubernetes_asyncio.client import ApiClient
 
+from kubespawner.objects import make_event
 from kubespawner.objects import make_ingress
 from kubespawner.objects import make_namespace
 from kubespawner.objects import make_pod
@@ -2290,3 +2291,25 @@ async def test_make_pod_with_ssl():
         "kind": "Pod",
         "apiVersion": "v1",
     }
+
+@pytest.mark.asyncio
+async def test_make_event():
+    pod=make_pod(
+        name='test',
+        image='jupyter/singleuser:latest',
+        cmd=['jupyterhub-singleuser'],
+        port=8888,
+        image_pull_policy='IfNotPresent',
+        labels={"test": "true"},
+    )
+    serialized_event=api_client.sanitize_for_serialization(
+        make_event(involved_object=pod,
+                   message="pod created",
+                   reason="created")
+    )
+    assert serialized_event['message'] == "pod created"
+    assert serialized_event['reason'] == "created"
+    assert serialized_event['involvedObject']['kind'] == "Pod"
+    assert serialized_event['involvedObject']['name'] == "test"
+    
+        

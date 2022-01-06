@@ -2,13 +2,16 @@
 Helper methods for generating k8s API objects.
 """
 import base64
+import datetime
 import ipaddress
 import json
 import operator
 import os
+import random
 import re
 from urllib.parse import urlparse
 
+from kubernetes_asyncio.client.models import CoreV1Event
 from kubernetes_asyncio.client.models import V1Affinity
 from kubernetes_asyncio.client.models import V1Container
 from kubernetes_asyncio.client.models import V1ContainerPort
@@ -26,6 +29,7 @@ from kubernetes_asyncio.client.models import V1NodeSelector
 from kubernetes_asyncio.client.models import V1NodeSelectorRequirement
 from kubernetes_asyncio.client.models import V1NodeSelectorTerm
 from kubernetes_asyncio.client.models import V1ObjectMeta
+from kubernetes_asyncio.client.models import V1ObjectReference
 from kubernetes_asyncio.client.models import V1OwnerReference
 from kubernetes_asyncio.client.models import V1PersistentVolumeClaim
 from kubernetes_asyncio.client.models import V1PersistentVolumeClaimSpec
@@ -978,3 +982,42 @@ def make_namespace(name, labels=None, annotations=None):
     )
 
     return V1Namespace(metadata=metadata)
+
+def make_event(
+        involved_object,
+        labels=None,
+        annotations=None,
+        event_time=datetime.datetime.now(tz=datetime.timezone.utc),
+        message="",
+        reason="",
+        event_type="Normal"
+        ):
+    """
+    Make a k8s Event for watching in pod spawning.
+    """
+    metadata = V1ObjectMeta(
+        labels=(labels or {}).copy(),
+        annotations=(annotations or {}).copy(),
+        namespace=involved_object.metadata.namespace,
+        name=(f"{involved_object.metadata.name}."
+               + f"{hex(random.getrandbits(64))[2:]}")
+    )
+    uid=None
+    if hasattr(involved_object,"uid"):
+        uid=involved_object.uid
+    o_ref=V1ObjectReference(
+        api_version=involved_object.api_version,
+        kind=involved_object.kind,
+        name=involved_object.metadata.name,
+        namespace=involved_object.metadata.namespace,
+        uid=uid
+    )
+    return CoreV1Event(
+        event_time=event_time,
+        involved_object=o_ref,
+        kind='Event',
+        metadata=metadata,
+        message=message,
+        reason=reason,
+        type=event_type
+    )
