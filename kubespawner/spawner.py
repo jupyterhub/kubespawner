@@ -2214,7 +2214,8 @@ class KubeSpawner(Spawner):
 
             if break_while_loop:
                 break
-            await asyncio.sleep(1)
+            # Check for new events every 0.1s
+            await asyncio.sleep(0.1)
 
     def _start_reflector(
         self,
