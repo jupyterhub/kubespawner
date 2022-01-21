@@ -732,30 +732,16 @@ def make_ingress(name, routespec, target, labels, data):
     Returns an ingress, service, endpoint object that'll work for this service
     """
 
-    # move beta imports here,
-    # which are more sensitive to kubernetes version
-    # and will change when they move out of beta
-    # because of the API changes in 1.16, the import is tried conditionally
-    # to keep compatibility with older K8S versions
-
-    try:
-        from kubernetes_asyncio.client.models import (
-            ExtensionsV1beta1Ingress,
-            ExtensionsV1beta1IngressSpec,
-            ExtensionsV1beta1IngressRule,
-            ExtensionsV1beta1HTTPIngressRuleValue,
-            ExtensionsV1beta1HTTPIngressPath,
-            ExtensionsV1beta1IngressBackend,
-        )
-    except ImportError:
-        from kubernetes_asyncio.client.models import (
-            V1beta1Ingress as ExtensionsV1beta1Ingress,
-            V1beta1IngressSpec as ExtensionsV1beta1IngressSpec,
-            V1beta1IngressRule as ExtensionsV1beta1IngressRule,
-            V1beta1HTTPIngressRuleValue as ExtensionsV1beta1HTTPIngressRuleValue,
-            V1beta1HTTPIngressPath as ExtensionsV1beta1HTTPIngressPath,
-            V1beta1IngressBackend as ExtensionsV1beta1IngressBackend,
-        )
+    # We're removing the beta stuff, because we can force using a more
+    # recent version of kubernetes_asyncio; 1.19 is our floor.
+    from kubernetes_asyncio.client.models import (
+        V1Ingress,
+        V1IngressSpec,
+        V1IngressRule,
+        V1HTTPIngressRuleValue,
+        V1HTTPIngressPath,
+        V1IngressBackend,
+    )
 
     meta = V1ObjectMeta(
         name=name,
@@ -822,20 +808,19 @@ def make_ingress(name, routespec, target, labels, data):
         )
 
     # Make Ingress object
-    ingress = ExtensionsV1beta1Ingress(
+    ingress = V1Ingress(
         kind='Ingress',
         metadata=meta,
-        spec=ExtensionsV1beta1IngressSpec(
+        spec=V1IngressSpec(
             rules=[
-                ExtensionsV1beta1IngressRule(
+                V1IngressRule(
                     host=host,
-                    http=ExtensionsV1beta1HTTPIngressRuleValue(
+                    http=V1HTTPIngressRuleValue(
                         paths=[
-                            ExtensionsV1beta1HTTPIngressPath(
+                            V1HTTPIngressPath(
                                 path=path,
-                                backend=ExtensionsV1beta1IngressBackend(
-                                    service_name=name,
-                                    service_port=target_port,
+                                backend=V1IngressBackend(
+                                    service=service,
                                 ),
                             )
                         ]

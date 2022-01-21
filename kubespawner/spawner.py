@@ -15,7 +15,6 @@ import sys
 import time
 import warnings
 from collections import deque
-from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from urllib.parse import urlparse
 
@@ -31,7 +30,6 @@ from kubernetes_asyncio.client.api_client import ApiClient
 from kubernetes_asyncio.client.rest import ApiException
 from slugify import slugify
 from tornado import gen
-from tornado.concurrent import run_on_executor
 from tornado.ioloop import IOLoop
 from traitlets import Bool
 from traitlets import default
@@ -51,11 +49,42 @@ from .objects import make_pod
 from .objects import make_pvc
 from .objects import make_secret
 from .objects import make_service
+from .reflector import ResourceReflector
 from .traitlets import Callable
 
 
 class MockObject(object):
     pass
+
+                            
+class PodReflector(ResourceReflector):
+    """
+    PodReflector is merely a configured ResourceReflector. It exposes
+    the pods property, which is simply mapping to self.resources where
+    the ResourceReflector keeps an updated list of the resource defined by
+    the `kind` field and the `list_method_name` field.
+    """
+    kind = "pods"
+        
+    # The default component label can be over-ridden by specifying the component_label property
+    labels = {
+        'component': 'singleuser-server',
+    }
+        
+    @property
+    def pods(self):
+        """
+        A dictionary of pods for the namespace as returned by the Kubernetes
+        API. The dictionary keys are the pod ids and the values are
+        dictionaries of the actual pod resource values.
+        
+        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#pod-v1-core
+        """
+        return self.retrieve_resource_copy()
+
+# We've gotten rid of the EventReflector because it gets really ugly in a
+#  multinamespace world, particularly with asyncio.  We're using a single Event
+#  watch per spawn.  I don't *think* this is going to be particularly worse.
 
 class KubeSpawner(Spawner, K8sAsyncClientMixin):
     """
@@ -63,17 +92,30 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
     spawned by a user will have its own KubeSpawner instance.
     """
 
-    # We want to have one single threadpool executor that is shared across all
-    # KubeSpawner instances, so we apply a Singleton pattern. We initialize this
-    # class variable from the first KubeSpawner instance that is created and
-    # then reference it from all instances.
-    executor = None
+    # The pod reflector is a class variable, because each reflector class is
+    # a singleton.  We will start the reflector watch task (since it's async)
+    # by only instantiating a reflector through a classmethod.
+
+    # The event reflector (if used) is going to be its own task.  That may be
+    # a regression for single-namespace spawners, but in the multinamespace
+    # world, the event reflector catches every single event in the entire
+    # cluster for a given involvedObject Kind, which...can be overwhelming.
+
+    reflectors = {
+        "pods": None
+    }
 
     # Characters as defined by safe for DNS
     # Note: '-' is not in safe_chars, as it is being used as escape character
     safe_chars = set(string.ascii_lowercase + string.digits)
 
-
+    @property
+    def pod_reflector(self):
+        """
+        A convenience alias to the class variable reflectors['pods'].
+        """
+        return self.__class__.reflectors['pods']
+            
     def __init__(self, *args, **kwargs):
         _mock = kwargs.pop('_mock', False)
         super().__init__(*args, **kwargs)
@@ -104,18 +146,6 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
         if self.enable_user_namespaces:
             self.namespace = self._expand_user_properties(self.user_namespace_template)
             self.log.info("Using user namespace: {}".format(self.namespace))
-
-        if not _mock:
-            # runs during normal execution only
-
-            if self.__class__.executor is None:
-                self.log.debug(
-                    'Starting executor thread pool with %d workers',
-                    self.k8s_api_threadpool_workers,
-                )
-                self.__class__.executor = ThreadPoolExecutor(
-                    max_workers=self.k8s_api_threadpool_workers
-                )
 
         # runs during both test and normal execution
         self.pod_name = self._expand_user_properties(self.pod_name_template)
@@ -1719,6 +1749,9 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
             self.port,
         )
 
+    def _ref_key(self):
+        return "{}/{}".format(self.namespace, self.pod_name)
+    
     async def get_pod_manifest(self):
         """
         Make a pod manifest that will spawn current user's notebook pod.
@@ -1945,19 +1978,6 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
         if 'pod_name' in state:
             self.pod_name = state['pod_name']
 
-    async def _does_pod_exist(self,v1):
-        pod=None
-        try:
-            pod=await asyncio.wait_for(
-                v1.read_namespaced_pod(namespace=self.namespace,
-                                       name=self.pod_name),
-                timeout=self.k8s_api_request_timeout)
-        except ApiException as e:
-            if e.status == 404:
-                pod=None
-            else:
-                raise
-        return pod
 
     async def poll(self):
         """
@@ -1973,63 +1993,63 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
         just Falsy, to determine that the pod is still running.
         """
         # have to wait for first load of data before we have a valid answer
-        await self._set_k8s_client_configuration()
-        ref_key = "{}/{}".format(self.namespace, self.pod_name)
+        #
+        # We might not have a pod reflector yet.
+        await self._start_watching_pods()
         # Do we have a pod?
-        async with client.ApiClient() as api:
-            v1=client.CoreV1Api(api)
-            pod = await self._does_pod_exist(v1)
-            if pod is not None:
-                if pod.status.phase == 'Pending':
-                    return None
-                ctr_stat = pod.status.container_statuses
-                if not ctr_stat:  # No status, no container (we hope)
-                    # This seems to happen when a pod is idle-culled.
-                    return 1
-                for c in ctr_stat:
-                    # return exit code if notebook container has terminated
-                    if c.name == 'notebook':
-                        if c.state.terminated:
-                            # call self.stop to delete the pod
-                            if self.delete_stopped_pods:
-                                await self.stop(now=True)
-                            return c.state.terminated.exit_code
-                        break
-
-                # pod running. Check and update server url if it changed!
-                # only do this if fully running, not just starting up
-                # and there's a stored url in self.server to check against
-                if self.is_pod_running(pod) and self.server:
-
-                    def _normalize_url(url):
-                        """Normalize  url to be comparable
-
-                        - parse with urlparse
-                        - Ensures port is always defined
-                        """
-                        url = urlparse(url)
-                        if url.port is None:
-                            if url.scheme.lower() == "https":
-                                url = url._replace(netloc=f"{url.hostname}:443")
-                            elif url.scheme.lower() == "http":
-                                url = url._replace(netloc=f"{url.hostname}:80")
-                        return url
-
-                    pod_url = _normalize_url(self._get_pod_url(pod))
-                    server_url = _normalize_url(self.server.url)
-                    # netloc: only compare hostname:port, ignore path
-                    if server_url.netloc != pod_url.netloc:
-                        self.log.warning(
-                            f"Pod {ref_key} url changed! {server_url.netloc} -> {pod_url.netloc}"
-                        )
-                        self.server.ip = pod_url.hostname
-                        self.server.port = pod_url.port
-                        self.db.commit()
-                # None means pod is running or starting up
+        pod = self.pod_reflector.pods.get(self._ref_key(), None)
+        if pod is not None:
+            if pod.status.phase == 'Pending':
                 return None
-            # pod doesn't exist or has been deleted
-            return 1
+            ctr_stat = pod.status.container_statuses
+            if not ctr_stat:  # No status, no container (we hope)
+                # This seems to happen when a pod is idle-culled.
+                return 1
+            for c in ctr_stat:
+                # return exit code if notebook container has terminated
+                if c.name == 'notebook':
+                    if c.state.terminated:
+                        # call self.stop to delete the pod
+                        if self.delete_stopped_pods:
+                            await self.stop(now=True)
+                        return c.state.terminated.exit_code
+                    break
 
+            # pod running. Check and update server url if it changed!
+            # only do this if fully running, not just starting up
+            # and there's a stored url in self.server to check against
+            if self.is_pod_running(pod) and self.server:
+
+                def _normalize_url(url):
+                    """Normalize  url to be comparable
+
+                    - parse with urlparse
+                    - Ensures port is always defined
+                    """
+                    url = urlparse(url)
+                    if url.port is None:
+                        if url.scheme.lower() == "https":
+                            url = url._replace(netloc=f"{url.hostname}:443")
+                        elif url.scheme.lower() == "http":
+                            url = url._replace(netloc=f"{url.hostname}:80")
+                    return url
+
+                pod_url = _normalize_url(self._get_pod_url(pod))
+                server_url = _normalize_url(self.server.url)
+                # netloc: only compare hostname:port, ignore path
+                if server_url.netloc != pod_url.netloc:
+                    self.log.warning(
+                        f"Pod {self._ref_key()} url changed!" +
+                        f"{server_url.netloc} -> {pod_url.netloc}"
+                    )
+                    self.server.ip = pod_url.hostname
+                    self.server.port = pod_url.port
+                    self.db.commit()
+            # None means pod is running or starting up
+            return None
+        # pod doesn't exist or has been deleted
+        return 1
+        
 
     async def progress(self):
         """
@@ -2113,6 +2133,77 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
                 # That's what we expect.
                 self._watch_task = None
 
+    async def _start_reflector(
+            self,
+            kind=None,
+            reflector_class=ResourceReflector,
+            replace=False,
+            **kwargs,
+    ):
+        """Start a shared reflector on the KubeSpawner class
+        
+        
+        kind: key for the reflector (e.g. 'pod' or 'events')
+        reflector_class: Reflector class to be instantiated
+        kwargs: extra keyword-args to be relayed to ReflectorClass
+        
+        If replace=False and the pod reflector is already running,
+        do nothing.
+        
+        If replace=True, a running pod reflector will be stopped
+        and a new one started (for recovering from possible errors).
+        """
+        key = kind
+        ReflectorClass = reflector_class
+        
+        def on_reflector_failure():
+            self.log.critical(
+                "%s reflector failed, halting Hub.",
+                key.title(),
+            )
+            # This won't be called from the main thread, so sys.exit
+            # will only kill current thread - not process.
+            # https://stackoverflow.com/a/7099229
+            os.kill(os.getpid(), signal.SIGINT)
+            
+        previous_reflector = self.__class__.reflectors.get(key)
+        
+        if replace or not previous_reflector:
+            # We need to restart it.  We use the classmethod because starting
+            # the reflector watch is an async method.
+            new_reflector=await ReflectorClass.reflector(
+                parent=self,
+                namespace=self.namespace,
+                on_failure=on_reflector_failure,
+                **kwargs,
+            )
+            self.__class__.reflectors[key] = new_reflector
+        
+        if replace and previous_reflector:
+            # we replaced the reflector, stop the old one
+            await previous_reflector.stop()
+
+        # return the current reflector
+        return self.__class__.reflectors[key]
+
+    async def _start_watching_pods(self, replace=False):
+        """Start the pod reflector
+            
+        If replace=False and the pod reflector is already running,
+        do nothing.
+        
+        If replace=True, a running pod reflector will be stopped
+        and a new one started (for recovering from possible errors).
+        """
+        pod_reflector_class = PodReflector
+        pod_reflector_class.labels.update({"component": self.component_label})
+        return await self._start_reflector(
+            "pods",
+            PodReflector,
+            omit_namespace=self.enable_user_namespaces,
+            replace=replace,
+        )
+                
 
     # record a future for the call to .start()
     # so we can use it to terminate .progress()
@@ -2304,7 +2395,11 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
         await self.load_user_options()
 
         # Start a watch on the pod's events
-        self._watch_task = asyncio.create_task(self._watch_events())
+        if self.events_enabled:
+            self._watch_task = asyncio.create_task(self._watch_events())
+
+        # Start the pod reflector if it's not started:
+        await self._start_watching_pods()
 
         # If we have user_namespaces enabled, create the namespace.
         #  It's fine if it already exists.
@@ -2331,19 +2426,16 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
         if self.modify_pod_hook:
             pod = await gen.maybe_future(self.modify_pod_hook(self, pod))
 
-        ref_key = "{}/{}".format(self.namespace, self.pod_name)
         # If there's a timeout, just let it propagate
         await exponential_backoff(
             partial(self._make_create_pod_request, pod, self.k8s_api_request_timeout),
-            f'Could not create pod {ref_key}',
+            f'Could not create pod {self._ref_key()}',
             timeout=self.k8s_api_request_retry_timeout,
         )
         # using the same start_timeout in _wait_for_running_pod
         # essentially ensures that this timeout should never propagate up
         # because the handler will have stopped waiting after
         # start_timeout, starting from a slightly earlier point.
-        pod=await self._wait_for_running_pod()
-        self.pod_id = pod.metadata.uid
         try:
             if self.internal_ssl:
                 owner_reference = make_owner_reference(
@@ -2391,6 +2483,9 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
                 pass
             raise exc
 
+        pod=await self._wait_for_running_pod()
+        self.pod_id = pod.metadata.uid
+        
         pstr=f"Pod {pod.metadata.namespace}/{pod.metadata.name} has started"
         self.log.info(pstr)
         if self.events_enabled:
@@ -2412,44 +2507,44 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
             self.stop_watch_task = None
         return
 
-    async def _wait_for_running_pod(self, initial_delay=5.0):
-        start_time = time.monotonic()
-        # than this.
-        delay = 0.0
-        timeout = self.start_timeout
-        pod = None
-        await asyncio.sleep(initial_delay)
-        async with client.ApiClient() as api:
-            v1=client.CoreV1Api(api)
-            while True:
-                delay += 1.0
-                pod = await self._does_pod_exist(v1)  # Refresh each time
-                if pod:
-                    running = self.is_pod_running(pod)
-                if running:
-                    self.log.info(f"is_pod_running() returning on attempt #{int(delay)}")
-                    return pod
-                if (time.monotonic() - start_time) > timeout:
-                    raise asyncio.TimeoutError
-                await asyncio.sleep(delay)
+    async def _wait_for_running_pod(self):
+        ref_key=self._ref_key()
+        try:
+            await exponential_backoff(
+                lambda: self.is_pod_running(
+                    self.pod_reflector.pods.get(ref_key, None)),
+                f"pod {ref_key} did not start in {self.start_timeout}s!",
+                timeout=self.start_timeout
+                )
+        except TimeoutError:
+            if self.ref_key() not in self.pod_reflector.pods:
+                # Never showed up at all.  Try restarting the reflector,
+                # which might have become disconnected.
+                self.log.error(
+                    f"Pod {ref_key} never appeared; restarting pod reflector."
+                )
+                self.log.error(
+                    f"Pods: {self.pod_reflector.pods}"
+                )
+                await self._start_watching_pods(replace=True)
+            raise
+        return self.pod_reflector.pods[ref_key]
 
-    async def _wait_for_pod_exit(self, initial_delay=8.0):
-        start_time = time.monotonic()
-        delay = 0.0
-        timeout = self.start_timeout
-        await asyncio.sleep(initial_delay)
-        pod = None
-        async with client.ApiClient() as api:
-            v1=client.CoreV1Api(api)
-            while True:
-                delay += 1.0
-                pod = await self._does_pod_exist(v1)  # Refresh each time
-                if not pod:
-                    self.log.info(f"wait_for_pod_exit() returning after attempt #{int(delay)}")
-                    return
-                if (time.monotonic() - start_time) > timeout:
-                    raise asyncio.TimeoutError
-                await asyncio.sleep(delay)
+    
+    async def _wait_for_pod_exit(self):
+        ref_key = self._ref_key()
+        try:
+            await exponential_backoff(
+                lambda: self.pod_reflector.pods.get(ref_key, None) is None,
+                f"Pod {ref_key} did not disappear in {self.start_timeout}s!",
+                timeout=self.start_timeout
+            )
+        except TimeoutError:
+            self.log.error(
+                f"Pod {ref_key} did not disappear; restarting pod reflector"
+            )
+            await self._start_watching_pods(replace=True)
+            raise
 
     async def _watch_events(self):
         field_selector={
@@ -2496,7 +2591,7 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
 
         async with client.ApiClient() as api:
             v1 = client.CoreV1Api(api)
-            ref_key = "{}/{}".format(self.namespace, pod_name)
+            ref_key = self._ref_key()
             self.log.info("Deleting pod %s", ref_key)
             try:
                 await asyncio.wait_for(
@@ -2564,7 +2659,7 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
 
         delete_options.grace_period_seconds = grace_seconds
 
-        ref_key = "{}/{}".format(self.namespace, self.pod_name)
+        ref_key = self._ref_key()
         await exponential_backoff(
             partial(
                 self._make_delete_pod_request,
@@ -2792,7 +2887,7 @@ def timestamp_from_event(event):
     return event.event_time or event.last_timestamp or datetime.datetime(1970,1,1,tzinfo=datetime.timezone.utc)
 
 def get_event_keys(events):
-    return[ref_key(x) for x in events]
+    return[event_ref_key(x) for x in events]
 
-def ref_key(event):
+def event_ref_key(event):
     return f"{event.metadata.namespace}/{event.metadata.name}"

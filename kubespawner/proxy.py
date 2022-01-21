@@ -20,11 +20,10 @@ from .utils import generate_hashed_slug
 
 class IngressReflector(ResourceReflector):
     kind = 'ingresses'
-    api_group_name = 'ExtensionsV1beta1Api'
 
     @property
     def ingresses(self):
-        return self.resources
+        return self.retrieve_resource_copy()
 
 
 class ServiceReflector(ResourceReflector):
@@ -32,7 +31,7 @@ class ServiceReflector(ResourceReflector):
 
     @property
     def services(self):
-        return self.resources
+        return self.retrieve_resource_copy()
 
 
 class EndpointsReflector(ResourceReflector):
@@ -40,7 +39,7 @@ class EndpointsReflector(ResourceReflector):
 
     @property
     def endpoints(self):
-        return self.resources
+        return self.retrieve_resource_copy()
 
 
 class KubeIngressProxy(Proxy, K8sAsyncClientMixin):
@@ -48,28 +47,22 @@ class KubeIngressProxy(Proxy, K8sAsyncClientMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # We use the maximum number of concurrent user server starts (and thus proxy adds)
-        # as our threadpool maximum. This ensures that contention here does not become
-        # an accidental bottleneck. Since we serialize our create operations, we only
-        # need 1x concurrent_spawn_limit, not 3x.
-        self.executor = ThreadPoolExecutor(max_workers=self.app.concurrent_spawn_limit)
-
         # Global configuration before reflector.py code runs
         self._set_k8s_client_configuration()
-        self.core_api = None  # defer until use: shared_client('CoreV1Api')
-        self.extension_api = None  # defer until use: shared_client('ExtensionsV1beta1Api')
 
         labels = {
             'component': self.component_label,
             'hub.jupyter.org/proxy-route': 'true',
         }
-        self.ingress_reflector = IngressReflector(
+        # Create our reflectors with the classmethod, to start their watch
+        #  tasks and initialize their K8s configuration.
+        self.ingress_reflector = IngressReflector.reflector(
             parent=self, namespace=self.namespace, labels=labels
         )
-        self.service_reflector = ServiceReflector(
+        self.service_reflector = ServiceReflector.reflector(
             parent=self, namespace=self.namespace, labels=labels
         )
-        self.endpoint_reflector = EndpointsReflector(
+        self.endpoint_reflector = EndpointsReflector.reflector(
             parent=self, namespace=self.namespace, labels=labels
         )
 
@@ -157,11 +150,11 @@ class KubeIngressProxy(Proxy, K8sAsyncClientMixin):
     async def delete_if_exists(self, kind, safe_name, future):
         try:
             await future
-            self.log.info('Deleted %s/%s', kind, safe_name)
+            self.log.info(f"Deleted {kind}/{safe_name}")
         except client.rest.ApiException as e:
             if e.status != 404:
                 raise
-            self.log.warn("Could not delete %s/%s: does not exist", kind, safe_name)
+            self.log.warn(f"Could not delete nonexistent {kind}/{safe_name}")
 
     async def add_route(self, routespec, target, data):
         # Create a route with the name being escaped routespec
@@ -177,51 +170,53 @@ class KubeIngressProxy(Proxy, K8sAsyncClientMixin):
             safe_name, routespec, target, labels, data
         )
 
-        async def ensure_object(create_func, patch_func, body, kind):
-            try:
-                resp = await create_func(namespace=self.namespace, body=body)
-                self.log.info('Created %s/%s', kind, safe_name)
-            except client.rest.ApiException as e:
-                if e.status == 409:
-                    # This object already exists, we should patch it to make it be what we want
-                    self.log.warn(
-                        "Trying to patch %s/%s, it already exists", kind, safe_name
-                    )
-                    resp = await patch_func(
-                        namespace=self.namespace,
-                        body=body,
-                        name=body.metadata.name,
-                    )
-                else:
-                    raise
+        async def ensure_object(api_group_name="CoreV1Api",
+                                body, kind):
+            async with client.ApiClient() as api_client:
+                grp=getattr(client, api_group_name)
+                api=grp(api_client)
+                create_func=getattr(api,f"create_namespaced_{kind}")
+                patch_func=getattr(api,f"patch_namespaced_{kind}")
+                try:
+                    resp = await create_func(namespace=self.namespace,
+                                             body=body)
+                    self.log.info('Created %s/%s', kind, safe_name)
+                except client.rest.ApiException as e:
+                    if e.status == 409:
+                        # This object already exists.
+                        # We should patch it to make it be what we want
+                        self.log.warn("Trying to patch extant " +
+                                      f"{kind}/{safe_name}")
+                        resp = await patch_func(
+                            namespace=self.namespace,
+                            body=body,
+                            name=body.metadata.name,
+                        )
+                    else:
+                        raise
 
         if endpoint is not None:
-            await self._ensure_core_api()
-            await self._ensure_extension_api()
             await ensure_object(
-                self.core_api.create_namespaced_endpoints,
-                self.core_api.patch_namespaced_endpoints,
                 body=endpoint,
                 kind='endpoints',
             )
 
             await exponential_backoff(
-                lambda: f'{self.namespace}/{safe_name}'
+                lambda: f"{self.namespace}/{safe_name}"
                 in self.endpoint_reflector.endpoints.keys(),
-                'Could not find endpoints/%s after creating it' % safe_name,
+                f"Could not find endpoints/{safe_name} after creating it"
             )
         else:
-            delete_endpoint = self.core_api.delete_namespaced_endpoints(
+            delete_endpoint = api.delete_namespaced_endpoints(
                 name=safe_name,
                 namespace=self.namespace,
                 body=client.V1DeleteOptions(grace_period_seconds=0),
             )  # We want the future back, for the delete_if_exists call
             # That sounded way more philosophical than I meant it to.
-            await self.delete_if_exists('endpoint', safe_name, delete_endpoint)
+            await self.delete_if_exists('endpoints', safe_name,
+                                        delete_endpoint)
 
         await ensure_object(
-            self.core_api.create_namespaced_service,
-            self.core_api.patch_namespaced_service,
             body=service,
             kind='service',
         )
@@ -233,8 +228,6 @@ class KubeIngressProxy(Proxy, K8sAsyncClientMixin):
         )
 
         await ensure_object(
-            self.extension_api.create_namespaced_ingress,
-            self.extension_api.patch_namespaced_ingress,
             body=ingress,
             kind='ingress',
         )
@@ -252,44 +245,51 @@ class KubeIngressProxy(Proxy, K8sAsyncClientMixin):
         safe_name = self.safe_name_for_routespec(routespec).lower()
 
         delete_options = client.V1DeleteOptions(grace_period_seconds=0)
+        async with client.ApiClient() as api_client:
+            grp=getattr(client, api_group_name)
+            api=grp(api_client)
+        
+            delete_endpoint = api.delete_namespaced_endpoints(
+                name=safe_name,
+                namespace=self.namespace,
+                body=delete_options,
+            )
 
-        await self._ensure_core_api()
-        await self._ensure_extension_api()
-        delete_endpoint = self.core_api.delete_namespaced_endpoints(
-            name=safe_name,
-            namespace=self.namespace,
-            body=delete_options,
-        )
+            delete_service = api.delete_namespaced_service(
+                name=safe_name,
+                namespace=self.namespace,
+                body=delete_options,
+            )
 
-        delete_service = self.core_api.delete_namespaced_service(
-            name=safe_name,
-            namespace=self.namespace,
-            body=delete_options,
-        )
+            delete_ingress = api.delete_namespaced_ingress(
+                name=safe_name,
+                namespace=self.namespace,
+                body=delete_options,
+                grace_period_seconds=0,
+            )
 
-        delete_ingress = self.extension_api.delete_namespaced_ingress(
-            name=safe_name,
-            namespace=self.namespace,
-            body=delete_options,
-            grace_period_seconds=0,
-        )
+            # This seems like cleanest way to parallelize all three of these
+            # while also making sure we only ignore the exception when it's a
+            # 404.
+            # The order matters for endpoint & service - deleting the service
+            # deletes the endpoint in the background. This can be racy.
+            # however, so we do so explicitly ourselves as well. In the
+            # future, we can probably try a foreground cascading deletion
+            # (https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/#foreground-cascading-deletion)
+            # instead, but for now this works well enough.
 
-        # This seems like cleanest way to parallelize all three of these while
-        # also making sure we only ignore the exception when it's a 404.
-        # The order matters for endpoint & service - deleting the service deletes
-        # the endpoint in the background. This can be racy however, so we do so
-        # explicitly ourselves as well. In the future, we can probably try a
-        # foreground cascading deletion (https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/#foreground-cascading-deletion)
-        # instead, but for now this works well enough.
-        await self.delete_if_exists('endpoint', safe_name, delete_endpoint)
-        await self.delete_if_exists('service', safe_name, delete_service)
-        await self.delete_if_exists('ingress', safe_name, delete_ingress)
+            # Well, no it doesn't.  Creating tasks to delete those, and then
+            # doing a gather, is probably cleaner than that.
+            
+            await self.delete_if_exists('endpoint', safe_name, delete_endpoint)
+            await self.delete_if_exists('service', safe_name, delete_service)
+            await self.delete_if_exists('ingress', safe_name, delete_ingress)
 
     async def get_all_routes(self):
-        # copy everything, because iterating over this directly is not threadsafe
+        # copy everything, because iterating over this directly is not
+        # threadsafe
         # FIXME: is this performance intensive? It could be! Measure?
-        # FIXME: Validate that this shallow copy *is* thread safe
-        ingress_copy = dict(self.ingress_reflector.ingresses)
+        ingress_copy = self.ingress_reflector.retrieve_resources()
         routes = {
             ingress["metadata"]["annotations"]['hub.jupyter.org/proxy-routespec']: {
                 'routespec': ingress["metadata"]["annotations"][

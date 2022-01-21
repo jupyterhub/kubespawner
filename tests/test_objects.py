@@ -37,7 +37,9 @@ async def test_make_simplest_pod():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -66,7 +68,11 @@ async def test_make_labeled_pod():
             labels={"test": "true"},
         )
     ) == {
-        "metadata": {"name": "test", "labels": {"test": "true"}, "annotations": {}},
+        "metadata": {
+            "name": "test",
+            "labels": {"test": "true"},
+            "annotations": {},
+        },
         "spec": {
             'automountServiceAccountToken': False,
             "containers": [
@@ -76,7 +82,9 @@ async def test_make_labeled_pod():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -119,7 +127,9 @@ async def test_make_annotated_pod():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -155,7 +165,10 @@ async def test_make_pod_with_image_pull_secrets_simplified_format():
         },
         "spec": {
             'automountServiceAccountToken': False,
-            "imagePullSecrets": [{"name": "k8s-secret-a"}, {"name": "k8s-secret-b"}],
+            "imagePullSecrets": [
+                {"name": "k8s-secret-a"},
+                {"name": "k8s-secret-b"},
+            ],
             "containers": [
                 {
                     "env": [],
@@ -163,7 +176,9 @@ async def test_make_pod_with_image_pull_secrets_simplified_format():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -189,7 +204,10 @@ async def test_make_pod_with_image_pull_secrets_k8s_native_format():
             cmd=['jupyterhub-singleuser'],
             port=8888,
             image_pull_policy='IfNotPresent',
-            image_pull_secrets=[{"name": "k8s-secret-a"}, {"name": "k8s-secret-b"}],
+            image_pull_secrets=[
+                {"name": "k8s-secret-a"},
+                {"name": "k8s-secret-b"},
+            ],
         )
     ) == {
         "metadata": {
@@ -199,7 +217,10 @@ async def test_make_pod_with_image_pull_secrets_k8s_native_format():
         },
         "spec": {
             'automountServiceAccountToken': False,
-            "imagePullSecrets": [{"name": "k8s-secret-a"}, {"name": "k8s-secret-b"}],
+            "imagePullSecrets": [
+                {"name": "k8s-secret-a"},
+                {"name": "k8s-secret-b"},
+            ],
             "containers": [
                 {
                     "env": [],
@@ -207,7 +228,9 @@ async def test_make_pod_with_image_pull_secrets_k8s_native_format():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -256,7 +279,9 @@ async def test_set_container_uid_and_gid():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                 }
@@ -303,7 +328,9 @@ async def test_set_container_uid_and_pod_fs_gid():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                 }
@@ -353,7 +380,9 @@ async def test_set_pod_supplemental_gids():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                 }
@@ -398,7 +427,9 @@ async def test_privileged_container():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {
                         "privileged": True,
@@ -444,7 +475,9 @@ async def test_allow_privilege_escalation_container():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
                     'volumeMounts': [],
@@ -502,7 +535,9 @@ async def test_pod_security_context_container():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -575,13 +610,18 @@ async def test_container_security_context_container():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     'securityContext': {
                         "privileged": False,
                         "allowPrivilegeEscalation": True,
-                        "capabilities": {"add": ["KILL"], "drop": ["SYS_CHROOT"]},
+                        "capabilities": {
+                            "add": ["KILL"],
+                            "drop": ["SYS_CHROOT"],
+                        },
                         "procMount": "DefaultProcMount",
                         "readOnlyRootFilesystem": True,
                         "runAsUser": 2000,
@@ -589,7 +629,9 @@ async def test_container_security_context_container():
                         "runAsNonRoot": False,
                         "seLinuxOptions": {"level": "s0:c123,c456"},
                         "seccompProfile": {"type": "RuntimeDefault"},
-                        "windowsOptions": {"gmsaCredentialSpecName": "gmsa-webapp1"},
+                        "windowsOptions": {
+                            "gmsaCredentialSpecName": "gmsa-webapp1"
+                        },
                     },
                 }
             ],
@@ -679,7 +721,9 @@ async def test_make_pod_resources_all():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {
                         "limits": {"cpu": 2, "memory": '1Gi'},
@@ -782,7 +826,9 @@ async def test_make_pod_with_env():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -875,7 +921,9 @@ async def test_make_pod_with_env_dependency_sorted():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -901,7 +949,9 @@ async def test_make_pod_with_lifecycle():
             cmd=['jupyterhub-singleuser'],
             port=8888,
             image_pull_policy='IfNotPresent',
-            lifecycle_hooks={'preStop': {'exec': {'command': ['/bin/sh', 'test']}}},
+            lifecycle_hooks={
+                'preStop': {'exec': {'command': ['/bin/sh', 'test']}}
+            },
         )
     ) == {
         "metadata": {
@@ -918,7 +968,9 @@ async def test_make_pod_with_lifecycle():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "lifecycle": {
@@ -983,7 +1035,9 @@ async def test_make_pod_with_init_containers():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -1048,7 +1102,9 @@ async def test_make_pod_with_extra_container_config():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     'envFrom': [{'configMapRef': {'name': 'special-config'}}],
@@ -1076,7 +1132,11 @@ async def test_make_pod_with_extra_pod_config():
             port=8888,
             image_pull_policy='IfNotPresent',
             tolerations=[
-                {'key': 'wrong_toleration', 'operator': 'Equal', 'value': 'wrong_value'}
+                {
+                    'key': 'wrong_toleration',
+                    'operator': 'Equal',
+                    'value': 'wrong_value',
+                }
             ],
             extra_pod_config={
                 'dns_policy': 'ClusterFirstWithHostNet',
@@ -1105,7 +1165,9 @@ async def test_make_pod_with_extra_pod_config():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -1162,7 +1224,9 @@ async def test_make_pod_with_extra_containers():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -1192,7 +1256,10 @@ async def test_make_pod_with_extra_resources():
             image='jupyter/singleuser:latest',
             cpu_limit=2,
             cpu_guarantee=1,
-            extra_resource_limits={"nvidia.com/gpu": "5", "k8s.io/new-resource": "1"},
+            extra_resource_limits={
+                "nvidia.com/gpu": "5",
+                "k8s.io/new-resource": "1",
+            },
             extra_resource_guarantees={"nvidia.com/gpu": "3"},
             cmd=['jupyterhub-singleuser'],
             port=8888,
@@ -1217,7 +1284,9 @@ async def test_make_pod_with_extra_resources():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {
                         "limits": {
@@ -1261,7 +1330,10 @@ async def test_make_pvc_simple():
         'kind': 'PersistentVolumeClaim',
         'apiVersion': 'v1',
         'metadata': {'name': 'test', 'annotations': {}, 'labels': {}},
-        'spec': {'accessModes': [], 'resources': {'requests': {'storage': None}}},
+        'spec': {
+            'accessModes': [],
+            'resources': {'requests': {'storage': None}},
+        },
     }
 
 
@@ -1352,7 +1424,9 @@ async def test_make_pod_with_service_account():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -1393,7 +1467,9 @@ async def test_make_pod_with_service_account_and_with_automount_sa_token():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -1434,7 +1510,9 @@ async def test_make_pod_with_service_account_and_with_negative_automount_sa_toke
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -1474,7 +1552,9 @@ async def test_make_pod_with_automount_service_account_token():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -1513,7 +1593,9 @@ async def test_make_pod_with_negative_automount_service_account_token():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -1556,7 +1638,9 @@ async def test_make_pod_with_scheduler_name():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -1605,7 +1689,9 @@ async def test_make_pod_with_tolerations():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -1659,7 +1745,9 @@ async def test_make_pod_with_node_affinity_preferred():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -1714,7 +1802,9 @@ async def test_make_pod_with_node_affinity_required():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -1777,7 +1867,9 @@ async def test_make_pod_with_pod_affinity_preferred():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -1796,7 +1888,7 @@ async def test_make_pod_with_pod_affinity_preferred():
     }
 
 
-@pytest.mark.asyncio    
+@pytest.mark.asyncio
 async def test_make_pod_with_pod_affinity_required():
     """
     Test specification of the simplest possible pod specification with non-empty pod_affinity_required
@@ -1835,7 +1927,9 @@ async def test_make_pod_with_pod_affinity_required():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -1896,7 +1990,9 @@ async def test_make_pod_with_pod_anti_affinity_preferred():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -1954,7 +2050,9 @@ async def test_make_pod_with_pod_anti_affinity_required():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -2002,7 +2100,9 @@ async def test_make_pod_with_priority_class_name():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [],
                     "resources": {"limits": {}, "requests": {}},
                     "securityContext": {"allowPrivilegeEscalation": False},
@@ -2092,8 +2192,8 @@ async def test_make_ingress(target, ip):
                 'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
-                'component': 'singleuser-server',
                 'heritage': 'jupyterhub',
+                'component': 'singleuser-server',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2105,8 +2205,32 @@ async def test_make_ingress(target, ip):
                         'paths': [
                             {
                                 'backend': {
-                                    'serviceName': 'jupyter-test',
-                                    'servicePort': 9000,
+                                    'service': {
+                                        'kind': 'Service',
+                                        'metadata': {
+                                            'annotations': {
+                                                'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
+                                                'hub.jupyter.org/proxy-routespec': '/my-path',
+                                                'hub.jupyter.org/proxy-target': target,
+                                            },
+                                            'labels': {
+                                                'heritage': 'jupyterhub',
+                                                'component': 'singleuser-server',
+                                                'hub.jupyter.org/proxy-route': 'true',
+                                            },
+                                            'name': 'jupyter-test',
+                                        },
+                                        'spec': {
+                                            'externalName': '',
+                                            'ports': [
+                                                {
+                                                    'port': 9000,
+                                                    'targetPort': 9000,
+                                                }
+                                            ],
+                                            'type': 'ClusterIP',
+                                        },
+                                    }
                                 },
                                 'path': '/my-path',
                             }
@@ -2171,8 +2295,8 @@ async def test_make_ingress_external_name():
                 'hub.jupyter.org/proxy-target': 'http://my-pod-name:9000',
             },
             'labels': {
-                'component': 'singleuser-server',
                 'heritage': 'jupyterhub',
+                'component': 'singleuser-server',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2184,8 +2308,33 @@ async def test_make_ingress_external_name():
                         'paths': [
                             {
                                 'backend': {
-                                    'serviceName': 'jupyter-test',
-                                    'servicePort': 9000,
+                                    'service': {
+                                        'kind': 'Service',
+                                        'metadata': {
+                                            'annotations': {
+                                                'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
+                                                'hub.jupyter.org/proxy-routespec': '/my-path',
+                                                'hub.jupyter.org/proxy-target': 'http://my-pod-name:9000',
+                                            },
+                                            'labels': {
+                                                'heritage': 'jupyterhub',
+                                                'component': 'singleuser-server',
+                                                'hub.jupyter.org/proxy-route': 'true',
+                                            },
+                                            'name': 'jupyter-test',
+                                        },
+                                        'spec': {
+                                            'clusterIP': '',
+                                            'externalName': 'my-pod-name',
+                                            'ports': [
+                                                {
+                                                    'port': 9000,
+                                                    'targetPort': 9000,
+                                                }
+                                            ],
+                                            'type': 'ExternalName',
+                                        },
+                                    }
                                 },
                                 'path': '/my-path',
                             }
@@ -2268,7 +2417,9 @@ async def test_make_pod_with_ssl():
                     "image": "jupyter/singleuser:latest",
                     "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
-                    "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    "ports": [
+                        {"name": "notebook-port", "containerPort": 8888}
+                    ],
                     'volumeMounts': [
                         {
                             'mountPath': '/etc/jupyterhub/ssl/',
@@ -2292,9 +2443,10 @@ async def test_make_pod_with_ssl():
         "apiVersion": "v1",
     }
 
+
 @pytest.mark.asyncio
 async def test_make_event():
-    pod=make_pod(
+    pod = make_pod(
         name='test',
         image='jupyter/singleuser:latest',
         cmd=['jupyterhub-singleuser'],
@@ -2302,14 +2454,12 @@ async def test_make_event():
         image_pull_policy='IfNotPresent',
         labels={"test": "true"},
     )
-    serialized_event=api_client.sanitize_for_serialization(
-        make_event(involved_object=pod,
-                   message="pod created",
-                   reason="created")
+    serialized_event = api_client.sanitize_for_serialization(
+        make_event(
+            involved_object=pod, message="pod created", reason="created"
+        )
     )
     assert serialized_event['message'] == "pod created"
     assert serialized_event['reason'] == "created"
     assert serialized_event['involvedObject']['kind'] == "Pod"
     assert serialized_event['involvedObject']['name'] == "test"
-    
-        
