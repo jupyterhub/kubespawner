@@ -31,7 +31,7 @@ setup(
             'flake8',
             'pytest>=5.4',
             'pytest-cov',
-            'pytest-asyncio>=0.11.0',
+            'pytest-asyncio>=0.17.0',
         ]
     },
     description='JupyterHub Spawner for Kubernetes',

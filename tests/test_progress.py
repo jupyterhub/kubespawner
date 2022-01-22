@@ -8,11 +8,11 @@ from jupyterhub.objects import Hub
 from jupyterhub.objects import Server
 from jupyterhub.orm import Spawner
 from traitlets.config import Config
+from kubernetes_asyncio import client
 from kubernetes_asyncio.client.rest import ApiException
-from kubernetes_asyncio.config import load_kube_config
 
 from kubespawner import KubeSpawner
-from kubespawner.clients import shared_client
+from kubespawner.clients import set_k8s_client_configuration
 
 class MockUser(Mock):
     name = 'fake'
@@ -72,9 +72,10 @@ async def test_spawn_progress():
         # Allow opting out of deletion.
         if not os.environ.get("KUBESPAWNER_DEBUG_NAMESPACE"):
             try:
-                await load_kube_config()
-                client = await shared_client('CoreV1Api')
-                await client.delete_namespace(kube_ns, body={})
+                await set_k8s_client_configuration()
+                async with client.ApiClient() as api_client:
+                    api=client.CoreV1Api(api_client)
+                    await api.delete_namespace(kube_ns, body={})
             except ApiException as exc:
                 if exc.status == 404:
                     spawner.log.warning(f"Namespace {kube_ns} not found.")

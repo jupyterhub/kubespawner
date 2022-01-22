@@ -42,7 +42,6 @@ from traitlets import Union
 from traitlets import validate
 
 from .clients import shared_client, K8sAsyncClientMixin
-from .objects import make_event
 from .objects import make_namespace
 from .objects import make_owner_reference
 from .objects import make_pod
@@ -2125,7 +2124,7 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
             if break_while_loop:  # The outer one, this time.
                 break
             await asyncio.sleep(1)
-        if self._watch_task:
+        if self._watch_task and not self._watch_task.done():
             # We're done with the progress bar, so shoot the watcher.
             try:
                 self._watch_task.cancel()
@@ -2488,24 +2487,7 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
         
         pstr=f"Pod {pod.metadata.namespace}/{pod.metadata.name} has started"
         self.log.info(pstr)
-        if self.events_enabled:
-            self.events.append(
-                make_event(involved_object=pod,
-                           message=pstr,
-                           reason='Started'
-                ),
-            )
         return self._get_pod_url(pod)
-
-    async def _delay_watch_cancel(self, watch_task):
-        await asyncio.sleep(self.k8s_api_request_timeout)
-        try:
-            # Don't bother letting progress catch up.
-            watch_task.cancel()
-        except asyncio.CancelledError:
-            # That's what we expect.
-            self.stop_watch_task = None
-        return
 
     async def _wait_for_running_pod(self):
         ref_key=self._ref_key()
@@ -2549,7 +2531,6 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
     async def _watch_events(self):
         field_selector={
             "involvedObject.kind": "Pod",
-#            "involvedObject.metadata.name": self.pod_name
         }
         fs_str = ','.join(
             [f"{k}={field_selector[k]}" for k in field_selector]
@@ -2564,14 +2545,15 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
                                                 _request_timeout=self.k8s_api_request_timeout) as stream:
                     async for event in stream:
                         evtobj=event['object']
-                        v_type=event['type']
                         obj_str=f"{evtobj.metadata.namespace}/{evtobj.metadata.name}"
                         if evtobj.metadata.name != self.pod_name:
-                            # Somehow it's an event for the wrong pod
+                            # If we DON'T do this somehow we miss the
+                            #  shutdown?!
+                            self.log.info("Not appending {obj_str} to watch.")
                             continue
                         self.events.append(evtobj)
                         self.log.info(
-                            f"Appended {obj_str} to event watch: {v_type}")
+                            f"Appended {obj_str} to event watch.")
 
         except asyncio.CancelledError:
             self.log.info(f"Watch task cancelled; events now {get_event_keys(self.events)}")
