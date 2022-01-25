@@ -17,24 +17,18 @@ import pytest
 import pytest_asyncio
 from jupyterhub.app import JupyterHub
 from jupyterhub.objects import Hub
+#from kubespawner.stream import stream
+from kubernetes.stream import stream
 from kubernetes_asyncio import client
-from kubernetes_asyncio.client import V1ConfigMap
-from kubernetes_asyncio.client import V1Namespace
-from kubernetes_asyncio.client import V1ObjectMeta
-from kubernetes_asyncio.client import V1Pod
-from kubernetes_asyncio.client import V1PodSpec
-from kubernetes_asyncio.client import V1Secret
-from kubernetes_asyncio.client import V1Service
-from kubernetes_asyncio.client import V1ServicePort
-from kubernetes_asyncio.client import V1ServiceSpec
+from kubernetes_asyncio.client import (V1ConfigMap, V1Namespace, V1ObjectMeta,
+                                       V1Pod, V1PodSpec, V1Secret, V1Service,
+                                       V1ServicePort, V1ServiceSpec)
 from kubernetes_asyncio.client.rest import ApiException
 from kubernetes_asyncio.config import load_kube_config
 from kubernetes_asyncio.watch import Watch
 from traitlets.config import Config
 
 from kubespawner.clients import set_k8s_client_configuration
-#from kubespawner.stream import stream
-from kubernetes.stream import stream
 
 here = os.path.abspath(os.path.dirname(__file__))
 jupyterhub_config_py = os.path.join(here, "jupyterhub_config.py")

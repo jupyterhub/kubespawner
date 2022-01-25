@@ -4,15 +4,15 @@ import time
 from unittest.mock import Mock
 
 import pytest
-from jupyterhub.objects import Hub
-from jupyterhub.objects import Server
+from jupyterhub.objects import Hub, Server
 from jupyterhub.orm import Spawner
-from traitlets.config import Config
 from kubernetes_asyncio import client
 from kubernetes_asyncio.client.rest import ApiException
+from traitlets.config import Config
 
 from kubespawner import KubeSpawner
 from kubespawner.clients import set_k8s_client_configuration
+
 
 class MockUser(Mock):
     name = 'fake'

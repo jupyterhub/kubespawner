@@ -7,15 +7,9 @@ import time
 from concurrent.futures import Future
 from functools import partial
 
-from kubernetes_asyncio import client
-from kubernetes_asyncio import config
-from kubernetes_asyncio import watch
+from kubernetes_asyncio import client, config, watch
 from kubernetes_asyncio.client.api_client import ApiClient
-from traitlets import Any
-from traitlets import Bool
-from traitlets import Dict
-from traitlets import Int
-from traitlets import Unicode
+from traitlets import Any, Bool, Dict, Int, Unicode
 from traitlets.config import LoggingConfigurable
 from urllib3.exceptions import ReadTimeoutError
 

@@ -2,8 +2,7 @@ from __future__ import print_function
 
 import sys
 
-from setuptools import find_packages
-from setuptools import setup
+from setuptools import find_packages, setup
 
 v = sys.version_info
 if v[:2] < (3, 6):

@@ -4,20 +4,18 @@ from asyncio import get_event_loop
 from unittest.mock import Mock
 
 import pytest
-from jupyterhub.objects import Hub
-from jupyterhub.objects import Server
+from jupyterhub.objects import Hub, Server
 from jupyterhub.orm import Spawner
 from kubernetes_asyncio import client
 from kubernetes_asyncio.client import V1Namespace
-from kubernetes_asyncio.client.models import V1Capabilities
-from kubernetes_asyncio.client.models import V1Container
-from kubernetes_asyncio.client.models import V1Pod
-from kubernetes_asyncio.client.models import V1SecurityContext
+from kubernetes_asyncio.client.models import (V1Capabilities, V1Container,
+                                              V1Pod, V1SecurityContext)
 from kubernetes_asyncio.client.rest import ApiException
 from traitlets.config import Config
 
 from kubespawner import KubeSpawner
 from kubespawner.clients import set_k8s_client_configuration
+
 
 class MockUser(Mock):
     name = 'multifake'

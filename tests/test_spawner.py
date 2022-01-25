@@ -5,15 +5,12 @@ import time
 from unittest.mock import Mock
 
 import pytest
-from jupyterhub.objects import Hub
-from jupyterhub.objects import Server
+from jupyterhub.objects import Hub, Server
 from jupyterhub.orm import Spawner
 from kubernetes_asyncio import client
-from kubernetes_asyncio.client.models import V1Capabilities
-from kubernetes_asyncio.client.models import V1Container
-from kubernetes_asyncio.client.models import V1PersistentVolumeClaim
-from kubernetes_asyncio.client.models import V1Pod
-from kubernetes_asyncio.client.models import V1SecurityContext
+from kubernetes_asyncio.client.models import (V1Capabilities, V1Container,
+                                              V1PersistentVolumeClaim, V1Pod,
+                                              V1SecurityContext)
 from traitlets.config import Config
 
 from kubespawner import KubeSpawner
@@ -124,8 +121,8 @@ def check_up(url, ssl_ca=None, ssl_client_cert=None, ssl_client_key=None):
 
     Uses stdlib only because requests isn't always available in the target pod
     """
-    from urllib import request
     import ssl
+    from urllib import request
 
     if ssl_ca:
         context = ssl.create_default_context(

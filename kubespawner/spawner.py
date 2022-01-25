@@ -20,8 +20,7 @@ from urllib.parse import urlparse
 
 import escapism
 import kubernetes_asyncio.config
-from jinja2 import BaseLoader
-from jinja2 import Environment
+from jinja2 import BaseLoader, Environment
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
 from jupyterhub.utils import exponential_backoff
@@ -31,24 +30,13 @@ from kubernetes_asyncio.client.rest import ApiException
 from slugify import slugify
 from tornado import gen
 from tornado.ioloop import IOLoop
-from traitlets import Bool
-from traitlets import default
-from traitlets import Dict
-from traitlets import Integer
-from traitlets import List
-from traitlets import observe
-from traitlets import Unicode
-from traitlets import Union
-from traitlets import validate
+from traitlets import (Bool, Dict, Integer, List, Unicode, Union, default,
+                       observe, validate)
 
-from .objects import make_namespace
-from .objects import make_owner_reference
-from .objects import make_pod
-from .objects import make_pvc
-from .objects import make_secret
-from .objects import make_service
-from .reflector import ResourceReflector
 from .kubespawner_traitlets import Callable
+from .objects import (make_namespace, make_owner_reference, make_pod, make_pvc,
+                      make_secret, make_service)
+from .reflector import ResourceReflector
 
 
 class MockObject(object):

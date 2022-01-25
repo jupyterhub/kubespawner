@@ -9,8 +9,7 @@ from jupyterhub.utils import exponential_backoff
 from kubernetes import client
 from tornado import gen
 from tornado.concurrent import run_on_executor
-from traitlets import Unicode
-from traitlets import default
+from traitlets import Unicode, default
 
 from .objects import make_ingress
 from .reflector import ResourceReflector

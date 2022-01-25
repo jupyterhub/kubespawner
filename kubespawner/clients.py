@@ -7,11 +7,11 @@ import asyncio
 import os
 import weakref
 from unittest.mock import Mock
-from traitlets import default
-from traitlets import Unicode
 
 import kubernetes_asyncio.client
 from kubernetes_asyncio.client import api_client
+from traitlets import Unicode, default
+
 
 async def set_k8s_client_configuration(client=None):
     # Call this prior to using a client for readability /
