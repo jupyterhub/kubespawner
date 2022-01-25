@@ -790,13 +790,13 @@ async def test_delete_pvc(kube_ns, hub, config):
     async with client.ApiClient() as api_client:
         api=client.CoreV1Api(api_client)
     
-        pods = api.list_namespaced_pod(kube_ns).items
+        pods = (await api.list_namespaced_pod(kube_ns)).items
         pod_names = [p.metadata.name for p in pods]
         assert pod_name in pod_names
 
         # verify PVC is created
         pvc_name = spawner.pvc_name
-        pvc_list = await spawner.api.list_namespaced_persistent_volume_claim(kube_ns).items
+        pvc_list = (await api.list_namespaced_persistent_volume_claim(kube_ns)).items
         pvc_names = [s.metadata.name for s in pvc_list]
         assert pvc_name in pvc_names
 
@@ -804,7 +804,7 @@ async def test_delete_pvc(kube_ns, hub, config):
         await spawner.stop()
 
         # verify pod is gone
-        pods = await api.list_namespaced_pod(kube_ns).items
+        pods = (await api.list_namespaced_pod(kube_ns)).items
         pod_names = [p.metadata.name for p in pods]
         assert "jupyter-%s" % spawner.user.name not in pod_names
 
@@ -813,7 +813,7 @@ async def test_delete_pvc(kube_ns, hub, config):
 
         # verify PVC is deleted, it may take a little while
         for i in range(5):
-            pvc_list = await api.list_namespaced_persistent_volume_claim(kube_ns).items
+            pvc_list = (await api.list_namespaced_persistent_volume_claim(kube_ns)).items
             pvc_names = [s.metadata.name for s in pvc_list]
             if pvc_name in pvc_names:
                 await asyncio.sleep(1)

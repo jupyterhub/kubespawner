@@ -83,6 +83,9 @@ async def kube_ns(request):
         t = asyncio.create_task(watch_kubernetes(ns_name))
 
         # delete the test namespace when we finish
+        #
+        # FIXME this doesn't actually work.  It doesn't seem to get called.
+        #
         def cleanup_namespace(finalizer):
             async def cleanup_anamespace():
                 await api.delete_namespace(ns_name,
@@ -104,6 +107,7 @@ async def kube_ns(request):
             current_loop = asyncio.get_event_loop_policy().get_event_loop()
             current_loop.run_until_complete(cleanup_anamespace())
 
+    # Cancel watch tasks on finish
     def cleanup_watch(finalizer):
         async def cleanup_awatch():
             if not t.done():
@@ -116,8 +120,6 @@ async def kube_ns(request):
 
         current_loop = asyncio.get_event_loop_policy().get_event_loop()
         current_loop.run_until_complete(cleanup_awatch())
-
-
 
         # allow opting out of namespace cleanup, for post-mortem debugging
         if not os.environ.get("KUBESPAWNER_DEBUG_NAMESPACE"):
@@ -178,8 +180,6 @@ def ssl_app(tmpdir_factory, kube_ns):
     return app
 
 
-
-
 async def watch_logs(pod_info):
     """Stream a single pod's logs
 
@@ -190,6 +190,8 @@ async def watch_logs(pod_info):
 
     Called for each new pod from watch_kubernetes
     """
+
+
     async with client.ApiClient() as api_client:
         api=client.CoreV1Api(api_client)
         async with Watch().stream(api.read_namespaced_pod_log,
@@ -218,6 +220,7 @@ async def watch_logs(pod_info):
                     # if we made it through the events without a non-400 error.
                     break
 
+
 @pytest.mark.asyncio
 async def watch_kubernetes(kube_ns):
     """Stream kubernetes events to stdout
@@ -227,6 +230,10 @@ async def watch_kubernetes(kube_ns):
     All events are streamed to stdout
 
     When a new pod is started, spawn an additional thread to watch its logs
+
+    FIXME
+    I haven't yet worked out where I need to have log_threads available to
+    cleanly shut them down when we exit.
     """
     log_threads = {}
     async with client.ApiClient() as api_client:
@@ -495,6 +502,7 @@ async def _exec_python_in_pod(kube_ns, pod_name, code, kwargs=None, _retries=0):
 
     kwargs are passed to the function, if it is given.
     """
+    # FIXME
     pytest.skip("No multichannel ws client in kubernetes_asyncio yet!")
     pod = await wait_for_pod(kube_ns, pod_name)
     original_code = code
@@ -518,6 +526,7 @@ async def _exec_python_in_pod(kube_ns, pod_name, code, kwargs=None, _retries=0):
         code,
     ]
     print("Running {} in {}".format(code, pod_name))
+    # FIXME
     # need to create ws client to get returncode,
     # see https://github.com/kubernetes-client/python/issues/812
     #
@@ -544,6 +553,7 @@ async def _exec_python_in_pod(kube_ns, pod_name, code, kwargs=None, _retries=0):
     # stderr = client.read_stderr()
     # print(stderr, file=sys.stderr)
 
+    # FIXME this is the piece we need.
     # returncode = client.returncode
     # if returncode:
     #     print(client.read_stdout())

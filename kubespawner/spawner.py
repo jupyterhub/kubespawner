@@ -2546,7 +2546,7 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
                         self.events.append(evtobj)
 
         except asyncio.CancelledError:
-            self.log.info(f"Watch task cancelled; events now {get_event_keys(self.events)}")
+            self.log.debug(f"Watch task cancelled; events now {get_event_keys(self.events)}")
         except asyncio.TimeoutError:
             self.log.info(f"Watch task timed out; events now {get_event_keys(self.events)}")
 
