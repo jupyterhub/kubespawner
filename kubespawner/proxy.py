@@ -193,26 +193,26 @@ class KubeIngressProxy(Proxy):
                     else:
                         raise
 
-        if endpoint is not None:
-            await ensure_object(
-                body=endpoint,
-                kind='endpoints',
-            )
+            if endpoint is not None:
+                await ensure_object(
+                    body=endpoint,
+                    kind='endpoints',
+                )
 
-            await exponential_backoff(
-                lambda: f"{self.namespace}/{safe_name}"
-                in self.endpoint_reflector.endpoints.keys(),
-                f"Could not find endpoints/{safe_name} after creating it"
-            )
-        else:
-            delete_endpoint = api.delete_namespaced_endpoints(
-                name=safe_name,
-                namespace=self.namespace,
-                body=client.V1DeleteOptions(grace_period_seconds=0),
-            )  # We want the future back, for the delete_if_exists call
-            # That sounded way more philosophical than I meant it to.
-            await self.delete_if_exists('endpoints', safe_name,
-                                        delete_endpoint)
+                await exponential_backoff(
+                    lambda: f"{self.namespace}/{safe_name}"
+                    in self.endpoint_reflector.endpoints.keys(),
+                    f"Could not find endpoints/{safe_name} after creating it"
+                )
+            else:
+                delete_endpoint = api.delete_namespaced_endpoints(
+                    name=safe_name,
+                    namespace=self.namespace,
+                    body=client.V1DeleteOptions(grace_period_seconds=0),
+                )  # We want the future back, for the delete_if_exists call
+                # That sounded way more philosophical than I meant it to.
+                await self.delete_if_exists('endpoints', safe_name,
+                                            delete_endpoint)
 
         await ensure_object(
             body=service,
