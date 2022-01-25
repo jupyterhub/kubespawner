@@ -52,9 +52,9 @@ from kubernetes_asyncio.client.models import V1VolumeMount
 from kubernetes_asyncio.client.models import V1WeightedPodAffinityTerm
 
 try:
-    from kubernetes.client.models import CoreV1EndpointPort
+    from kubernetes_asyncio.client.models import CoreV1EndpointPort
 except ImportError:
-    from kubernetes.client.models import V1EndpointPort as CoreV1EndpointPort
+    from kubernetes_asyncio.client.models import V1EndpointPort as CoreV1EndpointPort
 
 from kubespawner.utils import get_k8s_model
 from kubespawner.utils import update_k8s_model
