@@ -244,7 +244,7 @@ class KubeIngressProxy(Proxy):
 
         delete_options = client.V1DeleteOptions(grace_period_seconds=0)
         async with client.ApiClient() as api_client:
-            grp=getattr(client, api_group_name)
+            grp=getattr(client, "CoreV1Api")
             api=grp(api_client)
         
             delete_endpoint = api.delete_namespaced_endpoints(
