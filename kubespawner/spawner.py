@@ -41,7 +41,6 @@ from traitlets import Unicode
 from traitlets import Union
 from traitlets import validate
 
-from .clients import shared_client, K8sAsyncClientMixin
 from .objects import make_namespace
 from .objects import make_owner_reference
 from .objects import make_pod
@@ -85,7 +84,7 @@ class PodReflector(ResourceReflector):
 #  multinamespace world, particularly with asyncio.  We're using a single Event
 #  watch per spawn.  I don't *think* this is going to be particularly worse.
 
-class KubeSpawner(Spawner, K8sAsyncClientMixin):
+class KubeSpawner(Spawner):
     """
     A JupyterHub spawner that spawn pods in a Kubernetes Cluster. Each server
     spawned by a user will have its own KubeSpawner instance.

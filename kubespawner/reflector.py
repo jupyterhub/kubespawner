@@ -19,7 +19,7 @@ from traitlets import Unicode
 from traitlets.config import LoggingConfigurable
 from urllib3.exceptions import ReadTimeoutError
 
-from .clients import shared_client, set_k8s_client_configuration
+from .clients import set_k8s_client_configuration
 
 # This is kubernetes client implementation specific, but we need to know
 # whether it was a network or watch timeout.

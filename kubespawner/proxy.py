@@ -12,7 +12,6 @@ from tornado.concurrent import run_on_executor
 from traitlets import Unicode
 from traitlets import default
 
-from .clients import shared_client, K8sAsyncClientMixin
 from .objects import make_ingress
 from .reflector import ResourceReflector
 from .utils import generate_hashed_slug
@@ -42,13 +41,12 @@ class EndpointsReflector(ResourceReflector):
         return self.retrieve_resource_copy()
 
 
-class KubeIngressProxy(Proxy, K8sAsyncClientMixin):
+class KubeIngressProxy(Proxy):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Global configuration before reflector.py code runs
-        self._set_k8s_client_configuration()
+        # The reflector instantiation will set the client configuration for us.
 
         labels = {
             'component': self.component_label,
