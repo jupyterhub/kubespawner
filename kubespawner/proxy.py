@@ -169,7 +169,7 @@ class KubeIngressProxy(Proxy):
         )
 
         async def ensure_object(api_group_name="CoreV1Api",
-                                body, kind):
+                                body=None, kind=""):
             async with client.ApiClient() as api_client:
                 grp=getattr(client, api_group_name)
                 api=grp(api_client)

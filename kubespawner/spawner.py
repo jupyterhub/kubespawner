@@ -48,7 +48,7 @@ from .objects import make_pvc
 from .objects import make_secret
 from .objects import make_service
 from .reflector import ResourceReflector
-from .traitlets import Callable
+from .kubespawner_traitlets import Callable
 
 
 class MockObject(object):
