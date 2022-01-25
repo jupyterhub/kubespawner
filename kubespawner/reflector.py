@@ -170,7 +170,7 @@ class ResourceReflector(LoggingConfigurable):
         await set_k8s_client_configuration()
         await inst.start()
         return inst
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -264,27 +264,23 @@ class ResourceReflector(LoggingConfigurable):
         copy = dict(self.resources)
         self.resource_lock.release()
         return copy
-        
+
     async def _watch_and_update(self):
         """
         Keeps the current list of resources up-to-date
-
-        This method is to be run not on the main thread!
 
         We first fetch the list of current resources, and store that. Then we
         register to be notified of changes to those resources, and keep our
         local store up-to-date based on these notifications.
 
-        We also perform exponential backoff, giving up after we hit 32s
-        wait time. This should protect against network connections dropping
-        and intermittent unavailability of the api-server. Every time we
-        recover from an exception we also do a full fetch, to pick up
-        changes that might've been missed in the time we were not doing
-        a watch.
+        We've gotten rid of all the fiddly restarting and timeout logic; the
+        context manager of the async watch makes exception handling harder,
+        and I think it will work fine without it.
 
         Rather than tempting fate and decisions about weakening the GIL, let's
         just lock the object before updating it, huh?
         """
+
         selectors = []
         log_name = ""
         if self.label_selector:
@@ -292,8 +288,6 @@ class ResourceReflector(LoggingConfigurable):
         if self.field_selector:
             selectors.append("field selector=%r" % self.field_selector)
         log_selector = ', '.join(selectors)
-        
-        cur_delay = 0.1
 
         if self.omit_namespace:
             ns_str = "all namespaces"
@@ -309,101 +303,57 @@ class ResourceReflector(LoggingConfigurable):
         while True:
             self.log.debug("Connecting %s watcher", self.kind)
             start = time.monotonic()
-            w = watch.Watch()
-            try:
-                resource_version = await self._list_and_update()
-                if not self.first_load_future.done():
-                    # signal that we've loaded our initial data
-                    self.first_load_future.set_result(None)
-                watch_args = {
-                    "resource_version": resource_version,
-                }
-                if self.label_selector:
-                    watch_args["label_selector"] = self.label_selector
-                if self.field_selector:
-                    watch_args["field_selector"] = self.field_selector
-                if not self.omit_namespace:
-                    watch_args["namespace"] = self.namespace
-                if self.request_timeout:
-                    # set network receive timeout
-                    watch_args['_request_timeout'] = self.request_timeout
-                if self.timeout_seconds:
-                    # set watch timeout
-                    watch_args['timeout_seconds'] = self.timeout_seconds
-                # asyncio does the partial application inside w.stream
-                async with ApiClient() as api_client:
-                    grp=getattr(client, self.api_group_name)
-                    api=grp(api_client)
-                    method = getattr(api, self.list_method_name)
-
-                    # in case of timeout_seconds, the w.stream just exits
-                    # (no exception thrown)
-                    # -> we stop the watcher and start a new one
-                    async for watch_event in w.stream(method, **watch_args):
-                        # Remember that these events are k8s api related WatchEvents
-                        # objects, not k8s Event or Pod representations, they will
-                        # reside in the WatchEvent's object field depending on what
-                        # kind of resource is watched.
-                        #
-                        # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#watchevent-v1-meta
-                        # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#event-v1-core
-                        cur_delay = 0.1
+            resource_version = await self._list_and_update()
+            if not self.first_load_future.done():
+                # signal that we've loaded our initial data
+                self.first_load_future.set_result(None)
+            watch_args = {
+                "resource_version": resource_version,
+            }
+            if self.label_selector:
+                watch_args["label_selector"] = self.label_selector
+            if self.field_selector:
+                watch_args["field_selector"] = self.field_selector
+            if not self.omit_namespace:
+                watch_args["namespace"] = self.namespace
+            if self.request_timeout:
+                # set network receive timeout
+                watch_args['_request_timeout'] = self.request_timeout
+            if self.timeout_seconds:
+                # set watch timeout
+                watch_args['timeout_seconds'] = self.timeout_seconds
+            # asyncio does the partial application inside w.stream
+            async with ApiClient() as api_client:
+                grp=getattr(client, self.api_group_name)
+                api=grp(api_client)
+                method = getattr(api, self.list_method_name)
+                async with watch.Watch().stream(method, **watch_args) as stream:
+                    # Remember that these events are k8s api related WatchEvents
+                    # objects, not k8s Event or Pod representations, they will
+                    # reside in the WatchEvent's object field depending on what
+                    # kind of resource is watched.
+                    #
+                    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#watchevent-v1-meta
+                    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#event-v1-core
+                    async for watch_event in stream:
                         resource = watch_event['object']
                         ref_key = "{}/{}".format(
                             resource.metadata.namespace,
                             resource.metadata.name
                         )
-                        wtype = watch_event['type']
-                        if watch_event['type'] == 'DELETED':
-                            self.resource_lock.acquire()
+                        verbed = watch_event['type'].lower()
+                        self.resource_lock.acquire()
+                        if verbed == 'deleted':
                             self.resources.pop(ref_key, None)
-                            self.resource_lock.release()
-                            self.log.info(
-                                f"{self.kind} watcher deleted {ref_key}")
                         else:
-                            self.resource_lock.acquire()
                             self.resources[ref_key] = resource
-                            self.resource_lock.release()
-                            verbed = wtype.lower()
-                            self.log.info(
-                                f"{self.kind} watcher {verbed} {ref_key}")
+                        self.resource_lock.release()
+                        self.log.debug(
+                            f"{self.kind} watcher {verbed} {ref_key}"
+                        )
                         if self._stop_event.is_set():
-                            self.log.info("%s watcher stopped", self.kind)
-                            break
-                        watch_duration = time.monotonic() - start
-                        if watch_duration >= self.restart_seconds:
-                            self.log.debug(
-                                "Restarting %s watcher after %i seconds",
-                                self.kind,
-                                watch_duration,
-                            )
-                            break
-            except ReadTimeoutError:
-                # network read time out, just continue and restart the watch
-                # this could be due to a network problem or just low activity
-                self.log.warning("Read timeout watching %s, reconnecting", self.kind)
-                continue
-            except Exception as exc:
-                cur_delay = cur_delay * 2
-                if cur_delay > 30:
-                    self.log.exception("Watching resources never recovered, giving up")
-                    if self.on_failure:
-                        self.on_failure()
-                    return
-                self.log.exception(
-                    f"Error {exc} when watching resources, retrying in {cur_delay}s"
-                )
-                await asyncio.sleep(cur_delay)
-                continue
-            else:
-                # no events on watch, reconnect
-                self.log.debug("%s watcher timeout", self.kind)
-            finally:
-                await w.stop()
-                if self._stop_event.is_set():
-                    self.log.info("%s watcher stopped", self.kind)
-                    break
-        self.log.warning("%s watcher finished", self.kind)
+                            self.log.info(f"{self.kind} watcher stopped")
+                            return
 
 
     async def start_or_restart(self):
@@ -419,7 +369,7 @@ class ResourceReflector(LoggingConfigurable):
             except asyncio.CancelledError:
                 self.log.debug("watch task cancelled")
                 await self.start()
-            
+
 
     async def start(self):
         """

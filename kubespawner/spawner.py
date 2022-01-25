@@ -55,7 +55,7 @@ from .traitlets import Callable
 class MockObject(object):
     pass
 
-                            
+
 class PodReflector(ResourceReflector):
     """
     PodReflector is merely a configured ResourceReflector. It exposes
@@ -64,19 +64,19 @@ class PodReflector(ResourceReflector):
     the `kind` field and the `list_method_name` field.
     """
     kind = "pods"
-        
+
     # The default component label can be over-ridden by specifying the component_label property
     labels = {
         'component': 'singleuser-server',
     }
-        
+
     @property
     def pods(self):
         """
         A dictionary of pods for the namespace as returned by the Kubernetes
         API. The dictionary keys are the pod ids and the values are
         dictionaries of the actual pod resource values.
-        
+
         ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#pod-v1-core
         """
         return self.retrieve_resource_copy()
@@ -114,7 +114,7 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
         A convenience alias to the class variable reflectors['pods'].
         """
         return self.__class__.reflectors['pods']
-            
+
     def __init__(self, *args, **kwargs):
         _mock = kwargs.pop('_mock', False)
         super().__init__(*args, **kwargs)
@@ -1750,7 +1750,7 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
 
     def _ref_key(self):
         return "{}/{}".format(self.namespace, self.pod_name)
-    
+
     async def get_pod_manifest(self):
         """
         Make a pod manifest that will spawn current user's notebook pod.
@@ -2048,7 +2048,7 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
             return None
         # pod doesn't exist or has been deleted
         return 1
-        
+
 
     async def progress(self):
         """
@@ -2098,10 +2098,6 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
                 except IndexError:
                     # We've run out of events, so we're done
                     break  # The inner loop, that is.
-                self.log.info(
-                    (f"Emitting event {event.metadata.namespace}/" +
-                     f"{event.metadata.name}: {event.message}")
-                )
                 if event.involved_object.name != self.pod_name:
                     # This can only happen if we allow multiple user
                     # pods per namespace.
@@ -2140,21 +2136,21 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
             **kwargs,
     ):
         """Start a shared reflector on the KubeSpawner class
-        
-        
+
+
         kind: key for the reflector (e.g. 'pod' or 'events')
         reflector_class: Reflector class to be instantiated
         kwargs: extra keyword-args to be relayed to ReflectorClass
-        
+
         If replace=False and the pod reflector is already running,
         do nothing.
-        
+
         If replace=True, a running pod reflector will be stopped
         and a new one started (for recovering from possible errors).
         """
         key = kind
         ReflectorClass = reflector_class
-        
+
         def on_reflector_failure():
             self.log.critical(
                 "%s reflector failed, halting Hub.",
@@ -2164,9 +2160,9 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
             # will only kill current thread - not process.
             # https://stackoverflow.com/a/7099229
             os.kill(os.getpid(), signal.SIGINT)
-            
+
         previous_reflector = self.__class__.reflectors.get(key)
-        
+
         if replace or not previous_reflector:
             # We need to restart it.  We use the classmethod because starting
             # the reflector watch is an async method.
@@ -2177,7 +2173,7 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
                 **kwargs,
             )
             self.__class__.reflectors[key] = new_reflector
-        
+
         if replace and previous_reflector:
             # we replaced the reflector, stop the old one
             await previous_reflector.stop()
@@ -2187,10 +2183,10 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
 
     async def _start_watching_pods(self, replace=False):
         """Start the pod reflector
-            
+
         If replace=False and the pod reflector is already running,
         do nothing.
-        
+
         If replace=True, a running pod reflector will be stopped
         and a new one started (for recovering from possible errors).
         """
@@ -2202,7 +2198,7 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
             omit_namespace=self.enable_user_namespaces,
             replace=replace,
         )
-                
+
 
     # record a future for the call to .start()
     # so we can use it to terminate .progress()
@@ -2484,7 +2480,7 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
 
         pod=await self._wait_for_running_pod()
         self.pod_id = pod.metadata.uid
-        
+
         pstr=f"Pod {pod.metadata.namespace}/{pod.metadata.name} has started"
         self.log.info(pstr)
         return self._get_pod_url(pod)
@@ -2512,9 +2508,10 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
             raise
         return self.pod_reflector.pods[ref_key]
 
-    
+
     async def _wait_for_pod_exit(self):
         ref_key = self._ref_key()
+        self.log.info(f"Waiting for pod {ref_key} to exit.")
         try:
             await exponential_backoff(
                 lambda: self.pod_reflector.pods.get(ref_key, None) is None,
@@ -2546,14 +2543,7 @@ class KubeSpawner(Spawner, K8sAsyncClientMixin):
                     async for event in stream:
                         evtobj=event['object']
                         obj_str=f"{evtobj.metadata.namespace}/{evtobj.metadata.name}"
-                        if evtobj.metadata.name != self.pod_name:
-                            # If we DON'T do this somehow we miss the
-                            #  shutdown?!
-                            self.log.info("Not appending {obj_str} to watch.")
-                            continue
                         self.events.append(evtobj)
-                        self.log.info(
-                            f"Appended {obj_str} to event watch.")
 
         except asyncio.CancelledError:
             self.log.info(f"Watch task cancelled; events now {get_event_keys(self.events)}")
