@@ -11,22 +11,23 @@ from distutils.version import LooseVersion as V
 from functools import partial
 from threading import Thread
 
-import kubernetes
+import kubernetes_asyncio
 import pytest
 from jupyterhub.app import JupyterHub
 from jupyterhub.objects import Hub
-from kubernetes.client import V1ConfigMap
-from kubernetes.client import V1Namespace
-from kubernetes.client import V1Pod
-from kubernetes.client import V1PodSpec
-from kubernetes.client import V1Secret
-from kubernetes.client import V1Service
-from kubernetes.client import V1ServicePort
-from kubernetes.client import V1ServiceSpec
-from kubernetes.client.rest import ApiException
-from kubernetes.config import load_kube_config
-from kubernetes.stream import stream
-from kubernetes.watch import Watch
+from kubernetes_asyncio.client import V1ConfigMap
+from kubernetes_asyncio.client import V1Namespace
+from kubernetes_asyncio.client import V1Pod
+from kubernetes_asyncio.client import V1PodSpec
+from kubernetes_asyncio.client import V1Secret
+from kubernetes_asyncio.client import V1Service
+from kubernetes_asyncio.client import V1ServicePort
+from kubernetes_asyncio.client import V1ServiceSpec
+from kubernetes_asyncio.client.rest import ApiException
+from kubernetes_asyncio.config import load_kube_config
+#from kubernetes.stream import stream
+from kubernetes_asyncio.stream import stream
+from kubernetes_asyncio.watch import Watch
 from traitlets.config import Config
 
 from kubespawner.clients import shared_client

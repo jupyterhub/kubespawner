@@ -20,7 +20,7 @@ setup(
         'python-slugify',
         'jupyterhub>=0.8',
         'jinja2',
-        'kubernetes>=10.1.0',
+        'kubernetes_asyncio>=10.1.0',
         'urllib3',
         'pyYAML',
     ],

@@ -6,8 +6,8 @@ import time
 from concurrent.futures import Future
 from functools import partial
 
-from kubernetes import config
-from kubernetes import watch
+from kubernetes_asyncio import config
+from kubernetes_asyncio import watch
 from traitlets import Any
 from traitlets import Bool
 from traitlets import Dict

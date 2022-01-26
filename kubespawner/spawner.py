@@ -17,7 +17,7 @@ from functools import partial
 from urllib.parse import urlparse
 
 import escapism
-import kubernetes.config
+import kubernetes_asyncio.config
 from jinja2 import BaseLoader
 from jinja2 import Environment
 from jupyterhub.spawner import Spawner

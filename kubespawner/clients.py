@@ -6,8 +6,8 @@ each of which spawns an unused max-size thread pool
 import weakref
 from unittest.mock import Mock
 
-import kubernetes.client
-from kubernetes.client import api_client
+import kubernetes_asyncio.client
+from kubernetes_asyncio.client import api_client
 
 # FIXME: remove when instantiating a kubernetes client
 # doesn't create N-CPUs threads unconditionally.
