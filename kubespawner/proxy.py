@@ -12,7 +12,7 @@ from tornado import gen
 from tornado.concurrent import run_on_executor
 from traitlets import Unicode
 
-from .clients import shared_client
+from .clients import shared_client, load_config
 from .objects import make_ingress
 from .reflector import ResourceReflector
 from .utils import generate_hashed_slug
@@ -82,10 +82,10 @@ class KubeIngressProxy(Proxy):
         config=True,
         help="""
         Location (absolute filepath) for CA certs of the k8s API server.
-        
-        Typically this is unnecessary, CA certs are picked up by 
+
+        Typically this is unnecessary, CA certs are picked up by
         config.load_incluster_config() or config.load_kube_config.
-        
+
         In rare non-standard cases, such as using custom intermediate CA
         for your cluster, you may need to mount root CA's elsewhere in
         your Pod/Container and point this variable to that filepath
@@ -97,8 +97,8 @@ class KubeIngressProxy(Proxy):
         config=True,
         help="""
         Full host name of the k8s API server ("https://hostname:port").
-        
-        Typically this is unnecessary, the hostname is picked up by 
+
+        Typically this is unnecessary, the hostname is picked up by
         config.load_incluster_config() or config.load_kube_config.
         """,
     )
@@ -125,18 +125,41 @@ class KubeIngressProxy(Proxy):
         This is how you should get a proxy object.
         """
         inst=cls(*args, **kwargs)
-        inst.core_api = await shared_client('CoreV1Api')
-        inst.extension_api = await shared_client('ExtensionsV1beta1Api')
-        
-        inst.ingress_reflector = await IngressReflector.reflector(
+        await inst._initialize_resources()
+        return inst
+
+    async def _initialize_resources(self):
+        await load_config()
+        _set_k8s_client_configuration()
+        self.core_api = await shared_client('CoreV1Api')
+        self.extension_api = await shared_client('ExtensionsV1beta1Api')
+
+        self.ingress_reflector = await IngressReflector.reflector(
             parent=self, namespace=self.namespace, labels=labels
         )
-        inst.service_reflector = await ServiceReflector.reflector(
+        self.service_reflector = await ServiceReflector.reflector(
             parent=self, namespace=self.namespace, labels=labels
         )
-        inst.endpoint_reflector = await EndpointsReflector.reflector(
+        self.endpoint_reflector = await EndpointsReflector.reflector(
             parent=self, namespace=self.namespace, labels=labels
         )
+
+    def _set_k8s_client_configuration(self):
+        # The actual (singleton) Kubernetes client will be created
+        # in clients.py shared_client but the configuration
+        # for token / ca_cert / k8s api host is set globally
+        # in kubernetes.py syntax.  It is being set here
+        # and this method called prior to getting a shared_client
+        # (but after load_config)
+        # for readability / coupling with traitlets values
+        if self.k8s_api_ssl_ca_cert:
+            global_conf = client.Configuration.get_default_copy()
+            global_conf.ssl_ca_cert = self.k8s_api_ssl_ca_cert
+            client.Configuration.set_default(global_conf)
+        if self.k8s_api_host:
+            global_conf = client.Configuration.get_default_copy()
+            global_conf.host = self.k8s_api_host
+            client.Configuration.set_default(global_conf)
 
     def safe_name_for_routespec(self, routespec):
         safe_chars = set(string.ascii_lowercase + string.digits)
@@ -202,7 +225,7 @@ class KubeIngressProxy(Proxy):
                 'Could not find endpoints/%s after creating it' % safe_name,
             )
         else:
-            delete_endpoint = await (self.core_api.delete_namespaced_endpoints(
+            delete_endpoint = await self.core_api.delete_namespaced_endpoints(
                 name=safe_name,
                 namespace=self.namespace,
                 body=client.V1DeleteOptions(grace_period_seconds=0),

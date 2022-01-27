@@ -27,6 +27,8 @@ async def shared_client(ClientType, *args, **kwargs):
     so that concurrent calls to shared_client
     will all return the same instance until
     all references to the client are cleared.
+
+    You should usually await load_config before calling this.
     """
     kwarg_key = tuple((key, kwargs[key]) for key in sorted(kwargs))
     cache_key = (ClientType, args, kwarg_key)
@@ -40,12 +42,11 @@ async def shared_client(ClientType, *args, **kwargs):
         # Kubernetes client configuration is handled globally
         # in kubernetes.py and is already called in spawner.py
         # or proxy.py prior to a shared_client being instantiated
-        await load_config()
         Client = getattr(kubernetes_asyncio.client, ClientType)
         client = Client(*args, **kwargs)
         # cache weakref so that clients can be garbage collected
         _client_cache[cache_key] = weakref.ref(client)
-        
+
     return client
 
 async def load_config():
@@ -53,18 +54,3 @@ async def load_config():
         kubernetes_asyncio.config.load_incluster_config()
     except kubernetes_asyncio.config.ConfigException:
         await kubernetes_asyncio.config.load_kube_config()
-
-async def set_k8s_client_configuration(client=None):
-    # Call this prior to using a client for readability /
-    # coupling with traitlets values.
-    await load_config()
-    if not client:
-        return
-    if hasattr(client, 'k8s_api_ssl_ca_cert') and client.k8s_api_ssl_ca_cert:
-        global_conf = kubernetes_asyncio.client.Configuration.get_default_copy()
-        global_conf.ssl_ca_cert = client.k8s_api_ssl_ca_cert
-        kubernetes_asyncio.client.Configuration.set_default(global_conf)
-    if client.k8s_api_host:
-        global_conf = kubernetes_asyncio.client.Configuration.get_default_copy()
-        global_conf.host = client.k8s_api_host
-        kubernetes_asyncio.client.Configuration.set_default(global_conf)

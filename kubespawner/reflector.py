@@ -17,7 +17,7 @@ from traitlets import Unicode
 from traitlets.config import LoggingConfigurable
 from urllib3.exceptions import ReadTimeoutError
 
-from .clients import shared_client, set_k8s_client_configuration
+from .clients import shared_client, load_config
 
 # This is kubernetes client implementation specific, but we need to know
 # whether it was a network or watch timeout.
@@ -217,8 +217,8 @@ class ResourceReflector(LoggingConfigurable):
         This is how you should instantiate a reflector.
         """
         inst=cls(*args, **kwargs)
+        await load_config()
         inst.api = await shared_client(inst.api_group_name)
-        await set_k8s_client_configuration()
         await inst.start()
         return inst
 
@@ -242,8 +242,6 @@ class ResourceReflector(LoggingConfigurable):
             kwargs["namespace"] = self.namespace
 
         method = getattr(self.api, self.list_method_name)
-        self.log.debug(f"method: {method}")
-        self.log.debug(f"kwargs: {kwargs}")
         self.log.debug(self.api.api_client.configuration.host)
         initial_resources_raw = await ((method)(**kwargs))
         self.log.debug(f"initial resources {initial_resources_raw}")
@@ -317,6 +315,8 @@ class ResourceReflector(LoggingConfigurable):
                     "label_selector": self.label_selector,
                     "field_selector": self.field_selector,
                     "resource_version": resource_version,
+                    # You'd think this would work...but it does nothing.
+                    # "_preload_content": False
                 }
                 if not self.omit_namespace:
                     watch_args["namespace"] = self.namespace
@@ -326,9 +326,12 @@ class ResourceReflector(LoggingConfigurable):
                 if self.timeout_seconds:
                     # set watch timeout
                     watch_args['timeout_seconds'] = self.timeout_seconds
-                watch_args['_preload_content'] = False
+                # Partial application of _preload_content=False causes
+                # a stream of errors of the form:
+                # AttributeError: module 'kubernetes_asyncio.client.models' has no attribute ''
+                # when unmarshaling the event into dict form.
                 method = getattr(self.api, self.list_method_name)
-                async with w.stream(method(**watch_args)) as stream:
+                async with w.stream(method,**watch_args) as stream:
                     async for watch_event in stream:
                     # in case of timeout_seconds, the w.stream just exits (no exception thrown)
                     # -> we stop the watcher and start a new one
@@ -340,7 +343,10 @@ class ResourceReflector(LoggingConfigurable):
                         # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#watchevent-v1-meta
                         # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#event-v1-core
                         cur_delay = 0.1
-                        resource = watch_event['object']
+                        resource_obj = watch_event['object']
+                        # This, in theory, is exactly what _preload_content=False should do.
+                        # Only this actually works.
+                        resource = self.api.api_client.sanitize_for_serialization(resource_obj)
                         ref_key = "{}/{}".format(
                             resource["metadata"]["namespace"], resource["metadata"]["name"]
                         )

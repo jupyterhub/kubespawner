@@ -39,7 +39,7 @@ from traitlets import Unicode
 from traitlets import Union
 from traitlets import validate
 
-from .clients import shared_client, set_k8s_client_configuration
+from .clients import shared_client, load_config
 from .objects import make_namespace
 from .objects import make_owner_reference
 from .objects import make_pod
@@ -230,8 +230,8 @@ class KubeSpawner(Spawner):
         return inst
         
     async def _initialize_reflectors_and_clients(self):
+        await load_config()
         self.api = await shared_client("CoreV1Api")
-        await set_k8s_client_configuration()
         await self._start_watching_pods()
         if self.events_enabled:
             await self._start_watching_events()
