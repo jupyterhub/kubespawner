@@ -39,7 +39,7 @@ from traitlets import Unicode
 from traitlets import Union
 from traitlets import validate
 
-from .clients import shared_client
+from .clients import shared_client, set_k8s_client_configuration
 from .objects import make_namespace
 from .objects import make_owner_reference
 from .objects import make_pod
@@ -200,16 +200,13 @@ class KubeSpawner(Spawner):
                     max_workers=self.k8s_api_threadpool_workers
                 )
 
-            # Set global kubernetes client configurations
-            # before reflector.py code runs
-            self._set_k8s_client_configuration()
             self.api = shared_client('CoreV1Api')
+
+            # Starting our watchers is now async, so we cannot do it in
+            # __init()__.
 
             # This will start watching in __init__, so it'll start the first
             # time any spawner object is created. Not ideal but works!
-            self._start_watching_pods()
-            if self.events_enabled:
-                self._start_watching_events()
 
         # runs during both test and normal execution
         self.pod_name = self._expand_user_properties(self.pod_name_template)
@@ -227,25 +224,12 @@ class KubeSpawner(Spawner):
         # The attribute needs to exist, even though it is unset to start with
         self._start_future = None
 
-    def _set_k8s_client_configuration(self):
-        # The actual (singleton) Kubernetes client will be created
-        # in clients.py shared_client but the configuration
-        # for token / ca_cert / k8s api host is set globally
-        # in kubernetes.py syntax.  It is being set here
-        # and this method called prior to shared_client
-        # for readability / coupling with traitlets values
-        try:
-            kubernetes.config.load_incluster_config()
-        except kubernetes.config.ConfigException:
-            kubernetes.config.load_kube_config()
-        if self.k8s_api_ssl_ca_cert:
-            global_conf = client.Configuration.get_default_copy()
-            global_conf.ssl_ca_cert = self.k8s_api_ssl_ca_cert
-            client.Configuration.set_default(global_conf)
-        if self.k8s_api_host:
-            global_conf = client.Configuration.get_default_copy()
-            global_conf.host = self.k8s_api_host
-            client.Configuration.set_default(global_conf)
+    async def _initialize_reflectors_and_clients(self):
+        await set_client_k8s_configuration()
+        await self._start_watching_pods()
+        if self.events_enabled:
+            await self._start_watching_events()
+
 
     k8s_api_ssl_ca_cert = Unicode(
         "",
@@ -2067,7 +2051,12 @@ class KubeSpawner(Spawner):
         Note that a clean exit will have an exit code of zero, so it is
         necessary to check that the returned value is None, rather than
         just Falsy, to determine that the pod is still running.
+
+        We cannot be sure the Hub will call start() before poll(), so
+        we need to load client configuration and start our reflectors
+        at the top of each of those methods.
         """
+        await self._initialize_reflectors_and_clients()
         # have to wait for first load of data before we have a valid answer
         if not self.pod_reflector.first_load_future.done():
             await asyncio.wrap_future(self.pod_reflector.first_load_future)
@@ -2124,10 +2113,6 @@ class KubeSpawner(Spawner):
             return None
         # pod doesn't exist or has been deleted
         return 1
-
-    @run_on_executor
-    def asynchronize(self, method, *args, **kwargs):
-        return method(*args, **kwargs)
 
     @property
     def events(self):
@@ -2327,17 +2312,14 @@ class KubeSpawner(Spawner):
             self.log.info(
                 f"Attempting to create pod {pod.metadata.name}, with timeout {request_timeout}"
             )
-            # Use tornado's timeout, _request_timeout seems unreliable?
-            await gen.with_timeout(
-                timedelta(seconds=request_timeout),
-                self.asynchronize(
-                    self.api.create_namespaced_pod,
+            # Use asyncio.wait_for, _request_timeout seems unreliable?
+            await asyncio.wait_for(
+                self.api.create_namespaced_pod(
                     self.namespace,
-                    pod,
-                ),
-            )
+                    pod),
+                request_timeout)
             return True
-        except gen.TimeoutError:
+        except asyncio.TimeoutError:
             # Just try again
             return False
         except ApiException as e:
@@ -2369,16 +2351,14 @@ class KubeSpawner(Spawner):
             self.log.info(
                 f"Attempting to create pvc {pvc.metadata.name}, with timeout {request_timeout}"
             )
-            await gen.with_timeout(
-                timedelta(seconds=request_timeout),
-                self.asynchronize(
-                    self.api.create_namespaced_persistent_volume_claim,
+            await asyncio.wait_for(
+                self.api.create_namespaced_persistent_volume_claim(
                     namespace=self.namespace,
                     body=pvc,
                 ),
-            )
+                request_timeout)
             return True
-        except gen.TimeoutError:
+        except asyncio.TimeoutError:
             # Just try again
             return False
         except ApiException as e:
@@ -2391,8 +2371,7 @@ class KubeSpawner(Spawner):
                 t, v, tb = sys.exc_info()
 
                 try:
-                    await self.asynchronize(
-                        self.api.read_namespaced_persistent_volume_claim,
+                    await self.api.read_namespaced_persistent_volume_claim(
                         name=pvc_name,
                         namespace=self.namespace,
                     )
@@ -2423,11 +2402,10 @@ class KubeSpawner(Spawner):
         # first, attempt to delete the resource
         try:
             self.log.info(f"Deleting {kind}/{name}")
-            await gen.with_timeout(
-                timedelta(seconds=self.k8s_api_request_timeout),
-                self.asynchronize(delete, namespace=self.namespace, name=name),
-            )
-        except gen.TimeoutError:
+            await asyncio.wait_for(
+                delete(namespace=self.namespace, name=name),
+                self.k8s_api_request_timeout)
+        except asyncio.TimeoutError:
             # Just try again
             return False
         except ApiException as e:
@@ -2440,11 +2418,10 @@ class KubeSpawner(Spawner):
 
         try:
             self.log.info(f"Checking for {kind}/{name}")
-            await gen.with_timeout(
-                timedelta(seconds=self.k8s_api_request_timeout),
-                self.asynchronize(read, namespace=self.namespace, name=name),
-            )
-        except gen.TimeoutError:
+            await asyncio.wait_for(
+                read(namespace=self.namespace, name=name),
+                self.k8s_api_request_timeout)
+        except asyncio.TimeoutError:
             # Just try again
             return False
         except ApiException as e:
@@ -2465,16 +2442,10 @@ class KubeSpawner(Spawner):
         create = getattr(self.api, f"create_namespaced_{kind}")
         self.log.info(f"Attempting to create {kind} {manifest.metadata.name}")
         try:
-            # Use tornado's timeout, _request_timeout seems unreliable?
-            await gen.with_timeout(
-                timedelta(seconds=self.k8s_api_request_timeout),
-                self.asynchronize(
-                    create,
-                    self.namespace,
-                    manifest,
-                ),
-            )
-        except gen.TimeoutError:
+            await asyncio.wait_for(
+                create(self.namespace,manifest),
+                self.k8s_api_request_timeout)
+        except asyncio.TimeoutError:
             # Just try again
             return False
         except ApiException as e:
@@ -2493,6 +2464,10 @@ class KubeSpawner(Spawner):
 
         # load user options (including profile)
         await self.load_user_options()
+
+        # Start watchers.  This might also be called from poll().  It also
+        #  configures our API clients.
+        await self._initialize_reflectors_and_clients()
 
         # If we have user_namespaces enabled, create the namespace.
         #  It's fine if it already exists.
@@ -2644,18 +2619,15 @@ class KubeSpawner(Spawner):
         ref_key = "{}/{}".format(self.namespace, pod_name)
         self.log.info("Deleting pod %s", ref_key)
         try:
-            await gen.with_timeout(
-                timedelta(seconds=request_timeout),
-                self.asynchronize(
-                    self.api.delete_namespaced_pod,
+            await asyncio.wait_for(
+                self.api.delete_namespaced_pod(
                     name=pod_name,
                     namespace=self.namespace,
                     body=delete_options,
-                    grace_period_seconds=grace_seconds,
-                ),
-            )
+                    grace_period_seconds=grace_seconds)
+                request_timeout)
             return True
-        except gen.TimeoutError:
+        except asyncio.TimeoutError:
             return False
         except ApiException as e:
             if e.status == 404:
@@ -2677,16 +2649,13 @@ class KubeSpawner(Spawner):
         """
         self.log.info("Deleting pvc %s", pvc_name)
         try:
-            await gen.with_timeout(
-                timedelta(seconds=request_timeout),
-                self.asynchronize(
-                    self.api.delete_namespaced_persistent_volume_claim,
+            await asyncio.wait_for(
+                self.api.delete_namespaced_persistent_volume_claim(
                     name=pvc_name,
-                    namespace=self.namespace,
-                ),
-            )
+                    namespace=self.namespace),
+                request_timeout)
             return True
-        except gen.TimeoutError:
+        except asyncio.TimeoutError:
             return False
         except ApiException as e:
             if e.status == 404:
@@ -2892,10 +2861,9 @@ class KubeSpawner(Spawner):
         ns = make_namespace(self.namespace)
         api = self.api
         try:
-            await gen.with_timeout(
-                timedelta(seconds=self.k8s_api_request_timeout),
-                self.asynchronize(api.create_namespace, ns),
-            )
+            await asyncio.wait_for(
+                api.create_namespace(ns),
+                self.k8s_api_request_timeout)
         except ApiException as e:
             if e.status != 409:
                 # It's fine if it already exists

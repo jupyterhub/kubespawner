@@ -16,7 +16,7 @@ from traitlets import Unicode
 from traitlets.config import LoggingConfigurable
 from urllib3.exceptions import ReadTimeoutError
 
-from .clients import shared_client
+from .clients import shared_client, set_k8s_client_configuration()
 
 # This is kubernetes client implementation specific, but we need to know
 # whether it was a network or watch timeout.
@@ -158,7 +158,9 @@ class ResourceReflector(LoggingConfigurable):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # client configuration for kubernetes has already taken place
+        # client configuration for kubernetes may not have taken place,
+        # because it is asynchronous.  We will do it when we create the
+        # reflector from its reflector() classmethod.
         self.api = shared_client(self.api_group_name)
 
         # FIXME: Protect against malicious labels?
@@ -203,12 +205,21 @@ class ResourceReflector(LoggingConfigurable):
         if not self.list_method_name:
             raise RuntimeError("Reflector list_method_name must be set!")
 
-        self.start()
+        # start is now asynchronous.  That means that the way to create a
+        # reflector is now with a classmethod (called "reflector") that
+        # awaits the start().
+
+    @classmethod
+    def reflector(cls, *args, **kwargs):
+        inst=cls(*args, **kwargs)
+	await set_k8s_client_configuration()
+	await inst.start()
+	return inst
 
     def __del__(self):
         self.stop()
 
-    def _list_and_update(self):
+    async def _list_and_update(self):
         """
         Update current list of resources by doing a full fetch.
 
@@ -234,7 +245,7 @@ class ResourceReflector(LoggingConfigurable):
         # return the resource version so we can hook up a watch
         return initial_resources["metadata"]["resourceVersion"]
 
-    def _watch_and_update(self):
+    async def _watch_and_update(self):
         """
         Keeps the current list of resources up-to-date
 
@@ -362,7 +373,7 @@ class ResourceReflector(LoggingConfigurable):
                     break
         self.log.warning("%s watcher finished", self.kind)
 
-    def start(self):
+    async def start(self):
         """
         Start the reflection process!
 
@@ -381,10 +392,10 @@ class ResourceReflector(LoggingConfigurable):
         self.watch_thread.daemon = True
         self.watch_thread.start()
 
-    def stop(self):
+    async def stop(self):
         self._stop_event.set()
 
-    def stopped(self):
+    async def stopped(self):
         return self._stop_event.is_set()
 
 
