@@ -20,8 +20,7 @@ api_client.ThreadPool = lambda *args, **kwargs: _dummy_pool
 
 _client_cache = {}
 
-
-def shared_client(ClientType, *args, **kwargs):
+async def shared_client(ClientType, *args, **kwargs):
     """Return a single shared kubernetes client instance
 
     A weak reference to the instance is cached,
@@ -41,27 +40,31 @@ def shared_client(ClientType, *args, **kwargs):
         # Kubernetes client configuration is handled globally
         # in kubernetes.py and is already called in spawner.py
         # or proxy.py prior to a shared_client being instantiated
-        Client = getattr(kubernetes.client, ClientType)
+        await load_config()
+        Client = getattr(kubernetes_asyncio.client, ClientType)
         client = Client(*args, **kwargs)
         # cache weakref so that clients can be garbage collected
         _client_cache[cache_key] = weakref.ref(client)
+        
     return client
 
+async def load_config():
+    try:
+        kubernetes_asyncio.config.load_incluster_config()
+    except kubernetes_asyncio.config.ConfigException:
+        await kubernetes_asyncio.config.load_kube_config()
 
 async def set_k8s_client_configuration(client=None):
     # Call this prior to using a client for readability /
     # coupling with traitlets values.
-    try:
-	kubernetes_asyncio.config.load_incluster_config()
-    except kubernetes_asyncio.config.ConfigException:
-	await kubernetes_asyncio.config.load_kube_config()
+    await load_config()
     if not client:
-	return
-    if client.k8s_api_ssl_ca_cert:
-	global_conf = kubernetes_asyncio.client.Configuration.get_default_copy()
-	global_conf.ssl_ca_cert = client.k8s_api_ssl_ca_cert
-	kubernetes_asyncio.client.Configuration.set_default(global_conf)
+        return
+    if hasattr(client, 'k8s_api_ssl_ca_cert') and client.k8s_api_ssl_ca_cert:
+        global_conf = kubernetes_asyncio.client.Configuration.get_default_copy()
+        global_conf.ssl_ca_cert = client.k8s_api_ssl_ca_cert
+        kubernetes_asyncio.client.Configuration.set_default(global_conf)
     if client.k8s_api_host:
-	global_conf = kubernetes_asyncio.client.Configuration.get_default_copy()
-	global_conf.host = client.k8s_api_host
-	kubernetes_asyncio.client.Configuration.set_default(global_conf)
+        global_conf = kubernetes_asyncio.client.Configuration.get_default_copy()
+        global_conf.host = client.k8s_api_host
+        kubernetes_asyncio.client.Configuration.set_default(global_conf)

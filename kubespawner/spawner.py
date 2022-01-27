@@ -200,8 +200,6 @@ class KubeSpawner(Spawner):
                     max_workers=self.k8s_api_threadpool_workers
                 )
 
-            self.api = shared_client('CoreV1Api')
-
             # Starting our watchers is now async, so we cannot do it in
             # __init()__.
 
@@ -224,8 +222,16 @@ class KubeSpawner(Spawner):
         # The attribute needs to exist, even though it is unset to start with
         self._start_future = None
 
+    @classmethod
+    async def initialize(cls,*args,**kwargs):
+        """In an ideal world, you'd get a new KubeSpawner with this."""
+        inst=cls(*args,**kwargs)
+        await inst._initialize_reflectors_and_clients()
+        return inst
+        
     async def _initialize_reflectors_and_clients(self):
-        await set_client_k8s_configuration()
+        self.api = await shared_client("CoreV1Api")
+        await set_k8s_client_configuration()
         await self._start_watching_pods()
         if self.events_enabled:
             await self._start_watching_events()
@@ -2201,7 +2207,7 @@ class KubeSpawner(Spawner):
                 break
             await asyncio.sleep(1)
 
-    def _start_reflector(
+    async def _start_reflector(
         self,
         kind=None,
         reflector_class=ResourceReflector,
@@ -2238,7 +2244,7 @@ class KubeSpawner(Spawner):
         previous_reflector = self.__class__.reflectors.get(key)
 
         if replace or not previous_reflector:
-            self.__class__.reflectors[key] = ReflectorClass(
+            self.__class__.reflectors[key] = await ReflectorClass.reflector(
                 parent=self,
                 namespace=self.namespace,
                 on_failure=on_reflector_failure,
@@ -2252,7 +2258,7 @@ class KubeSpawner(Spawner):
         # return the current reflector
         return self.__class__.reflectors[key]
 
-    def _start_watching_events(self, replace=False):
+    async def _start_watching_events(self, replace=False):
         """Start the events reflector
 
         If replace=False and the event reflector is already running,
@@ -2261,7 +2267,7 @@ class KubeSpawner(Spawner):
         If replace=True, a running pod reflector will be stopped
         and a new one started (for recovering from possible errors).
         """
-        return self._start_reflector(
+        return await self._start_reflector(
             kind="events",
             reflector_class=EventReflector,
             fields={"involvedObject.kind": "Pod"},
@@ -2269,7 +2275,7 @@ class KubeSpawner(Spawner):
             replace=replace,
         )
 
-    def _start_watching_pods(self, replace=False):
+    async def _start_watching_pods(self, replace=False):
         """Start the pod reflector
 
         If replace=False and the pod reflector is already running,
@@ -2280,7 +2286,7 @@ class KubeSpawner(Spawner):
         """
         pod_reflector_class = PodReflector
         pod_reflector_class.labels.update({"component": self.component_label})
-        return self._start_reflector(
+        return await self._start_reflector(
             "pods",
             PodReflector,
             omit_namespace=self.enable_user_namespaces,
@@ -2624,7 +2630,7 @@ class KubeSpawner(Spawner):
                     name=pod_name,
                     namespace=self.namespace,
                     body=delete_options,
-                    grace_period_seconds=grace_seconds)
+                    grace_period_seconds=grace_seconds),
                 request_timeout)
             return True
         except asyncio.TimeoutError:

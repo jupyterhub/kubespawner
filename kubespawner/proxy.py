@@ -113,20 +113,28 @@ class KubeIngressProxy(Proxy):
         self.executor = ThreadPoolExecutor(max_workers=self.app.concurrent_spawn_limit)
 
         # Global configuration before reflector.py code runs
-        self.core_api = shared_client('CoreV1Api')
-        self.extension_api = shared_client('ExtensionsV1beta1Api')
 
         labels = {
             'component': self.component_label,
             'hub.jupyter.org/proxy-route': 'true',
         }
-        self.ingress_reflector = IngressReflector.reflector(
+
+    @classmethod
+    async def initialize(cls, *args, **kwargs):
+        """
+        This is how you should get a proxy object.
+        """
+        inst=cls(*args, **kwargs)
+        inst.core_api = await shared_client('CoreV1Api')
+        inst.extension_api = await shared_client('ExtensionsV1beta1Api')
+        
+        inst.ingress_reflector = await IngressReflector.reflector(
             parent=self, namespace=self.namespace, labels=labels
         )
-        self.service_reflector = ServiceReflector.reflector(
+        inst.service_reflector = await ServiceReflector.reflector(
             parent=self, namespace=self.namespace, labels=labels
         )
-        self.endpoint_reflector = EndpointsReflector.reflector(
+        inst.endpoint_reflector = await EndpointsReflector.reflector(
             parent=self, namespace=self.namespace, labels=labels
         )
 

@@ -26,7 +26,7 @@ from kubernetes_asyncio.client import V1ServiceSpec
 from kubernetes_asyncio.client.rest import ApiException
 from kubernetes_asyncio.config import load_kube_config
 #from kubernetes.stream import stream
-from kubernetes_asyncio.stream import stream
+#from kubernetes_asyncio.stream import stream
 from kubernetes_asyncio.watch import Watch
 from traitlets.config import Config
 
