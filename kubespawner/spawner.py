@@ -226,10 +226,10 @@ class KubeSpawner(Spawner):
     async def initialize(cls,*args,**kwargs):
         """In an ideal world, you'd get a new KubeSpawner with this."""
         inst=cls(*args,**kwargs)
-        await inst._initialize_reflectors_and_clients()
+        await inst.initialize_reflectors_and_clients()
         return inst
         
-    async def _initialize_reflectors_and_clients(self):
+    async def initialize_reflectors_and_clients(self):
         await load_config()
         self.api = await shared_client("CoreV1Api")
         await self._start_watching_pods()
@@ -2062,7 +2062,7 @@ class KubeSpawner(Spawner):
         we need to load client configuration and start our reflectors
         at the top of each of those methods.
         """
-        await self._initialize_reflectors_and_clients()
+        await self.initialize_reflectors_and_clients()
         # have to wait for first load of data before we have a valid answer
         if not self.pod_reflector.first_load_future.done():
             await asyncio.wrap_future(self.pod_reflector.first_load_future)
@@ -2473,7 +2473,7 @@ class KubeSpawner(Spawner):
 
         # Start watchers.  This might also be called from poll().  It also
         #  configures our API clients.
-        await self._initialize_reflectors_and_clients()
+        await self.initialize_reflectors_and_clients()
 
         # If we have user_namespaces enabled, create the namespace.
         #  It's fine if it already exists.
@@ -2675,6 +2675,10 @@ class KubeSpawner(Spawner):
                 raise
 
     async def stop(self, now=False):
+        # This could be the first method called; say the Hub has been
+        #  restarted, and the first thing someone does is hit it to stop
+        #  a running pod.  Hence the need to initialize reflectors/clients.
+        await self.initialize_reflectors_and_clients()
         delete_options = client.V1DeleteOptions()
 
         if now:
