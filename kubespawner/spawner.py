@@ -23,8 +23,8 @@ from jinja2 import Environment
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
 from jupyterhub.utils import exponential_backoff
-from kubernetes import client
-from kubernetes.client.rest import ApiException
+from kubernetes_asyncio import client
+from kubernetes_asyncio.client.rest import ApiException
 from slugify import slugify
 from tornado import gen
 from tornado.concurrent import run_on_executor
