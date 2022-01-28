@@ -11,7 +11,6 @@ import signal
 import string
 import sys
 import warnings
-from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from functools import partial
 from urllib.parse import urlparse
@@ -27,7 +26,6 @@ from kubernetes_asyncio import client
 from kubernetes_asyncio.client.rest import ApiException
 from slugify import slugify
 from tornado import gen
-from tornado.concurrent import run_on_executor
 from tornado.ioloop import IOLoop
 from traitlets import Bool
 from traitlets import default
@@ -123,12 +121,10 @@ class KubeSpawner(Spawner):
     spawned by a user will have its own KubeSpawner instance.
     """
 
-    # We want to have one single threadpool executor that is shared across all
-    # KubeSpawner instances, so we apply a Singleton pattern. We initialize this
-    # class variable from the first KubeSpawner instance that is created and
-    # then reference it from all instances. The same goes for the PodReflector
-    # and EventReflector.
-    executor = None
+    # The PodReflector and EventReflector are singletons.  Where to initialize
+    # them becomes a sort of thorny question in an asyncio world.  See the
+    # commentary on the initialize() method.
+
     reflectors = {
         "pods": None,
         "events": None,
@@ -188,25 +184,9 @@ class KubeSpawner(Spawner):
             self.namespace = self._expand_user_properties(self.user_namespace_template)
             self.log.info("Using user namespace: {}".format(self.namespace))
 
-        if not _mock:
-            # runs during normal execution only
+        # Starting our watchers is now async, so we cannot do it in
+        # __init()__.
 
-            if self.__class__.executor is None:
-                self.log.debug(
-                    'Starting executor thread pool with %d workers',
-                    self.k8s_api_threadpool_workers,
-                )
-                self.__class__.executor = ThreadPoolExecutor(
-                    max_workers=self.k8s_api_threadpool_workers
-                )
-
-            # Starting our watchers is now async, so we cannot do it in
-            # __init()__.
-
-            # This will start watching in __init__, so it'll start the first
-            # time any spawner object is created. Not ideal but works!
-
-        # runs during both test and normal execution
         self.pod_name = self._expand_user_properties(self.pod_name_template)
         self.dns_name = self.dns_name_template.format(
             namespace=self.namespace, name=self.pod_name
@@ -224,11 +204,26 @@ class KubeSpawner(Spawner):
 
     @classmethod
     async def initialize(cls,*args,**kwargs):
-        """In an ideal world, you'd get a new KubeSpawner with this."""
-        inst=cls(*args,**kwargs)
+        """In an ideal world, you'd get a new KubeSpawner with this.
+        That's not how we are called from JupyterHub, though; it just
+        instantiates whatever class you tell it to use as the spawner class.
+
+        Thus we need to do the initialization in poll(), start(), and stop()
+        since any of them could be the first thing called (imagine that the
+        hub restarts and the first thing someone does is try to stop their
+        running server).  Further (and this is actually true in the Rubin
+        case) a pre-spawn-start hook that depends on internal knowledge of
+        the spawner might be the first thing to run.
+
+        It would be nice if there were an agreed-upon mechanism for, say,
+        JupyterHub to look for an async initialize() method and then use
+        that, instead, to get its spawner instance.  I don't think our
+        use-case is likely to be unique.
+        """
+        inst = cls(*args,**kwargs)
         await inst.initialize_reflectors_and_clients()
         return inst
-        
+
     async def initialize_reflectors_and_clients(self):
         await load_config()
         self.api = await shared_client("CoreV1Api")
@@ -260,20 +255,6 @@ class KubeSpawner(Spawner):
 
         Typically this is unnecessary, the hostname is picked up by
         config.load_incluster_config() or config.load_kube_config.
-        """,
-    )
-
-    k8s_api_threadpool_workers = Integer(
-        # Set this explicitly, since this is the default in Python 3.5+
-        # but not in 3.4
-        5 * multiprocessing.cpu_count(),
-        config=True,
-        help="""
-        Number of threads in thread pool used to talk to the k8s API.
-
-        Increase this if you are dealing with a very large number of users.
-
-        Defaults to `5 * cpu_cores`, which is the default for `ThreadPoolExecutor`.
         """,
     )
 
@@ -2322,8 +2303,10 @@ class KubeSpawner(Spawner):
             await asyncio.wait_for(
                 self.api.create_namespaced_pod(
                     self.namespace,
-                    pod),
-                request_timeout)
+                    pod,
+                ),
+                request_timeout,
+            )
             return True
         except asyncio.TimeoutError:
             # Just try again
@@ -2362,7 +2345,8 @@ class KubeSpawner(Spawner):
                     namespace=self.namespace,
                     body=pvc,
                 ),
-                request_timeout)
+                request_timeout,
+            )
             return True
         except asyncio.TimeoutError:
             # Just try again
@@ -2410,7 +2394,8 @@ class KubeSpawner(Spawner):
             self.log.info(f"Deleting {kind}/{name}")
             await asyncio.wait_for(
                 delete(namespace=self.namespace, name=name),
-                self.k8s_api_request_timeout)
+                self.k8s_api_request_timeout,
+            )
         except asyncio.TimeoutError:
             # Just try again
             return False
@@ -2426,7 +2411,8 @@ class KubeSpawner(Spawner):
             self.log.info(f"Checking for {kind}/{name}")
             await asyncio.wait_for(
                 read(namespace=self.namespace, name=name),
-                self.k8s_api_request_timeout)
+                self.k8s_api_request_timeout
+            )
         except asyncio.TimeoutError:
             # Just try again
             return False
@@ -2450,7 +2436,8 @@ class KubeSpawner(Spawner):
         try:
             await asyncio.wait_for(
                 create(self.namespace,manifest),
-                self.k8s_api_request_timeout)
+                self.k8s_api_request_timeout
+            )
         except asyncio.TimeoutError:
             # Just try again
             return False
@@ -2512,7 +2499,8 @@ class KubeSpawner(Spawner):
         ref_key = "{}/{}".format(self.namespace, self.pod_name)
         # If there's a timeout, just let it propagate
         await exponential_backoff(
-            partial(self._make_create_pod_request, pod, self.k8s_api_request_timeout),
+            partial(self._make_create_pod_request, pod, self.k8s_api_request_timeout
+                    ),
             f'Could not create pod {ref_key}',
             timeout=self.k8s_api_request_retry_timeout,
         )
@@ -2631,7 +2619,8 @@ class KubeSpawner(Spawner):
                     namespace=self.namespace,
                     body=delete_options,
                     grace_period_seconds=grace_seconds),
-                request_timeout)
+                request_timeout,
+            )
             return True
         except asyncio.TimeoutError:
             return False
@@ -2658,8 +2647,10 @@ class KubeSpawner(Spawner):
             await asyncio.wait_for(
                 self.api.delete_namespaced_persistent_volume_claim(
                     name=pvc_name,
-                    namespace=self.namespace),
-                request_timeout)
+                    namespace=self.namespace,
+                ),
+                request_timeout,
+            )
             return True
         except asyncio.TimeoutError:
             return False
@@ -2873,7 +2864,8 @@ class KubeSpawner(Spawner):
         try:
             await asyncio.wait_for(
                 api.create_namespace(ns),
-                self.k8s_api_request_timeout)
+                self.k8s_api_request_timeout,
+            )
         except ApiException as e:
             if e.status != 409:
                 # It's fine if it already exists

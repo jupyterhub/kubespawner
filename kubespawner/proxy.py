@@ -1,15 +1,13 @@
+import asyncio
 import json
 import os
 import string
-from concurrent.futures import ThreadPoolExecutor
 
 import escapism
 import kubernetes.config
 from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
 from kubernetes_asyncio import client
-from tornado import gen
-from tornado.concurrent import run_on_executor
 from traitlets import Unicode
 
 from .clients import shared_client, load_config
@@ -106,12 +104,6 @@ class KubeIngressProxy(Proxy):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # We use the maximum number of concurrent user server starts (and thus proxy adds)
-        # as our threadpool maximum. This ensures that contention here does not become
-        # an accidental bottleneck. Since we serialize our create operations, we only
-        # need 1x concurrent_spawn_limit, not 3x.
-        self.executor = ThreadPoolExecutor(max_workers=self.app.concurrent_spawn_limit)
-
         # Global configuration before reflector.py code runs
 
         labels = {
@@ -124,13 +116,13 @@ class KubeIngressProxy(Proxy):
         """
         This is how you should get a proxy object.
         """
-        inst=cls(*args, **kwargs)
+        inst = cls(*args, **kwargs)
         await inst._initialize_resources()
         return inst
 
     async def _initialize_resources(self):
         await load_config()
-        _set_k8s_client_configuration()
+        self._set_k8s_client_configuration()
         self.core_api = await shared_client('CoreV1Api')
         self.extension_api = await shared_client('ExtensionsV1beta1Api')
 
@@ -292,7 +284,7 @@ class KubeIngressProxy(Proxy):
         # explicitly ourselves as well. In the future, we can probably try a
         # foreground cascading deletion (https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/#foreground-cascading-deletion)
         # instead, but for now this works well enough.
-        await gather(
+        await asyncio.gather(
             self.delete_if_exists('endpoint', safe_name, delete_endpoint),
             self.delete_if_exists('service', safe_name, delete_service),
             self.delete_if_exists('ingress', safe_name, delete_ingress),

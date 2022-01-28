@@ -162,9 +162,9 @@ class ResourceReflector(LoggingConfigurable):
         # Client configuration for kubernetes may not have taken place.
         # Because it is an asynchronous function, we can't do it here.
         # Instead, we will do it when we create the reflector from its
-        # reflector() classmethod. 
+        # reflector() classmethod.
 
-        
+
         # FIXME: Protect against malicious labels?
         self.label_selector = ','.join(
             ['{}={}'.format(k, v) for k, v in self.labels.items()]
@@ -216,7 +216,7 @@ class ResourceReflector(LoggingConfigurable):
         """
         This is how you should instantiate a reflector.
         """
-        inst=cls(*args, **kwargs)
+        inst = cls(*args, **kwargs)
         await load_config()
         inst.api = await shared_client(inst.api_group_name)
         await inst.start()
@@ -242,9 +242,7 @@ class ResourceReflector(LoggingConfigurable):
             kwargs["namespace"] = self.namespace
 
         method = getattr(self.api, self.list_method_name)
-        self.log.debug(self.api.api_client.configuration.host)
         initial_resources_raw = await ((method)(**kwargs))
-        self.log.debug(f"initial resources {initial_resources_raw}")
         # This is an atomic operation on the dictionary!
         initial_resources = json.loads(await initial_resources_raw.read())
         self.resources = {
@@ -331,7 +329,7 @@ class ResourceReflector(LoggingConfigurable):
                 # AttributeError: module 'kubernetes_asyncio.client.models' has no attribute ''
                 # when unmarshaling the event into dict form.
                 method = getattr(self.api, self.list_method_name)
-                async with w.stream(method,**watch_args) as stream:
+                async with w.stream(method, **watch_args) as stream:
                     async for watch_event in stream:
                     # in case of timeout_seconds, the w.stream just exits (no exception thrown)
                     # -> we stop the watcher and start a new one
