@@ -341,10 +341,11 @@ class ResourceReflector(LoggingConfigurable):
                         # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#watchevent-v1-meta
                         # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#event-v1-core
                         cur_delay = 0.1
-                        resource_obj = watch_event['object']
-                        # This, in theory, is exactly what _preload_content=False should do.
-                        # Only this actually works.
-                        resource = self.api.api_client.sanitize_for_serialization(resource_obj)
+                        resource = watch_event['raw_object']
+                        # Unfortunately the asyncio watch is still going to
+                        # deserialize it into watch_event['object'] so we may
+                        # well run into the performance issues from:
+                        # https://github.com/jupyterhub/kubespawner/pull/424
                         ref_key = "{}/{}".format(
                             resource["metadata"]["namespace"], resource["metadata"]["name"]
                         )
