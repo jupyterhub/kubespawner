@@ -207,6 +207,8 @@ class ResourceReflector(LoggingConfigurable):
         if not self.list_method_name:
             raise RuntimeError("Reflector list_method_name must be set!")
 
+        self.watch_task = None  # Test this rather than absence of the attr
+
         # start is now asynchronous.  That means that the way to create a
         # reflector is now with a classmethod (called "reflector") that
         # awaits the start().
@@ -222,8 +224,9 @@ class ResourceReflector(LoggingConfigurable):
         await inst.start()
         return inst
 
-    def __del__(self):
-        self.stop()
+    # We're removing __del__ -- there's no good way to call async
+    #  methods for it, and what we really want to do on the reflector stopping
+    #  is tell the watch task to exit, and then make sure it did.
 
     async def _list_and_update(self):
         """
@@ -276,8 +279,9 @@ class ResourceReflector(LoggingConfigurable):
         update' cycle on them), we should be ok!
         """
         #
-        # The preceding frightens me and I think we ought to care more
-        # about threadsafety.
+        # I guess?  It is the case that the resources are read-only in the
+        #  spawner, so the worst that will happen will be that they're out-
+        #  of-date.  I think.
         #
         selectors = []
         log_name = ""
@@ -355,8 +359,8 @@ class ResourceReflector(LoggingConfigurable):
                         else:
                             # This is an atomic operation on the dictionary!
                             self.resources[ref_key] = resource
-                        if self._stop_event.is_set():
-                            self.log.info("%s watcher stopped", self.kind)
+                        if self.stopped():
+                            self.log.info("%s watcher stopped: inner", self.kind)
                             break
                         watch_duration = time.monotonic() - start
                         if watch_duration >= self.restart_seconds:
@@ -366,6 +370,12 @@ class ResourceReflector(LoggingConfigurable):
                                 watch_duration,
                             )
                             break
+                    if self.stopped():
+                        # We have an additional level of loop to break out
+                        #  of because of the asyncio watch.
+                        self.log.info("%s watcher stopped: middle", self.kind)
+                        break
+
             except ReadTimeoutError:
                 # network read time out, just continue and restart the watch
                 # this could be due to a network problem or just low activity
@@ -388,8 +398,8 @@ class ResourceReflector(LoggingConfigurable):
                 self.log.debug("%s watcher timeout", self.kind)
             finally:
                 w.stop()
-                if self._stop_event.is_set():
-                    self.log.info("%s watcher stopped", self.kind)
+                if self.stopped():
+                    self.log.info("%s watcher stopped: outer", self.kind)
                     break
         self.log.warning("%s watcher finished", self.kind)
 
@@ -403,15 +413,25 @@ class ResourceReflector(LoggingConfigurable):
         start of program initialization (when the singleton is being created),
         and not afterwards!
         """
-        if hasattr(self, 'watch_task') and not self.watch_task.done():
+        if self.watch_task and not self.watch_task.done():
             raise ValueError('Task watching for resources is already running')
 
         await self._list_and_update()
         self.watch_task = asyncio.create_task(self._watch_and_update())
 
-    def stop(self):
+    async def stop(self):
         self._stop_event.set()
-        # We should do something here to cancel the watch task.
+        # The watch task should be in the process of terminating.  Give it
+        # a bit...
+        if self.watch_task and not self.watch_task.done():
+            try:
+                timeout=5
+                await asyncio.wait_for(self.watch_task, timeout)
+            except asyncio.TimeoutError:
+                # This will cancel the task for us
+                self.log.warning(f"Watch task did not finish in {timeout}s" +
+                                 "and was cancelled")
+        self.watch_task = None
 
     def stopped(self):
         return self._stop_event.is_set()

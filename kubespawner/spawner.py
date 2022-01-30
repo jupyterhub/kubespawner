@@ -2234,7 +2234,7 @@ class KubeSpawner(Spawner):
 
         if replace and previous_reflector:
             # we replaced the reflector, stop the old one
-            previous_reflector.stop()
+            await previous_reflector.stop()
 
         # return the current reflector
         return self.__class__.reflectors[key]
