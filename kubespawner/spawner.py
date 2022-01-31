@@ -226,7 +226,7 @@ class KubeSpawner(Spawner):
 
     async def initialize_reflectors_and_clients(self):
         await load_config()
-        self.api = await shared_client("CoreV1Api")
+        self.api = shared_client("CoreV1Api")
         await self._start_watching_pods()
         if self.events_enabled:
             await self._start_watching_events()

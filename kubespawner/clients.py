@@ -20,7 +20,7 @@ api_client.ThreadPool = lambda *args, **kwargs: _dummy_pool
 
 _client_cache = {}
 
-async def shared_client(ClientType, *args, **kwargs):
+def shared_client(ClientType, *args, **kwargs):
     """Return a single shared kubernetes client instance
 
     A weak reference to the instance is cached,

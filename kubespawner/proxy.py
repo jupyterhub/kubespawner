@@ -123,8 +123,8 @@ class KubeIngressProxy(Proxy):
     async def _initialize_resources(self):
         await load_config()
         self._set_k8s_client_configuration()
-        self.core_api = await shared_client('CoreV1Api')
-        self.extension_api = await shared_client('ExtensionsV1beta1Api')
+        self.core_api = shared_client('CoreV1Api')
+        self.extension_api = shared_client('ExtensionsV1beta1Api')
 
         self.ingress_reflector = await IngressReflector.reflector(
             parent=self, namespace=self.namespace, labels=labels

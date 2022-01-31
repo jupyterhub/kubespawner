@@ -220,7 +220,7 @@ class ResourceReflector(LoggingConfigurable):
         """
         inst = cls(*args, **kwargs)
         await load_config()
-        inst.api = await shared_client(inst.api_group_name)
+        inst.api = shared_client(inst.api_group_name)
         await inst.start()
         return inst
 

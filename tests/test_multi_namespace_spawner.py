@@ -62,7 +62,7 @@ async def test_multi_namespace_spawn():
 
     # get a client
     kube_ns = spawner.namespace
-    client = await shared_client('CoreV1Api')
+    client = shared_client('CoreV1Api')
 
     # the spawner will create the namespace on its own.
 
