@@ -2,11 +2,11 @@ import copy
 
 import pytest
 from conftest import ExecError
-from kubernetes.client.models import V1Capabilities
-from kubernetes.client.models import V1Container
-from kubernetes.client.models import V1Lifecycle
-from kubernetes.client.models import V1PodSpec
-from kubernetes.client.models import V1SecurityContext
+from kubernetes_asyncio.client.models import V1Capabilities
+from kubernetes_asyncio.client.models import V1Container
+from kubernetes_asyncio.client.models import V1Lifecycle
+from kubernetes_asyncio.client.models import V1PodSpec
+from kubernetes_asyncio.client.models import V1SecurityContext
 
 from kubespawner.utils import _get_k8s_model_attribute
 from kubespawner.utils import get_k8s_model

@@ -1,18 +1,16 @@
+import asyncio
 import json
 import os
 import string
-from concurrent.futures import ThreadPoolExecutor
 
 import escapism
 import kubernetes.config
 from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
-from kubernetes import client
-from tornado import gen
-from tornado.concurrent import run_on_executor
+from kubernetes_asyncio import client
 from traitlets import Unicode
 
-from .clients import shared_client
+from .clients import shared_client, load_config
 from .objects import make_ingress
 from .reflector import ResourceReflector
 from .utils import generate_hashed_slug
@@ -82,10 +80,10 @@ class KubeIngressProxy(Proxy):
         config=True,
         help="""
         Location (absolute filepath) for CA certs of the k8s API server.
-        
-        Typically this is unnecessary, CA certs are picked up by 
+
+        Typically this is unnecessary, CA certs are picked up by
         config.load_incluster_config() or config.load_kube_config.
-        
+
         In rare non-standard cases, such as using custom intermediate CA
         for your cluster, you may need to mount root CA's elsewhere in
         your Pod/Container and point this variable to that filepath
@@ -97,8 +95,8 @@ class KubeIngressProxy(Proxy):
         config=True,
         help="""
         Full host name of the k8s API server ("https://hostname:port").
-        
-        Typically this is unnecessary, the hostname is picked up by 
+
+        Typically this is unnecessary, the hostname is picked up by
         config.load_incluster_config() or config.load_kube_config.
         """,
     )
@@ -106,28 +104,35 @@ class KubeIngressProxy(Proxy):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # We use the maximum number of concurrent user server starts (and thus proxy adds)
-        # as our threadpool maximum. This ensures that contention here does not become
-        # an accidental bottleneck. Since we serialize our create operations, we only
-        # need 1x concurrent_spawn_limit, not 3x.
-        self.executor = ThreadPoolExecutor(max_workers=self.app.concurrent_spawn_limit)
-
         # Global configuration before reflector.py code runs
-        self._set_k8s_client_configuration()
-        self.core_api = shared_client('CoreV1Api')
-        self.extension_api = shared_client('ExtensionsV1beta1Api')
 
         labels = {
             'component': self.component_label,
             'hub.jupyter.org/proxy-route': 'true',
         }
-        self.ingress_reflector = IngressReflector(
+
+    @classmethod
+    async def initialize(cls, *args, **kwargs):
+        """
+        This is how you should get a proxy object.
+        """
+        inst = cls(*args, **kwargs)
+        await inst._initialize_resources()
+        return inst
+
+    async def _initialize_resources(self):
+        await load_config()
+        self._set_k8s_client_configuration()
+        self.core_api = shared_client('CoreV1Api')
+        self.extension_api = shared_client('ExtensionsV1beta1Api')
+
+        self.ingress_reflector = await IngressReflector.reflector(
             parent=self, namespace=self.namespace, labels=labels
         )
-        self.service_reflector = ServiceReflector(
+        self.service_reflector = await ServiceReflector.reflector(
             parent=self, namespace=self.namespace, labels=labels
         )
-        self.endpoint_reflector = EndpointsReflector(
+        self.endpoint_reflector = await EndpointsReflector.reflector(
             parent=self, namespace=self.namespace, labels=labels
         )
 
@@ -136,12 +141,9 @@ class KubeIngressProxy(Proxy):
         # in clients.py shared_client but the configuration
         # for token / ca_cert / k8s api host is set globally
         # in kubernetes.py syntax.  It is being set here
-        # and this method called prior to shared_client
+        # and this method called prior to getting a shared_client
+        # (but after load_config)
         # for readability / coupling with traitlets values
-        try:
-            kubernetes.config.load_incluster_config()
-        except kubernetes.config.ConfigException:
-            kubernetes.config.load_kube_config()
         if self.k8s_api_ssl_ca_cert:
             global_conf = client.Configuration.get_default_copy()
             global_conf.ssl_ca_cert = self.k8s_api_ssl_ca_cert
@@ -150,10 +152,6 @@ class KubeIngressProxy(Proxy):
             global_conf = client.Configuration.get_default_copy()
             global_conf.host = self.k8s_api_host
             client.Configuration.set_default(global_conf)
-
-    @run_on_executor
-    def asynchronize(self, method, *args, **kwargs):
-        return method(*args, **kwargs)
 
     def safe_name_for_routespec(self, routespec):
         safe_chars = set(string.ascii_lowercase + string.digits)
@@ -189,9 +187,7 @@ class KubeIngressProxy(Proxy):
 
         async def ensure_object(create_func, patch_func, body, kind):
             try:
-                resp = await self.asynchronize(
-                    create_func, namespace=self.namespace, body=body
-                )
+                resp = await create_func(namespace=self.namespace, body=body),
                 self.log.info('Created %s/%s', kind, safe_name)
             except client.rest.ApiException as e:
                 if e.status == 409:
@@ -199,8 +195,7 @@ class KubeIngressProxy(Proxy):
                     self.log.warn(
                         "Trying to patch %s/%s, it already exists", kind, safe_name
                     )
-                    resp = await self.asynchronize(
-                        patch_func,
+                    resp = await patch_func(
                         namespace=self.namespace,
                         body=body,
                         name=body.metadata.name,
@@ -222,8 +217,7 @@ class KubeIngressProxy(Proxy):
                 'Could not find endpoints/%s after creating it' % safe_name,
             )
         else:
-            delete_endpoint = self.asynchronize(
-                self.core_api.delete_namespaced_endpoints,
+            delete_endpoint = await self.core_api.delete_namespaced_endpoints(
                 name=safe_name,
                 namespace=self.namespace,
                 body=client.V1DeleteOptions(grace_period_seconds=0),
@@ -264,22 +258,19 @@ class KubeIngressProxy(Proxy):
 
         delete_options = client.V1DeleteOptions(grace_period_seconds=0)
 
-        delete_endpoint = self.asynchronize(
-            self.core_api.delete_namespaced_endpoints,
+        delete_endpoint = await self.core_api.delete_namespaced_endpoints(
             name=safe_name,
             namespace=self.namespace,
             body=delete_options,
         )
 
-        delete_service = self.asynchronize(
-            self.core_api.delete_namespaced_service,
+        delete_service = await self.core_api.delete_namespaced_service(
             name=safe_name,
             namespace=self.namespace,
             body=delete_options,
         )
 
-        delete_ingress = self.asynchronize(
-            self.extension_api.delete_namespaced_ingress,
+        delete_ingress = await self.extension_api.delete_namespaced_ingress(
             name=safe_name,
             namespace=self.namespace,
             body=delete_options,
@@ -293,9 +284,11 @@ class KubeIngressProxy(Proxy):
         # explicitly ourselves as well. In the future, we can probably try a
         # foreground cascading deletion (https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/#foreground-cascading-deletion)
         # instead, but for now this works well enough.
-        await self.delete_if_exists('endpoint', safe_name, delete_endpoint)
-        await self.delete_if_exists('service', safe_name, delete_service)
-        await self.delete_if_exists('ingress', safe_name, delete_ingress)
+        await asyncio.gather(
+            self.delete_if_exists('endpoint', safe_name, delete_endpoint),
+            self.delete_if_exists('service', safe_name, delete_service),
+            self.delete_if_exists('ingress', safe_name, delete_ingress),
+        )
 
     async def get_all_routes(self):
         # copy everything, because iterating over this directly is not threadsafe

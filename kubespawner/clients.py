@@ -6,8 +6,8 @@ each of which spawns an unused max-size thread pool
 import weakref
 from unittest.mock import Mock
 
-import kubernetes.client
-from kubernetes.client import api_client
+import kubernetes_asyncio.client
+from kubernetes_asyncio.client import api_client
 
 # FIXME: remove when instantiating a kubernetes client
 # doesn't create N-CPUs threads unconditionally.
@@ -20,7 +20,6 @@ api_client.ThreadPool = lambda *args, **kwargs: _dummy_pool
 
 _client_cache = {}
 
-
 def shared_client(ClientType, *args, **kwargs):
     """Return a single shared kubernetes client instance
 
@@ -28,6 +27,8 @@ def shared_client(ClientType, *args, **kwargs):
     so that concurrent calls to shared_client
     will all return the same instance until
     all references to the client are cleared.
+
+    You should usually await load_config before calling this.
     """
     kwarg_key = tuple((key, kwargs[key]) for key in sorted(kwargs))
     cache_key = (ClientType, args, kwarg_key)
@@ -41,8 +42,15 @@ def shared_client(ClientType, *args, **kwargs):
         # Kubernetes client configuration is handled globally
         # in kubernetes.py and is already called in spawner.py
         # or proxy.py prior to a shared_client being instantiated
-        Client = getattr(kubernetes.client, ClientType)
+        Client = getattr(kubernetes_asyncio.client, ClientType)
         client = Client(*args, **kwargs)
         # cache weakref so that clients can be garbage collected
         _client_cache[cache_key] = weakref.ref(client)
+
     return client
+
+async def load_config():
+    try:
+        kubernetes_asyncio.config.load_incluster_config()
+    except kubernetes_asyncio.config.ConfigException:
+        await kubernetes_asyncio.config.load_kube_config()
