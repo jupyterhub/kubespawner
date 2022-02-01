@@ -7,13 +7,13 @@ from setuptools import setup
 
 v = sys.version_info
 if v[:2] < (3, 6):
-    error = "ERROR: jupyterhub-kubespawner requires Python version 3.6 or above."
+    error = "ERROR: rubin-kubespawner requires Python version 3.6 or above."
     print(error, file=sys.stderr)
     sys.exit(1)
 
 setup(
-    name='jupyterhub-kubespawner',
-    version='2.0.1.dev',
+    name='rubin-kubespawner',
+    version='2.0.1.dev1',
     install_requires=[
         'async_generator>=1.8',
         'escapism',
@@ -34,8 +34,8 @@ setup(
             'pytest-asyncio>=0.11.0',
         ]
     },
-    description='JupyterHub Spawner for Kubernetes',
-    url='http://github.com/jupyterhub/kubespawner',
+    description='JupyterHub Spawner for Kubernetes (Rubin asyncio version)',
+    url='http://github.com/lsst-sqre/kubespawner',
     author='Jupyter Contributors',
     author_email='jupyter@googlegroups.com',
     long_description=open("README.md").read(),
