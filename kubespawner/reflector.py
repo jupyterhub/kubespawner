@@ -28,6 +28,15 @@ class ResourceReflector(LoggingConfigurable):
     kubernetes resources.
 
     Must be subclassed once per kind of resource that needs watching.
+
+    Creating a reflector should be done with the reflector() classmethod,
+    since that, in addition to creating the instance, initializes the
+    Kubernetes configuration, acquires a K8s API client, and starts the
+    watch task.
+
+    Shutting down a reflector should be done by awaiting its stop() method.
+    JupyterHub does not currently do this, so the watch task runs until the
+    Hub exits.
     """
 
     labels = Dict(
@@ -159,12 +168,6 @@ class ResourceReflector(LoggingConfigurable):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Client configuration for kubernetes may not have taken place.
-        # Because it is an asynchronous function, we can't do it here.
-        # Instead, we will do it when we create the reflector from its
-        # reflector() classmethod.
-
-
         # FIXME: Protect against malicious labels?
         self.label_selector = ','.join(
             ['{}={}'.format(k, v) for k, v in self.labels.items()]
@@ -209,24 +212,23 @@ class ResourceReflector(LoggingConfigurable):
 
         self.watch_task = None  # Test this rather than absence of the attr
 
-        # start is now asynchronous.  That means that the way to create a
-        # reflector is now with a classmethod (called "reflector") that
-        # awaits the start().
+        # Note that simply instantiating the class does not load
+        # Kubernetes config, acquire an API client, or start the
+        # watch task.
 
     @classmethod
     async def reflector(cls, *args, **kwargs):
         """
-        This is how you should instantiate a reflector.
+        This is how you should instantiate a reflector in order to bring
+        it up in a usable state, as this classmethod does load
+        Kubernetes config, acquires an API client, and starts the watch
+        task.
         """
         inst = cls(*args, **kwargs)
         await load_config()
         inst.api = shared_client(inst.api_group_name)
         await inst.start()
         return inst
-
-    # We're removing __del__ -- there's no good way to call async
-    #  methods for it, and what we really want to do on the reflector stopping
-    #  is tell the watch task to exit, and then make sure it did.
 
     async def _list_and_update(self):
         """
@@ -370,11 +372,6 @@ class ResourceReflector(LoggingConfigurable):
                                 watch_duration,
                             )
                             break
-                    if self.stopped():
-                        # We have an additional level of loop to break out
-                        #  of because of the asyncio watch.
-                        self.log.info("%s watcher stopped: middle", self.kind)
-                        break
 
             except ReadTimeoutError:
                 # network read time out, just continue and restart the watch
@@ -420,15 +417,18 @@ class ResourceReflector(LoggingConfigurable):
         self.watch_task = asyncio.create_task(self._watch_and_update())
 
     async def stop(self):
+        """
+        Cleanly shut down the watch task.
+        """
         self._stop_event.set()
-        # The watch task should be in the process of terminating.  Give it
-        # a bit...
+        # The watch task should now be in the process of terminating.  Give
+        # it a bit...
         if self.watch_task and not self.watch_task.done():
             try:
                 timeout=5
                 await asyncio.wait_for(self.watch_task, timeout)
             except asyncio.TimeoutError:
-                # This will cancel the task for us
+                # Raising the TimeoutError will cancel the task.
                 self.log.warning(f"Watch task did not finish in {timeout}s" +
                                  "and was cancelled")
         self.watch_task = None
