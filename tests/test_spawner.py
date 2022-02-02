@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import time
@@ -174,12 +175,12 @@ async def test_spawn_start(
     url = await spawner.start()
 
     # verify the pod exists
-    pods = kube_client.list_namespaced_pod(kube_ns).items
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
     pod_names = [p.metadata.name for p in pods]
     assert pod_name in pod_names
 
     # pod should be running when start returns
-    pod = kube_client.read_namespaced_pod(namespace=kube_ns, name=pod_name)
+    pod = await kube_client.read_namespaced_pod(namespace=kube_ns, name=pod_name)
     assert pod.status.phase == "Running"
 
     # verify poll while running
@@ -194,7 +195,7 @@ async def test_spawn_start(
     await spawner.stop()
 
     # verify pod is gone
-    pods = kube_client.list_namespaced_pod(kube_ns).items
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
     pod_names = [p.metadata.name for p in pods]
     assert pod_name not in pod_names
 
@@ -234,7 +235,7 @@ async def test_spawn_internal_ssl(
     url = await spawner.start()
     pod_name = "jupyter-%s" % spawner.user.name
     # verify the pod exists
-    pods = kube_client.list_namespaced_pod(kube_ns).items
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
     pod_names = [p.metadata.name for p in pods]
     assert pod_name in pod_names
     # verify poll while running
@@ -243,12 +244,12 @@ async def test_spawn_internal_ssl(
 
     # verify service and secret exist
     secret_name = spawner.secret_name
-    secrets = kube_client.list_namespaced_secret(kube_ns).items
+    secrets = (await kube_client.list_namespaced_secret(kube_ns)).items
     secret_names = [s.metadata.name for s in secrets]
     assert secret_name in secret_names
 
     service_name = pod_name
-    services = kube_client.list_namespaced_service(kube_ns).items
+    services = (await kube_client.list_namespaced_service(kube_ns)).items
     service_names = [s.metadata.name for s in services]
     assert service_name in service_names
 
@@ -279,20 +280,20 @@ async def test_spawn_internal_ssl(
     await spawner.stop()
 
     # verify pod is gone
-    pods = kube_client.list_namespaced_pod(kube_ns).items
+    pods = await (kube_client.list_namespaced_pod(kube_ns)).items
     pod_names = [p.metadata.name for p in pods]
     assert "jupyter-%s" % spawner.user.name not in pod_names
 
     # verify service and secret are gone
     # it may take a little while for them to get cleaned up
     for i in range(5):
-        secrets = kube_client.list_namespaced_secret(kube_ns).items
+        secrets = (await kube_client.list_namespaced_secret(kube_ns)).items
         secret_names = {s.metadata.name for s in secrets}
 
-        services = kube_client.list_namespaced_service(kube_ns).items
+        services = (await kube_client.list_namespaced_service(kube_ns)).items
         service_names = {s.metadata.name for s in services}
         if secret_name in secret_names or service_name in service_names:
-            time.sleep(1)
+            await asyncio.sleep(1)
         else:
             break
     assert secret_name not in secret_names
@@ -777,13 +778,13 @@ async def test_delete_pvc(kube_ns, kube_client, hub, config):
 
     # verify the pod exists
     pod_name = "jupyter-%s" % spawner.user.name
-    pods = kube_client.list_namespaced_pod(kube_ns).items
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
     pod_names = [p.metadata.name for p in pods]
     assert pod_name in pod_names
 
     # verify PVC is created
     pvc_name = spawner.pvc_name
-    pvc_list = kube_client.list_namespaced_persistent_volume_claim(kube_ns).items
+    pvc_list = (await kube_client.list_namespaced_persistent_volume_claim(kube_ns)).items
     pvc_names = [s.metadata.name for s in pvc_list]
     assert pvc_name in pvc_names
 
@@ -791,7 +792,7 @@ async def test_delete_pvc(kube_ns, kube_client, hub, config):
     await spawner.stop()
 
     # verify pod is gone
-    pods = kube_client.list_namespaced_pod(kube_ns).items
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
     pod_names = [p.metadata.name for p in pods]
     assert "jupyter-%s" % spawner.user.name not in pod_names
 
@@ -800,10 +801,10 @@ async def test_delete_pvc(kube_ns, kube_client, hub, config):
 
     # verify PVC is deleted, it may take a little while
     for i in range(5):
-        pvc_list = kube_client.list_namespaced_persistent_volume_claim(kube_ns).items
+        pvc_list = (await kube_client.list_namespaced_persistent_volume_claim(kube_ns)).items
         pvc_names = [s.metadata.name for s in pvc_list]
         if pvc_name in pvc_names:
-            time.sleep(1)
+            await asyncio.sleep(1)
         else:
             break
     assert pvc_name not in pvc_names
