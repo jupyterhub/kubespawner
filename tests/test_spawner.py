@@ -188,7 +188,7 @@ async def test_spawn_start(
     assert status is None
 
     # make sure spawn url is correct
-    r = exec_python(check_up, {"url": url}, _retries=3)
+    r = await exec_python(check_up, {"url": url}, _retries=3)
     assert r == "302"
 
     # stop the pod
@@ -263,7 +263,7 @@ async def test_spawn_internal_ssl(
     hub_internal_cert = os.path.join(hub_internal, "hub-internal.crt")
     hub_internal_key = os.path.join(hub_internal, "hub-internal.key")
 
-    r = exec_python_pod(
+    r = await exec_python_pod(
         hub_pod_name,
         check_up,
         {

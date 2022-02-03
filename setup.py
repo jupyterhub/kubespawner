@@ -29,6 +29,7 @@ setup(
         'test': [
             'bump2version',
             'flake8',
+            'kubernetes>=10.1.0',
             'pytest>=5.4',
             'pytest-cov',
             'pytest-asyncio>=0.11.0',

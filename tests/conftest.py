@@ -33,12 +33,9 @@ from traitlets.config import Config
 from kubespawner.clients import shared_client
 
 # Needed for the streaming stuff
-import kubernetes as sync_kubernetes
 from kubernetes.stream import stream as sync_stream
 from kubernetes.config import load_kube_config as sync_load_kube_config
 from kubernetes.client import CoreV1Api as sync_CoreV1Api
-from kubernetes.watch import Watch as sync_Watch
-from kubernetes.client.rest import ApiException as syncApiException
 
 here = os.path.abspath(os.path.dirname(__file__))
 jupyterhub_config_py = os.path.join(here, "jupyterhub_config.py")
@@ -194,96 +191,6 @@ async def watch_kubernetes(kube_client, kube_ns, stop_event):
         if stop_event.is_set():
             break
 
-
-def sync_watch_kubernetes(sync_kube_client, kube_ns):
-    """Stream kubernetes events to stdout
-    so that pytest io capturing can include k8s events and logs
-    All events are streamed to stdout
-    When a new pod is started, spawn an additional thread to watch its logs
-
-    Synchronous version.
-    """
-    log_threads = {}
-    watch = sync_Watch()
-    for event in watch.stream(
-        func=sync_kube_client.list_namespaced_event,
-        namespace=kube_ns,
-    ):
-
-        resource = event['object']
-        obj = resource.involved_object
-        print(f"k8s event ({event['type']} {obj.kind}/{obj.name}): {resource.message}")
-
-        # new pod appeared, start streaming its logs
-        if (
-            obj.kind == "Pod"
-            and event["type"] == "ADDED"
-            and obj.name not in log_threads
-        ):
-            log_threads[obj.name] = t = Thread(
-                target=sync_watch_logs, args=(kube_client, obj), daemon=True
-            )
-            t.start()
-
-def sync_watch_logs(sync_kube_client, pod_info):
-    """Stream a single pod's logs
-    pod logs are streamed directly to sys.stdout
-    so that pytest capture can deal with it.
-    Blocking, should be run in a thread.
-    Called for each new pod from sync watch_kubernetes.
-
-    Synchronous version.
-    """
-    watch = sync_Watch()
-    while True:
-        try:
-            for event in watch.stream(
-                func=sync_corev1api.read_namespaced_pod_log,
-                namespace=pod_info.namespace,
-                name=pod_info.name,
-            ):
-                print(f"[{pod_info.name}]: {event}")
-        except syncApiException as e:
-            if e.status == 400:
-                # 400 can occur if the container is not yet ready
-                # wait and retry
-                time.sleep(1)
-                continue
-            elif e.status == 404:
-                # pod is gone, we are done
-                return
-            else:
-                # unexpeced error
-                print(f"Error watching logs for {pod_info.name}: {e}", file=sys.stderr)
-                raise
-        else:
-            break
-
-@pytest.fixture(scope="session")
-def sync_kube_client(request, kube_ns):
-    """fixture for a synchronous Kubernetes client object, needed for
-    multi-channel websockets.
-    """
-    sync_load_kube_config()
-    client = sync_corev1api
-    try:
-        namespaces = client.list_namespace(_request_timeout=3)
-    except Exception as e:
-        pytest.skip("Kubernetes not found: %s" % e)
-
-    if not any(ns.metadata.name == kube_ns for ns in namespaces.items):
-        print("Creating namespace %s" % kube_ns)
-        client.create_namespace(V1Namespace(metadata=dict(name=kube_ns)))
-    else:
-        print("Using existing namespace %s" % kube_ns)
-
-    # begin streaming all logs and events in our test namespace
-    t = Thread(target=sync_watch_kubernetes, args=(client, kube_ns),
-               daemon=True)
-    t.start()
-
-    return client
-
 @pytest.fixture(scope="session")
 async def kube_client(request, kube_ns, stop_event):
     """fixture for the Kubernetes client object.
@@ -346,7 +253,8 @@ async def wait_for_pod(kube_client, kube_ns, pod_name, timeout=90):
     """Wait for a pod to be ready"""
     conditions = {}
     for i in range(int(timeout)):
-        pod = await kube_client.read_namespaced_pod(namespace=kube_ns, name=pod_name)
+        p = await kube_client.read_namespaced_pod(namespace=kube_ns, name=pod_name)
+        pod = p
         for condition in pod.status.conditions or []:
             conditions[condition.type] = condition.status
 
@@ -361,27 +269,6 @@ async def wait_for_pod(kube_client, kube_ns, pod_name, timeout=90):
     if conditions.get("Ready") != "True":
         raise TimeoutError(f"pod {kube_ns}/{pod_name} failed to start: {pod.status}")
     return pod
-
-def sync_wait_for_pod(sync_kube_client, kube_ns, pod_name, timeout=90):
-    """Wait for a pod to be ready"""
-    conditions = {}
-    for i in range(int(timeout)):
-        pod = sync_kube_client.read_namespaced_pod(namespace=kube_ns, name=pod_name)
-        for condition in pod.status.conditions or []:
-            conditions[condition.type] = condition.status
-
-        if conditions.get("Ready") != "True":
-            print(
-                f"Waiting for pod {kube_ns}/{pod_name}; current status: {pod.status.phase}; {conditions}"
-            )
-            time.sleep(1)
-        else:
-            break
-
-    if conditions.get("Ready") != "True":
-        raise TimeoutError(f"pod {kube_ns}/{pod_name} failed to start: {pod.status}")
-    return pod
-
 
 
 async def ensure_not_exists(kube_client, kube_ns, name, resource_type, timeout=30):
@@ -411,31 +298,6 @@ async def ensure_not_exists(kube_client, kube_ns, name, resource_type, timeout=3
             print("waiting for {}/{} to delete".format(resource_type, name))
             await asyncio.sleep(1)
 
-def sync_ensure_not_exists(sync_kube_client, kube_ns, name, resource_type, timeout=30):
-    """Ensure an object doesn't exist
-    Request deletion and wait for it to be gone
-    """
-    delete = getattr(sync_kube_client, "delete_namespaced_{}".format(resource_type))
-    read = getattr(sync_kube_client, "read_namespaced_{}".format(resource_type))
-    try:
-        delete(namespace=kube_ns, name=name)
-    except syncApiException as e:
-        if e.status != 404:
-            raise
-
-    while True:
-        # wait for delete
-        try:
-            read(namespace=kube_ns, name=name)
-        except syncApiException as e:
-            if e.status == 404:
-                # deleted
-                break
-            else:
-                raise
-        else:
-            print("waiting for {}/{} to delete".format(resource_type, name))
-            time.sleep(1)
 
 async def create_resource(kube_client, kube_ns, resource_type, manifest, delete_first=True):
     """Create a kubernetes resource
@@ -468,36 +330,6 @@ async def create_resource(kube_client, kube_ns, resource_type, manifest, delete_
         raise error
 
 
-def sync_create_resource(sync_kube_client, kube_ns, resource_type, manifest, delete_first=True):
-    """Create a kubernetes resource
-    handling 409 errors and others that can occur due to rapid startup
-    (typically: default service account doesn't exist yet
-
-    Synchronous version (for execcing in pod).
-    """
-    name = manifest.metadata["name"]
-    if delete_first:
-        sync_ensure_not_exists(sync_kube_client, kube_ns, name, resource_type)
-    print(f"Creating {resource_type} {name}")
-    create = getattr(sync_kube_client, f"create_namespaced_{resource_type}")
-    error = None
-    for i in range(10):
-        try:
-            create(
-                body=manifest,
-                namespace=kube_ns,
-            )
-        except syncApiException as e:
-            if e.status == 409:
-                break
-            error = e
-            # need to retry since this can fail if run too soon after namespace creation
-            print(e, file=sys.stderr)
-            time.sleep(int(e.headers.get("Retry-After", 1)))
-        else:
-            break
-    else:
-        raise error
 
 
 async def create_hub_pod(kube_client, kube_ns, pod_name="hub", ssl=False):
@@ -564,7 +396,8 @@ async def create_hub_pod(kube_client, kube_ns, pod_name="hub", ssl=False):
         ),
     )
     pod = await create_resource(kube_client, kube_ns, "pod", pod_manifest)
-    return await wait_for_pod(kube_client, kube_ns, pod_name)
+    p = await wait_for_pod(kube_client, kube_ns, pod_name)
+    return p
 
 
 @pytest.fixture(scope="session")
@@ -646,7 +479,7 @@ class ExecError(Exception):
         )
 
 
-def _exec_python_in_pod(sync_kube_client, kube_ns, pod_name, code, kwargs=None, _retries=0):
+async def _exec_python_in_pod(kube_client, kube_ns, pod_name, code, kwargs=None, _retries=0):
     """Run simple Python code in a pod
 
     code can be a str of code, or a 'simple' Python function,
@@ -654,11 +487,11 @@ def _exec_python_in_pod(sync_kube_client, kube_ns, pod_name, code, kwargs=None, 
 
     kwargs are passed to the function, if it is given.
     """
-    if V(sync_kubernetes.__version__) < V("11"):
+    if V(kubernetes_asyncio.__version__) < V("11"):
         pytest.skip(
             f"exec tests require kubernetes >= 11, got {kubernetes.__version__}"
         )
-    pod = sync_wait_for_pod(sync_kube_client, kube_ns, pod_name)
+    pod = await wait_for_pod(kube_client, kube_ns, pod_name)
     original_code = code
     if not isinstance(code, str):
         # allow simple self-contained (no globals or args) functions
@@ -683,7 +516,7 @@ def _exec_python_in_pod(sync_kube_client, kube_ns, pod_name, code, kwargs=None, 
     # need to create ws client to get returncode,
     # see https://github.com/kubernetes-client/python/issues/812
     client = sync_stream(
-        sync_kube_client.connect_get_namespaced_pod_exec,
+        sync_corev1api.connect_get_namespaced_pod_exec,
         pod_name,
         namespace=kube_ns,
         command=exec_command,
@@ -706,8 +539,8 @@ def _exec_python_in_pod(sync_kube_client, kube_ns, pod_name, code, kwargs=None, 
             raise ExecError(exit_code=returncode, message=stderr, command=code)
         else:
             # retry
-            time.sleep(1)
-            return _exec_python_in_pod(
+            await asyncio.sleep(1)
+            return await _exec_python_in_pod(
                 kube_client,
                 kube_ns,
                 pod_name,
@@ -719,16 +552,16 @@ def _exec_python_in_pod(sync_kube_client, kube_ns, pod_name, code, kwargs=None, 
 
 
 @pytest.fixture
-def exec_python_pod(sync_kube_client, kube_ns):
+def exec_python_pod(kube_client, kube_ns):
     """Fixture to return callable to execute python in a pod by name
 
     Used as a fixture to contain references to client, namespace
     """
-    return partial(_exec_python_in_pod, sync_kube_client, kube_ns)
+    return partial(_exec_python_in_pod, kube_client, kube_ns)
 
 
 @pytest.fixture(scope="session")
-def exec_python(kube_ns, sync_kube_client):
+async def exec_python(kube_client, kube_ns):
     """Return a callable to execute Python code in a pod in the test namespace
 
     This fixture creates a dedicated pod for executing commands
@@ -753,6 +586,6 @@ def exec_python(kube_ns, sync_kube_client):
             termination_grace_period_seconds=0,
         ),
     )
-    pod = sync_create_resource(sync_kube_client, kube_ns, "pod", pod_manifest)
+    pod = await create_resource(kube_client, kube_ns, "pod", pod_manifest)
 
-    yield partial(_exec_python_in_pod, sync_kube_client, kube_ns, pod_name)
+    yield partial(_exec_python_in_pod, kube_client, kube_ns, pod_name)
