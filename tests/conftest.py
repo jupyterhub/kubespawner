@@ -14,6 +14,7 @@ from threading import Thread, Event
 
 import kubernetes_asyncio
 import pytest
+import pytest_asyncio
 from jupyterhub.app import JupyterHub
 from jupyterhub.objects import Hub
 from kubernetes_asyncio.client import V1ConfigMap
@@ -39,7 +40,8 @@ from kubernetes.client import CoreV1Api as sync_CoreV1Api
 here = os.path.abspath(os.path.dirname(__file__))
 jupyterhub_config_py = os.path.join(here, "jupyterhub_config.py")
 
-watch_task = {}
+# We do these to set up the synchronous client, needed for executing
+# python inside pods.
 sync_load_kube_config()
 sync_corev1api = sync_CoreV1Api()
 
@@ -65,7 +67,6 @@ def traitlets_logging():
 def kube_ns():
     """Fixture for the kubernetes namespace"""
     return os.environ.get("KUBESPAWNER_TEST_NAMESPACE") or "kubespawner-test"
-
 
 @pytest.fixture
 def config(kube_ns):
@@ -114,15 +115,11 @@ def ssl_app(tmpdir_factory, kube_ns):
     app.init_internal_ssl()
     return app
 
-@pytest.fixture(scope="session")
-def stop_event():
-    return Event()
-
 
 async def watch_logs(kube_client, pod_info):
     """Stream a single pod's logs
 
-    pod logs are streamed directly to sys.stderr,
+    pod logs are streamed directly to sys.stdout,
     so that pytest capture can deal with it.
 
     Called for each new pod from watch_kubernetes
@@ -153,7 +150,7 @@ async def watch_logs(kube_client, pod_info):
             break
 
 
-async def watch_kubernetes(kube_client, kube_ns, stop_event):
+async def watch_kubernetes(kube_client, kube_ns):
     """Stream kubernetes events to stdout
 
     so that pytest io capturing can include k8s events and logs
@@ -164,6 +161,9 @@ async def watch_kubernetes(kube_client, kube_ns, stop_event):
     """
 
     watch = Watch()
+    watch_task = {}
+    stop_signal=kube_client.stop_signal
+    
     async for event in watch.stream(
         func=kube_client.list_namespaced_event,
         namespace=kube_ns,
@@ -187,11 +187,22 @@ async def watch_kubernetes(kube_client, kube_ns, stop_event):
             )
 
         # Were we asked to stop?
-        if stop_event.is_set():
+        if not stop_signal.empty():
             break
 
-@pytest.fixture(scope="session")
-async def kube_client(request, kube_ns, stop_event):
+    # This runs to clean up our watch tasks
+    for t in watch_task:
+        if watch_task[t] and not watch_task[t].done():
+            try:
+                watch_task[t].cancel()
+            except asyncio.CancelledError:
+                pass
+    await stop_signal.get()
+    stop_signal.done()
+
+
+@pytest_asyncio.fixture(scope="session")
+async def kube_client(request, kube_ns):
     """fixture for the Kubernetes client object.
 
     skips test that require kubernetes if kubernetes cannot be contacted
@@ -202,6 +213,7 @@ async def kube_client(request, kube_ns, stop_event):
     """
     await load_kube_config()
     client = shared_client("CoreV1Api")
+    client.stop_signal=asyncio.Queue()
     try:
         namespaces = await client.list_namespace(_request_timeout=3)
     except Exception as e:
@@ -214,12 +226,23 @@ async def kube_client(request, kube_ns, stop_event):
         print("Using existing namespace %s" % kube_ns)
 
     # begin streaming all logs and events in our test namespace
-    t = asyncio.create_task(watch_kubernetes(client, kube_ns,stop_event))
+    t = asyncio.create_task(watch_kubernetes(client, kube_ns))
 
-    # delete the test namespace when we finish
-    async def cleanup_namespace():
+    yield client
+
+    # Clean up at close
+    await client.stop_signal.put(1)
+    # Wait until tasks have been cancelled
+    #
+    # I do not understand why join() really really blocks everything and the
+    # queue never gets emptied.
+    #   await client.stop_signal.join()
+    if not client.stop_signal.empty():
+        await asyncio.sleep(1)
+    # allow opting out of namespace cleanup, for post-mortem debugging
+    if not os.environ.get("KUBESPAWNER_DEBUG_NAMESPACE"):
         await client.delete_namespace(kube_ns, body={}, grace_period_seconds=0)
-        for i in range(20):
+        for i in range(20):  # Usually finishes a good deal faster
             try:
                 ns = await client.read_namespace(kube_ns)
             except ApiException as e:
@@ -231,29 +254,12 @@ async def kube_client(request, kube_ns, stop_event):
                 print("waiting for %s to delete" % kube_ns)
                 await asyncio.sleep(1)
 
-    yield client
-
-    stop_event.set()
-    # Give our watches a little while to cancel
-    await asyncio.sleep(3)
-    # This runs to clean up our watch tasks
-    for t in watch_task:
-        if watch_task[t] and not watch_task[t].done():
-            try:
-                watch_task[t].cancel()
-            except asyncio.CancelledError:
-                pass
-    # allow opting out of namespace cleanup, for post-mortem debugging
-    if not os.environ.get("KUBESPAWNER_DEBUG_NAMESPACE"):
-        await cleanup_namespace()
-
 
 async def wait_for_pod(kube_client, kube_ns, pod_name, timeout=90):
     """Wait for a pod to be ready"""
     conditions = {}
     for i in range(int(timeout)):
-        p = await kube_client.read_namespaced_pod(namespace=kube_ns, name=pod_name)
-        pod = p
+        pod = await kube_client.read_namespaced_pod(namespace=kube_ns, name=pod_name)
         for condition in pod.status.conditions or []:
             conditions[condition.type] = condition.status
 
@@ -329,8 +335,6 @@ async def create_resource(kube_client, kube_ns, resource_type, manifest, delete_
         raise error
 
 
-
-
 async def create_hub_pod(kube_client, kube_ns, pod_name="hub", ssl=False):
     config_map_name = pod_name + "-config"
     secret_name = pod_name + "-secret"
@@ -395,11 +399,10 @@ async def create_hub_pod(kube_client, kube_ns, pod_name="hub", ssl=False):
         ),
     )
     pod = await create_resource(kube_client, kube_ns, "pod", pod_manifest)
-    p = await wait_for_pod(kube_client, kube_ns, pod_name)
-    return p
+    return await wait_for_pod(kube_client, kube_ns, pod_name)
 
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session")
 async def hub_pod(kube_client, kube_ns):
     """Create and return a pod running jupyterhub"""
     return await create_hub_pod(kube_client, kube_ns)
@@ -414,7 +417,7 @@ def hub(hub_pod):
     return Hub(ip=hub_pod.status.pod_ip, port=8081)
 
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session")
 async def hub_pod_ssl(kube_client, kube_ns, ssl_app):
     """Start a hub pod with internal_ssl enabled"""
     # load ssl dir to tarfile
@@ -514,6 +517,12 @@ async def _exec_python_in_pod(kube_client, kube_ns, pod_name, code, kwargs=None,
     print("Running {} in {}".format(code, pod_name))
     # need to create ws client to get returncode,
     # see https://github.com/kubernetes-client/python/issues/812
+    #
+    # That's why we are using the synchronous Kubernetes client here
+    # and why we imported them in the first place: kubernetes_asyncio
+    # does not yet support multichannel ws clients, which are needed
+    # to get the return code.
+    # cf https://github.com/tomplus/kubernetes_asyncio/issues/12
     client = sync_stream(
         sync_corev1api.connect_get_namespaced_pod_exec,
         pod_name,
@@ -559,7 +568,7 @@ def exec_python_pod(kube_client, kube_ns):
     return partial(_exec_python_in_pod, kube_client, kube_ns)
 
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session")
 async def exec_python(kube_client, kube_ns):
     """Return a callable to execute Python code in a pod in the test namespace
 

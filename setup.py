@@ -13,7 +13,7 @@ if v[:2] < (3, 6):
 
 setup(
     name='rubin-kubespawner',
-    version='2.0.1.dev2',
+    version='2.0.1.dev3',
     install_requires=[
         'async_generator>=1.8',
         'escapism',
