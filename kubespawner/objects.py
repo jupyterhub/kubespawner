@@ -9,30 +9,42 @@ import os
 import re
 from urllib.parse import urlparse
 
-from kubernetes_asyncio.client.models import (V1Affinity, V1Container,
-                                              V1ContainerPort,
-                                              V1EndpointAddress, V1Endpoints,
-                                              V1EndpointSubset, V1EnvVar,
-                                              V1LabelSelector, V1Lifecycle,
-                                              V1LocalObjectReference,
-                                              V1Namespace, V1NodeAffinity,
-                                              V1NodeSelector,
-                                              V1NodeSelectorRequirement,
-                                              V1NodeSelectorTerm, V1ObjectMeta,
-                                              V1OwnerReference,
-                                              V1PersistentVolumeClaim,
-                                              V1PersistentVolumeClaimSpec,
-                                              V1Pod, V1PodAffinity,
-                                              V1PodAffinityTerm,
-                                              V1PodAntiAffinity,
-                                              V1PodSecurityContext, V1PodSpec,
-                                              V1PreferredSchedulingTerm,
-                                              V1ResourceRequirements, V1Secret,
-                                              V1SecurityContext, V1Service,
-                                              V1ServicePort, V1ServiceSpec,
-                                              V1Toleration, V1Volume,
-                                              V1VolumeMount,
-                                              V1WeightedPodAffinityTerm)
+from kubernetes_asyncio.client.models import V1Affinity
+from kubernetes_asyncio.client.models import V1Container
+from kubernetes_asyncio.client.models import V1ContainerPort
+from kubernetes_asyncio.client.models import V1EndpointAddress
+from kubernetes_asyncio.client.models import V1Endpoints
+from kubernetes_asyncio.client.models import V1EndpointSubset
+from kubernetes_asyncio.client.models import V1EnvVar
+from kubernetes_asyncio.client.models import V1LabelSelector
+from kubernetes_asyncio.client.models import V1Lifecycle
+from kubernetes_asyncio.client.models import V1LocalObjectReference
+from kubernetes_asyncio.client.models import V1Namespace
+from kubernetes_asyncio.client.models import V1NodeAffinity
+from kubernetes_asyncio.client.models import V1NodeSelector
+from kubernetes_asyncio.client.models import V1NodeSelectorRequirement
+from kubernetes_asyncio.client.models import V1NodeSelectorTerm
+from kubernetes_asyncio.client.models import V1ObjectMeta
+from kubernetes_asyncio.client.models import V1OwnerReference
+from kubernetes_asyncio.client.models import V1PersistentVolumeClaim
+from kubernetes_asyncio.client.models import V1PersistentVolumeClaimSpec
+from kubernetes_asyncio.client.models import V1Pod
+from kubernetes_asyncio.client.models import V1PodAffinity
+from kubernetes_asyncio.client.models import V1PodAffinityTerm
+from kubernetes_asyncio.client.models import V1PodAntiAffinity
+from kubernetes_asyncio.client.models import V1PodSecurityContext
+from kubernetes_asyncio.client.models import V1PodSpec
+from kubernetes_asyncio.client.models import V1PreferredSchedulingTerm
+from kubernetes_asyncio.client.models import V1ResourceRequirements
+from kubernetes_asyncio.client.models import V1Secret
+from kubernetes_asyncio.client.models import V1SecurityContext
+from kubernetes_asyncio.client.models import V1Service
+from kubernetes_asyncio.client.models import V1ServicePort
+from kubernetes_asyncio.client.models import V1ServiceSpec
+from kubernetes_asyncio.client.models import V1Toleration
+from kubernetes_asyncio.client.models import V1Volume
+from kubernetes_asyncio.client.models import V1VolumeMount
+from kubernetes_asyncio.client.models import V1WeightedPodAffinityTerm
 
 try:
     from kubernetes_asyncio.client.models import CoreV1EndpointPort
@@ -723,23 +735,31 @@ def make_ingress(name, routespec, target, labels, data):
     try:
         from kubernetes_asyncio.client.models import (
             ExtensionsV1beta1HTTPIngressPath,
-            ExtensionsV1beta1HTTPIngressRuleValue, ExtensionsV1beta1Ingress,
-            ExtensionsV1beta1IngressBackend, ExtensionsV1beta1IngressRule,
-            ExtensionsV1beta1IngressSpec)
+            ExtensionsV1beta1HTTPIngressRuleValue,
+            ExtensionsV1beta1Ingress,
+            ExtensionsV1beta1IngressBackend,
+            ExtensionsV1beta1IngressRule,
+            ExtensionsV1beta1IngressSpec,
+        )
     except ImportError:
-        from kubernetes_asyncio.client.models import \
-            V1beta1HTTPIngressPath as ExtensionsV1beta1HTTPIngressPath
-        from kubernetes_asyncio.client.models import \
-            V1beta1HTTPIngressRuleValue as \
-            ExtensionsV1beta1HTTPIngressRuleValue
-        from kubernetes_asyncio.client.models import \
-            V1beta1Ingress as ExtensionsV1beta1Ingress
-        from kubernetes_asyncio.client.models import \
-            V1beta1IngressBackend as ExtensionsV1beta1IngressBackend
-        from kubernetes_asyncio.client.models import \
-            V1beta1IngressRule as ExtensionsV1beta1IngressRule
-        from kubernetes_asyncio.client.models import \
-            V1beta1IngressSpec as ExtensionsV1beta1IngressSpec
+        from kubernetes_asyncio.client.models import (
+            V1beta1HTTPIngressPath as ExtensionsV1beta1HTTPIngressPath,
+        )
+        from kubernetes_asyncio.client.models import (
+            V1beta1HTTPIngressRuleValue as ExtensionsV1beta1HTTPIngressRuleValue,
+        )
+        from kubernetes_asyncio.client.models import (
+            V1beta1Ingress as ExtensionsV1beta1Ingress,
+        )
+        from kubernetes_asyncio.client.models import (
+            V1beta1IngressBackend as ExtensionsV1beta1IngressBackend,
+        )
+        from kubernetes_asyncio.client.models import (
+            V1beta1IngressRule as ExtensionsV1beta1IngressRule,
+        )
+        from kubernetes_asyncio.client.models import (
+            V1beta1IngressSpec as ExtensionsV1beta1IngressSpec,
+        )
 
     meta = V1ObjectMeta(
         name=name,
