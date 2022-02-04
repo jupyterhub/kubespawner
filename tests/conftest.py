@@ -162,43 +162,43 @@ async def watch_kubernetes(kube_client, kube_ns):
 
     watch = Watch()
     watch_task = {}
-    stop_signal=kube_client.stop_signal
-    
-    async for event in watch.stream(
-        func=kube_client.list_namespaced_event,
-        namespace=kube_ns,
-    ):
 
-        resource = event['object']
-        obj = resource.involved_object
-        print(f"k8s event ({event['type']} {obj.kind}/{obj.name}): {resource.message}")
-
-        # new pod appeared, start streaming its logs
-        if (
-            obj.kind == "Pod"
-            and event["type"] == "ADDED"
-            and obj.name not in watch_task
+    try:
+        async for event in watch.stream(
+            func=kube_client.list_namespaced_event,
+            namespace=kube_ns,
         ):
-            watch_task[obj.name] = asyncio.create_task(
-                watch_logs(
-                    kube_client,
-                    obj,
-                ),
-            )
 
-        # Were we asked to stop?
-        if not stop_signal.empty():
-            break
+            resource = event['object']
+            obj = resource.involved_object
+            print(f"k8s event ({event['type']} {obj.kind}/{obj.name}): {resource.message}")
 
-    # This runs to clean up our watch tasks
-    await stop_signal.get()
-    for t in watch_task:
-        if watch_task[t] and not watch_task[t].done():
-            try:
-                watch_task[t].cancel()
-            except asyncio.CancelledError:
-                pass
-    stop_signal.task_done()
+            # new pod appeared, start streaming its logs
+            if (
+                obj.kind == "Pod"
+                and event["type"] == "ADDED"
+                and obj.name not in watch_task
+            ):
+                watch_task[obj.name] = asyncio.create_task(
+                    watch_logs(
+                        kube_client,
+                        obj,
+                    ),
+                )
+
+    except asyncio.CancelledError as exc:
+        # kube_client cleanup cancelled us.  In turn, we should cancel
+        # the individual watch tasks.
+        await stop_signal.get()
+        for t in watch_task:
+            if watch_task[t] and not watch_task[t].done():
+                try:
+                    watch_task[t].cancel()
+                except asyncio.CancelledError:
+                    # Swallow these; they are what we expect.
+                    pass
+        # And re-raise so kube_client can finish cleanup
+        raise exc
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -213,7 +213,7 @@ async def kube_client(request, kube_ns):
     """
     await load_kube_config()
     client = shared_client("CoreV1Api")
-    client.stop_signal=asyncio.Queue()
+    stop_signal=asyncio.Queue()
     try:
         namespaces = await client.list_namespace(_request_timeout=3)
     except Exception as e:
@@ -230,15 +230,13 @@ async def kube_client(request, kube_ns):
 
     yield client
 
-    # Clean up at close
-    await client.stop_signal.put(1)
-    # Wait until tasks have been cancelled
-    #
-    # I do not understand why join() really really blocks everything and the
-    # queue never gets emptied.
-    await client.stop_signal.join()
-    #if not client.stop_signal.empty():
-    #    await asyncio.sleep(1)
+    # Clean up at close by sending a cancel to watch_kubernetes and letting
+    # it handle the signal, cancel the tasks *it* started, and then raising
+    # it back to us. 
+    try:
+        t.cancel()
+    except asyncio.CancelledError:
+        pass
     # allow opting out of namespace cleanup, for post-mortem debugging
     if not os.environ.get("KUBESPAWNER_DEBUG_NAMESPACE"):
         await client.delete_namespace(kube_ns, body={}, grace_period_seconds=0)
