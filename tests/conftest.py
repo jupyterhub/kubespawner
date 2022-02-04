@@ -9,20 +9,26 @@ import sys
 import tarfile
 import time
 from functools import partial
-from threading import Event, Thread
+from threading import Event
+from threading import Thread
 
 import kubernetes_asyncio
 import pytest
 import pytest_asyncio
 from jupyterhub.app import JupyterHub
 from jupyterhub.objects import Hub
+from kubernetes import __version__ as sync_version
 from kubernetes.client import CoreV1Api as sync_CoreV1Api
 from kubernetes.config import load_kube_config as sync_load_kube_config
-# Needed for the streaming stuff
 from kubernetes.stream import stream as sync_stream
-from kubernetes_asyncio.client import (V1ConfigMap, V1Namespace, V1Pod,
-                                       V1PodSpec, V1Secret, V1Service,
-                                       V1ServicePort, V1ServiceSpec)
+from kubernetes_asyncio.client import V1ConfigMap
+from kubernetes_asyncio.client import V1Namespace
+from kubernetes_asyncio.client import V1Pod
+from kubernetes_asyncio.client import V1PodSpec
+from kubernetes_asyncio.client import V1Secret
+from kubernetes_asyncio.client import V1Service
+from kubernetes_asyncio.client import V1ServicePort
+from kubernetes_asyncio.client import V1ServiceSpec
 from kubernetes_asyncio.client.rest import ApiException
 from kubernetes_asyncio.config import load_kube_config
 from kubernetes_asyncio.watch import Watch
@@ -489,10 +495,8 @@ async def _exec_python_in_pod(
 
     kwargs are passed to the function, if it is given.
     """
-    if V(kubernetes_asyncio.__version__) < V("11"):
-        pytest.skip(
-            f"exec tests require kubernetes >= 11, got {kubernetes_asyncio.__version__}"
-        )
+    if V(sync_version) < V("11"):
+        pytest.skip(f"exec tests require kubernetes >= 11, got {sync_version}")
     pod = await wait_for_pod(kube_client, kube_ns, pod_name)
     original_code = code
     if not isinstance(code, str):
