@@ -2,16 +2,17 @@ from __future__ import print_function
 
 import sys
 
-from setuptools import find_packages, setup
+from setuptools import find_packages
+from setuptools import setup
 
 v = sys.version_info
-if v[:2] < (3, 6):
-    error = "ERROR: kubespawner requires Python version 3.6 or above."
+if v[:2] < (3, 7):
+    error = "ERROR: kubespawner requires Python version 3.7 or above."
     print(error, file=sys.stderr)
     sys.exit(1)
 
 setup(
-    name='kubespawner',
+    name='jupyterhub-kubespawner',
     version='3.0.0',
     install_requires=[
         'async_generator>=1.8',
@@ -34,8 +35,8 @@ setup(
             'pytest-asyncio>=0.11.0',
         ]
     },
-    description='JupyterHub Spawner for Kubernetes (Rubin asyncio version)',
-    url='http://github.com/lsst-sqre/kubespawner',
+    description='JupyterHub Spawner for Kubernetes',
+    url='http://github.com/jupyterhub/kubespawner',
     author='Jupyter Contributors',
     author_email='jupyter@googlegroups.com',
     long_description=open("README.md").read(),

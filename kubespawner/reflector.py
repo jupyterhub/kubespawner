@@ -7,12 +7,18 @@ import time
 from concurrent.futures import Future
 from functools import partial
 
-from kubernetes_asyncio import config, watch
-from traitlets import Any, Bool, Dict, Int, Unicode
+from kubernetes_asyncio import config
+from kubernetes_asyncio import watch
+from traitlets import Any
+from traitlets import Bool
+from traitlets import Dict
+from traitlets import Int
+from traitlets import Unicode
 from traitlets.config import LoggingConfigurable
 from urllib3.exceptions import ReadTimeoutError
 
-from .clients import load_config, shared_client
+from .clients import load_config
+from .clients import shared_client
 
 # This is kubernetes client implementation specific, but we need to know
 # whether it was a network or watch timeout.
@@ -256,8 +262,6 @@ class ResourceReflector(LoggingConfigurable):
         """
         Keeps the current list of resources up-to-date
 
-        This method is to be run not on the main thread!
-
         We first fetch the list of current resources, and store that. Then we
         register to be notified of changes to those resources, and keep our
         local store up-to-date based on these notifications.
@@ -269,17 +273,10 @@ class ResourceReflector(LoggingConfigurable):
         changes that might've been missed in the time we were not doing
         a watch.
 
-        Note that we're playing a bit with fire here, by updating a dictionary
-        in this thread while it is probably being read in another thread
-        without using locks! However, dictionary access itself is atomic,
-        and as long as we don't try to mutate them (do a 'fetch / modify /
-        update' cycle on them), we should be ok!
+        Since the resources are read-only in the Spawner (where they are
+        used), then this is safe.  The Spawner's view of the world might be
+        out-of-date, but it's not going to corrupt any data.
         """
-        #
-        # I guess?  It is the case that the resources are read-only in the
-        #  spawner, so the worst that will happen will be that they're out-
-        #  of-date.  I think.
-        #
         selectors = []
         log_name = ""
         if self.label_selector:
@@ -403,7 +400,7 @@ class ResourceReflector(LoggingConfigurable):
         and not afterwards!
         """
         if self.watch_task and not self.watch_task.done():
-            raise ValueError('Task watching for resources is already running')
+            raise RuntimeError('Task watching for resources is already running')
 
         await self._list_and_update()
         self.watch_task = asyncio.create_task(self._watch_and_update())
