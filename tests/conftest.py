@@ -189,7 +189,6 @@ async def watch_kubernetes(kube_client, kube_ns):
     except asyncio.CancelledError as exc:
         # kube_client cleanup cancelled us.  In turn, we should cancel
         # the individual watch tasks.
-        await stop_signal.get()
         for t in watch_task:
             if watch_task[t] and not watch_task[t].done():
                 try:
