@@ -13,14 +13,14 @@ if v[:2] < (3, 6):
 
 setup(
     name='rubin-kubespawner',
-    version='2.0.1.dev1',
+    version='2.0.1.dev3',
     install_requires=[
         'async_generator>=1.8',
         'escapism',
         'python-slugify',
         'jupyterhub>=0.8',
         'jinja2',
-        'kubernetes_asyncio>=10.1.0',
+        'kubernetes_asyncio>=19.15.1',
         'urllib3',
         'pyYAML',
     ],
@@ -29,6 +29,7 @@ setup(
         'test': [
             'bump2version',
             'flake8',
+            'kubernetes>=10.1.0',
             'pytest>=5.4',
             'pytest-cov',
             'pytest-asyncio>=0.11.0',

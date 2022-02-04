@@ -33,16 +33,16 @@ def exec_error():
     1 / 0
 
 
-def test_exec(exec_python):
+async def test_exec(exec_python):
     """Test the exec fixture itself"""
-    r = exec_python(print_hello)
+    r = await exec_python(print_hello)
     print("result: %r" % r)
 
 
-def test_exec_error(exec_python):
+async def test_exec_error(exec_python):
     """Test the exec fixture error handling"""
     with pytest.raises(ExecError) as e:
-        exec_python(exec_error)
+        await exec_python(exec_error)
 
 
 def test__get_k8s_model_attribute():

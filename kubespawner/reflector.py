@@ -319,8 +319,6 @@ class ResourceReflector(LoggingConfigurable):
                     "label_selector": self.label_selector,
                     "field_selector": self.field_selector,
                     "resource_version": resource_version,
-                    # You'd think this would work...but it does nothing.
-                    # "_preload_content": False
                 }
                 if not self.omit_namespace:
                     watch_args["namespace"] = self.namespace
@@ -330,11 +328,13 @@ class ResourceReflector(LoggingConfigurable):
                 if self.timeout_seconds:
                     # set watch timeout
                     watch_args['timeout_seconds'] = self.timeout_seconds
-                # Partial application of _preload_content=False causes
-                # a stream of errors of the form:
-                # AttributeError: module 'kubernetes_asyncio.client.models' has no attribute ''
-                # when unmarshaling the event into dict form.
-                method = getattr(self.api, self.list_method_name)
+                # This is a little hack to defeat the Kubernetes client
+                # deserializing the objects it gets, which can use a lot
+                # of CPU in busy clusters.  cf
+                # https://github.com/jupyterhub/kubespawner/pull/424
+                method = partial(
+                    getattr(self.api, self.list_method_name),
+                    _preload_content=False)
                 async with w.stream(method, **watch_args) as stream:
                     async for watch_event in stream:
                     # in case of timeout_seconds, the w.stream just exits (no exception thrown)
@@ -348,10 +348,6 @@ class ResourceReflector(LoggingConfigurable):
                         # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#event-v1-core
                         cur_delay = 0.1
                         resource = watch_event['raw_object']
-                        # Unfortunately the asyncio watch is still going to
-                        # deserialize it into watch_event['object'] so we may
-                        # well run into the performance issues from:
-                        # https://github.com/jupyterhub/kubespawner/pull/424
                         ref_key = "{}/{}".format(
                             resource["metadata"]["namespace"], resource["metadata"]["name"]
                         )
