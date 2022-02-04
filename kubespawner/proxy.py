@@ -101,16 +101,6 @@ class KubeIngressProxy(Proxy):
         """,
     )
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Global configuration before reflector.py code runs
-
-        labels = {
-            'component': self.component_label,
-            'hub.jupyter.org/proxy-route': 'true',
-        }
-
     @classmethod
     async def initialize(cls, *args, **kwargs):
         """
@@ -124,6 +114,10 @@ class KubeIngressProxy(Proxy):
         await load_config()
         self._set_k8s_client_configuration()
         self.core_api = shared_client('CoreV1Api')
+        labels = {
+            'component': self.component_label,
+            'hub.jupyter.org/proxy-route': 'true',
+        }
         self.extension_api = shared_client('ExtensionsV1beta1Api')
 
         self.ingress_reflector = await IngressReflector.reflector(

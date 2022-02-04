@@ -488,7 +488,7 @@ async def _exec_python_in_pod(kube_client, kube_ns, pod_name, code, kwargs=None,
     """
     if V(kubernetes_asyncio.__version__) < V("11"):
         pytest.skip(
-            f"exec tests require kubernetes >= 11, got {kubernetes.__version__}"
+            f"exec tests require kubernetes >= 11, got {kubernetes_asyncio.__version__}"
         )
     pod = await wait_for_pod(kube_client, kube_ns, pod_name)
     original_code = code
