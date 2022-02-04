@@ -8,34 +8,36 @@ import os
 import sys
 import tarfile
 import time
-from packaging.version import Version as V
 from functools import partial
-from threading import Thread, Event
+from threading import Event, Thread
 
 import kubernetes_asyncio
 import pytest
 import pytest_asyncio
 from jupyterhub.app import JupyterHub
 from jupyterhub.objects import Hub
-from kubernetes_asyncio.client import V1ConfigMap
-from kubernetes_asyncio.client import V1Namespace
-from kubernetes_asyncio.client import V1Pod
-from kubernetes_asyncio.client import V1PodSpec
-from kubernetes_asyncio.client import V1Secret
-from kubernetes_asyncio.client import V1Service
-from kubernetes_asyncio.client import V1ServicePort
-from kubernetes_asyncio.client import V1ServiceSpec
-from kubernetes_asyncio.client.rest import ApiException
-from kubernetes_asyncio.config import load_kube_config
-from kubernetes_asyncio.watch import Watch
-from traitlets.config import Config
-
-from kubespawner.clients import shared_client
+from kubernetes.client import CoreV1Api as sync_CoreV1Api
+from kubernetes.config import load_kube_config as sync_load_kube_config
 
 # Needed for the streaming stuff
 from kubernetes.stream import stream as sync_stream
-from kubernetes.config import load_kube_config as sync_load_kube_config
-from kubernetes.client import CoreV1Api as sync_CoreV1Api
+from kubernetes_asyncio.client import (
+    V1ConfigMap,
+    V1Namespace,
+    V1Pod,
+    V1PodSpec,
+    V1Secret,
+    V1Service,
+    V1ServicePort,
+    V1ServiceSpec,
+)
+from kubernetes_asyncio.client.rest import ApiException
+from kubernetes_asyncio.config import load_kube_config
+from kubernetes_asyncio.watch import Watch
+from packaging.version import Version as V
+from traitlets.config import Config
+
+from kubespawner.clients import shared_client
 
 here = os.path.abspath(os.path.dirname(__file__))
 jupyterhub_config_py = os.path.join(here, "jupyterhub_config.py")
@@ -45,11 +47,13 @@ jupyterhub_config_py = os.path.join(here, "jupyterhub_config.py")
 sync_load_kube_config()
 sync_corev1api = sync_CoreV1Api()
 
+
 @pytest.fixture(scope="session")
 def event_loop():
-    loop=asyncio.get_event_loop()
+    loop = asyncio.get_event_loop()
     yield loop
     loop.close()
+
 
 @pytest.fixture(autouse=True)
 def traitlets_logging():
@@ -67,6 +71,7 @@ def traitlets_logging():
 def kube_ns():
     """Fixture for the kubernetes namespace"""
     return os.environ.get("KUBESPAWNER_TEST_NAMESPACE") or "kubespawner-test"
+
 
 @pytest.fixture
 def config(kube_ns):
@@ -171,7 +176,9 @@ async def watch_kubernetes(kube_client, kube_ns):
 
             resource = event['object']
             obj = resource.involved_object
-            print(f"k8s event ({event['type']} {obj.kind}/{obj.name}): {resource.message}")
+            print(
+                f"k8s event ({event['type']} {obj.kind}/{obj.name}): {resource.message}"
+            )
 
             # new pod appeared, start streaming its logs
             if (
@@ -212,7 +219,7 @@ async def kube_client(request, kube_ns):
     """
     await load_kube_config()
     client = shared_client("CoreV1Api")
-    stop_signal=asyncio.Queue()
+    stop_signal = asyncio.Queue()
     try:
         namespaces = await client.list_namespace(_request_timeout=3)
     except Exception as e:
@@ -231,7 +238,7 @@ async def kube_client(request, kube_ns):
 
     # Clean up at close by sending a cancel to watch_kubernetes and letting
     # it handle the signal, cancel the tasks *it* started, and then raising
-    # it back to us. 
+    # it back to us.
     try:
         t.cancel()
     except asyncio.CancelledError:
@@ -301,7 +308,9 @@ async def ensure_not_exists(kube_client, kube_ns, name, resource_type, timeout=3
             await asyncio.sleep(1)
 
 
-async def create_resource(kube_client, kube_ns, resource_type, manifest, delete_first=True):
+async def create_resource(
+    kube_client, kube_ns, resource_type, manifest, delete_first=True
+):
     """Create a kubernetes resource
 
     handling 409 errors and others that can occur due to rapid startup
@@ -478,7 +487,9 @@ class ExecError(Exception):
         )
 
 
-async def _exec_python_in_pod(kube_client, kube_ns, pod_name, code, kwargs=None, _retries=0):
+async def _exec_python_in_pod(
+    kube_client, kube_ns, pod_name, code, kwargs=None, _retries=0
+):
     """Run simple Python code in a pod
 
     code can be a str of code, or a 'simple' Python function,

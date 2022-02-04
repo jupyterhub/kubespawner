@@ -10,7 +10,7 @@ from jupyterhub.utils import exponential_backoff
 from kubernetes_asyncio import client
 from traitlets import Unicode
 
-from .clients import shared_client, load_config
+from .clients import load_config, shared_client
 from .objects import make_ingress
 from .reflector import ResourceReflector
 from .utils import generate_hashed_slug
@@ -181,7 +181,7 @@ class KubeIngressProxy(Proxy):
 
         async def ensure_object(create_func, patch_func, body, kind):
             try:
-                resp = await create_func(namespace=self.namespace, body=body),
+                resp = (await create_func(namespace=self.namespace, body=body),)
                 self.log.info('Created %s/%s', kind, safe_name)
             except client.rest.ApiException as e:
                 if e.status == 409:

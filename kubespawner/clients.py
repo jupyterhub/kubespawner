@@ -20,6 +20,7 @@ api_client.ThreadPool = lambda *args, **kwargs: _dummy_pool
 
 _client_cache = {}
 
+
 def shared_client(ClientType, *args, **kwargs):
     """Return a single shared kubernetes client instance
 
@@ -48,6 +49,7 @@ def shared_client(ClientType, *args, **kwargs):
         _client_cache[cache_key] = weakref.ref(client)
 
     return client
+
 
 async def load_config():
     try:

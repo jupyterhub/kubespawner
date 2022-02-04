@@ -7,17 +7,12 @@ import time
 from concurrent.futures import Future
 from functools import partial
 
-from kubernetes_asyncio import config
-from kubernetes_asyncio import watch
-from traitlets import Any
-from traitlets import Bool
-from traitlets import Dict
-from traitlets import Int
-from traitlets import Unicode
+from kubernetes_asyncio import config, watch
+from traitlets import Any, Bool, Dict, Int, Unicode
 from traitlets.config import LoggingConfigurable
 from urllib3.exceptions import ReadTimeoutError
 
-from .clients import shared_client, load_config
+from .clients import load_config, shared_client
 
 # This is kubernetes client implementation specific, but we need to know
 # whether it was a network or watch timeout.
@@ -333,12 +328,12 @@ class ResourceReflector(LoggingConfigurable):
                 # of CPU in busy clusters.  cf
                 # https://github.com/jupyterhub/kubespawner/pull/424
                 method = partial(
-                    getattr(self.api, self.list_method_name),
-                    _preload_content=False)
+                    getattr(self.api, self.list_method_name), _preload_content=False
+                )
                 async with w.stream(method, **watch_args) as stream:
                     async for watch_event in stream:
-                    # in case of timeout_seconds, the w.stream just exits (no exception thrown)
-                    # -> we stop the watcher and start a new one
+                        # in case of timeout_seconds, the w.stream just exits (no exception thrown)
+                        # -> we stop the watcher and start a new one
                         # Remember that these events are k8s api related WatchEvents
                         # objects, not k8s Event or Pod representations, they will
                         # reside in the WatchEvent's object field depending on what
@@ -349,7 +344,8 @@ class ResourceReflector(LoggingConfigurable):
                         cur_delay = 0.1
                         resource = watch_event['raw_object']
                         ref_key = "{}/{}".format(
-                            resource["metadata"]["namespace"], resource["metadata"]["name"]
+                            resource["metadata"]["namespace"],
+                            resource["metadata"]["name"],
                         )
                         if watch_event['type'] == 'DELETED':
                             # This is an atomic delete operation on the dictionary!
@@ -421,12 +417,13 @@ class ResourceReflector(LoggingConfigurable):
         # it a bit...
         if self.watch_task and not self.watch_task.done():
             try:
-                timeout=5
+                timeout = 5
                 await asyncio.wait_for(self.watch_task, timeout)
             except asyncio.TimeoutError:
                 # Raising the TimeoutError will cancel the task.
-                self.log.warning(f"Watch task did not finish in {timeout}s" +
-                                 "and was cancelled")
+                self.log.warning(
+                    f"Watch task did not finish in {timeout}s" + "and was cancelled"
+                )
         self.watch_task = None
 
     def stopped(self):

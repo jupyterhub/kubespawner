@@ -17,8 +17,7 @@ from urllib.parse import urlparse
 
 import escapism
 import kubernetes_asyncio.config
-from jinja2 import BaseLoader
-from jinja2 import Environment
+from jinja2 import BaseLoader, Environment
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Command
 from jupyterhub.utils import exponential_backoff
@@ -27,23 +26,27 @@ from kubernetes_asyncio.client.rest import ApiException
 from slugify import slugify
 from tornado import gen
 from tornado.ioloop import IOLoop
-from traitlets import Bool
-from traitlets import default
-from traitlets import Dict
-from traitlets import Integer
-from traitlets import List
-from traitlets import observe
-from traitlets import Unicode
-from traitlets import Union
-from traitlets import validate
+from traitlets import (
+    Bool,
+    Dict,
+    Integer,
+    List,
+    Unicode,
+    Union,
+    default,
+    observe,
+    validate,
+)
 
-from .clients import shared_client, load_config
-from .objects import make_namespace
-from .objects import make_owner_reference
-from .objects import make_pod
-from .objects import make_pvc
-from .objects import make_secret
-from .objects import make_service
+from .clients import load_config, shared_client
+from .objects import (
+    make_namespace,
+    make_owner_reference,
+    make_pod,
+    make_pvc,
+    make_secret,
+    make_service,
+)
 from .reflector import ResourceReflector
 from .traitlets import Callable
 
@@ -203,7 +206,7 @@ class KubeSpawner(Spawner):
         self._start_future = None
 
     @classmethod
-    async def initialize(cls,*args,**kwargs):
+    async def initialize(cls, *args, **kwargs):
         """In an ideal world, you'd get a new KubeSpawner with this.
         That's not how we are called from JupyterHub, though; it just
         instantiates whatever class you tell it to use as the spawner class.
@@ -220,7 +223,7 @@ class KubeSpawner(Spawner):
         that, instead, to get its spawner instance.  I don't think our
         use-case is likely to be unique.
         """
-        inst = cls(*args,**kwargs)
+        inst = cls(*args, **kwargs)
         await inst.initialize_reflectors_and_clients()
         return inst
 
@@ -230,7 +233,6 @@ class KubeSpawner(Spawner):
         await self._start_watching_pods()
         if self.events_enabled:
             await self._start_watching_events()
-
 
     k8s_api_ssl_ca_cert = Unicode(
         "",
@@ -2410,8 +2412,7 @@ class KubeSpawner(Spawner):
         try:
             self.log.info(f"Checking for {kind}/{name}")
             await asyncio.wait_for(
-                read(namespace=self.namespace, name=name),
-                self.k8s_api_request_timeout
+                read(namespace=self.namespace, name=name), self.k8s_api_request_timeout
             )
         except asyncio.TimeoutError:
             # Just try again
@@ -2435,8 +2436,7 @@ class KubeSpawner(Spawner):
         self.log.info(f"Attempting to create {kind} {manifest.metadata.name}")
         try:
             await asyncio.wait_for(
-                create(self.namespace,manifest),
-                self.k8s_api_request_timeout
+                create(self.namespace, manifest), self.k8s_api_request_timeout
             )
         except asyncio.TimeoutError:
             # Just try again
@@ -2499,8 +2499,7 @@ class KubeSpawner(Spawner):
         ref_key = "{}/{}".format(self.namespace, self.pod_name)
         # If there's a timeout, just let it propagate
         await exponential_backoff(
-            partial(self._make_create_pod_request, pod, self.k8s_api_request_timeout
-                    ),
+            partial(self._make_create_pod_request, pod, self.k8s_api_request_timeout),
             f'Could not create pod {ref_key}',
             timeout=self.k8s_api_request_retry_timeout,
         )
@@ -2618,7 +2617,8 @@ class KubeSpawner(Spawner):
                     name=pod_name,
                     namespace=self.namespace,
                     body=delete_options,
-                    grace_period_seconds=grace_seconds),
+                    grace_period_seconds=grace_seconds,
+                ),
                 request_timeout,
             )
             return True
