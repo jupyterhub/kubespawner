@@ -121,6 +121,10 @@ class KubeIngressProxy(Proxy):
         return inst
 
     async def _initialize_resources(self):
+        labels = {
+            'component': self.component_label,
+            'hub.jupyter.org/proxy-route': 'true',
+        }
         await load_config()
         self._set_k8s_client_configuration()
         self.core_api = shared_client('CoreV1Api')

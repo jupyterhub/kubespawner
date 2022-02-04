@@ -189,7 +189,6 @@ async def watch_kubernetes(kube_client, kube_ns):
     except asyncio.CancelledError as exc:
         # kube_client cleanup cancelled us.  In turn, we should cancel
         # the individual watch tasks.
-        await stop_signal.get()
         for t in watch_task:
             if watch_task[t] and not watch_task[t].done():
                 try:
@@ -489,7 +488,7 @@ async def _exec_python_in_pod(kube_client, kube_ns, pod_name, code, kwargs=None,
     """
     if V(kubernetes_asyncio.__version__) < V("11"):
         pytest.skip(
-            f"exec tests require kubernetes >= 11, got {kubernetes.__version__}"
+            f"exec tests require kubernetes >= 11, got {kubernetes_asyncio.__version__}"
         )
     pod = await wait_for_pod(kube_client, kube_ns, pod_name)
     original_code = code
