@@ -280,7 +280,7 @@ async def test_spawn_internal_ssl(
     await spawner.stop()
 
     # verify pod is gone
-    pods = await (kube_client.list_namespaced_pod(kube_ns)).items
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
     pod_names = [p.metadata.name for p in pods]
     assert "jupyter-%s" % spawner.user.name not in pod_names
 
