@@ -7,13 +7,13 @@ from setuptools import setup
 
 v = sys.version_info
 if v[:2] < (3, 6):
-    error = "ERROR: rubin-kubespawner requires Python version 3.6 or above."
+    error = "ERROR: kubespawner requires Python version 3.6 or above."
     print(error, file=sys.stderr)
     sys.exit(1)
 
 setup(
-    name='rubin-kubespawner',
-    version='2.0.1.dev3',
+    name='kubespawner',
+    version='3.0.0',
     install_requires=[
         'async_generator>=1.8',
         'escapism',
