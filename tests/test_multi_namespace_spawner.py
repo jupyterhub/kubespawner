@@ -7,12 +7,8 @@ import pytest
 from jupyterhub.objects import Hub, Server
 from jupyterhub.orm import Spawner
 from kubernetes_asyncio.client import V1Namespace
-from kubernetes_asyncio.client.models import (
-    V1Capabilities,
-    V1Container,
-    V1Pod,
-    V1SecurityContext,
-)
+from kubernetes_asyncio.client.models import (V1Capabilities, V1Container,
+                                              V1Pod, V1SecurityContext)
 from kubernetes_asyncio.config import load_kube_config
 from traitlets.config import Config
 

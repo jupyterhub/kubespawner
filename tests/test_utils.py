@@ -2,15 +2,12 @@ import copy
 
 import pytest
 from conftest import ExecError
-from kubernetes_asyncio.client.models import (
-    V1Capabilities,
-    V1Container,
-    V1Lifecycle,
-    V1PodSpec,
-    V1SecurityContext,
-)
+from kubernetes_asyncio.client.models import (V1Capabilities, V1Container,
+                                              V1Lifecycle, V1PodSpec,
+                                              V1SecurityContext)
 
-from kubespawner.utils import _get_k8s_model_attribute, get_k8s_model, update_k8s_model
+from kubespawner.utils import (_get_k8s_model_attribute, get_k8s_model,
+                               update_k8s_model)
 
 
 class MockLogger(object):

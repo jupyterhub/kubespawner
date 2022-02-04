@@ -18,19 +18,11 @@ from jupyterhub.app import JupyterHub
 from jupyterhub.objects import Hub
 from kubernetes.client import CoreV1Api as sync_CoreV1Api
 from kubernetes.config import load_kube_config as sync_load_kube_config
-
 # Needed for the streaming stuff
 from kubernetes.stream import stream as sync_stream
-from kubernetes_asyncio.client import (
-    V1ConfigMap,
-    V1Namespace,
-    V1Pod,
-    V1PodSpec,
-    V1Secret,
-    V1Service,
-    V1ServicePort,
-    V1ServiceSpec,
-)
+from kubernetes_asyncio.client import (V1ConfigMap, V1Namespace, V1Pod,
+                                       V1PodSpec, V1Secret, V1Service,
+                                       V1ServicePort, V1ServiceSpec)
 from kubernetes_asyncio.client.rest import ApiException
 from kubernetes_asyncio.config import load_kube_config
 from kubernetes_asyncio.watch import Watch

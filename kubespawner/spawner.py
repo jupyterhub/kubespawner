@@ -26,27 +26,12 @@ from kubernetes_asyncio.client.rest import ApiException
 from slugify import slugify
 from tornado import gen
 from tornado.ioloop import IOLoop
-from traitlets import (
-    Bool,
-    Dict,
-    Integer,
-    List,
-    Unicode,
-    Union,
-    default,
-    observe,
-    validate,
-)
+from traitlets import (Bool, Dict, Integer, List, Unicode, Union, default,
+                       observe, validate)
 
 from .clients import load_config, shared_client
-from .objects import (
-    make_namespace,
-    make_owner_reference,
-    make_pod,
-    make_pvc,
-    make_secret,
-    make_service,
-)
+from .objects import (make_namespace, make_owner_reference, make_pod, make_pvc,
+                      make_secret, make_service)
 from .reflector import ResourceReflector
 from .traitlets import Callable
 
