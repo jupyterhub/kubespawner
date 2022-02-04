@@ -191,14 +191,14 @@ async def watch_kubernetes(kube_client, kube_ns):
             break
 
     # This runs to clean up our watch tasks
+    await stop_signal.get()
     for t in watch_task:
         if watch_task[t] and not watch_task[t].done():
             try:
                 watch_task[t].cancel()
             except asyncio.CancelledError:
                 pass
-    await stop_signal.get()
-    stop_signal.done()
+    stop_signal.task_done()
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -236,9 +236,9 @@ async def kube_client(request, kube_ns):
     #
     # I do not understand why join() really really blocks everything and the
     # queue never gets emptied.
-    #   await client.stop_signal.join()
-    if not client.stop_signal.empty():
-        await asyncio.sleep(1)
+    await client.stop_signal.join()
+    #if not client.stop_signal.empty():
+    #    await asyncio.sleep(1)
     # allow opting out of namespace cleanup, for post-mortem debugging
     if not os.environ.get("KUBESPAWNER_DEBUG_NAMESPACE"):
         await client.delete_namespace(kube_ns, body={}, grace_period_seconds=0)
