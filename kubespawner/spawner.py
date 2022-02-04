@@ -1724,7 +1724,7 @@ class KubeSpawner(Spawner):
             servername=safe_servername,
             unescaped_servername=raw_servername,
             hubnamespace=hub_namespace,
-            server_base_url=self.server.base_url
+            server_base_url=self.server.base_url,
         )
         # strip trailing - delimiter in case of empty servername.
         # k8s object names cannot have trailing -
