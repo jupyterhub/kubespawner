@@ -419,7 +419,7 @@ class ResourceReflector(LoggingConfigurable):
             except asyncio.TimeoutError:
                 # Raising the TimeoutError will cancel the task.
                 self.log.warning(
-                    f"Watch task did not finish in {timeout}s" + "and was cancelled"
+                    f"Watch task did not finish in {timeout}s and was cancelled"
                 )
         self.watch_task = None
 
