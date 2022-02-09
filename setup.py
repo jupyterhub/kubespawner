@@ -24,7 +24,7 @@ setup(
         'urllib3',
         'pyYAML',
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     extras_require={
         'test': [
             'bump2version',
