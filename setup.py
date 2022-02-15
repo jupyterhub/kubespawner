@@ -13,7 +13,7 @@ if v[:2] < (3, 6):
 
 setup(
     name='jupyterhub-kubespawner',
-    version='2.0.1.dev',
+    version='2.0.1',
     install_requires=[
         'async_generator>=1.8',
         'escapism',
