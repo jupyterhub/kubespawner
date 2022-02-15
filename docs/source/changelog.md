@@ -6,7 +6,7 @@
 
 ## 2.0
 
-### 2.0.1
+### 2.0.1 - 2022-02-15
 
 #### Maintenance and upkeep improvements
 
