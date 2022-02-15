@@ -6,6 +6,18 @@
 
 ## 2.0
 
+### 2.0.1 - 2022-02-15
+
+#### Maintenance and upkeep improvements
+
+- Support recent version of kubernetes client library (21.7.0) that introduced a breaking change [#558](https://github.com/jupyterhub/kubespawner/pull/558) ([@athornton](https://github.com/athornton))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2021-11-28&to=2022-02-03&type=c))
+
+[@athornton](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aathornton+updated%3A2021-11-28..2022-02-03&type=Issues) | [@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2021-11-28..2022-02-03&type=Issues) | [@minrk](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2021-11-28..2022-02-03&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2021-11-28..2022-02-03&type=Issues)
+
 ### 2.0.0 - 2021-11-28
 
 #### Breaking changes
