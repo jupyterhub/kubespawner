@@ -229,7 +229,7 @@ class ResourceReflector(LoggingConfigurable):
         Use it to create a new Reflector object.
         """
         inst = cls(*args, **kwargs)
-        await load_config()
+        await load_config(caller=inst)
         inst.api = shared_client(inst.api_group_name)
         await inst.start()
         return inst

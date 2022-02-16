@@ -120,8 +120,7 @@ class KubeIngressProxy(Proxy):
             'component': self.component_label,
             'hub.jupyter.org/proxy-route': 'true',
         }
-        await load_config()
-        self._set_k8s_client_configuration()
+        await load_config(caller=self)
         self.core_api = shared_client('CoreV1Api')
         self.extension_api = shared_client('ExtensionsV1beta1Api')
 
@@ -134,23 +133,6 @@ class KubeIngressProxy(Proxy):
         self.endpoint_reflector = await EndpointsReflector.reflector(
             parent=self, namespace=self.namespace, labels=labels
         )
-
-    def _set_k8s_client_configuration(self):
-        # The actual (singleton) Kubernetes client will be created
-        # in clients.py shared_client() but the configuration
-        # for token / ca_cert / k8s api host is set globally
-        # in kubernetes.py syntax.  It is being set here
-        # and this method called prior to getting a shared_client
-        # (but after load_config())
-        # for readability / coupling with traitlets values
-        if self.k8s_api_ssl_ca_cert:
-            global_conf = client.Configuration.get_default_copy()
-            global_conf.ssl_ca_cert = self.k8s_api_ssl_ca_cert
-            client.Configuration.set_default(global_conf)
-        if self.k8s_api_host:
-            global_conf = client.Configuration.get_default_copy()
-            global_conf.host = self.k8s_api_host
-            client.Configuration.set_default(global_conf)
 
     def safe_name_for_routespec(self, routespec):
         safe_chars = set(string.ascii_lowercase + string.digits)

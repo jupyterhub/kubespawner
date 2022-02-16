@@ -8,6 +8,7 @@ from unittest.mock import Mock
 
 import kubernetes_asyncio.client
 from kubernetes_asyncio.client import api_client
+from kubernetes_asyncio.client import Configuration
 
 # FIXME: remove when instantiating a kubernetes client
 # doesn't create N-CPUs threads unconditionally.
@@ -51,8 +52,21 @@ def shared_client(ClientType, *args, **kwargs):
     return client
 
 
-async def load_config():
+async def load_config(caller=None):
     try:
         kubernetes_asyncio.config.load_incluster_config()
     except kubernetes_asyncio.config.ConfigException:
         await kubernetes_asyncio.config.load_kube_config()
+    # The ca_cert/k8s_api_host is set via traitlets on the objects
+    # that call load_config(); thus, they may pass a reference to themselves
+    # into load_config in order to set ca_cert/k8s_api_host.
+
+    if caller:
+        if hasattr(caller, "k8s_api_ssl_ca_cert") and caller.k8s_api_ssl_ca_cert:
+            global_conf = Configuration.get_default_copy()
+            global_conf.ssl_ca_cert = caller.k8s_api_ssl_ca_cert
+            Configuration.set_default(global_conf)
+        if hasattr(caller, "k8s_api_host") and caller.k8s_api_host:
+            global_conf = Configuration.get_default_copy()
+            global_conf.host = caller.k8s_api_host
+            Configuration.set_default(global_conf)

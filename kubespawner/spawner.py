@@ -225,20 +225,7 @@ class KubeSpawner(Spawner):
         return inst
 
     async def initialize_reflectors_and_clients(self):
-        await load_config()
-        # The actual (singleton) Kubernetes client will be created
-        # in clients.py shared_client() but the configuration
-        # for token / ca_cert / k8s api host is set globally
-        # in kubernetes.py syntax.  It is being set here (but after
-        # load_config()) for readability / coupling with traitlets values
-        if self.k8s_api_ssl_ca_cert:
-            global_conf = client.Configuration.get_default_copy()
-            global_conf.ssl_ca_cert = self.k8s_api_ssl_ca_cert
-            client.Configuration.set_default(global_conf)
-        if self.k8s_api_host:
-            global_conf = client.Configuration.get_default_copy()
-            global_conf.ssl_ca_cert = self.k8s_api_ssl_ca_cert
-            client.Configuration.set_default(global_conf)
+        await load_config(caller=self)
         self.api = shared_client("CoreV1Api")
         await self._start_watching_pods()
         if self.events_enabled:
