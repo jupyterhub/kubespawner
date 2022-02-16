@@ -44,7 +44,7 @@ jobs:
           # Tests with various k8s-python-client versions
           - python: 3.7
             k3s: v1.16
-            k8s-python-client: 10.* # supports k8s 1.14
+            k8s-python-client: 11.* # supports k8s 1.15
           - python: 3.8
             k3s: v1.16
             k8s-python-client: 11.* # supports k8s 1.15

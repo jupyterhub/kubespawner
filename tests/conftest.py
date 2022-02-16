@@ -495,8 +495,6 @@ async def _exec_python_in_pod(
 
     kwargs are passed to the function, if it is given.
     """
-    if V(sync_version) < V("11"):
-        pytest.skip(f"exec tests require kubernetes >= 11, got {sync_version}")
     pod = await wait_for_pod(kube_client, kube_ns, pod_name)
     original_code = code
     if not isinstance(code, str):

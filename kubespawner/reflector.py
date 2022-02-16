@@ -30,7 +30,7 @@ class ResourceReflector(LoggingConfigurable):
 
     Must be subclassed once per kind of resource that needs watching.
 
-    Creating a reflector should be done with the reflector() classmethod,
+    Creating a reflector should be done with the create() classmethod,
     since that, in addition to creating the instance, initializes the
     Kubernetes configuration, acquires a K8s API client, and starts the
     watch task.
@@ -218,12 +218,15 @@ class ResourceReflector(LoggingConfigurable):
         # watch task.
 
     @classmethod
-    async def reflector(cls, *args, **kwargs):
+    async def create(cls, *args, **kwargs):
         """
-        This is how you should instantiate a reflector in order to bring
-        it up in a usable state, as this classmethod does load
-        Kubernetes config, acquires an API client, and starts the watch
-        task.
+        This is a workaround: `__init__` cannot be async, but we want
+        to call async methods to instantiate a reflector in a usable state.
+
+        This method creates the reflector, and then loads Kubernetes config,
+        acquires an API client, and starts the watch task.
+
+        Use it to create a new Reflector object.
         """
         inst = cls(*args, **kwargs)
         await load_config()
@@ -247,8 +250,8 @@ class ResourceReflector(LoggingConfigurable):
         if not self.omit_namespace:
             kwargs["namespace"] = self.namespace
 
-        method = getattr(self.api, self.list_method_name)
-        initial_resources_raw = await ((method)(**kwargs))
+        list_method = getattr(self.api, self.list_method_name)
+        initial_resources_raw = await list_method(**kwargs)
         # This is an atomic operation on the dictionary!
         initial_resources = json.loads(await initial_resources_raw.read())
         self.resources = {

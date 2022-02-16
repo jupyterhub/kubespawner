@@ -13,7 +13,7 @@ if v[:2] < (3, 7):
 
 setup(
     name='jupyterhub-kubespawner',
-    version='3.0.0',
+    version='2.0.2.dev',
     install_requires=[
         'async_generator>=1.8',
         'escapism',
@@ -29,7 +29,7 @@ setup(
         'test': [
             'bump2version',
             'flake8',
-            'kubernetes>=10.1.0',
+            'kubernetes>=11',
             'pytest>=5.4',
             'pytest-cov',
             'pytest-asyncio>=0.11.0',

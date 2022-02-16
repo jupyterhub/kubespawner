@@ -173,10 +173,10 @@ class KubeSpawner(Spawner):
                 self.hub = hub
 
         # We have to set the namespace (if user namespaces are enabled)
-        #  before we start the reflectors, so this must run before
-        #  watcher start in normal execution.  We still want to get the
-        #  namespace right for test, though, so we need self.user to have
-        #  been set in order to do that.
+        # before we start the reflectors, so this must run before
+        # watcher start in normal execution.  We still want to get the
+        # namespace right for test, though, so we need self.user to have
+        # been set in order to do that.
 
         # By now, all the traitlets have been set, so we can use them to
         # compute other attributes
@@ -204,7 +204,7 @@ class KubeSpawner(Spawner):
         self._start_future = None
 
     @classmethod
-    async def initialize(cls, *args, **kwargs):
+    async def create(cls, *args, **kwargs):
         """In an ideal world, you'd get a new KubeSpawner with this.
         That's not how we are called from JupyterHub, though; it just
         instantiates whatever class you tell it to use as the spawner class.
@@ -212,14 +212,13 @@ class KubeSpawner(Spawner):
         Thus we need to do the initialization in poll(), start(), and stop()
         since any of them could be the first thing called (imagine that the
         hub restarts and the first thing someone does is try to stop their
-        running server).  Further (and this is actually true in the Rubin
-        case) a pre-spawn-start hook that depends on internal knowledge of
-        the spawner might be the first thing to run.
+        running server).  Further a pre-spawn-start hook that depends on
+        internal knowledge of the spawner might be the first thing to run.
 
         It would be nice if there were an agreed-upon mechanism for, say,
-        JupyterHub to look for an async initialize() method and then use
-        that, instead, to get its spawner instance.  I don't think our
-        use-case is likely to be unique.
+        JupyterHub to look for an async create() method and then use
+        that (instead of implicitly requesting __init__()) to get its
+        spawner instance.
         """
         inst = cls(*args, **kwargs)
         await inst.initialize_reflectors_and_clients()
@@ -227,6 +226,19 @@ class KubeSpawner(Spawner):
 
     async def initialize_reflectors_and_clients(self):
         await load_config()
+        # The actual (singleton) Kubernetes client will be created
+        # in clients.py shared_client() but the configuration
+        # for token / ca_cert / k8s api host is set globally
+        # in kubernetes.py syntax.  It is being set here (but after
+        # load_config()) for readability / coupling with traitlets values
+        if self.k8s_api_ssl_ca_cert:
+            global_conf = client.Configuration.get_default_copy()
+            global_conf.ssl_ca_cert = self.k8s_api_ssl_ca_cert
+            client.Configuration.set_default(global_conf)
+        if self.k8s_api_host:
+            global_conf = client.Configuration.get_default_copy()
+            global_conf.ssl_ca_cert = self.k8s_api_ssl_ca_cert
+            client.Configuration.set_default(global_conf)
         self.api = shared_client("CoreV1Api")
         await self._start_watching_pods()
         if self.events_enabled:
@@ -255,6 +267,15 @@ class KubeSpawner(Spawner):
 
         Typically this is unnecessary, the hostname is picked up by
         config.load_incluster_config() or config.load_kube_config.
+        """,
+    )
+
+    k8s_api_threadpool_workers = Integer(
+        config=True,
+        help="""
+        DEPRECATED.
+
+        No longer has any effect, as there is no threadpool anymore.
         """,
     )
 
@@ -2038,11 +2059,10 @@ class KubeSpawner(Spawner):
         Note that a clean exit will have an exit code of zero, so it is
         necessary to check that the returned value is None, rather than
         just Falsy, to determine that the pod is still running.
-
-        We cannot be sure the Hub will call start() before poll(), so
-        we need to load client configuration and start our reflectors
-        at the top of each of those methods.
         """
+        # We cannot be sure the Hub will call start() before poll(), so
+        # we need to load client configuration and start our reflectors
+        # at the top of each of those methods.
         await self.initialize_reflectors_and_clients()
         # have to wait for first load of data before we have a valid answer
         if not self.pod_reflector.first_load_future.done():
@@ -2225,7 +2245,7 @@ class KubeSpawner(Spawner):
         previous_reflector = self.__class__.reflectors.get(key)
 
         if replace or not previous_reflector:
-            self.__class__.reflectors[key] = await ReflectorClass.reflector(
+            self.__class__.reflectors[key] = await ReflectorClass.create(
                 parent=self,
                 namespace=self.namespace,
                 on_failure=on_reflector_failure,
