@@ -52,21 +52,21 @@ def shared_client(ClientType, *args, **kwargs):
     return client
 
 
-async def load_config(caller=None):
+async def load_config(caller):
     try:
         kubernetes_asyncio.config.load_incluster_config()
     except kubernetes_asyncio.config.ConfigException:
         await kubernetes_asyncio.config.load_kube_config()
     # The ca_cert/k8s_api_host is set via traitlets on the objects
-    # that call load_config(); thus, they may pass a reference to themselves
-    # into load_config in order to set ca_cert/k8s_api_host.
+    # that call load_config(); they must pass a reference to themselves
+    # into load_config, and then if the traitlets are set, they will
+    # be used.
 
-    if caller:
-        if hasattr(caller, "k8s_api_ssl_ca_cert") and caller.k8s_api_ssl_ca_cert:
-            global_conf = Configuration.get_default_copy()
-            global_conf.ssl_ca_cert = caller.k8s_api_ssl_ca_cert
-            Configuration.set_default(global_conf)
-        if hasattr(caller, "k8s_api_host") and caller.k8s_api_host:
-            global_conf = Configuration.get_default_copy()
-            global_conf.host = caller.k8s_api_host
-            Configuration.set_default(global_conf)
+    if caller.k8s_api_ssl_ca_cert:
+        global_conf = Configuration.get_default_copy()
+        global_conf.ssl_ca_cert = caller.k8s_api_ssl_ca_cert
+        Configuration.set_default(global_conf)
+    if caller.k8s_api_host:
+        global_conf = Configuration.get_default_copy()
+        global_conf.host = caller.k8s_api_host
+        Configuration.set_default(global_conf)
