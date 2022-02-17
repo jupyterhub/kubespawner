@@ -43,6 +43,18 @@ class EndpointsReflector(ResourceReflector):
 
 
 class KubeIngressProxy(Proxy):
+    """
+    As the KubeIngressProxy class now depends on an asyncio-based
+    Kubernetes client, it is no longer sufficient to simply instantiate
+    an instance of the class with `__init__`.  Instance configuration is
+    required, and that depends on async functions, which cannot appear in
+    `__init__`.
+
+    Therefore, immediately after requesting a new instance, the requestor
+    should await the instance's `initialize_resources` method
+    to complete configuration of the instance.
+    """
+
     namespace = Unicode(
         config=True,
         help="""
@@ -102,20 +114,13 @@ class KubeIngressProxy(Proxy):
         """,
     )
 
-    @classmethod
-    async def create(cls, *args, **kwargs):
+    async def initialize_resources(self):
         """
-        This is a workaround: The `__init__` constructor cannot be async, but
-        we require that async methods be called when we request a new
-        KubeIngressProxy object.
-
-        Use this method to create a KubeIngressProxy object.
+        This contains logic that was formerly in `__init__`, but since
+        it now involves async/await, it can't be there anymore.  It is
+        intended that this method be called immediately after a new
+        KubeIngressProxy object is created via `__init__`.
         """
-        inst = cls(*args, **kwargs)
-        await inst._initialize_resources()
-        return inst
-
-    async def _initialize_resources(self):
         labels = {
             'component': self.component_label,
             'hub.jupyter.org/proxy-route': 'true',
@@ -124,13 +129,13 @@ class KubeIngressProxy(Proxy):
         self.core_api = shared_client('CoreV1Api')
         self.extension_api = shared_client('ExtensionsV1beta1Api')
 
-        self.ingress_reflector = await IngressReflector.reflector(
+        self.ingress_reflector = await IngressReflector.create(
             parent=self, namespace=self.namespace, labels=labels
         )
-        self.service_reflector = await ServiceReflector.reflector(
+        self.service_reflector = await ServiceReflector.create(
             parent=self, namespace=self.namespace, labels=labels
         )
-        self.endpoint_reflector = await EndpointsReflector.reflector(
+        self.endpoint_reflector = await EndpointsReflector.create(
             parent=self, namespace=self.namespace, labels=labels
         )
 
@@ -156,6 +161,7 @@ class KubeIngressProxy(Proxy):
         # Create a route with the name being escaped routespec
         # Use full routespec in label
         # 'data' is JSON encoded and put in an annotation - we don't need to query for it
+
         safe_name = self.safe_name_for_routespec(routespec).lower()
         labels = {
             'heritage': 'jupyterhub',
@@ -235,6 +241,7 @@ class KubeIngressProxy(Proxy):
         # We just ensure that these objects are deleted.
         # This means if some of them are already deleted, we just let it
         # be.
+
         safe_name = self.safe_name_for_routespec(routespec).lower()
 
         delete_options = client.V1DeleteOptions(grace_period_seconds=0)

@@ -152,6 +152,20 @@ class KubeSpawner(Spawner):
             return self.__class__.reflectors['events']
 
     def __init__(self, *args, **kwargs):
+        """
+        We cannot call async methods from `__init__`.  Now that we use an
+        asyncio-based Kubernetes client, we have required initialization that
+        depends on async/await
+
+        Thus we need to do the initialization in `poll`, `start`, and `stop`
+        since any of them could be the first thing called (imagine that the
+        hub restarts and the first thing someone does is try to stop their
+        running server).  Further a pre-spawn-start hook that depends on
+        internal knowledge of the spawner might be the first thing to run,
+        and in a case like that, the caller would need to await the
+        initialization method (`initialize_reflectors_and_clients`) itself.
+        """
+
         _mock = kwargs.pop('_mock', False)
         super().__init__(*args, **kwargs)
 
@@ -203,28 +217,12 @@ class KubeSpawner(Spawner):
         # The attribute needs to exist, even though it is unset to start with
         self._start_future = None
 
-    @classmethod
-    async def create(cls, *args, **kwargs):
-        """In an ideal world, you'd get a new KubeSpawner with this.
-        That's not how we are called from JupyterHub, though; it just
-        instantiates whatever class you tell it to use as the spawner class.
-
-        Thus we need to do the initialization in poll(), start(), and stop()
-        since any of them could be the first thing called (imagine that the
-        hub restarts and the first thing someone does is try to stop their
-        running server).  Further a pre-spawn-start hook that depends on
-        internal knowledge of the spawner might be the first thing to run.
-
-        It would be nice if there were an agreed-upon mechanism for, say,
-        JupyterHub to look for an async create() method and then use
-        that (instead of implicitly requesting __init__()) to get its
-        spawner instance.
-        """
-        inst = cls(*args, **kwargs)
-        await inst.initialize_reflectors_and_clients()
-        return inst
-
     async def initialize_reflectors_and_clients(self):
+        """
+        This is functionality extracted from `__init__` because it requires
+        the use of async/await.  This method should be awaited before doing
+        anything with the object received from `__init__`.
+        """
         await load_config(caller=self)
         self.api = shared_client("CoreV1Api")
         await self._start_watching_pods()
