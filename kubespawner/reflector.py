@@ -326,10 +326,9 @@ class ResourceReflector(LoggingConfigurable):
                 if self.timeout_seconds:
                     # set watch timeout
                     watch_args['timeout_seconds'] = self.timeout_seconds
-                # This is a little hack to defeat the Kubernetes client
-                # deserializing the objects it gets, which can use a lot
-                # of CPU in busy clusters.  cf
-                # https://github.com/jupyterhub/kubespawner/pull/424
+                # Calling the method with _preload_content=False is a performance
+                # optimization making the Kubernetes client do less work. See
+                # https://github.com/jupyterhub/kubespawner/pull/424.
                 method = partial(
                     getattr(self.api, self.list_method_name), _preload_content=False
                 )
