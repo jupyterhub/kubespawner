@@ -1,6 +1,6 @@
-"""Configures and instanciates REST API clients of various kinds to
+"""Configures and instantiates REST API clients of various kinds to
 communicate with a Kubernetes api-server, but only one instance per kind is
-instanciated.
+instantiated.
 
 The instances of these REST API clients are also patched to avoid the creation
 of unused threads.
@@ -66,9 +66,9 @@ async def load_config(caller):
     specific settings on the passed caller object.
 
     This needs to be called before creating a kubernetes client, so practically
-    before the shared_client function is called. The caller could be KubeSpawner
-    or KubeIngressProxy that both have `k8s_api_ssl_ca_cert` and `k8s_api_host`
-    configuration.
+    before the shared_client function is called. The caller must have both the
+    k8s_api_ssl_ca_cert and k8s_api_host attributes. KubeSpawner and
+    KubeIngressProxy both have these attributes.
     """
     try:
         kubernetes_asyncio.config.load_incluster_config()
