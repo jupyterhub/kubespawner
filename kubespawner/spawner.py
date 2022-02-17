@@ -5,18 +5,15 @@ This module exports `KubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
 import asyncio
-import multiprocessing
 import os
 import signal
 import string
 import sys
 import warnings
-from datetime import timedelta
 from functools import partial
 from urllib.parse import urlparse
 
 import escapism
-import kubernetes_asyncio.config
 from jinja2 import BaseLoader
 from jinja2 import Environment
 from jupyterhub.spawner import Spawner
@@ -26,7 +23,6 @@ from kubernetes_asyncio import client
 from kubernetes_asyncio.client.rest import ApiException
 from slugify import slugify
 from tornado import gen
-from tornado.ioloop import IOLoop
 from traitlets import Bool
 from traitlets import default
 from traitlets import Dict
@@ -2213,7 +2209,6 @@ class KubeSpawner(Spawner):
         If replace=True, a running pod reflector will be stopped
         and a new one started (for recovering from possible errors).
         """
-        main_loop = IOLoop.current()
         key = kind
         ReflectorClass = reflector_class
 

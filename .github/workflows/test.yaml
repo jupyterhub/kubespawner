@@ -38,41 +38,24 @@ jobs:
         # gain meaning on how job steps use them.
         #
         # k3s-channel:        https://update.k3s.io/v1-release/channels
-        # k8s-python-client:  https://github.com/kubernetes-client/python#compatibility
+        # kubernetes_asyncio:  https://github.com/tomplus/kubernetes_asyncio/tags
         #
         include:
-          # Tests with various k8s-python-client versions
-          - python: 3.7
-            k3s: v1.16
-            k8s-python-client: 11.* # supports k8s 1.15
-          - python: 3.8
-            k3s: v1.16
-            k8s-python-client: 11.* # supports k8s 1.15
-          - python: 3.9
-            k3s: v1.16
-            k8s-python-client: 12.* # supports k8s 1.16
-          - python: 3.9
+          # Tests with oldest supported Python, k8s, and k8s client
+          - python: "3.7"
             k3s: v1.17
-            k8s-python-client: 17.* # supports k8s 1.17
+            test_dependencies: kubernetes_asyncio==19.*
 
-          # Test with pre-releases of k8s-python-client
-          - python: 3.9
-            k3s: v1.18
-            k8s-python-client: pre
-
-          # Test with various recent k8s versions
-          - python: 3.8
+          # Test with modern python and k8s versions
+          - python: "3.9"
             k3s: stable
-            k8s-python-client: 17.*
-          - python: 3.8
+          - python: "3.9"
             k3s: latest
-            k8s-python-client: 17.*
 
-          # Test with JupyterHub in main branch
-          - python: 3.8
-            k3s: v1.16
-            k8s-python-client: 17.*
-            jupyterhub: main
+          # Test with latest python and JupyterHub in main branch
+          - python: "3.10"
+            k3s: latest
+            test_dependencies: git+https://github.com/jupyterhub/jupyterhub
 
     steps:
       - uses: actions/checkout@v2
@@ -81,30 +64,10 @@ jobs:
           python-version: "${{ matrix.python }}"
 
       - name: Install package and test dependencies
-        env:
-          K8S_PYTHON_CLIENT_VERSION: "${{ matrix.k8s-python-client }}"
-          JUPYTERHUB_VERSION: ${{ matrix.jupyterhub }}
         run: |
-          if [[ "$K8S_PYTHON_CLIENT_VERSION" == "pre" ]]; then
-              PRE="--pre"
-              PINS=""
-          else
-              PRE=""
-              PINS="kubernetes==${K8S_PYTHON_CLIENT_VERSION}"
-          fi
-          if [ "$JUPYTERHUB_VERSION" == "main" ]; then
-              PINS="$PINS git+https://github.com/jupyterhub/jupyterhub"
-          fi
-
-          pip install --upgrade setuptools pip
-          pip install -e ".[test]" ${PRE} ${PINS}
+          pip install --upgrade pip
+          pip install -e ".[test]" ${{ matrix.test_dependencies }}
           pip freeze
-
-      # flake8 runs a very quick code analysis without running any of the code
-      # it analyses
-      - name: Run flake8
-        run: |
-          flake8 kubespawner
 
       # Starts a k8s cluster with NetworkPolicy enforcement and installs both
       # kubectl and helm. We won't need network policy enforcement or helm
@@ -141,7 +104,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: "3.9"
 
       - name: install build package
         run: |
