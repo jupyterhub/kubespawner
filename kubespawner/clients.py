@@ -53,14 +53,15 @@ def shared_client(ClientType, *args, **kwargs):
 
 
 async def load_config(caller):
+    """
+    Loads configuration for the Python client we use to communicate with a
+    Kubernetes API server, and optionally tweaks that configuration based
+    on specific settings on the passed caller object.
+    """
     try:
         kubernetes_asyncio.config.load_incluster_config()
     except kubernetes_asyncio.config.ConfigException:
         await kubernetes_asyncio.config.load_kube_config()
-    # The ca_cert/k8s_api_host is set via traitlets on the objects
-    # that call load_config(); they must pass a reference to themselves
-    # into load_config, and then if the traitlets are set, they will
-    # be used.
 
     if caller.k8s_api_ssl_ca_cert:
         global_conf = Configuration.get_default_copy()
