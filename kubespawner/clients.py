@@ -30,7 +30,7 @@ def shared_client(ClientType, *args, **kwargs):
     will all return the same instance until
     all references to the client are cleared.
 
-    You should usually await load_config before calling this.
+    You must await load_config before calling this.
     """
     kwarg_key = tuple((key, kwargs[key]) for key in sorted(kwargs))
     cache_key = (ClientType, args, kwarg_key)
