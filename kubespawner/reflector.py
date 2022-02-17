@@ -169,10 +169,12 @@ class ResourceReflector(LoggingConfigurable):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        parent = kwargs.get("parent", None)
-        if parent is None:
-            raise RuntimeError("Reflector's parent must be specified!")
-        self.parent = parent
+
+        # Client configuration for kubernetes, as done via the load_config
+        # function, has already taken place in KubeSpawner or KubeIngressProxy
+        # initialization steps.
+        self.api = shared_client(self.api_group_name)
+
         # FIXME: Protect against malicious labels?
         self.label_selector = ','.join(
             ['{}={}'.format(k, v) for k, v in self.labels.items()]
@@ -233,8 +235,6 @@ class ResourceReflector(LoggingConfigurable):
         Use it to create a new Reflector object.
         """
         inst = cls(*args, **kwargs)
-        await load_config(caller=inst.parent)
-        inst.api = shared_client(inst.api_group_name)
         await inst.start()
         return inst
 
