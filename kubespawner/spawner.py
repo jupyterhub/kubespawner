@@ -195,9 +195,6 @@ class KubeSpawner(Spawner):
             self.namespace = self._expand_user_properties(self.user_namespace_template)
             self.log.info("Using user namespace: {}".format(self.namespace))
 
-        # Starting our watchers is now async, so we cannot do it in
-        # __init()__.
-
         self.pod_name = self._expand_user_properties(self.pod_name_template)
         self.dns_name = self.dns_name_template.format(
             namespace=self.namespace, name=self.pod_name
