@@ -2213,7 +2213,6 @@ class KubeSpawner(Spawner):
         If replace=True, a running pod reflector will be stopped
         and a new one started (for recovering from possible errors).
         """
-        main_loop = IOLoop.current()
         key = kind
         ReflectorClass = reflector_class
 
