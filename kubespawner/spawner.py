@@ -120,7 +120,7 @@ class KubeSpawner(Spawner):
 
     # The PodReflector and EventReflector are singletons.  Where to initialize
     # them becomes a sort of thorny question in an asyncio world.  See the
-    # commentary on the initialize() method.
+    # commentary on the initialize_reflectors_and_clients() method.
 
     reflectors = {
         "pods": None,
