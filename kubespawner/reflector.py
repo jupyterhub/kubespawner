@@ -17,7 +17,6 @@ from traitlets import Unicode
 from traitlets.config import LoggingConfigurable
 from urllib3.exceptions import ReadTimeoutError
 
-from .clients import load_config
 from .clients import shared_client
 
 # This is kubernetes client implementation specific, but we need to know
