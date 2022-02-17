@@ -1,7 +1,9 @@
-"""Shared clients for kubernetes
+"""Configures and instanciates REST API clients of various kinds to
+communicate with a Kubernetes api-server, but only one instance per kind is
+instanciated.
 
-avoids creating multiple kubernetes client objects,
-each of which spawns an unused max-size thread pool
+The instances of these REST API clients are also patched to avoid the creation
+of unused threads.
 """
 import weakref
 from unittest.mock import Mock
@@ -10,12 +12,15 @@ import kubernetes_asyncio.client
 from kubernetes_asyncio.client import api_client
 from kubernetes_asyncio.client import Configuration
 
-# FIXME: remove when instantiating a kubernetes client
-# doesn't create N-CPUs threads unconditionally.
-# monkeypatch threadpool in kubernetes api_client
-# to avoid instantiating ThreadPools.
-# This is known to work for kubernetes-4.0
-# and may need updating with later kubernetes clients
+# FIXME: Remove this workaround when instantiating a k8s client doesn't
+#        automatically create a ThreadPool with 1 thread that we won't use
+#        anyhow. To know if that has happened, reading
+#        https://github.com/jupyterhub/kubespawner/issues/567 may be helpful.
+#
+#        The workaround is to monkeypatch ThreadPool in the kubernetes
+#        api_client to avoid ThreadPools. This is known to work with both
+#        `kubernetes` and `kubernetes_asyncio`.
+#
 _dummy_pool = Mock()
 api_client.ThreadPool = lambda *args, **kwargs: _dummy_pool
 
@@ -23,14 +28,16 @@ _client_cache = {}
 
 
 def shared_client(ClientType, *args, **kwargs):
-    """Return a single shared kubernetes client instance
+    """Return a shared kubernetes client instance
+    based on the provided arguments.
 
     A weak reference to the instance is cached,
     so that concurrent calls to shared_client
     will all return the same instance until
     all references to the client are cleared.
 
-    You must await load_config before calling this.
+    Note that we must await load_config before calling this function as it
+    relies on global client configuration being loaded.
     """
     kwarg_key = tuple((key, kwargs[key]) for key in sorted(kwargs))
     cache_key = (ClientType, args, kwarg_key)
@@ -41,9 +48,9 @@ def shared_client(ClientType, *args, **kwargs):
         client = _client_cache[cache_key]()
 
     if client is None:
-        # Kubernetes client configuration is handled globally
-        # in kubernetes.py and is already called in spawner.py
-        # or proxy.py prior to a shared_client being instantiated
+        # Kubernetes client configuration is handled globally and should already
+        # be configured from spawner.py or proxy.py via the load_config function
+        # prior to a shared_client being instantiated.
         Client = getattr(kubernetes_asyncio.client, ClientType)
         client = Client(*args, **kwargs)
         # cache weakref so that clients can be garbage collected
@@ -54,9 +61,14 @@ def shared_client(ClientType, *args, **kwargs):
 
 async def load_config(caller):
     """
-    Loads configuration for the Python client we use to communicate with a
-    Kubernetes API server, and optionally tweaks that configuration based
-    on specific settings on the passed caller object.
+    Loads global configuration for the Python client we use to communicate with
+    a Kubernetes API server, and optionally tweaks that configuration based on
+    specific settings on the passed caller object.
+
+    This needs to be called before creating a kubernetes client, so practically
+    before the shared_client function is called. The caller could be KubeSpawner
+    or KubeIngressProxy that both have `k8s_api_ssl_ca_cert` and `k8s_api_host`
+    configuration.
     """
     try:
         kubernetes_asyncio.config.load_incluster_config()
