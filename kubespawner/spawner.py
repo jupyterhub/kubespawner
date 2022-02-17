@@ -251,7 +251,7 @@ class KubeSpawner(Spawner):
     k8s_api_threadpool_workers = Integer(
         config=True,
         help="""
-        DEPRECATED.
+        DEPRECATED in KubeSpawner 3.0.0.
 
         No longer has any effect, as there is no threadpool anymore.
         """,
