@@ -5,7 +5,6 @@ import os
 import string
 
 import escapism
-import kubernetes.config
 from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
 from kubernetes_asyncio import client
