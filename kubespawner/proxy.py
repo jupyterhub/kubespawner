@@ -42,6 +42,90 @@ class EndpointsReflector(ResourceReflector):
 
 
 class KubeIngressProxy(Proxy):
+    """
+    DISCLAIMER:
+
+        This class is not maintained thoroughly with tests and documentation, or
+        actively used in any official distribution of JupyterHub.
+
+        When it was originally developed and piloted by Yuvi (@yuvipanda), it is
+        my (@consideRatio) unverified understanding that it was found to not be
+        reliable, responsive, or performant enough compared to having a
+        dedicated configurable proxy managed by JupyterHub that routed traffic
+        to users and services - something that ships by default in the
+        JupyterHub Helm chart.
+
+        KubeIngressProxy's efficiency relates greatly to the performance of the
+        k8s api-server and the k8s controller that routes traffic based on
+        changes to Ingress resources registered by the k8s api-server. This
+        means users of KubeIngressProxy may have greatly varying experiences of
+        using it depending on the performance of their k8s cluster setup.
+
+        Use of KubeIngressProxy as a JupyterHub Proxy class, is entirely
+        independent of use of KubeSpawner as a JupyterHub Spawner class. For
+        reasons related to sharing code with KubeSpawner in reflectors.py, it
+        has been made and remained part of the jupyterhub/kubespawner project.
+
+        Related issues:
+        - Need for tests: https://github.com/jupyterhub/kubespawner/issues/496
+        - Need for docs:  https://github.com/jupyterhub/kubespawner/issues/163
+
+    ---
+
+    KubeIngressProxy is a implementation of a JupyterHub Proxy class that
+    JupyterHub can be configured to rely on:
+
+        c.JupyterHub.proxy_class = "kubespawner:KubeIngressProxy"
+
+    The idea of KubeIngressProxy is that, like all JupyterHub Proxy
+    implementations, will react to requests like `get_all_routes`, `add_route`,
+    and `delete_route` in a way that ensures traffic gets routed to the user
+    pods or JupyterHub registered external services. For reference, official
+    documentation on writing a custom Proxy class like this is documented here:
+    https://jupyterhub.readthedocs.io/en/stable/reference/proxy.html.
+
+    KubeIngressProxy doesn't route traffic by itself, but instead relies on a
+    k8s cluster's ability to route traffic according to Ingress resources. The
+    only thing KubeIngressProxy does is to speak with a k8s api-server to
+    create/delete such resources.
+
+    Because KubeIngressProxy interacts with a k8s api-server and working with
+    Ingress resources, it must have permissions to do so as well. These
+    permissions should be granted to a k8s service account for where the
+    JupyterHub is running, as that is also where the KubeIngressProxy class
+    instance will run its code.
+
+    FIXME: Verify what k8s RBAC permissions are required for KubeIngressProxy
+           to function.
+
+           Preliminary one can note that there is an IngressReflector,
+           ServiceReflector, and EndpointsReflector. So at least permission to
+           read/list/watch those resources would be needed.
+
+           For Ingress resources, one would also need the ability to create,
+           patch, and delete them, as concluded by inspection of `add_route` and
+           `delete_route`.
+
+           Without having verified these permissions are sufficient, it looks
+           like these permissions are needed on a k8s Role resource bound to the
+           k8s ServiceAccount (via a k8s RoleBinding) used on the k8s Pod where
+           JupyterHub runs:
+
+           ```yaml
+           kind: Role
+           apiVersion: rbac.authorization.k8s.io/v1
+           metadata:
+           name: kube-ingress-proxy
+           rules:
+             - apiGroups: [""]
+               resources: ["endpoints", "services"]
+               verbs: ["get", "watch", "list"]
+             - apiGroups: ["networking.k8s.io"]
+               resources: ["ingresses"]
+               verbs: ["get", "watch", "list", "create", "update", "patch", "delete"]
+           ```
+    """
+
     namespace = Unicode(
         config=True,
         help="""
