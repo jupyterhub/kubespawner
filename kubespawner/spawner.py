@@ -223,6 +223,10 @@ class KubeSpawner(Spawner):
 
         Out of these, it seems that only `start`, `stop`, and `poll` would need
         the initialization logic in this method to have completed.
+
+        This is slightly complicated by the fact that `start` is already a
+        synchronous method that returns a future, so where we want the
+        decorator is actually on the async `_start` that `start` calls.
         """
         await load_config(caller=self)
         self.api = shared_client("CoreV1Api")
@@ -2289,7 +2293,6 @@ class KubeSpawner(Spawner):
             replace=replace,
         )
 
-    @_await_async_init
     def start(self):
         """Thin wrapper around self._start
 
@@ -2464,6 +2467,7 @@ class KubeSpawner(Spawner):
         else:
             return True
 
+    @_await_async_init
     async def _start(self):
         """Start the user's pod"""
 
