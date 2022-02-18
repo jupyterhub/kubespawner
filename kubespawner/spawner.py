@@ -11,6 +11,7 @@ import string
 import sys
 import warnings
 from functools import partial
+from functools import wraps
 from urllib.parse import urlparse
 
 import escapism
@@ -118,10 +119,6 @@ class KubeSpawner(Spawner):
     spawned by a user will have its own KubeSpawner instance.
     """
 
-    # The PodReflector and EventReflector are singletons.  Where to initialize
-    # them becomes a sort of thorny question in an asyncio world.  See the
-    # commentary on the initialize_reflectors_and_clients() method.
-
     reflectors = {
         "pods": None,
         "events": None,
@@ -148,22 +145,12 @@ class KubeSpawner(Spawner):
             return self.__class__.reflectors['events']
 
     def __init__(self, *args, **kwargs):
-        """
-        We cannot call async methods from `__init__`.  Now that we use an
-        asyncio-based Kubernetes client, we have required initialization that
-        depends on async/await
-
-        Thus we need to do the initialization in `poll`, `start`, and `stop`
-        since any of them could be the first thing called (imagine that the
-        hub restarts and the first thing someone does is try to stop their
-        running server).  Further a pre-spawn-start hook that depends on
-        internal knowledge of the spawner might be the first thing to run,
-        and in a case like that, the caller would need to await the
-        initialization method (`initialize_reflectors_and_clients`) itself.
-        """
-
         _mock = kwargs.pop('_mock', False)
         super().__init__(*args, **kwargs)
+
+        # Schedules async initialization logic that is to be awaited by async
+        # functions by decorating them with @_await_async_init.
+        self._async_init_future = asyncio.ensure_future(self._async_init())
 
         if _mock:
             # runs during test execution only
@@ -210,17 +197,51 @@ class KubeSpawner(Spawner):
         # The attribute needs to exist, even though it is unset to start with
         self._start_future = None
 
-    async def initialize_reflectors_and_clients(self):
+    async def _async_init(self):
         """
-        This is functionality extracted from `__init__` because it requires
-        the use of async/await.  This method should be awaited before doing
-        anything with the object received from `__init__`.
+        This method is scheduled to run from `__init__`, but not awaited there
+        as it can't me marked as async.
+
+        Since JupyterHub won't await this method, we ensure the async methods
+        JupyterHub may call on this object will await this method until
+        continuing. To do this, we decorate them with `_await_async_init`.
+
+        But, how do we figure out the methods to decorate? Likely only those
+        exposed by the base class that JupyterHub would know about. The base
+        class is Spawner, as declared in spawner.py:
+        https://github.com/jupyterhub/jupyterhub/blob/HEAD/jupyterhub/spawner.py.
+
+        From the Proxy class docstring we can conclude that the following
+        methods, if implemented, could be what we need to decorate with
+        _await_async_init:
+
+          - load_state (implemented)
+          - get_state (implemented)
+          - start (implemented and decorated)
+          - stop (implemented and decorated)
+          - poll (implemented and decorated)
+
+        Out of these, it seems that only `start`, `stop`, and `poll` would need
+        the initialization logic in this method to have completed.
         """
         await load_config(caller=self)
         self.api = shared_client("CoreV1Api")
         await self._start_watching_pods()
         if self.events_enabled:
             await self._start_watching_events()
+
+    def _await_async_init(method):
+        """A decorator to await the _async_init method after having been
+        scheduled to run in the `__init__` method."""
+
+        @wraps(method)
+        async def async_method(self, *args, **kwargs):
+            if self._async_init_future is not None:
+                await self._async_init_future
+                self._async_init_future = None
+            return await method(self, *args, **kwargs)
+
+        return async_method
 
     k8s_api_ssl_ca_cert = Unicode(
         "",
@@ -2025,6 +2046,7 @@ class KubeSpawner(Spawner):
         if 'pod_name' in state:
             self.pod_name = state['pod_name']
 
+    @_await_async_init
     async def poll(self):
         """
         Check if the pod is still running.
@@ -2038,10 +2060,6 @@ class KubeSpawner(Spawner):
         necessary to check that the returned value is None, rather than
         just Falsy, to determine that the pod is still running.
         """
-        # We cannot be sure the Hub will call start() before poll(), so
-        # we need to load client configuration and start our reflectors
-        # at the top of each of those methods.
-        await self.initialize_reflectors_and_clients()
         # have to wait for first load of data before we have a valid answer
         if not self.pod_reflector.first_load_future.done():
             await asyncio.wrap_future(self.pod_reflector.first_load_future)
@@ -2271,8 +2289,7 @@ class KubeSpawner(Spawner):
             replace=replace,
         )
 
-    # record a future for the call to .start()
-    # so we can use it to terminate .progress()
+    @_await_async_init
     def start(self):
         """Thin wrapper around self._start
 
@@ -2452,10 +2469,6 @@ class KubeSpawner(Spawner):
 
         # load user options (including profile)
         await self.load_user_options()
-
-        # Start watchers.  This might also be called from poll().  It also
-        #  configures our API clients.
-        await self.initialize_reflectors_and_clients()
 
         # If we have user_namespaces enabled, create the namespace.
         #  It's fine if it already exists.
@@ -2660,11 +2673,8 @@ class KubeSpawner(Spawner):
             else:
                 raise
 
+    @_await_async_init
     async def stop(self, now=False):
-        # This could be the first method called; say the Hub has been
-        #  restarted, and the first thing someone does is hit it to stop
-        #  a running pod.  Hence the need to initialize reflectors/clients.
-        await self.initialize_reflectors_and_clients()
         delete_options = client.V1DeleteOptions()
 
         if now:
