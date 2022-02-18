@@ -72,24 +72,24 @@ class KubeIngressProxy(Proxy):
 
     ---
 
-    KubeIngressProxy is a implementation of a JupyterHub Proxy class that
+    KubeIngressProxy is an implementation of the JupyterHub Proxy class that
     JupyterHub can be configured to rely on:
 
         c.JupyterHub.proxy_class = "kubespawner:KubeIngressProxy"
 
-    The idea of KubeIngressProxy is that, like all JupyterHub Proxy
-    implementations, will react to requests like `get_all_routes`, `add_route`,
-    and `delete_route` in a way that ensures traffic gets routed to the user
-    pods or JupyterHub registered external services. For reference, official
+    Like all JupyterHub Proxy implementations, KubeIngressProxy will know 
+    how to respond to hub requests like `get_all_routes`, `add_route`, and
+    `delete_route` in a way that will ensure traffic will get routed to the user
+    pods or JupyterHub registered external services. For reference, the official
     documentation on writing a custom Proxy class like this is documented here:
     https://jupyterhub.readthedocs.io/en/stable/reference/proxy.html.
 
-    KubeIngressProxy doesn't route traffic by itself, but instead relies on a
-    k8s cluster's ability to route traffic according to Ingress resources. The
-    only thing KubeIngressProxy does is to speak with a k8s api-server to
-    create/delete such resources.
+    KubeIngressProxy communicates with the k8s api-server in order to 
+    create/delete Ingress resources according to the hub's `add_route`/`delete_route`
+    requests. It doesn't route traffic by itself, but instead relies on the k8s cluster's
+    ability to route traffic according to these Ingress resources.
 
-    Because KubeIngressProxy interacts with a k8s api-server and working with
+    Because KubeIngressProxy interacts with a k8s api-server that manages
     Ingress resources, it must have permissions to do so as well. These
     permissions should be granted to a k8s service account for where the
     JupyterHub is running, as that is also where the KubeIngressProxy class
