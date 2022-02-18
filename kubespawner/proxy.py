@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import json
 import os
 import string
@@ -43,18 +44,6 @@ class EndpointsReflector(ResourceReflector):
 
 
 class KubeIngressProxy(Proxy):
-    """
-    As the KubeIngressProxy class now depends on an asyncio-based
-    Kubernetes client, it is no longer sufficient to simply instantiate
-    an instance of the class with `__init__`.  Instance configuration is
-    required, and that depends on async functions, which cannot appear in
-    `__init__`.
-
-    Therefore, immediately after requesting a new instance, the requestor
-    should await the instance's `initialize_resources` method
-    to complete configuration of the instance.
-    """
-
     namespace = Unicode(
         config=True,
         help="""
@@ -114,21 +103,46 @@ class KubeIngressProxy(Proxy):
         """,
     )
 
-    async def initialize_resources(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Schedules async initialization logic that is to be awaited by async
+        # functions by decorating them with @_await_async_init.
+        self._async_init_future = asyncio.ensure_future(self._async_init())
+
+    async def _async_init(self):
         """
-        This contains logic that was formerly in `__init__`, but since
-        it now involves async/await, it can't be there anymore.  It is
-        intended that this method be called immediately after a new
-        KubeIngressProxy object is created via `__init__`.
+        This method is scheduled to run from `__init__`, but not awaited there
+        as it can't me marked as async.
+
+        Since JupyterHub won't await this method, we ensure the async methods
+        JupyterHub may call on this object will await this method until
+        continuing. To do this, we decorate them with `_await_async_init`.
+
+        But, how do we figure out the methods to decorate? Likely only those
+        exposed by the base class that JupyterHub would know about. The base
+        class is Proxy, as declared in proxy.py:
+        https://github.com/jupyterhub/jupyterhub/blob/HEAD/jupyterhub/proxy.py.
+
+        From the Proxy class docstring we can conclude that the following
+        methods, if implemented, could be what we need to decorate with
+        _await_async_init:
+
+          - get_all_routes (implemented and decorated)
+          - add_route (implemented and decorated)
+          - delete_route (implemented and decorated)
+          - start
+          - stop
+          - get_route
         """
-        labels = {
-            'component': self.component_label,
-            'hub.jupyter.org/proxy-route': 'true',
-        }
         await load_config(caller=self)
         self.core_api = shared_client('CoreV1Api')
         self.extension_api = shared_client('ExtensionsV1beta1Api')
 
+        labels = {
+            'component': self.component_label,
+            'hub.jupyter.org/proxy-route': 'true',
+        }
         self.ingress_reflector = await IngressReflector.create(
             parent=self, namespace=self.namespace, labels=labels
         )
@@ -138,6 +152,19 @@ class KubeIngressProxy(Proxy):
         self.endpoint_reflector = await EndpointsReflector.create(
             parent=self, namespace=self.namespace, labels=labels
         )
+
+    def _await_async_init(method):
+        """A decorator to await the _async_init method after having been
+        scheduled to run in the `__init__` method."""
+
+        @functools.wraps(method)
+        async def async_method(self, *args, **kwargs):
+            if self._async_init_future is not None:
+                await self._async_init_future
+                self._async_init_future = None
+            return await method(self, *args, **kwargs)
+
+        return async_method
 
     def safe_name_for_routespec(self, routespec):
         safe_chars = set(string.ascii_lowercase + string.digits)
@@ -157,6 +184,7 @@ class KubeIngressProxy(Proxy):
                 raise
             self.log.warn("Could not delete %s/%s: does not exist", kind, safe_name)
 
+    @_await_async_init
     async def add_route(self, routespec, target, data):
         # Create a route with the name being escaped routespec
         # Use full routespec in label
@@ -237,6 +265,7 @@ class KubeIngressProxy(Proxy):
             'Could not find ingress/%s after creating it' % safe_name,
         )
 
+    @_await_async_init
     async def delete_route(self, routespec):
         # We just ensure that these objects are deleted.
         # This means if some of them are already deleted, we just let it
@@ -278,6 +307,7 @@ class KubeIngressProxy(Proxy):
             self.delete_if_exists('ingress', safe_name, delete_ingress),
         )
 
+    @_await_async_init
     async def get_all_routes(self):
         # copy everything, because iterating over this directly is not threadsafe
         # FIXME: is this performance intensive? It could be! Measure?
