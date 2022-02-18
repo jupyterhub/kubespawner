@@ -142,14 +142,20 @@ class KubeIngressProxy(Proxy):
             'component': self.component_label,
             'hub.jupyter.org/proxy-route': 'true',
         }
-        self.ingress_reflector = await IngressReflector.create(
-            parent=self, namespace=self.namespace, labels=labels
-        )
-        self.service_reflector = await ServiceReflector.create(
-            parent=self, namespace=self.namespace, labels=labels
-        )
-        self.endpoint_reflector = await EndpointsReflector.create(
-            parent=self, namespace=self.namespace, labels=labels
+        (
+            self.ingress_reflector,
+            self.service_reflector,
+            self.endpoint_reflector,
+        ) = asyncio.gather(
+            IngressReflector.create(
+                parent=self, namespace=self.namespace, labels=labels
+            ),
+            ServiceReflector.create(
+                parent=self, namespace=self.namespace, labels=labels
+            ),
+            EndpointsReflector.create(
+                parent=self, namespace=self.namespace, labels=labels
+            ),
         )
 
     def _await_async_init(method):
