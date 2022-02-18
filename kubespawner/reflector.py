@@ -32,9 +32,11 @@ class ResourceReflector(LoggingConfigurable):
     Creating a reflector should be done with the create() classmethod,
     since that, in addition to creating the instance starts the watch task.
 
-    Shutting down a shared reflector should be done by awaiting its stop()
-    method. KubeSpawner doesn't gracefully do this currently, so the watch
-    task runs until the Hub exits.
+    Shutting down a reflector should be done by awaiting its stop() method.
+
+    KubeSpawner does not do this, because its reflectors are singleton
+    instances shared among multiple spawners.  The watch task therefore runs
+    until JupyterHub exits.
     """
 
     labels = Dict(
