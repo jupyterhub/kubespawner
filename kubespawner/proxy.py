@@ -112,10 +112,10 @@ class KubeIngressProxy(Proxy):
     async def _async_init(self):
         """
         This method is scheduled to run from `__init__`, but not awaited there
-        as it can't me marked as async.
+        as `__init__` can't be marked as async.
 
         Since JupyterHub won't await this method, we ensure the async methods
-        JupyterHub may call on this object will await this method until
+        JupyterHub may call on this object will await this method before
         continuing. To do this, we decorate them with `_await_async_init`.
 
         But, how do we figure out the methods to decorate? Likely only those

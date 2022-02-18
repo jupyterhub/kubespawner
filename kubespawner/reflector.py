@@ -30,13 +30,11 @@ class ResourceReflector(LoggingConfigurable):
     Must be subclassed once per kind of resource that needs watching.
 
     Creating a reflector should be done with the create() classmethod,
-    since that, in addition to creating the instance, initializes the
-    Kubernetes configuration, acquires a K8s API client, and starts the
-    watch task.
+    since that, in addition to creating the instance starts the watch task.
 
-    Shutting down a reflector should be done by awaiting its stop() method.
-    JupyterHub does not currently do this, so the watch task runs until the
-    Hub exits.
+    Shutting down a shared reflector should be done by awaiting its stop()
+    method. KubeSpawner doesn't gracefully do this currently, so the watch
+    task runs until the Hub exits.
     """
 
     labels = Dict(
@@ -216,11 +214,7 @@ class ResourceReflector(LoggingConfigurable):
         if not self.list_method_name:
             raise RuntimeError("Reflector list_method_name must be set!")
 
-        self.watch_task = None  # Test this rather than absence of the attr
-
-        # Note that simply instantiating the class does not load
-        # Kubernetes config, acquire an API client, or start the
-        # watch task.
+        self.watch_task = None
 
     @classmethod
     async def create(cls, *args, **kwargs):

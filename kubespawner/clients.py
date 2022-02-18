@@ -35,9 +35,6 @@ def shared_client(ClientType, *args, **kwargs):
     so that concurrent calls to shared_client
     will all return the same instance until
     all references to the client are cleared.
-
-    Note that we must await load_config before calling this function as it
-    relies on global client configuration being loaded.
     """
     kwarg_key = tuple((key, kwargs[key]) for key in sorted(kwargs))
     cache_key = (ClientType, args, kwarg_key)
