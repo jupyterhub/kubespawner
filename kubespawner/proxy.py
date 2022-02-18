@@ -77,14 +77,14 @@ class KubeIngressProxy(Proxy):
 
         c.JupyterHub.proxy_class = "kubespawner:KubeIngressProxy"
 
-    Like all JupyterHub Proxy implementations, KubeIngressProxy will know 
+    Like all JupyterHub Proxy implementations, KubeIngressProxy will know
     how to respond to hub requests like `get_all_routes`, `add_route`, and
     `delete_route` in a way that will ensure traffic will get routed to the user
     pods or JupyterHub registered external services. For reference, the official
     documentation on writing a custom Proxy class like this is documented here:
     https://jupyterhub.readthedocs.io/en/stable/reference/proxy.html.
 
-    KubeIngressProxy communicates with the k8s api-server in order to 
+    KubeIngressProxy communicates with the k8s api-server in order to
     create/delete Ingress resources according to the hub's `add_route`/`delete_route`
     requests. It doesn't route traffic by itself, but instead relies on the k8s cluster's
     ability to route traffic according to these Ingress resources.
