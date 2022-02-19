@@ -2317,7 +2317,6 @@ class KubeSpawner(Spawner):
             self.log.info(
                 f"Attempting to create pod {pod.metadata.name}, with timeout {request_timeout}"
             )
-            # Use asyncio.wait_for, _request_timeout seems unreliable?
             await asyncio.wait_for(
                 self.api.create_namespaced_pod(
                     self.namespace,
