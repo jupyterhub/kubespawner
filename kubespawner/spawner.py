@@ -2244,12 +2244,13 @@ class KubeSpawner(Spawner):
         previous_reflector = self.__class__.reflectors.get(key)
 
         if replace or not previous_reflector:
-            self.__class__.reflectors[key] = await ReflectorClass.create(
+            self.__class__.reflectors[key] = ReflectorClass(
                 parent=self,
                 namespace=self.namespace,
                 on_failure=on_reflector_failure,
                 **kwargs,
             )
+            await self.__class__.reflectors[key].start()
 
         if replace and previous_reflector:
             # we replaced the reflector, stop the old one

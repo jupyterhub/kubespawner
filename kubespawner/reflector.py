@@ -218,21 +218,6 @@ class ResourceReflector(LoggingConfigurable):
 
         self.watch_task = None
 
-    @classmethod
-    async def create(cls, *args, **kwargs):
-        """
-        This is a workaround: `__init__` cannot be async, but we want
-        to call async methods to instantiate a reflector in a usable state.
-
-        This method creates the reflector, and then loads Kubernetes config,
-        acquires an API client, and starts the watch task.
-
-        Use it to create a new Reflector object.
-        """
-        inst = cls(*args, **kwargs)
-        await inst.start()
-        return inst
-
     async def _list_and_update(self):
         """
         Update current list of resources by doing a full fetch.
