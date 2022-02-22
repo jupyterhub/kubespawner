@@ -27,7 +27,6 @@ setup(
     extras_require={
         'test': [
             'bump2version',
-            'flake8',
             'kubernetes>=11',
             'pytest>=5.4',
             'pytest-cov',
