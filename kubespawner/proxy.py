@@ -170,7 +170,7 @@ class KubeIngressProxy(Proxy):
 
         return async_method
 
-    def safe_name_for_routespec(self, routespec):
+    def _safe_name_for_routespec(self, routespec):
         safe_chars = set(string.ascii_lowercase + string.digits)
         safe_name = generate_hashed_slug(
             'jupyter-'
@@ -194,7 +194,7 @@ class KubeIngressProxy(Proxy):
         # Use full routespec in label
         # 'data' is JSON encoded and put in an annotation - we don't need to query for it
 
-        safe_name = self.safe_name_for_routespec(routespec).lower()
+        safe_name = self._safe_name_for_routespec(routespec).lower()
         labels = {
             'heritage': 'jupyterhub',
             'component': self.component_label,
@@ -275,7 +275,7 @@ class KubeIngressProxy(Proxy):
         # This means if some of them are already deleted, we just let it
         # be.
 
-        safe_name = self.safe_name_for_routespec(routespec).lower()
+        safe_name = self._safe_name_for_routespec(routespec).lower()
 
         delete_options = client.V1DeleteOptions(grace_period_seconds=0)
 
