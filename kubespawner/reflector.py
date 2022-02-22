@@ -1,13 +1,14 @@
 # specifically use concurrent.futures for threadsafety
 # asyncio Futures cannot be used across threads
+import asyncio
 import json
 import threading
 import time
 from concurrent.futures import Future
 from functools import partial
 
-from kubernetes import config
-from kubernetes import watch
+from kubernetes_asyncio import config
+from kubernetes_asyncio import watch
 from traitlets import Any
 from traitlets import Bool
 from traitlets import Dict
@@ -27,6 +28,15 @@ class ResourceReflector(LoggingConfigurable):
     kubernetes resources.
 
     Must be subclassed once per kind of resource that needs watching.
+
+    Creating a reflector should be done with the create() classmethod,
+    since that, in addition to creating the instance starts the watch task.
+
+    Shutting down a reflector should be done by awaiting its stop() method.
+
+    KubeSpawner does not do this, because its reflectors are singleton
+    instances shared among multiple spawners.  The watch task therefore runs
+    until JupyterHub exits.
     """
 
     labels = Dict(
@@ -158,7 +168,10 @@ class ResourceReflector(LoggingConfigurable):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # client configuration for kubernetes has already taken place
+
+        # Client configuration for kubernetes, as done via the load_config
+        # function, has already taken place in KubeSpawner or KubeIngressProxy
+        # initialization steps.
         self.api = shared_client(self.api_group_name)
 
         # FIXME: Protect against malicious labels?
@@ -203,12 +216,9 @@ class ResourceReflector(LoggingConfigurable):
         if not self.list_method_name:
             raise RuntimeError("Reflector list_method_name must be set!")
 
-        self.start()
+        self.watch_task = None
 
-    def __del__(self):
-        self.stop()
-
-    def _list_and_update(self):
+    async def _list_and_update(self):
         """
         Update current list of resources by doing a full fetch.
 
@@ -224,9 +234,10 @@ class ResourceReflector(LoggingConfigurable):
         if not self.omit_namespace:
             kwargs["namespace"] = self.namespace
 
-        initial_resources = getattr(self.api, self.list_method_name)(**kwargs)
+        list_method = getattr(self.api, self.list_method_name)
+        initial_resources_raw = await list_method(**kwargs)
         # This is an atomic operation on the dictionary!
-        initial_resources = json.loads(initial_resources.read())
+        initial_resources = json.loads(await initial_resources_raw.read())
         self.resources = {
             f'{p["metadata"]["namespace"]}/{p["metadata"]["name"]}': p
             for p in initial_resources["items"]
@@ -234,11 +245,9 @@ class ResourceReflector(LoggingConfigurable):
         # return the resource version so we can hook up a watch
         return initial_resources["metadata"]["resourceVersion"]
 
-    def _watch_and_update(self):
+    async def _watch_and_update(self):
         """
         Keeps the current list of resources up-to-date
-
-        This method is to be run not on the main thread!
 
         We first fetch the list of current resources, and store that. Then we
         register to be notified of changes to those resources, and keep our
@@ -251,11 +260,9 @@ class ResourceReflector(LoggingConfigurable):
         changes that might've been missed in the time we were not doing
         a watch.
 
-        Note that we're playing a bit with fire here, by updating a dictionary
-        in this thread while it is probably being read in another thread
-        without using locks! However, dictionary access itself is atomic,
-        and as long as we don't try to mutate them (do a 'fetch / modify /
-        update' cycle on them), we should be ok!
+        Since the resources are read-only in the Spawner (where they are
+        used), then this is safe.  The Spawner's view of the world might be
+        out-of-date, but it's not going to corrupt any data.
         """
         selectors = []
         log_name = ""
@@ -283,7 +290,7 @@ class ResourceReflector(LoggingConfigurable):
             start = time.monotonic()
             w = watch.Watch()
             try:
-                resource_version = self._list_and_update()
+                resource_version = await self._list_and_update()
                 if not self.first_load_future.done():
                     # signal that we've loaded our initial data
                     self.first_load_future.set_result(None)
@@ -300,41 +307,47 @@ class ResourceReflector(LoggingConfigurable):
                 if self.timeout_seconds:
                     # set watch timeout
                     watch_args['timeout_seconds'] = self.timeout_seconds
+                # Calling the method with _preload_content=False is a performance
+                # optimization making the Kubernetes client do less work. See
+                # https://github.com/jupyterhub/kubespawner/pull/424.
                 method = partial(
                     getattr(self.api, self.list_method_name), _preload_content=False
                 )
-                # in case of timeout_seconds, the w.stream just exits (no exception thrown)
-                # -> we stop the watcher and start a new one
-                for watch_event in w.stream(method, **watch_args):
-                    # Remember that these events are k8s api related WatchEvents
-                    # objects, not k8s Event or Pod representations, they will
-                    # reside in the WatchEvent's object field depending on what
-                    # kind of resource is watched.
-                    #
-                    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#watchevent-v1-meta
-                    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#event-v1-core
-                    cur_delay = 0.1
-                    resource = watch_event['object']
-                    ref_key = "{}/{}".format(
-                        resource["metadata"]["namespace"], resource["metadata"]["name"]
-                    )
-                    if watch_event['type'] == 'DELETED':
-                        # This is an atomic delete operation on the dictionary!
-                        self.resources.pop(ref_key, None)
-                    else:
-                        # This is an atomic operation on the dictionary!
-                        self.resources[ref_key] = resource
-                    if self._stop_event.is_set():
-                        self.log.info("%s watcher stopped", self.kind)
-                        break
-                    watch_duration = time.monotonic() - start
-                    if watch_duration >= self.restart_seconds:
-                        self.log.debug(
-                            "Restarting %s watcher after %i seconds",
-                            self.kind,
-                            watch_duration,
+                async with w.stream(method, **watch_args) as stream:
+                    async for watch_event in stream:
+                        # in case of timeout_seconds, the w.stream just exits (no exception thrown)
+                        # -> we stop the watcher and start a new one
+                        # Remember that these events are k8s api related WatchEvents
+                        # objects, not k8s Event or Pod representations, they will
+                        # reside in the WatchEvent's object field depending on what
+                        # kind of resource is watched.
+                        #
+                        # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#watchevent-v1-meta
+                        # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#event-v1-core
+                        cur_delay = 0.1
+                        resource = watch_event['raw_object']
+                        ref_key = "{}/{}".format(
+                            resource["metadata"]["namespace"],
+                            resource["metadata"]["name"],
                         )
-                        break
+                        if watch_event['type'] == 'DELETED':
+                            # This is an atomic delete operation on the dictionary!
+                            self.resources.pop(ref_key, None)
+                        else:
+                            # This is an atomic operation on the dictionary!
+                            self.resources[ref_key] = resource
+                        if self.stopped():
+                            self.log.info("%s watcher stopped: inner", self.kind)
+                            break
+                        watch_duration = time.monotonic() - start
+                        if watch_duration >= self.restart_seconds:
+                            self.log.debug(
+                                "Restarting %s watcher after %i seconds",
+                                self.kind,
+                                watch_duration,
+                            )
+                            break
+
             except ReadTimeoutError:
                 # network read time out, just continue and restart the watch
                 # this could be due to a network problem or just low activity
@@ -350,19 +363,19 @@ class ResourceReflector(LoggingConfigurable):
                 self.log.exception(
                     "Error when watching resources, retrying in %ss", cur_delay
                 )
-                time.sleep(cur_delay)
+                await asyncio.sleep(cur_delay)
                 continue
             else:
                 # no events on watch, reconnect
                 self.log.debug("%s watcher timeout", self.kind)
             finally:
                 w.stop()
-                if self._stop_event.is_set():
-                    self.log.info("%s watcher stopped", self.kind)
+                if self.stopped():
+                    self.log.info("%s watcher stopped: outer", self.kind)
                     break
         self.log.warning("%s watcher finished", self.kind)
 
-    def start(self):
+    async def start(self):
         """
         Start the reflection process!
 
@@ -372,17 +385,29 @@ class ResourceReflector(LoggingConfigurable):
         start of program initialization (when the singleton is being created),
         and not afterwards!
         """
-        if hasattr(self, 'watch_thread'):
-            raise ValueError('Thread watching for resources is already running')
+        if self.watch_task and not self.watch_task.done():
+            raise RuntimeError('Task watching for resources is already running')
 
-        self._list_and_update()
-        self.watch_thread = threading.Thread(target=self._watch_and_update)
-        # If the watch_thread is only thread left alive, exit app
-        self.watch_thread.daemon = True
-        self.watch_thread.start()
+        await self._list_and_update()
+        self.watch_task = asyncio.create_task(self._watch_and_update())
 
-    def stop(self):
+    async def stop(self):
+        """
+        Cleanly shut down the watch task.
+        """
         self._stop_event.set()
+        # The watch task should now be in the process of terminating.  Give
+        # it a bit...
+        if self.watch_task and not self.watch_task.done():
+            try:
+                timeout = 5
+                await asyncio.wait_for(self.watch_task, timeout)
+            except asyncio.TimeoutError:
+                # Raising the TimeoutError will cancel the task.
+                self.log.warning(
+                    f"Watch task did not finish in {timeout}s and was cancelled"
+                )
+        self.watch_task = None
 
     def stopped(self):
         return self._stop_event.is_set()

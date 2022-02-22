@@ -2,11 +2,11 @@ import copy
 
 import pytest
 from conftest import ExecError
-from kubernetes.client.models import V1Capabilities
-from kubernetes.client.models import V1Container
-from kubernetes.client.models import V1Lifecycle
-from kubernetes.client.models import V1PodSpec
-from kubernetes.client.models import V1SecurityContext
+from kubernetes_asyncio.client.models import V1Capabilities
+from kubernetes_asyncio.client.models import V1Container
+from kubernetes_asyncio.client.models import V1Lifecycle
+from kubernetes_asyncio.client.models import V1PodSpec
+from kubernetes_asyncio.client.models import V1SecurityContext
 
 from kubespawner.utils import _get_k8s_model_attribute
 from kubespawner.utils import get_k8s_model
@@ -33,16 +33,16 @@ def exec_error():
     1 / 0
 
 
-def test_exec(exec_python):
+async def test_exec(exec_python):
     """Test the exec fixture itself"""
-    r = exec_python(print_hello)
+    r = await exec_python(print_hello)
     print("result: %r" % r)
 
 
-def test_exec_error(exec_python):
+async def test_exec_error(exec_python):
     """Test the exec fixture error handling"""
     with pytest.raises(ExecError) as e:
-        exec_python(exec_error)
+        await exec_python(exec_error)
 
 
 def test__get_k8s_model_attribute():

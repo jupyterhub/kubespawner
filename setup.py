@@ -6,8 +6,8 @@ from setuptools import find_packages
 from setuptools import setup
 
 v = sys.version_info
-if v[:2] < (3, 6):
-    error = "ERROR: jupyterhub-kubespawner requires Python version 3.6 or above."
+if v[:2] < (3, 7):
+    error = "ERROR: kubespawner requires Python version 3.7 or above."
     print(error, file=sys.stderr)
     sys.exit(1)
 
@@ -20,15 +20,16 @@ setup(
         'python-slugify',
         'jupyterhub>=0.8',
         'jinja2',
-        'kubernetes>=10.1.0',
+        'kubernetes_asyncio>=19.15.1',
         'urllib3',
         'pyYAML',
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     extras_require={
         'test': [
             'bump2version',
             'flake8',
+            'kubernetes>=11',
             'pytest>=5.4',
             'pytest-cov',
             'pytest-asyncio>=0.11.0',

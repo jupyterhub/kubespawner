@@ -1,17 +1,16 @@
+import asyncio
+import functools
 import json
 import os
 import string
-from concurrent.futures import ThreadPoolExecutor
 
 import escapism
-import kubernetes.config
 from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
-from kubernetes import client
-from tornado import gen
-from tornado.concurrent import run_on_executor
+from kubernetes_asyncio import client
 from traitlets import Unicode
 
+from .clients import load_config
 from .clients import shared_client
 from .objects import make_ingress
 from .reflector import ResourceReflector
@@ -82,10 +81,10 @@ class KubeIngressProxy(Proxy):
         config=True,
         help="""
         Location (absolute filepath) for CA certs of the k8s API server.
-        
-        Typically this is unnecessary, CA certs are picked up by 
+
+        Typically this is unnecessary, CA certs are picked up by
         config.load_incluster_config() or config.load_kube_config.
-        
+
         In rare non-standard cases, such as using custom intermediate CA
         for your cluster, you may need to mount root CA's elsewhere in
         your Pod/Container and point this variable to that filepath
@@ -97,8 +96,8 @@ class KubeIngressProxy(Proxy):
         config=True,
         help="""
         Full host name of the k8s API server ("https://hostname:port").
-        
-        Typically this is unnecessary, the hostname is picked up by 
+
+        Typically this is unnecessary, the hostname is picked up by
         config.load_incluster_config() or config.load_kube_config.
         """,
     )
@@ -106,14 +105,36 @@ class KubeIngressProxy(Proxy):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # We use the maximum number of concurrent user server starts (and thus proxy adds)
-        # as our threadpool maximum. This ensures that contention here does not become
-        # an accidental bottleneck. Since we serialize our create operations, we only
-        # need 1x concurrent_spawn_limit, not 3x.
-        self.executor = ThreadPoolExecutor(max_workers=self.app.concurrent_spawn_limit)
+        # Schedules async initialization logic that is to be awaited by async
+        # functions by decorating them with @_await_async_init.
+        self._async_init_future = asyncio.ensure_future(self._async_init())
 
-        # Global configuration before reflector.py code runs
-        self._set_k8s_client_configuration()
+    async def _async_init(self):
+        """
+        This method is scheduled to run from `__init__`, but not awaited there
+        as `__init__` can't be marked as async.
+
+        Since JupyterHub won't await this method, we ensure the async methods
+        JupyterHub may call on this object will await this method before
+        continuing. To do this, we decorate them with `_await_async_init`.
+
+        But, how do we figure out the methods to decorate? Likely only those
+        exposed by the base class that JupyterHub would know about. The base
+        class is Proxy, as declared in proxy.py:
+        https://github.com/jupyterhub/jupyterhub/blob/HEAD/jupyterhub/proxy.py.
+
+        From the Proxy class docstring we can conclude that the following
+        methods, if implemented, could be what we need to decorate with
+        _await_async_init:
+
+          - get_all_routes (implemented and decorated)
+          - add_route (implemented and decorated)
+          - delete_route (implemented and decorated)
+          - start
+          - stop
+          - get_route
+        """
+        await load_config(caller=self)
         self.core_api = shared_client('CoreV1Api')
         self.extension_api = shared_client('ExtensionsV1beta1Api')
 
@@ -128,32 +149,26 @@ class KubeIngressProxy(Proxy):
             parent=self, namespace=self.namespace, labels=labels
         )
         self.endpoint_reflector = EndpointsReflector(
-            parent=self, namespace=self.namespace, labels=labels
+            self, namespace=self.namespace, labels=labels
+        )
+        await asyncio.gather(
+            self.ingress_reflector.start(),
+            self.service_reflector.start(),
+            self.endpoint_reflector.start(),
         )
 
-    def _set_k8s_client_configuration(self):
-        # The actual (singleton) Kubernetes client will be created
-        # in clients.py shared_client but the configuration
-        # for token / ca_cert / k8s api host is set globally
-        # in kubernetes.py syntax.  It is being set here
-        # and this method called prior to shared_client
-        # for readability / coupling with traitlets values
-        try:
-            kubernetes.config.load_incluster_config()
-        except kubernetes.config.ConfigException:
-            kubernetes.config.load_kube_config()
-        if self.k8s_api_ssl_ca_cert:
-            global_conf = client.Configuration.get_default_copy()
-            global_conf.ssl_ca_cert = self.k8s_api_ssl_ca_cert
-            client.Configuration.set_default(global_conf)
-        if self.k8s_api_host:
-            global_conf = client.Configuration.get_default_copy()
-            global_conf.host = self.k8s_api_host
-            client.Configuration.set_default(global_conf)
+    def _await_async_init(method):
+        """A decorator to await the _async_init method after having been
+        scheduled to run in the `__init__` method."""
 
-    @run_on_executor
-    def asynchronize(self, method, *args, **kwargs):
-        return method(*args, **kwargs)
+        @functools.wraps(method)
+        async def async_method(self, *args, **kwargs):
+            if self._async_init_future is not None:
+                await self._async_init_future
+                self._async_init_future = None
+            return await method(self, *args, **kwargs)
+
+        return async_method
 
     def safe_name_for_routespec(self, routespec):
         safe_chars = set(string.ascii_lowercase + string.digits)
@@ -173,10 +188,12 @@ class KubeIngressProxy(Proxy):
                 raise
             self.log.warn("Could not delete %s/%s: does not exist", kind, safe_name)
 
+    @_await_async_init
     async def add_route(self, routespec, target, data):
         # Create a route with the name being escaped routespec
         # Use full routespec in label
         # 'data' is JSON encoded and put in an annotation - we don't need to query for it
+
         safe_name = self.safe_name_for_routespec(routespec).lower()
         labels = {
             'heritage': 'jupyterhub',
@@ -189,9 +206,7 @@ class KubeIngressProxy(Proxy):
 
         async def ensure_object(create_func, patch_func, body, kind):
             try:
-                resp = await self.asynchronize(
-                    create_func, namespace=self.namespace, body=body
-                )
+                resp = await create_func(namespace=self.namespace, body=body)
                 self.log.info('Created %s/%s', kind, safe_name)
             except client.rest.ApiException as e:
                 if e.status == 409:
@@ -199,8 +214,7 @@ class KubeIngressProxy(Proxy):
                     self.log.warn(
                         "Trying to patch %s/%s, it already exists", kind, safe_name
                     )
-                    resp = await self.asynchronize(
-                        patch_func,
+                    resp = await patch_func(
                         namespace=self.namespace,
                         body=body,
                         name=body.metadata.name,
@@ -222,8 +236,7 @@ class KubeIngressProxy(Proxy):
                 'Could not find endpoints/%s after creating it' % safe_name,
             )
         else:
-            delete_endpoint = self.asynchronize(
-                self.core_api.delete_namespaced_endpoints,
+            delete_endpoint = await self.core_api.delete_namespaced_endpoints(
                 name=safe_name,
                 namespace=self.namespace,
                 body=client.V1DeleteOptions(grace_period_seconds=0),
@@ -256,30 +269,29 @@ class KubeIngressProxy(Proxy):
             'Could not find ingress/%s after creating it' % safe_name,
         )
 
+    @_await_async_init
     async def delete_route(self, routespec):
         # We just ensure that these objects are deleted.
         # This means if some of them are already deleted, we just let it
         # be.
+
         safe_name = self.safe_name_for_routespec(routespec).lower()
 
         delete_options = client.V1DeleteOptions(grace_period_seconds=0)
 
-        delete_endpoint = self.asynchronize(
-            self.core_api.delete_namespaced_endpoints,
+        delete_endpoint = await self.core_api.delete_namespaced_endpoints(
             name=safe_name,
             namespace=self.namespace,
             body=delete_options,
         )
 
-        delete_service = self.asynchronize(
-            self.core_api.delete_namespaced_service,
+        delete_service = await self.core_api.delete_namespaced_service(
             name=safe_name,
             namespace=self.namespace,
             body=delete_options,
         )
 
-        delete_ingress = self.asynchronize(
-            self.extension_api.delete_namespaced_ingress,
+        delete_ingress = await self.extension_api.delete_namespaced_ingress(
             name=safe_name,
             namespace=self.namespace,
             body=delete_options,
@@ -293,10 +305,13 @@ class KubeIngressProxy(Proxy):
         # explicitly ourselves as well. In the future, we can probably try a
         # foreground cascading deletion (https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/#foreground-cascading-deletion)
         # instead, but for now this works well enough.
-        await self.delete_if_exists('endpoint', safe_name, delete_endpoint)
-        await self.delete_if_exists('service', safe_name, delete_service)
-        await self.delete_if_exists('ingress', safe_name, delete_ingress)
+        await asyncio.gather(
+            self.delete_if_exists('endpoint', safe_name, delete_endpoint),
+            self.delete_if_exists('service', safe_name, delete_service),
+            self.delete_if_exists('ingress', safe_name, delete_ingress),
+        )
 
+    @_await_async_init
     async def get_all_routes(self):
         # copy everything, because iterating over this directly is not threadsafe
         # FIXME: is this performance intensive? It could be! Measure?

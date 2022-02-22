@@ -2,7 +2,7 @@
 Test functions used to create k8s objects
 """
 import pytest
-from kubernetes.client import ApiClient
+from kubernetes_asyncio.client import ApiClient
 
 from kubespawner.objects import make_ingress
 from kubespawner.objects import make_namespace
