@@ -18,6 +18,7 @@ import escapism
 from jinja2 import BaseLoader
 from jinja2 import Environment
 from jupyterhub.spawner import Spawner
+from jupyterhub.traitlets import Callable
 from jupyterhub.traitlets import Command
 from jupyterhub.utils import exponential_backoff
 from kubernetes_asyncio import client
@@ -43,7 +44,6 @@ from .objects import make_pvc
 from .objects import make_secret
 from .objects import make_service
 from .reflector import ResourceReflector
-from .traitlets import Callable
 
 
 class PodReflector(ResourceReflector):
