@@ -15,7 +15,6 @@ setup(
     name='jupyterhub-kubespawner',
     version='2.0.2.dev',
     install_requires=[
-        'async_generator>=1.8',
         'escapism',
         'python-slugify',
         'jupyterhub>=0.9',
