@@ -5,7 +5,6 @@ import base64
 import ipaddress
 import json
 import operator
-import os
 import re
 from urllib.parse import urlparse
 
@@ -16,13 +15,11 @@ from kubernetes_asyncio.client.models import V1EndpointAddress
 from kubernetes_asyncio.client.models import V1Endpoints
 from kubernetes_asyncio.client.models import V1EndpointSubset
 from kubernetes_asyncio.client.models import V1EnvVar
-from kubernetes_asyncio.client.models import V1LabelSelector
 from kubernetes_asyncio.client.models import V1Lifecycle
 from kubernetes_asyncio.client.models import V1LocalObjectReference
 from kubernetes_asyncio.client.models import V1Namespace
 from kubernetes_asyncio.client.models import V1NodeAffinity
 from kubernetes_asyncio.client.models import V1NodeSelector
-from kubernetes_asyncio.client.models import V1NodeSelectorRequirement
 from kubernetes_asyncio.client.models import V1NodeSelectorTerm
 from kubernetes_asyncio.client.models import V1ObjectMeta
 from kubernetes_asyncio.client.models import V1OwnerReference
@@ -31,13 +28,10 @@ from kubernetes_asyncio.client.models import V1PersistentVolumeClaimSpec
 from kubernetes_asyncio.client.models import V1Pod
 from kubernetes_asyncio.client.models import V1PodAffinity
 from kubernetes_asyncio.client.models import V1PodAffinityTerm
-from kubernetes_asyncio.client.models import V1PodAntiAffinity
-from kubernetes_asyncio.client.models import V1PodSecurityContext
 from kubernetes_asyncio.client.models import V1PodSpec
 from kubernetes_asyncio.client.models import V1PreferredSchedulingTerm
 from kubernetes_asyncio.client.models import V1ResourceRequirements
 from kubernetes_asyncio.client.models import V1Secret
-from kubernetes_asyncio.client.models import V1SecurityContext
 from kubernetes_asyncio.client.models import V1Service
 from kubernetes_asyncio.client.models import V1ServicePort
 from kubernetes_asyncio.client.models import V1ServiceSpec

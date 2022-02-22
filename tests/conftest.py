@@ -7,17 +7,12 @@ import logging
 import os
 import sys
 import tarfile
-import time
 from functools import partial
-from threading import Event
-from threading import Thread
 
-import kubernetes_asyncio
 import pytest
 import pytest_asyncio
 from jupyterhub.app import JupyterHub
 from jupyterhub.objects import Hub
-from kubernetes import __version__ as sync_version
 from kubernetes.client import CoreV1Api as sync_CoreV1Api
 from kubernetes.config import load_kube_config as sync_load_kube_config
 from kubernetes.stream import stream as sync_stream
@@ -32,7 +27,6 @@ from kubernetes_asyncio.client import V1ServiceSpec
 from kubernetes_asyncio.client.rest import ApiException
 from kubernetes_asyncio.config import load_kube_config
 from kubernetes_asyncio.watch import Watch
-from packaging.version import Version as V
 from traitlets.config import Config
 
 from kubespawner.clients import shared_client
