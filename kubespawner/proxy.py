@@ -179,7 +179,7 @@ class KubeIngressProxy(Proxy):
         )
         return safe_name
 
-    async def delete_if_exists(self, kind, safe_name, future):
+    async def _delete_if_exists(self, kind, safe_name, future):
         try:
             await future
             self.log.info('Deleted %s/%s', kind, safe_name)
@@ -241,7 +241,7 @@ class KubeIngressProxy(Proxy):
                 namespace=self.namespace,
                 body=client.V1DeleteOptions(grace_period_seconds=0),
             )
-            await self.delete_if_exists('endpoint', safe_name, delete_endpoint)
+            await self._delete_if_exists('endpoint', safe_name, delete_endpoint)
 
         await ensure_object(
             self.core_api.create_namespaced_service,
@@ -306,9 +306,9 @@ class KubeIngressProxy(Proxy):
         # foreground cascading deletion (https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/#foreground-cascading-deletion)
         # instead, but for now this works well enough.
         await asyncio.gather(
-            self.delete_if_exists('endpoint', safe_name, delete_endpoint),
-            self.delete_if_exists('service', safe_name, delete_service),
-            self.delete_if_exists('ingress', safe_name, delete_ingress),
+            self._delete_if_exists('endpoint', safe_name, delete_endpoint),
+            self._delete_if_exists('service', safe_name, delete_service),
+            self._delete_if_exists('ingress', safe_name, delete_ingress),
         )
 
     @_await_async_init
