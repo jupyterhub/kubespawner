@@ -40,6 +40,9 @@ from kubernetes_asyncio.client.models import V1Volume
 from kubernetes_asyncio.client.models import V1VolumeMount
 from kubernetes_asyncio.client.models import V1WeightedPodAffinityTerm
 
+# This is a hack we use for broader compatibility. The k8s Python clients
+# libraries generated from an OpenAPI schema for k8s 1.21+ will name
+# V1EndpointPort as CoreV1EndpointPort.
 try:
     from kubernetes_asyncio.client.models import CoreV1EndpointPort
 except ImportError:
