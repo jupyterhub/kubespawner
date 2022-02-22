@@ -211,22 +211,25 @@ class KubeSpawner(Spawner):
         class is Spawner, as declared in spawner.py:
         https://github.com/jupyterhub/jupyterhub/blob/HEAD/jupyterhub/spawner.py.
 
-        From the Proxy class docstring we can conclude that the following
-        methods, if implemented, could be what we need to decorate with
-        _await_async_init:
+        From the Spawner class docstring we could conclude that a few methods,
+        if implemented, likely needed to be decorated with `_await_async_init`.
+        From further analysis, a few more was found to also be needed. See:
+        https://github.com/jupyterhub/kubespawner/pull/563#discussion_r811498699.
 
-          - load_state (implemented)
-          - get_state (implemented)
-          - start (implemented and decorated)
-          - stop (implemented and decorated)
-          - poll (implemented and decorated)
+          - load_state
+          - get_state
+          - start (decorated)
+          - stop (decorated)
+          - poll (decorated)
+          - progress (decorated)
+          - delete_forever (decorated)
 
-        Out of these, it seems that only `start`, `stop`, and `poll` would need
-        the initialization logic in this method to have completed.
+        Out of these, it seems that the sync methods `load_state`, `get_state`
+        wouldn't need the initialization logic in this method to complete.
 
         This is slightly complicated by the fact that `start` is already a
-        synchronous method that returns a future, so where we want the
-        decorator is actually on the async `_start` that `start` calls.
+        synchronous method that returns a future, so where we want the decorator
+        is actually on the async `_start` that `start` calls.
         """
         await load_config(caller=self)
         self.api = shared_client("CoreV1Api")
@@ -234,6 +237,8 @@ class KubeSpawner(Spawner):
         if self.events_enabled:
             await self._start_watching_events()
 
+    # FIXME: If JupyterHub adds support for awaiting initialization of the
+    #        Spawner instances, we should drop this strategy to ensure it.
     def _await_async_init(method):
         """A decorator to await the _async_init method after having been
         scheduled to run in the `__init__` method."""
@@ -2147,6 +2152,7 @@ class KubeSpawner(Spawner):
                 events.append(event)
         return events
 
+    @_await_async_init
     async def progress(self):
         """
         This function is reporting back the progress of spawning a pod until
@@ -2881,6 +2887,7 @@ class KubeSpawner(Spawner):
                 self.log.exception("Failed to create namespace %s", self.namespace)
                 raise
 
+    @_await_async_init
     async def delete_forever(self):
         """Called when a user is deleted.
 
