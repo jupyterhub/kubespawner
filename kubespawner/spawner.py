@@ -2382,8 +2382,7 @@ class KubeSpawner(Spawner):
                         name=pvc_name,
                         namespace=self.namespace,
                     )
-
-                except ApiException as e:
+                except ApiException:
                     raise v.with_traceback(tb)
 
                 self.log.info(

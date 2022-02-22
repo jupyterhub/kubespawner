@@ -206,7 +206,7 @@ class KubeIngressProxy(Proxy):
 
         async def ensure_object(create_func, patch_func, body, kind):
             try:
-                resp = await create_func(namespace=self.namespace, body=body)
+                await create_func(namespace=self.namespace, body=body)
                 self.log.info('Created %s/%s', kind, safe_name)
             except client.rest.ApiException as e:
                 if e.status == 409:
@@ -214,7 +214,7 @@ class KubeIngressProxy(Proxy):
                     self.log.warn(
                         "Trying to patch %s/%s, it already exists", kind, safe_name
                     )
-                    resp = await patch_func(
+                    await patch_func(
                         namespace=self.namespace,
                         body=body,
                         name=body.metadata.name,

@@ -41,7 +41,7 @@ async def test_exec(exec_python):
 
 async def test_exec_error(exec_python):
     """Test the exec fixture error handling"""
-    with pytest.raises(ExecError) as e:
+    with pytest.raises(ExecError):
         await exec_python(exec_error)
 
 

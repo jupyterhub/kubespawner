@@ -264,7 +264,6 @@ class ResourceReflector(LoggingConfigurable):
         out-of-date, but it's not going to corrupt any data.
         """
         selectors = []
-        log_name = ""
         if self.label_selector:
             selectors.append("label selector=%r" % self.label_selector)
         if self.field_selector:
