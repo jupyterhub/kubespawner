@@ -45,7 +45,7 @@ try:
 except ImportError:
     from kubernetes_asyncio.client.models import V1EndpointPort as CoreV1EndpointPort
 
-from kubespawner.utils import get_k8s_model, update_k8s_model
+from .utils import get_k8s_model, update_k8s_model
 
 
 def make_pod(
