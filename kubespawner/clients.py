@@ -68,8 +68,18 @@ async def load_config(caller):
     KubeIngressProxy both have these attributes.
     """
     try:
+        # This attempts to load configuration available within k8s Pod's
+        # containers with a mounted service account.
         kubernetes_asyncio.config.load_incluster_config()
     except kubernetes_asyncio.config.ConfigException:
+        # This attempts to load kubernetes client configuration and credentials
+        # to an api-server in a similar way as `kubectl` on your computer would
+        # do which is relevant if KubeSpawner runs from outside a k8s cluster.
+        #
+        # There seems to be a need for this to be async that relates to
+        # acquiring credentials via credential helpers as can be inspected here:
+        # https://github.com/tomplus/kubernetes_asyncio/blob/c88b3b9c78a9388ef3af00858b8c516b84b0bf30/kubernetes_asyncio/config/kube_config.py#L183-L195
+        #
         await kubernetes_asyncio.config.load_kube_config()
 
     if caller.k8s_api_ssl_ca_cert:
