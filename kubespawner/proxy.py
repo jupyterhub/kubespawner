@@ -122,43 +122,14 @@ class KubeIngressProxy(Proxy):
             self, namespace=self.namespace, labels=labels
         )
 
-        # Schedules async initialization logic that is to be awaited by async
-        # functions by decorating them with @_await_async_init.
-        # this is a single Future representing all reflectors having loaded at last once
-        self._reflectors_ready = asyncio.ensure_future(self._async_init())
-
-    async def _async_init(self):
-        """
-        Initialize state that cannot be initialized synchronously in `__init__`.
-
-        This method is scheduled to run from `__init__`, but not awaited there
-        as `__init__` can't be async.
-
-        Any methods that rely on state initialized in this method
-        may be decorated with @_await_async_init`
-        to wait for all async initialization to complete.
-
-        Currently, that is only the first-load of our reflectors,
-        which can also be awaited individually with `await reflector._first_load_future`.
-        """
-        await asyncio.gather(
-            self.ingress_reflector.start(),
-            self.service_reflector.start(),
-            self.endpoint_reflector.start(),
-        )
-
-    def _await_async_init(method):
-        """A decorator to await the _async_init method after having been
-        scheduled to run in the `__init__` method."""
-
-        @functools.wraps(method)
-        async def async_method(self, *args, **kwargs):
-            if self._async_init_future is not None:
-                await self._async_init_future
-                self._async_init_future = None
-            return await method(self, *args, **kwargs)
-
-        return async_method
+        # schedule our reflectors to start in the event loop,
+        # reflectors first load can be awaited with:
+        #
+        #   await some_reflector._first_load_future
+        #
+        asyncio.ensure_future(self.ingress_reflector.start())
+        asyncio.ensure_future(self.service_reflector.start())
+        asyncio.ensure_future(self.endpoint_reflector.start())
 
     def safe_name_for_routespec(self, routespec):
         safe_chars = set(string.ascii_lowercase + string.digits)
