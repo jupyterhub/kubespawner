@@ -148,10 +148,6 @@ class KubeSpawner(Spawner):
         _mock = kwargs.pop('_mock', False)
         super().__init__(*args, **kwargs)
 
-        # Schedules async initialization logic that is to be awaited by async
-        # functions by decorating them with @_await_async_init.
-        self._async_init_future = asyncio.ensure_future(self._async_init())
-
         if _mock:
             # runs during test execution only
             if 'user' not in kwargs:
@@ -197,52 +193,42 @@ class KubeSpawner(Spawner):
         # The attribute needs to exist, even though it is unset to start with
         self._start_future = None
 
-    async def _async_init(self):
-        """
-        This method is scheduled to run from `__init__`, but not awaited there
-        as it can't be marked as async.
-
-        Since JupyterHub won't await this method, we ensure the async methods
-        JupyterHub may call on this object will await this method before
-        continuing. To do this, we decorate them with `_await_async_init`.
-
-        But, how do we figure out the methods to decorate? Likely only those
-        exposed by the base class that JupyterHub would know about. The base
-        class is Spawner, as declared in spawner.py:
-        https://github.com/jupyterhub/jupyterhub/blob/HEAD/jupyterhub/spawner.py.
-
-        From the Proxy class docstring we can conclude that the following
-        methods, if implemented, could be what we need to decorate with
-        _await_async_init:
-
-          - load_state (implemented)
-          - get_state (implemented)
-          - start (implemented and decorated)
-          - stop (implemented and decorated)
-          - poll (implemented and decorated)
-
-        Out of these, it seems that only `start`, `stop`, and `poll` would need
-        the initialization logic in this method to have completed.
-
-        This is slightly complicated by the fact that `start` is already a
-        synchronous method that returns a future, so where we want the
-        decorator is actually on the async `_start` that `start` calls.
-        """
-        await load_config(caller=self)
+        load_config(host=self.k8s_api_host, ssl_ca_cert=self.k8s_api_ssl_ca_cert)
         self.api = shared_client("CoreV1Api")
-        await self._start_watching_pods()
-        if self.events_enabled:
-            await self._start_watching_events()
 
-    def _await_async_init(method):
-        """A decorator to await the _async_init method after having been
-        scheduled to run in the `__init__` method."""
+        self._start_watching_pods()
+        if self.events_enabled:
+            self._start_watching_events()
+
+    def _await_pod_reflector(method):
+        """Decorator to wait for pod reflector to load
+
+        Apply to methods which require the pod reflector
+        to have completed its first load of pods.
+        """
 
         @wraps(method)
         async def async_method(self, *args, **kwargs):
-            if self._async_init_future is not None:
-                await self._async_init_future
-                self._async_init_future = None
+            if not self.pod_reflector.first_load_future.done():
+                await self.pod_reflector.first_load_future
+            return await method(self, *args, **kwargs)
+
+        return async_method
+
+    def _await_event_reflector(method):
+        """Decorator to wait for event reflector to load
+
+        Apply to methods which require the event reflector
+        to have completed its first load of events.
+        """
+
+        @wraps(method)
+        async def async_method(self, *args, **kwargs):
+            if (
+                self.events_enabled
+                and not self.event_reflector.first_load_future.done()
+            ):
+                await self.event_reflector.first_load_future
             return await method(self, *args, **kwargs)
 
         return async_method
@@ -2050,7 +2036,7 @@ class KubeSpawner(Spawner):
         if 'pod_name' in state:
             self.pod_name = state['pod_name']
 
-    @_await_async_init
+    @_await_pod_reflector
     async def poll(self):
         """
         Check if the pod is still running.
@@ -2064,9 +2050,6 @@ class KubeSpawner(Spawner):
         necessary to check that the returned value is None, rather than
         just Falsy, to determine that the pod is still running.
         """
-        # have to wait for first load of data before we have a valid answer
-        if not self.pod_reflector.first_load_future.done():
-            await asyncio.wrap_future(self.pod_reflector.first_load_future)
         ref_key = "{}/{}".format(self.namespace, self.pod_name)
         pod = self.pod_reflector.pods.get(ref_key, None)
         if pod is not None:
@@ -2208,7 +2191,7 @@ class KubeSpawner(Spawner):
                 break
             await asyncio.sleep(1)
 
-    async def _start_reflector(
+    def _start_reflector(
         self,
         kind=None,
         reflector_class=ResourceReflector,
@@ -2236,10 +2219,7 @@ class KubeSpawner(Spawner):
                 "%s reflector failed, halting Hub.",
                 key.title(),
             )
-            # This won't be called from the main thread, so sys.exit
-            # will only kill current thread - not process.
-            # https://stackoverflow.com/a/7099229
-            os.kill(os.getpid(), signal.SIGINT)
+            sys.exit(1)
 
         previous_reflector = self.__class__.reflectors.get(key)
 
@@ -2250,16 +2230,16 @@ class KubeSpawner(Spawner):
                 on_failure=on_reflector_failure,
                 **kwargs,
             )
-            await self.__class__.reflectors[key].start()
+            asyncio.ensure_future(self.__class__.reflectors[key].start())
 
         if replace and previous_reflector:
             # we replaced the reflector, stop the old one
-            await previous_reflector.stop()
+            asyncio.ensure_future(previous_reflector.stop())
 
         # return the current reflector
         return self.__class__.reflectors[key]
 
-    async def _start_watching_events(self, replace=False):
+    def _start_watching_events(self, replace=False):
         """Start the events reflector
 
         If replace=False and the event reflector is already running,
@@ -2268,7 +2248,7 @@ class KubeSpawner(Spawner):
         If replace=True, a running pod reflector will be stopped
         and a new one started (for recovering from possible errors).
         """
-        return await self._start_reflector(
+        return self._start_reflector(
             kind="events",
             reflector_class=EventReflector,
             fields={"involvedObject.kind": "Pod"},
@@ -2276,7 +2256,7 @@ class KubeSpawner(Spawner):
             replace=replace,
         )
 
-    async def _start_watching_pods(self, replace=False):
+    def _start_watching_pods(self, replace=False):
         """Start the pod reflector
 
         If replace=False and the pod reflector is already running,
@@ -2287,7 +2267,7 @@ class KubeSpawner(Spawner):
         """
         pod_reflector_class = PodReflector
         pod_reflector_class.labels.update({"component": self.component_label})
-        return await self._start_reflector(
+        return self._start_reflector(
             "pods",
             PodReflector,
             omit_namespace=self.enable_user_namespaces,
@@ -2467,7 +2447,6 @@ class KubeSpawner(Spawner):
         else:
             return True
 
-    @_await_async_init
     async def _start(self):
         """Start the user's pod"""
 
@@ -2677,8 +2656,9 @@ class KubeSpawner(Spawner):
             else:
                 raise
 
-    @_await_async_init
+    @_await_pod_reflector
     async def stop(self, now=False):
+
         delete_options = client.V1DeleteOptions()
 
         if now:
