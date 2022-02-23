@@ -67,9 +67,7 @@ def load_config(host=None, ssl_ca_cert=None):
     specific settings on the passed caller object.
 
     This needs to be called before creating a kubernetes client, so practically
-    before the shared_client function is called. The caller must have both the
-    k8s_api_ssl_ca_cert and k8s_api_host attributes. KubeSpawner and
-    KubeIngressProxy both have these attributes.
+    before the shared_client function is called.
     """
     try:
         kubernetes_asyncio.config.load_incluster_config()
