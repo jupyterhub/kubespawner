@@ -4,10 +4,8 @@ import asyncio
 import json
 import threading
 import time
-from concurrent.futures import Future
 from functools import partial
 
-from kubernetes_asyncio import config
 from kubernetes_asyncio import watch
 from traitlets import Any
 from traitlets import Bool
@@ -182,7 +180,7 @@ class ResourceReflector(LoggingConfigurable):
             ['{}={}'.format(k, v) for k, v in self.fields.items()]
         )
 
-        self.first_load_future = Future()
+        self.first_load_future = asyncio.Future()
         self._stop_event = threading.Event()
 
         # Make sure that we know kind, whether we should omit the
@@ -242,6 +240,9 @@ class ResourceReflector(LoggingConfigurable):
             f'{p["metadata"]["namespace"]}/{p["metadata"]["name"]}': p
             for p in initial_resources["items"]
         }
+        if not self.first_load_future.done():
+            # signal that we've loaded our initial data at least once
+            self.first_load_future.set_result(None)
         # return the resource version so we can hook up a watch
         return initial_resources["metadata"]["resourceVersion"]
 
@@ -291,9 +292,6 @@ class ResourceReflector(LoggingConfigurable):
             w = watch.Watch()
             try:
                 resource_version = await self._list_and_update()
-                if not self.first_load_future.done():
-                    # signal that we've loaded our initial data
-                    self.first_load_future.set_result(None)
                 watch_args = {
                     "label_selector": self.label_selector,
                     "field_selector": self.field_selector,

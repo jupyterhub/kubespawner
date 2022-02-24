@@ -5,7 +5,10 @@ instantiated.
 The instances of these REST API clients are also patched to avoid the creation
 of unused threads.
 """
+import asyncio
 import weakref
+from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 from unittest.mock import Mock
 
 import kubernetes_asyncio.client
@@ -56,27 +59,35 @@ def shared_client(ClientType, *args, **kwargs):
     return client
 
 
-async def load_config(caller):
+@lru_cache()
+def load_config(host=None, ssl_ca_cert=None):
     """
     Loads global configuration for the Python client we use to communicate with
     a Kubernetes API server, and optionally tweaks that configuration based on
     specific settings on the passed caller object.
 
     This needs to be called before creating a kubernetes client, so practically
-    before the shared_client function is called. The caller must have both the
-    k8s_api_ssl_ca_cert and k8s_api_host attributes. KubeSpawner and
-    KubeIngressProxy both have these attributes.
+    before the shared_client function is called.
     """
     try:
         kubernetes_asyncio.config.load_incluster_config()
     except kubernetes_asyncio.config.ConfigException:
-        await kubernetes_asyncio.config.load_kube_config()
+        # avoid making this async just for load-config
+        # run async load_kube_config in a background thread,
+        # blocking this thread until it's done
+        with ThreadPoolExecutor(1) as pool:
+            load_sync = lambda: asyncio.run(
+                kubernetes_asyncio.config.load_kube_config()
+            )
+            future = pool.submit(load_sync)
+            # blocking wait for load to complete
+            future.result()
 
-    if caller.k8s_api_ssl_ca_cert:
+    if ssl_ca_cert:
         global_conf = Configuration.get_default_copy()
-        global_conf.ssl_ca_cert = caller.k8s_api_ssl_ca_cert
+        global_conf.ssl_ca_cert = ssl_ca_cert
         Configuration.set_default(global_conf)
-    if caller.k8s_api_host:
+    if host:
         global_conf = Configuration.get_default_copy()
-        global_conf.host = caller.k8s_api_host
+        global_conf.host = host
         Configuration.set_default(global_conf)

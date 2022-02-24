@@ -104,37 +104,7 @@ class KubeIngressProxy(Proxy):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        # Schedules async initialization logic that is to be awaited by async
-        # functions by decorating them with @_await_async_init.
-        self._async_init_future = asyncio.ensure_future(self._async_init())
-
-    async def _async_init(self):
-        """
-        This method is scheduled to run from `__init__`, but not awaited there
-        as `__init__` can't be marked as async.
-
-        Since JupyterHub won't await this method, we ensure the async methods
-        JupyterHub may call on this object will await this method before
-        continuing. To do this, we decorate them with `_await_async_init`.
-
-        But, how do we figure out the methods to decorate? Likely only those
-        exposed by the base class that JupyterHub would know about. The base
-        class is Proxy, as declared in proxy.py:
-        https://github.com/jupyterhub/jupyterhub/blob/HEAD/jupyterhub/proxy.py.
-
-        From the Proxy class docstring we can conclude that the following
-        methods, if implemented, could be what we need to decorate with
-        _await_async_init:
-
-          - get_all_routes (implemented and decorated)
-          - add_route (implemented and decorated)
-          - delete_route (implemented and decorated)
-          - start
-          - stop
-          - get_route
-        """
-        await load_config(caller=self)
+        load_config(host=self.k8s_api_host, ssl_ca_cert=self.k8s_api_ssl_ca_cert)
         self.core_api = shared_client('CoreV1Api')
         self.extension_api = shared_client('ExtensionsV1beta1Api')
 
@@ -151,24 +121,15 @@ class KubeIngressProxy(Proxy):
         self.endpoint_reflector = EndpointsReflector(
             self, namespace=self.namespace, labels=labels
         )
-        await asyncio.gather(
-            self.ingress_reflector.start(),
-            self.service_reflector.start(),
-            self.endpoint_reflector.start(),
-        )
 
-    def _await_async_init(method):
-        """A decorator to await the _async_init method after having been
-        scheduled to run in the `__init__` method."""
-
-        @functools.wraps(method)
-        async def async_method(self, *args, **kwargs):
-            if self._async_init_future is not None:
-                await self._async_init_future
-                self._async_init_future = None
-            return await method(self, *args, **kwargs)
-
-        return async_method
+        # schedule our reflectors to start in the event loop,
+        # reflectors first load can be awaited with:
+        #
+        #   await some_reflector._first_load_future
+        #
+        asyncio.ensure_future(self.ingress_reflector.start())
+        asyncio.ensure_future(self.service_reflector.start())
+        asyncio.ensure_future(self.endpoint_reflector.start())
 
     def safe_name_for_routespec(self, routespec):
         safe_chars = set(string.ascii_lowercase + string.digits)
@@ -188,7 +149,6 @@ class KubeIngressProxy(Proxy):
                 raise
             self.log.warn("Could not delete %s/%s: does not exist", kind, safe_name)
 
-    @_await_async_init
     async def add_route(self, routespec, target, data):
         # Create a route with the name being escaped routespec
         # Use full routespec in label
@@ -269,7 +229,6 @@ class KubeIngressProxy(Proxy):
             'Could not find ingress/%s after creating it' % safe_name,
         )
 
-    @_await_async_init
     async def delete_route(self, routespec):
         # We just ensure that these objects are deleted.
         # This means if some of them are already deleted, we just let it
@@ -311,12 +270,10 @@ class KubeIngressProxy(Proxy):
             self.delete_if_exists('ingress', safe_name, delete_ingress),
         )
 
-    @_await_async_init
     async def get_all_routes(self):
-        # copy everything, because iterating over this directly is not threadsafe
-        # FIXME: is this performance intensive? It could be! Measure?
-        # FIXME: Validate that this shallow copy *is* thread safe
-        ingress_copy = dict(self.ingress_reflector.ingresses)
+        if not self.ingress_reflector.first_load_future.done():
+            await self.ingress_reflector.first_load_future
+
         routes = {
             ingress["metadata"]["annotations"]['hub.jupyter.org/proxy-routespec']: {
                 'routespec': ingress["metadata"]["annotations"][
@@ -329,7 +286,7 @@ class KubeIngressProxy(Proxy):
                     ingress["metadata"]["annotations"]['hub.jupyter.org/proxy-data']
                 ),
             }
-            for ingress in ingress_copy.values()
+            for ingress in self.ingress_reflector.ingresses.values()
         }
 
         return routes
