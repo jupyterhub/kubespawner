@@ -2,10 +2,12 @@ import asyncio
 
 from conftest import cancel_tasks
 
+from kubespawner.clients import load_config
 from kubespawner.clients import shared_client
 
 
 async def test_shared_client():
+    load_config()
     core = shared_client("CoreV1Api")
     core2 = shared_client("CoreV1Api")
     assert core2 is core
@@ -16,6 +18,7 @@ async def test_shared_client():
 
 
 def test_shared_client_close():
+    load_config()
     # this test must be sync so we can call asyncio.run
     core = None
 
