@@ -1,5 +1,7 @@
 import asyncio
 
+from conftest import cancel_tasks
+
 from kubespawner.clients import shared_client
 
 
@@ -23,7 +25,7 @@ def test_shared_client_close():
 
     loop = asyncio.new_event_loop()
     loop.run_until_complete(test())
-    loop.run_until_complete(loop.shutdown_asyncgens())
+    loop.run_until_complete(cancel_tasks())
     loop.close()
     # asyncio.run(test())
     assert core is not None

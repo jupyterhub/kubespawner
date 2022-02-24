@@ -1,4 +1,3 @@
-import asyncio
 import copy
 
 import pytest
@@ -9,7 +8,6 @@ from kubernetes_asyncio.client.models import V1Lifecycle
 from kubernetes_asyncio.client.models import V1PodSpec
 from kubernetes_asyncio.client.models import V1SecurityContext
 
-from kubespawner._asyncio_atexit import asyncio_atexit
 from kubespawner.utils import _get_k8s_model_attribute
 from kubespawner.utils import get_k8s_model
 from kubespawner.utils import update_k8s_model
@@ -122,25 +120,3 @@ def test_get_k8s_model():
         'post_start': None,
         'pre_stop': {'exec': {'command': ['/bin/sh', 'test']}},
     }
-
-
-def test_asyncio_atexit():
-    sync_called = False
-    async_called = False
-
-    def sync_cb():
-        nonlocal sync_called
-        sync_called = True
-        raise ValueError("Failure shouldn't prevent other callbacks")
-
-    async def async_cb():
-        nonlocal async_called
-        async_called = True
-
-    async def test():
-        asyncio_atexit(sync_cb)
-        asyncio_atexit(async_cb)
-
-    asyncio.run(test())
-    assert sync_called
-    assert async_called

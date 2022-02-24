@@ -14,8 +14,6 @@ import kubernetes_asyncio.client
 from kubernetes_asyncio.client import api_client
 from kubernetes_asyncio.client import Configuration
 
-from ._asyncio_atexit import asyncio_atexit
-
 # FIXME: Remove this workaround when instantiating a k8s client doesn't
 #        automatically create a ThreadPool with 1 thread that we won't use
 #        anyhow. To know if that has happened, reading
@@ -52,12 +50,19 @@ def shared_client(ClientType, *args, **kwargs):
 
         _client_cache[cache_key] = client
 
-        async def cleanup():
-            _client_cache.pop(cache_key, None)
-            await client.api_client.close()
+        # create a task that will close the client when it is cancelled
+        # relies on JupyterHub's task cleanup at shutdown
+        async def close_client_task():
+            try:
+                async with client.api_client:
+                    while True:
+                        await asyncio.sleep(300)
+            except asyncio.CancelledError:
+                pass
+            finally:
+                _client_cache.pop(cache_key, None)
 
-        # close the client when the loop exits
-        asyncio_atexit(cleanup)
+        asyncio.create_task(close_client_task())
 
     return client
 
