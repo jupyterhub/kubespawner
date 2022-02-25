@@ -41,7 +41,7 @@ class MockOrmSpawner(Mock):
     server = None
 
 
-def test_deprecated_config():
+async def test_deprecated_config():
     """Deprecated config is handled correctly"""
     with pytest.warns(DeprecationWarning):
         c = Config()
@@ -64,7 +64,7 @@ def test_deprecated_config():
         assert spawner.image_pull_secrets[0]["name"] == 'k8s-secret-a'
 
 
-def test_deprecated_runtime_access():
+async def test_deprecated_runtime_access():
     """Runtime access/modification of deprecated traits works"""
     spawner = KubeSpawner(_mock=True)
     spawner.singleuser_uid = 10
@@ -83,7 +83,7 @@ def test_deprecated_runtime_access():
     assert spawner.image_pull_secrets[0]["name"] == 'k8s-secret-a'
 
 
-def test_spawner_values():
+async def test_spawner_values():
     """Spawner values are set correctly"""
     spawner = KubeSpawner(_mock=True)
 
@@ -150,7 +150,6 @@ def check_up(url, ssl_ca=None, ssl_client_cert=None, ssl_client_key=None):
     print(u.status)
 
 
-@pytest.mark.asyncio
 async def test_spawn_start(
     kube_ns,
     kube_client,
@@ -204,7 +203,6 @@ async def test_spawn_start(
     assert isinstance(status, int)
 
 
-@pytest.mark.asyncio
 async def test_spawn_internal_ssl(
     kube_ns,
     kube_client,
@@ -300,7 +298,6 @@ async def test_spawn_internal_ssl(
     assert service_name not in service_names
 
 
-@pytest.mark.asyncio
 async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
     spawner = KubeSpawner(
         hub=hub,
@@ -333,7 +330,6 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
     await spawner.stop()
 
 
-@pytest.mark.asyncio
 async def test_get_pod_manifest_tolerates_mixed_input():
     """
     Test that the get_pod_manifest function can handle a either a dictionary or
@@ -393,7 +389,6 @@ _test_profiles = [
 ]
 
 
-@pytest.mark.asyncio
 async def test_user_options_set_from_form():
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = _test_profiles
@@ -412,7 +407,6 @@ async def test_user_options_set_from_form():
         assert getattr(spawner, key) == value
 
 
-@pytest.mark.asyncio
 async def test_user_options_api():
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = _test_profiles
@@ -426,7 +420,6 @@ async def test_user_options_api():
         assert getattr(spawner, key) == value
 
 
-@pytest.mark.asyncio
 async def test_default_profile():
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = _test_profiles
@@ -438,7 +431,7 @@ async def test_default_profile():
         assert getattr(spawner, key) == value
 
 
-def test_pod_name_no_named_servers():
+async def test_pod_name_no_named_servers():
     c = Config()
     c.JupyterHub.allow_named_servers = False
 
@@ -452,7 +445,7 @@ def test_pod_name_no_named_servers():
     assert spawner.pod_name == "jupyter-user"
 
 
-def test_pod_name_named_servers():
+async def test_pod_name_named_servers():
     c = Config()
     c.JupyterHub.allow_named_servers = True
 
@@ -467,7 +460,7 @@ def test_pod_name_named_servers():
     assert spawner.pod_name == "jupyter-user--server"
 
 
-def test_pod_name_escaping():
+async def test_pod_name_escaping():
     c = Config()
     c.JupyterHub.allow_named_servers = True
 
@@ -482,7 +475,7 @@ def test_pod_name_escaping():
     assert spawner.pod_name == "jupyter-some-5fuser--test-2dserver-21"
 
 
-def test_pod_name_custom_template():
+async def test_pod_name_custom_template():
     user = MockUser()
     user.name = "some_user"
 
@@ -493,7 +486,7 @@ def test_pod_name_custom_template():
     assert spawner.pod_name == "prefix-some-5fuser-suffix"
 
 
-def test_pod_name_collision():
+async def test_pod_name_collision():
     user1 = MockUser()
     user1.name = "user-has-dash"
 
@@ -515,7 +508,7 @@ def test_pod_name_collision():
     assert spawner.pvc_name != named_spawner.pvc_name
 
 
-def test_spawner_can_use_list_of_image_pull_secrets():
+async def test_spawner_can_use_list_of_image_pull_secrets():
     secrets = ["ecr", "regcred", "artifactory"]
 
     c = Config()
@@ -532,7 +525,6 @@ def test_spawner_can_use_list_of_image_pull_secrets():
     assert spawner.image_pull_secrets == secrets
 
 
-@pytest.mark.asyncio
 async def test_pod_connect_ip(kube_ns, kube_client, config, hub_pod, hub):
     config.KubeSpawner.pod_connect_ip = (
         "jupyter-{username}--{servername}.foo.example.com"
@@ -567,7 +559,7 @@ async def test_pod_connect_ip(kube_ns, kube_client, config, hub_pod, hub):
     await spawner.stop()
 
 
-def test_get_pvc_manifest():
+async def test_get_pvc_manifest():
     c = Config()
 
     c.KubeSpawner.pvc_name_template = "user-{username}"
@@ -720,7 +712,6 @@ async def test_variable_expansion(ssl_app):
                 )
 
 
-@pytest.mark.asyncio
 async def test_url_changed(kube_ns, kube_client, config, hub_pod, hub):
     user = MockUser(name="url")
     config.KubeSpawner.pod_connect_ip = (
@@ -760,7 +751,6 @@ async def test_url_changed(kube_ns, kube_client, config, hub_pod, hub):
     await spawner.stop()
 
 
-@pytest.mark.asyncio
 async def test_delete_pvc(kube_ns, kube_client, hub, config):
     config.KubeSpawner.storage_pvc_ensure = True
     config.KubeSpawner.storage_capacity = '1M'

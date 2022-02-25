@@ -6,7 +6,6 @@ The instances of these REST API clients are also patched to avoid the creation
 of unused threads.
 """
 import asyncio
-import weakref
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from unittest.mock import Mock
@@ -34,18 +33,13 @@ def shared_client(ClientType, *args, **kwargs):
     """Return a shared kubernetes client instance
     based on the provided arguments.
 
-    A weak reference to the instance is cached,
-    so that concurrent calls to shared_client
-    will all return the same instance until
-    all references to the client are cleared.
+    Cache is one client per running loop per combination of input args.
+
+    Client will be closed when the loop closes.
     """
     kwarg_key = tuple((key, kwargs[key]) for key in sorted(kwargs))
-    cache_key = (ClientType, args, kwarg_key)
-    client = None
-    if cache_key in _client_cache:
-        # resolve cached weakref
-        # client can still be None after this!
-        client = _client_cache[cache_key]()
+    cache_key = (asyncio.get_running_loop(), ClientType, args, kwarg_key)
+    client = _client_cache.get(cache_key, None)
 
     if client is None:
         # Kubernetes client configuration is handled globally and should already
@@ -53,8 +47,22 @@ def shared_client(ClientType, *args, **kwargs):
         # prior to a shared_client being instantiated.
         Client = getattr(kubernetes_asyncio.client, ClientType)
         client = Client(*args, **kwargs)
-        # cache weakref so that clients can be garbage collected
-        _client_cache[cache_key] = weakref.ref(client)
+
+        _client_cache[cache_key] = client
+
+        # create a task that will close the client when it is cancelled
+        # relies on JupyterHub's task cleanup at shutdown
+        async def close_client_task():
+            try:
+                async with client.api_client:
+                    while True:
+                        await asyncio.sleep(300)
+            except asyncio.CancelledError:
+                pass
+            finally:
+                _client_cache.pop(cache_key, None)
+
+        asyncio.create_task(close_client_task())
 
     return client
 

@@ -46,10 +46,38 @@ sync_load_kube_config()
 sync_corev1api = sync_CoreV1Api()
 
 
+async def cancel_tasks():
+    """Cancel long-running tasks
+
+    This is copied from JupyterHub's shutdown_cancel_tasks (as of 2.1.1)
+    to emulate JupyterHub's cleanup of cancelled tasks at shutdown.
+
+    shared_client's cleanup relies on this.
+    """
+    tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+    log = logging.getLogger("traitlets")
+    if tasks:
+        log.debug(f"Cancelling {len(tasks)} pending tasks")
+        [t.cancel() for t in tasks]
+
+        try:
+            await asyncio.wait(tasks)
+        except asyncio.CancelledError as e:
+            log.debug("Caught Task CancelledError. Ignoring")
+        except Exception:
+            log.exception("Caught Exception in cancelled task")
+
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        for t in tasks:
+            log.debug("Task status: %s", t)
+
+
 @pytest.fixture(scope="session")
 def event_loop():
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
+    # cancel tasks, as is done in JupyterHub
+    loop.run_until_complete(cancel_tasks())
     loop.close()
 
 

@@ -32,19 +32,18 @@ class MockUser(Mock):
         return self.server.url
 
 
-def test_enable_user_namespaces():
+async def test_enable_user_namespaces():
     user = MockUser()
     spawner = KubeSpawner(user=user, _mock=True, enable_user_namespaces=True)
     assert spawner.namespace.endswith("-{}".format(user.escaped_name))
 
 
-def test_multi_namespace_spawner_class():
+async def test_multi_namespace_spawner_class():
     user = MockUser()
     spawner = KubeSpawner(user=user, _mock=True, enable_user_namespaces=True)
     assert spawner.namespace.endswith("-{}".format(user.escaped_name))
 
 
-@pytest.mark.asyncio
 async def test_multi_namespace_spawn():
     # We cannot use the fixtures, because they assume the standard
     #  namespace and client for that namespace.
