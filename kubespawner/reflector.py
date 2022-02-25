@@ -2,7 +2,6 @@
 # asyncio Futures cannot be used across threads
 import asyncio
 import json
-import threading
 import time
 from functools import partial
 
@@ -164,6 +163,8 @@ class ResourceReflector(LoggingConfigurable):
 
     on_failure = Any(help="""Function to be called when the reflector gives up.""")
 
+    _stopping = Bool(False)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -181,7 +182,6 @@ class ResourceReflector(LoggingConfigurable):
         )
 
         self.first_load_future = asyncio.Future()
-        self._stop_event = threading.Event()
 
         # Make sure that we know kind, whether we should omit the
         #  namespace, and what our list_method_name is.  For the things
@@ -334,7 +334,7 @@ class ResourceReflector(LoggingConfigurable):
                         else:
                             # This is an atomic operation on the dictionary!
                             self.resources[ref_key] = resource
-                        if self.stopped():
+                        if self._stopped:
                             self.log.info("%s watcher stopped: inner", self.kind)
                             break
                         watch_duration = time.monotonic() - start
@@ -351,6 +351,9 @@ class ResourceReflector(LoggingConfigurable):
                 # this could be due to a network problem or just low activity
                 self.log.warning("Read timeout watching %s, reconnecting", self.kind)
                 continue
+            except asyncio.CancelledError:
+                self.log.debug("Cancelled watching %s", self.kind)
+                raise
             except Exception:
                 cur_delay = cur_delay * 2
                 if cur_delay > 30:
@@ -368,7 +371,7 @@ class ResourceReflector(LoggingConfigurable):
                 self.log.debug("%s watcher timeout", self.kind)
             finally:
                 w.stop()
-                if self.stopped():
+                if self._stopping:
                     self.log.info("%s watcher stopped: outer", self.kind)
                     break
         self.log.warning("%s watcher finished", self.kind)
@@ -393,10 +396,10 @@ class ResourceReflector(LoggingConfigurable):
         """
         Cleanly shut down the watch task.
         """
-        self._stop_event.set()
-        # The watch task should now be in the process of terminating.  Give
-        # it a bit...
+        self._stopping = True
         if self.watch_task and not self.watch_task.done():
+            # cancel the task, wait for it to complete
+            self.watch_task.cancel()
             try:
                 timeout = 5
                 await asyncio.wait_for(self.watch_task, timeout)
@@ -406,9 +409,6 @@ class ResourceReflector(LoggingConfigurable):
                     f"Watch task did not finish in {timeout}s and was cancelled"
                 )
         self.watch_task = None
-
-    def stopped(self):
-        return self._stop_event.is_set()
 
 
 class NamespacedResourceReflector(ResourceReflector):
