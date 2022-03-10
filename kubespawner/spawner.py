@@ -6,7 +6,6 @@ implementation that should be used by JupyterHub.
 """
 import asyncio
 import os
-import signal
 import string
 import sys
 import warnings
