@@ -15,10 +15,9 @@ setup(
     name='jupyterhub-kubespawner',
     version='2.0.2.dev',
     install_requires=[
-        'async_generator>=1.8',
         'escapism',
         'python-slugify',
-        'jupyterhub>=0.8',
+        'jupyterhub>=0.9',
         'jinja2',
         'kubernetes_asyncio>=19.15.1',
         'urllib3',
@@ -28,7 +27,6 @@ setup(
     extras_require={
         'test': [
             'bump2version',
-            'flake8',
             'kubernetes>=11',
             'pytest>=5.4',
             'pytest-cov',

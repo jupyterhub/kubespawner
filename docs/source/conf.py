@@ -20,8 +20,6 @@ import os
 import sys
 from os.path import dirname
 
-import recommonmark.parser
-
 # For conversion from markdown to html
 # set paths
 docs = dirname(dirname(__file__))
