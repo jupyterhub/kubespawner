@@ -41,6 +41,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.napoleon',
     'autodoc_traits',
+    'myst_parser',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -48,13 +49,6 @@ templates_path = ['_templates']
 
 # Set the default role so we can use `foo` instead of ``foo``
 default_role = 'literal'
-
-# The suffix(es) of source filenames.
-# You can specify multiple suffix as a list of string:
-
-source_parsers = {
-    '.md': 'recommonmark.parser.CommonMarkParser',
-}
 
 # source_suffix = ['.rst', '.md']
 source_suffix = ['.rst', '.md']

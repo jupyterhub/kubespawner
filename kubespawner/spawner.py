@@ -1292,7 +1292,7 @@ class KubeSpawner(Spawner):
         on a node with the corresponding taints. See the official Kubernetes documentation for additional details
         https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
 
-        Pass this field an array of `"Toleration" objects
+        Pass this field an array of "Toleration" objects
         * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#toleration-v1-core
 
         Example::
