@@ -131,7 +131,7 @@ class KubeIngressProxy(Proxy):
         asyncio.ensure_future(self.service_reflector.start())
         asyncio.ensure_future(self.endpoint_reflector.start())
 
-    def safe_name_for_routespec(self, routespec):
+    def _safe_name_for_routespec(self, routespec):
         safe_chars = set(string.ascii_lowercase + string.digits)
         safe_name = generate_hashed_slug(
             'jupyter-'
@@ -140,7 +140,7 @@ class KubeIngressProxy(Proxy):
         )
         return safe_name
 
-    async def delete_if_exists(self, kind, safe_name, future):
+    async def _delete_if_exists(self, kind, safe_name, future):
         try:
             await future
             self.log.info('Deleted %s/%s', kind, safe_name)
@@ -154,7 +154,7 @@ class KubeIngressProxy(Proxy):
         # Use full routespec in label
         # 'data' is JSON encoded and put in an annotation - we don't need to query for it
 
-        safe_name = self.safe_name_for_routespec(routespec).lower()
+        safe_name = self._safe_name_for_routespec(routespec).lower()
         labels = {
             'heritage': 'jupyterhub',
             'component': self.component_label,
@@ -201,7 +201,7 @@ class KubeIngressProxy(Proxy):
                 namespace=self.namespace,
                 body=client.V1DeleteOptions(grace_period_seconds=0),
             )
-            await self.delete_if_exists('endpoint', safe_name, delete_endpoint)
+            await self._delete_if_exists('endpoint', safe_name, delete_endpoint)
 
         await ensure_object(
             self.core_api.create_namespaced_service,
@@ -234,7 +234,7 @@ class KubeIngressProxy(Proxy):
         # This means if some of them are already deleted, we just let it
         # be.
 
-        safe_name = self.safe_name_for_routespec(routespec).lower()
+        safe_name = self._safe_name_for_routespec(routespec).lower()
 
         delete_options = client.V1DeleteOptions(grace_period_seconds=0)
 
@@ -265,9 +265,9 @@ class KubeIngressProxy(Proxy):
         # foreground cascading deletion (https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/#foreground-cascading-deletion)
         # instead, but for now this works well enough.
         await asyncio.gather(
-            self.delete_if_exists('endpoint', safe_name, delete_endpoint),
-            self.delete_if_exists('service', safe_name, delete_service),
-            self.delete_if_exists('ingress', safe_name, delete_ingress),
+            self._delete_if_exists('endpoint', safe_name, delete_endpoint),
+            self._delete_if_exists('service', safe_name, delete_service),
+            self._delete_if_exists('ingress', safe_name, delete_ingress),
         )
 
     async def get_all_routes(self):
