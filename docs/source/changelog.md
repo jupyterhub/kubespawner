@@ -8,6 +8,8 @@
 
 ### [3.0.0] - 2022-03-10
 
+This release replaces an synchronous Kubernetes client library with an async alternative, allowing the use of native Python async features.
+
 This release is entirely about replacing a k8s api-server client library
 KubeSpawner has relied on that required us to use multiple threads. It is being
 replaced with one that enabled us to rely on `async`/`await` and an associated
@@ -21,7 +23,7 @@ k8s cluster. For more technical details about this, see
 #### Breaking changes
 
 - Support for Python 3.6 dropped
-- The configuration `k8s_api_threadpool_workers` is deprecated as we don't
+- The configuration `k8s_api_threadpool_workers` is removed as we don't
   create threads any more, but now instead relies on scheduling everything to
   run in an event loop.
 - A dependency on the library
