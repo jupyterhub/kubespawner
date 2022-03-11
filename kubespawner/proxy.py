@@ -42,6 +42,91 @@ class EndpointsReflector(ResourceReflector):
 
 
 class KubeIngressProxy(Proxy):
+    """
+    DISCLAIMER:
+
+        This JupyterHub Proxy class is not maintained thoroughly with tests and
+        documentation, or actively used in any official distribution of
+        JupyterHub.
+
+        KubeIngressProxy was originally developed by @yuvipanda in preparation
+        to support a JupyterHub that could end up with ~20k simultaneous users.
+        The single ConfigurableHTTPProxy server that is controlled by the
+        default JupyterHub Proxy class could bottleneck for such heavy load,
+        even though it has been found to be good enough for ~2k simultaneous
+        users. By instead using this JupyterHub Proxy class that would create
+        k8s resources (Ingress, Service, Endpoint) that in turn controlled how a
+        flexible set of proxy servers would proxy traffic, the bottleneck could
+        be removed.
+
+        KubeIngressProxy's efficiency relates greatly to the performance of the
+        k8s api-server and the k8s controller that routes traffic based on
+        changes to Ingress resources registered by the k8s api-server. This
+        means users of KubeIngressProxy may have greatly varying experiences of
+        using it depending on the performance of their k8s cluster setup.
+
+        Use of KubeIngressProxy as a JupyterHub Proxy class, is entirely
+        independent of use of KubeSpawner as a JupyterHub Spawner class. For
+        reasons related to sharing code with KubeSpawner in reflectors.py, it
+        has been made and remained part of the jupyterhub/kubespawner project.
+
+        Related issues:
+        - Need for tests: https://github.com/jupyterhub/kubespawner/issues/496
+        - Need for docs:  https://github.com/jupyterhub/kubespawner/issues/163
+
+    ---
+
+    KubeIngressProxy is an implementation of the JupyterHub Proxy class that
+    JupyterHub can be configured to rely on:
+
+        c.JupyterHub.proxy_class = "kubespawner:KubeIngressProxy"
+
+    Like all JupyterHub Proxy implementations, KubeIngressProxy will know
+    how to respond to hub requests like `get_all_routes`, `add_route`, and
+    `delete_route` in a way that will ensure traffic will get routed to the user
+    pods or JupyterHub registered external services. For reference, the official
+    documentation on writing a custom Proxy class like this is documented here:
+    https://jupyterhub.readthedocs.io/en/stable/reference/proxy.html.
+
+    KubeIngressProxy communicates with the k8s api-server in order to
+    create/delete Ingress resources according to the hub's `add_route`/`delete_route`
+    requests. It doesn't route traffic by itself, but instead relies on the k8s cluster's
+    ability to route traffic according to these Ingress resources.
+
+    Because KubeIngressProxy interacts with a k8s api-server that manages
+    Ingress resources, it must have permissions to do so as well. These
+    permissions should be granted to a k8s service account for where the
+    JupyterHub is running, as that is also where the KubeIngressProxy class
+    instance will run its code.
+
+    FIXME: Verify what k8s RBAC permissions are required for KubeIngressProxy
+           to function.
+
+           - The IngressReflector, ServiceReflector, and EndpointsReflector
+             require permission to read/list/watch those resources.
+           - `add_route` and `delete_route` requires permission to
+             create/update/patch/delete Ingress, Service, and Endpoints
+             resources.
+
+           These permissions are needed on a k8s Role resource bound to the k8s
+           ServiceAccount (via a k8s RoleBinding) used on the k8s Pod where
+           JupyterHub runs:
+
+           ```yaml
+           kind: Role
+           apiVersion: rbac.authorization.k8s.io/v1
+           metadata:
+           name: kube-ingress-proxy
+           rules:
+             - apiGroups: [""]
+               resources: ["endpoints", "services"]
+               verbs: ["get", "watch", "list", "create", "update", "patch", "delete"]
+             - apiGroups: ["networking.k8s.io"]
+               resources: ["ingresses"]
+               verbs: ["get", "watch", "list", "create", "update", "patch", "delete"]
+           ```
+    """
+
     namespace = Unicode(
         config=True,
         help="""
