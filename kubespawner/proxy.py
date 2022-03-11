@@ -45,15 +45,19 @@ class KubeIngressProxy(Proxy):
     """
     DISCLAIMER:
 
-        This class is not maintained thoroughly with tests and documentation, or
-        actively used in any official distribution of JupyterHub.
+        This JupyterHub Proxy class is not maintained thoroughly with tests and
+        documentation, or actively used in any official distribution of
+        JupyterHub.
 
-        When it was originally developed and piloted by Yuvi (@yuvipanda), it is
-        my (@consideRatio) unverified understanding that it was found to not be
-        reliable, responsive, or performant enough compared to having a
-        dedicated configurable proxy managed by JupyterHub that routed traffic
-        to users and services - something that ships by default in the
-        JupyterHub Helm chart.
+        KubeIngressProxy was originally developed by @yuvipanda in preparation
+        to support a JupyterHub that could end up with ~20k simultaneous users.
+        The single ConfigurableHTTPProxy server that is controlled by the
+        default JupyterHub Proxy class could bottleneck for such heavy load,
+        even though it has been found to be good enough for ~2k simultaneous
+        users. By instead using this JupyterHub Proxy class that would create
+        k8s resources (Ingress, Service, Endpoint) that in turn controlled how a
+        flexible set of proxy servers would proxy traffic, the bottleneck could
+        be removed.
 
         KubeIngressProxy's efficiency relates greatly to the performance of the
         k8s api-server and the k8s controller that routes traffic based on
@@ -98,17 +102,14 @@ class KubeIngressProxy(Proxy):
     FIXME: Verify what k8s RBAC permissions are required for KubeIngressProxy
            to function.
 
-           Preliminary one can note that there is an IngressReflector,
-           ServiceReflector, and EndpointsReflector. So at least permission to
-           read/list/watch those resources would be needed.
+           - The IngressReflector, ServiceReflector, and EndpointsReflector
+             require permission to read/list/watch those resources.
+           - `add_route` and `delete_route` requires permission to
+             create/update/patch/delete Ingress, Service, and Endpoints
+             resources.
 
-           For Ingress resources, one would also need the ability to create,
-           patch, and delete them, as concluded by inspection of `add_route` and
-           `delete_route`.
-
-           Without having verified these permissions are sufficient, it looks
-           like these permissions are needed on a k8s Role resource bound to the
-           k8s ServiceAccount (via a k8s RoleBinding) used on the k8s Pod where
+           These permissions are needed on a k8s Role resource bound to the k8s
+           ServiceAccount (via a k8s RoleBinding) used on the k8s Pod where
            JupyterHub runs:
 
            ```yaml
@@ -119,7 +120,7 @@ class KubeIngressProxy(Proxy):
            rules:
              - apiGroups: [""]
                resources: ["endpoints", "services"]
-               verbs: ["get", "watch", "list"]
+               verbs: ["get", "watch", "list", "create", "update", "patch", "delete"]
              - apiGroups: ["networking.k8s.io"]
                resources: ["ingresses"]
                verbs: ["get", "watch", "list", "create", "update", "patch", "delete"]
