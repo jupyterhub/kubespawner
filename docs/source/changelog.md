@@ -8,7 +8,7 @@
 
 ### [3.0.0] - 2022-03-14
 
-This release replaces an synchronous Kubernetes client library with an async
+This release replaces a synchronous Kubernetes client library with an async
 alternative, allowing the use of native Python async features.
 
 #### Breaking changes
@@ -21,6 +21,7 @@ alternative, allowing the use of native Python async features.
   [`kubernetes`](https://github.com/kubernetes-client/python#readme) is replaced
   with a dependency on the library
   [`kubernetes_asyncio`](https://github.com/tomplus/kubernetes_asyncio#readme).
+- Methods considered internal to Kubespawner are now prefixed with `_`.
 
 #### Maintenance and upkeep improvements
 
