@@ -4,9 +4,48 @@
 
 ## [Unreleased]
 
+## 3.0
+
+### [3.0.0] - 2022-03-14
+
+This release replaces a synchronous Kubernetes client library with an async
+alternative, allowing the use of native Python async features.
+
+#### Breaking changes
+
+- Support for Python 3.6 dropped
+- The configuration `k8s_api_threadpool_workers` is removed as we don't create
+  threads any more, but now instead relies on scheduling everything to run in an
+  event loop.
+- A dependency on the library
+  [`kubernetes`](https://github.com/kubernetes-client/python#readme) is replaced
+  with a dependency on the library
+  [`kubernetes_asyncio`](https://github.com/tomplus/kubernetes_asyncio#readme).
+- Methods considered internal to Kubespawner are now prefixed with `_`.
+
+#### Maintenance and upkeep improvements
+
+- Please flake8 by removing unused imports [#584](https://github.com/jupyterhub/kubespawner/pull/584) ([@consideRatio](https://github.com/consideRatio))
+- close shared clients when loop closes [#579](https://github.com/jupyterhub/kubespawner/pull/579) ([@minrk](https://github.com/minrk), [@consideRatio](https://github.com/consideRatio))
+- Simplify async init [#576](https://github.com/jupyterhub/kubespawner/pull/576) ([@minrk](https://github.com/minrk), [@consideRatio](https://github.com/consideRatio))
+- Replace recommonmark with myst_parser and fix changelog rendering [#575](https://github.com/jupyterhub/kubespawner/pull/575) ([@rccern](https://github.com/rccern), [@consideRatio](https://github.com/consideRatio), [@welcome](https://github.com/welcome), [@choldgraf](https://github.com/choldgraf), [@manics](https://github.com/manics))
+- \[KubeIngressProxy\] Add underscore prefix to private functions: `safe_name_for_routespec` and `delete_if_exists` [#572](https://github.com/jupyterhub/kubespawner/pull/572) ([@consideRatio](https://github.com/consideRatio), [@manics](https://github.com/manics), [@minrk](https://github.com/minrk))
+- Misc maintenance details [#571](https://github.com/jupyterhub/kubespawner/pull/571) ([@consideRatio](https://github.com/consideRatio), [@minrk](https://github.com/minrk))
+- Rely on the event loop: use `kubernetes_asyncio` instead of `kubernetes` and dedicated threads [#563](https://github.com/jupyterhub/kubespawner/pull/563) ([@athornton](https://github.com/athornton), [@yuvipanda](https://github.com/yuvipanda), [@consideRatio](https://github.com/consideRatio), [@minrk](https://github.com/minrk), [@manics](https://github.com/manics))
+
+#### Documentation improvements
+
+- \[KubeIngressProxy\] Add a long docstring to KubeIngressProxy class [#568](https://github.com/jupyterhub/kubespawner/pull/568) ([@consideRatio](https://github.com/consideRatio), [@yuvipanda](https://github.com/yuvipanda), [@GeorgianaElena](https://github.com/GeorgianaElena))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2022-02-15&to=2022-03-11&type=c))
+
+[@athornton](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aathornton+updated%3A2022-02-15..2022-03-11&type=Issues) | [@choldgraf](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Acholdgraf+updated%3A2022-02-15..2022-03-11&type=Issues) | [@clkao](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aclkao+updated%3A2022-02-15..2022-03-11&type=Issues) | [@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2022-02-15..2022-03-11&type=Issues) | [@GeorgianaElena](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AGeorgianaElena+updated%3A2022-02-15..2022-03-11&type=Issues) | [@manics](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2022-02-15..2022-03-11&type=Issues) | [@minrk](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2022-02-15..2022-03-11&type=Issues) | [@rccern](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Arccern+updated%3A2022-02-15..2022-03-11&type=Issues) | [@welcome](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Awelcome+updated%3A2022-02-15..2022-03-11&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2022-02-15..2022-03-11&type=Issues)
+
 ## 2.0
 
-### 2.0.1 - 2022-02-15
+### [2.0.1] - 2022-02-15
 
 #### Maintenance and upkeep improvements
 
@@ -18,7 +57,7 @@
 
 [@athornton](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aathornton+updated%3A2021-11-28..2022-02-03&type=Issues) | [@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2021-11-28..2022-02-03&type=Issues) | [@minrk](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2021-11-28..2022-02-03&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2021-11-28..2022-02-03&type=Issues)
 
-### 2.0.0 - 2021-11-28
+### [2.0.0] - 2021-11-28
 
 #### Breaking changes
 
@@ -443,7 +482,10 @@ Change highlights:
 - Update Kubernetes Python client to 6.0 (supporting Kubernetes 1.10 APIs)
 - Numerous bugfixes
 
-[unreleased]: https://github.com/jupyterhub/kubespawner/compare/1.1.0...HEAD
+[unreleased]: https://github.com/jupyterhub/kubespawner/compare/3.0.0...HEAD
+[3.0.0]: https://github.com/jupyterhub/kubespawner/compare/2.0.1...3.0.0
+[2.0.1]: https://github.com/jupyterhub/kubespawner/compare/2.0.0...2.0.1
+[2.0.0]: https://github.com/jupyterhub/kubespawner/compare/1.1.2...2.0.0
 [1.1.2]: https://github.com/jupyterhub/kubespawner/compare/1.1.1...1.1.2
 [1.1.1]: https://github.com/jupyterhub/kubespawner/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/jupyterhub/kubespawner/compare/1.0.0...1.1.0
