@@ -9,12 +9,20 @@
 # - Register git hooks: pre-commit install --install-hooks
 #
 repos:
+  # Autoformat: Python code, syntax patterns are modernized
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v2.31.0
+    hooks:
+      - id: pyupgrade
+        args:
+          - --py37-plus
+
   # Autoformat: Python code
   - repo: https://github.com/psf/black
     rev: 22.1.0
     hooks:
       - id: black
-        args: [--target-version=py36]
+        args: [--target-version=py37]
 
   # Autoformat: markdown, yaml
   - repo: https://github.com/pre-commit/mirrors-prettier
