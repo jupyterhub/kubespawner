@@ -333,7 +333,7 @@ class ResourceReflector(LoggingConfigurable):
                         else:
                             # This is an atomic operation on the dictionary!
                             self.resources[ref_key] = resource
-                        if self._stopped:
+                        if self._stopping:
                             self.log.info("%s watcher stopped: inner", self.kind)
                             break
                         watch_duration = time.monotonic() - start
