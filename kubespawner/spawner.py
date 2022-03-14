@@ -108,7 +108,7 @@ class EventReflector(ResourceReflector):
         )
 
 
-class MockObject(object):
+class MockObject:
     pass
 
 
@@ -175,7 +175,7 @@ class KubeSpawner(Spawner):
 
         if self.enable_user_namespaces:
             self.namespace = self._expand_user_properties(self.user_namespace_template)
-            self.log.info("Using user namespace: {}".format(self.namespace))
+            self.log.info(f"Using user namespace: {self.namespace}")
 
         self.pod_name = self._expand_user_properties(self.pod_name_template)
         self.dns_name = self.dns_name_template.format(
@@ -2015,7 +2015,7 @@ class KubeSpawner(Spawner):
         See also: jupyterhub.Spawner.get_env
         """
 
-        env = super(KubeSpawner, self).get_env()
+        env = super().get_env()
         # deprecate image
         env['JUPYTER_IMAGE_SPEC'] = self.image
         env['JUPYTER_IMAGE'] = self.image
@@ -2049,7 +2049,7 @@ class KubeSpawner(Spawner):
         necessary to check that the returned value is None, rather than
         just Falsy, to determine that the pod is still running.
         """
-        ref_key = "{}/{}".format(self.namespace, self.pod_name)
+        ref_key = f"{self.namespace}/{self.pod_name}"
         pod = self.pod_reflector.pods.get(ref_key, None)
         if pod is not None:
             if pod["status"]["phase"] == 'Pending':
@@ -2381,8 +2381,8 @@ class KubeSpawner(Spawner):
         Designed to be used with exponential_backoff, so returns
         True when the resource no longer exists, False otherwise
         """
-        delete = getattr(self.api, "delete_namespaced_{}".format(kind))
-        read = getattr(self.api, "read_namespaced_{}".format(kind))
+        delete = getattr(self.api, f"delete_namespaced_{kind}")
+        read = getattr(self.api, f"read_namespaced_{kind}")
 
         # first, attempt to delete the resource
         try:
@@ -2485,7 +2485,7 @@ class KubeSpawner(Spawner):
         if self.modify_pod_hook:
             pod = await gen.maybe_future(self.modify_pod_hook(self, pod))
 
-        ref_key = "{}/{}".format(self.namespace, self.pod_name)
+        ref_key = f"{self.namespace}/{self.pod_name}"
         # If there's a timeout, just let it propagate
         await exponential_backoff(
             partial(self._make_create_pod_request, pod, self.k8s_api_request_timeout),
@@ -2553,7 +2553,7 @@ class KubeSpawner(Spawner):
         try:
             await exponential_backoff(
                 lambda: self.is_pod_running(self.pod_reflector.pods.get(ref_key, None)),
-                'pod %s did not start in %s seconds!' % (ref_key, self.start_timeout),
+                f'pod {ref_key} did not start in {self.start_timeout} seconds!',
                 timeout=self.start_timeout,
             )
         except TimeoutError:
@@ -2564,7 +2564,7 @@ class KubeSpawner(Spawner):
                     "Pod %s never showed up in reflector, restarting pod reflector",
                     ref_key,
                 )
-                self.log.error("Pods: {}".format(self.pod_reflector.pods))
+                self.log.error(f"Pods: {self.pod_reflector.pods}")
                 self._start_watching_pods(replace=True)
             raise
 
@@ -2598,7 +2598,7 @@ class KubeSpawner(Spawner):
         Designed to be used with exponential_backoff, so returns
         True / False on success / failure
         """
-        ref_key = "{}/{}".format(self.namespace, pod_name)
+        ref_key = f"{self.namespace}/{pod_name}"
         self.log.info("Deleting pod %s", ref_key)
         try:
             await asyncio.wait_for(
@@ -2666,7 +2666,7 @@ class KubeSpawner(Spawner):
 
         delete_options.grace_period_seconds = grace_seconds
 
-        ref_key = "{}/{}".format(self.namespace, self.pod_name)
+        ref_key = f"{self.namespace}/{self.pod_name}"
         await exponential_backoff(
             partial(
                 self._make_delete_pod_request,

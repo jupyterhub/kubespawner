@@ -24,13 +24,13 @@ class MockUser(Mock):
 async def test_enable_user_namespaces():
     user = MockUser()
     spawner = KubeSpawner(user=user, _mock=True, enable_user_namespaces=True)
-    assert spawner.namespace.endswith("-{}".format(user.escaped_name))
+    assert spawner.namespace.endswith(f"-{user.escaped_name}")
 
 
 async def test_multi_namespace_spawner_class():
     user = MockUser()
     spawner = KubeSpawner(user=user, _mock=True, enable_user_namespaces=True)
-    assert spawner.namespace.endswith("-{}".format(user.escaped_name))
+    assert spawner.namespace.endswith(f"-{user.escaped_name}")
 
 
 async def test_multi_namespace_spawn():

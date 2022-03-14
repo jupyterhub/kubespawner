@@ -305,8 +305,8 @@ async def ensure_not_exists(kube_client, kube_ns, name, resource_type, timeout=3
 
     Request deletion and wait for it to be gone
     """
-    delete = getattr(kube_client, "delete_namespaced_{}".format(resource_type))
-    read = getattr(kube_client, "read_namespaced_{}".format(resource_type))
+    delete = getattr(kube_client, f"delete_namespaced_{resource_type}")
+    read = getattr(kube_client, f"read_namespaced_{resource_type}")
     try:
         await delete(namespace=kube_ns, name=name)
     except ApiException as e:
@@ -324,7 +324,7 @@ async def ensure_not_exists(kube_client, kube_ns, name, resource_type, timeout=3
             else:
                 raise
         else:
-            print("waiting for {}/{} to delete".format(resource_type, name))
+            print(f"waiting for {resource_type}/{name} to delete")
             await asyncio.sleep(1)
 
 
@@ -526,7 +526,7 @@ async def _exec_python_in_pod(
             [
                 inspect.getsource(func),
                 "_kw = %r" % (kwargs or {}),
-                "{}(**_kw)".format(func.__name__),
+                f"{func.__name__}(**_kw)",
                 "",
             ]
         )
@@ -538,7 +538,7 @@ async def _exec_python_in_pod(
         "-c",
         code,
     ]
-    print("Running {} in {}".format(code, pod_name))
+    print(f"Running {code} in {pod_name}")
     # need to create ws client to get returncode,
     # see https://github.com/kubernetes-client/python/issues/812
     #

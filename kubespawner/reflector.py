@@ -174,12 +174,8 @@ class ResourceReflector(LoggingConfigurable):
         self.api = shared_client(self.api_group_name)
 
         # FIXME: Protect against malicious labels?
-        self.label_selector = ','.join(
-            ['{}={}'.format(k, v) for k, v in self.labels.items()]
-        )
-        self.field_selector = ','.join(
-            ['{}={}'.format(k, v) for k, v in self.fields.items()]
-        )
+        self.label_selector = ','.join([f'{k}={v}' for k, v in self.labels.items()])
+        self.field_selector = ','.join([f'{k}={v}' for k, v in self.fields.items()])
 
         self.first_load_future = asyncio.Future()
 
@@ -277,7 +273,7 @@ class ResourceReflector(LoggingConfigurable):
         if self.omit_namespace:
             ns_str = "all namespaces"
         else:
-            ns_str = "namespace {}".format(self.namespace)
+            ns_str = f"namespace {self.namespace}"
 
         self.log.info(
             "watching for %s with %s in %s",

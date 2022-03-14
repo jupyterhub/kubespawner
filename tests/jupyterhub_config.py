@@ -45,7 +45,7 @@ if os.path.exists(ssl_tar_file):
     path = cfg["hub-internal"]["files"]["key"]
     prefix_len = path.index("/hub-internal")
     prefix = path[:prefix_len]
-    print("relocating certipy {} -> {}".format(prefix, ssl_dir))
+    print(f"relocating certipy {prefix} -> {ssl_dir}")
     for name, service in cfg.items():
         for key in list(service["files"]):
             path = service["files"][key]
