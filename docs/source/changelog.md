@@ -6,6 +6,12 @@
 
 ## 3.0
 
+### [3.0.1] - 2022-03-14
+
+#### Bugs fixed
+
+- Fix typo in reflector.\_stopping [#587](https://github.com/jupyterhub/kubespawner/pull/587) ([@minrk](https://github.com/minrk), [@consideRatio](https://github.com/consideRatio))
+
 ### [3.0.0] - 2022-03-14
 
 This release replaces a synchronous Kubernetes client library with an async
@@ -482,7 +488,8 @@ Change highlights:
 - Update Kubernetes Python client to 6.0 (supporting Kubernetes 1.10 APIs)
 - Numerous bugfixes
 
-[unreleased]: https://github.com/jupyterhub/kubespawner/compare/3.0.0...HEAD
+[unreleased]: https://github.com/jupyterhub/kubespawner/compare/3.0.1...HEAD
+[3.0.0]: https://github.com/jupyterhub/kubespawner/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/jupyterhub/kubespawner/compare/2.0.1...3.0.0
 [2.0.1]: https://github.com/jupyterhub/kubespawner/compare/2.0.0...2.0.1
 [2.0.0]: https://github.com/jupyterhub/kubespawner/compare/1.1.2...2.0.0
