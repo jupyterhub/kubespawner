@@ -1,4 +1,5 @@
 (front-page)=
+
 # Kubespawner
 
 The _kubespawner_ (also known as JupyterHub Kubernetes Spawner) enables JupyterHub to spawn
@@ -65,7 +66,6 @@ If you are just getting started and want a kubernetes cluster to play with,
 [Google Container Engine](https://cloud.google.com/kubernetes-engine/) is
 probably the nicest option. For AWS/Azure,
 [kops](https://github.com/kubernetes/kops) is probably the way to go.
-
 
 ```{toctree}
 :maxdepth: 2
