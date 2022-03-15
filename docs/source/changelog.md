@@ -489,7 +489,7 @@ Change highlights:
 - Numerous bugfixes
 
 [unreleased]: https://github.com/jupyterhub/kubespawner/compare/3.0.1...HEAD
-[3.0.0]: https://github.com/jupyterhub/kubespawner/compare/3.0.0...3.0.1
+[3.0.1]: https://github.com/jupyterhub/kubespawner/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/jupyterhub/kubespawner/compare/2.0.1...3.0.0
 [2.0.1]: https://github.com/jupyterhub/kubespawner/compare/2.0.0...2.0.1
 [2.0.0]: https://github.com/jupyterhub/kubespawner/compare/1.1.2...2.0.0
