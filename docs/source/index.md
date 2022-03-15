@@ -74,7 +74,7 @@ probably the nicest option. For AWS/Azure,
 spawner
 objects
 reflector
-ssl.md
+ssl
 traitlets
 utils
 ```
