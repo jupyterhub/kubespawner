@@ -13,7 +13,7 @@ from kubespawner.utils import get_k8s_model
 from kubespawner.utils import update_k8s_model
 
 
-class MockLogger(object):
+class MockLogger:
     """Trivial class to store logs for inspection after a test run."""
 
     def __init__(self):
