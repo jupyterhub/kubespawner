@@ -1,5 +1,5 @@
 """
-Misc. general utility functions, not tied to Kubespawner directly
+Misc. general utility functions, not tied to KubeSpawner directly
 """
 import copy
 import hashlib

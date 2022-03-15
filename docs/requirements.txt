@@ -4,6 +4,6 @@ pyyaml
 setuptools
 # sphinx 4.2+ is required to be compatible with Python 3.10
 sphinx>=4.2,<5
+sphinx-book-theme
 sphinx-copybutton
-sphinx_rtd_theme
 traitlets>=4.1
