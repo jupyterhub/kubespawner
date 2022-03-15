@@ -6,6 +6,26 @@
 
 ## 3.0
 
+### [3.0.2] - 2022-03-15
+
+#### Bugs fixed
+
+- [KubeIngressProxy] Fix critical regression from typo [#593](https://github.com/jupyterhub/kubespawner/pull/593) ([@ondave](https://github.com/ondave), [@yuvipanda](https://github.com/yuvipanda), [@consideRatio](https://github.com/consideRatio))
+
+#### Maintenance and upkeep improvements
+
+- refactor: add pre-commit hook pyupgrade, and run it [#586](https://github.com/jupyterhub/kubespawner/pull/586) ([@consideRatio](https://github.com/consideRatio))
+
+#### Documentation improvements
+
+- DOCS: Update theme to use book theme [#591](https://github.com/jupyterhub/kubespawner/pull/591) ([@choldgraf](https://github.com/choldgraf), [@consideRatio](https://github.com/consideRatio))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2022-03-14&to=2022-03-15&type=c))
+
+[@choldgraf](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Acholdgraf+updated%3A2022-03-14..2022-03-15&type=Issues) | [@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2022-03-14..2022-03-15&type=Issues) | [@ondave](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aondave+updated%3A2022-03-14..2022-03-15&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2022-03-14..2022-03-15&type=Issues)
+
 ### [3.0.1] - 2022-03-14
 
 #### Bugs fixed
@@ -488,7 +508,8 @@ Change highlights:
 - Update Kubernetes Python client to 6.0 (supporting Kubernetes 1.10 APIs)
 - Numerous bugfixes
 
-[unreleased]: https://github.com/jupyterhub/kubespawner/compare/3.0.1...HEAD
+[unreleased]: https://github.com/jupyterhub/kubespawner/compare/3.0.2...HEAD
+[3.0.2]: https://github.com/jupyterhub/kubespawner/compare/3.0.1...3.0.2
 [3.0.1]: https://github.com/jupyterhub/kubespawner/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/jupyterhub/kubespawner/compare/2.0.1...3.0.0
 [2.0.1]: https://github.com/jupyterhub/kubespawner/compare/2.0.0...2.0.1
