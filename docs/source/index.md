@@ -75,7 +75,6 @@ spawner
 objects
 reflector
 ssl
-traitlets
 utils
 ```
 
