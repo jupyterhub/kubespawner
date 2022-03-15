@@ -203,7 +203,7 @@ class KubeIngressProxy(Proxy):
             parent=self, namespace=self.namespace, labels=labels
         )
         self.endpoint_reflector = EndpointsReflector(
-            self, namespace=self.namespace, labels=labels
+            parent=self, namespace=self.namespace, labels=labels
         )
 
         # schedule our reflectors to start in the event loop,
