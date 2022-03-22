@@ -11,8 +11,8 @@ async def test_shared_client():
     core = shared_client("CoreV1Api")
     core2 = shared_client("CoreV1Api")
     assert core2 is core
-    ext = shared_client("ExtensionsV1beta1Api")
-    ext2 = shared_client("ExtensionsV1beta1Api")
+    ext = shared_client("NetworkingV1Api")
+    ext2 = shared_client("NetworkingV1Api")
     assert ext is ext2
     assert ext is not core
 

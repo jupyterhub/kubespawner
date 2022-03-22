@@ -120,8 +120,8 @@ class ResourceReflector(LoggingConfigurable):
         Name of class that represents the apigroup on which
         `list_method_name` is to be found.
 
-        Defaults to CoreV1Api, which has everything in the 'core' API group. If you want to watch Ingresses,
-        for example, you would have to use ExtensionsV1beta1Api
+        Defaults to CoreV1Api, which has everything in the 'core' API group. If
+        you want to watch Ingresses you would have to use NetworkingV1Api.
         """,
     )
 
