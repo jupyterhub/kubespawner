@@ -43,7 +43,7 @@ jobs:
         include:
           # Tests with oldest supported Python, k8s, and k8s client
           - python: "3.7"
-            k3s: v1.17
+            k3s: v1.20
             test_dependencies: kubernetes_asyncio==19.*
 
           # Test with modern python and k8s versions
