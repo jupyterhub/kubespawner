@@ -18,7 +18,7 @@ from .utils import generate_hashed_slug
 
 class IngressReflector(ResourceReflector):
     kind = 'ingresses'
-    api_group_name = 'ExtensionsV1beta1Api'
+    api_group_name = 'NetworkingV1Api'
 
     @property
     def ingresses(self):
@@ -190,7 +190,7 @@ class KubeIngressProxy(Proxy):
         super().__init__(*args, **kwargs)
         load_config(host=self.k8s_api_host, ssl_ca_cert=self.k8s_api_ssl_ca_cert)
         self.core_api = shared_client('CoreV1Api')
-        self.extension_api = shared_client('ExtensionsV1beta1Api')
+        self.networking_api = shared_client('NetworkingV1Api')
 
         labels = {
             'component': self.component_label,
@@ -301,8 +301,8 @@ class KubeIngressProxy(Proxy):
         )
 
         await ensure_object(
-            self.extension_api.create_namespaced_ingress,
-            self.extension_api.patch_namespaced_ingress,
+            self.networking_api.create_namespaced_ingress,
+            self.networking_api.patch_namespaced_ingress,
             body=ingress,
             kind='ingress',
         )
@@ -334,7 +334,7 @@ class KubeIngressProxy(Proxy):
             body=delete_options,
         )
 
-        delete_ingress = await self.extension_api.delete_namespaced_ingress(
+        delete_ingress = await self.networking_api.delete_namespaced_ingress(
             name=safe_name,
             namespace=self.namespace,
             body=delete_options,

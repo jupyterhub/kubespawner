@@ -2063,10 +2063,15 @@ def test_make_ingress(target, ip):
                         'paths': [
                             {
                                 'backend': {
-                                    'serviceName': 'jupyter-test',
-                                    'servicePort': 9000,
+                                    'service': {
+                                        'name': 'jupyter-test',
+                                        'port': {
+                                            'number': 9000,
+                                        },
+                                    },
                                 },
                                 'path': '/my-path',
+                                'pathType': 'Prefix',
                             }
                         ]
                     }
@@ -2141,10 +2146,15 @@ def test_make_ingress_external_name():
                         'paths': [
                             {
                                 'backend': {
-                                    'serviceName': 'jupyter-test',
-                                    'servicePort': 9000,
+                                    'service': {
+                                        'name': 'jupyter-test',
+                                        'port': {
+                                            'number': 9000,
+                                        },
+                                    },
                                 },
                                 'path': '/my-path',
+                                'pathType': 'Prefix',
                             }
                         ]
                     }
