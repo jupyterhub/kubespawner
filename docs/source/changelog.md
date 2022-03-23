@@ -1,8 +1,39 @@
 # Changes in KubeSpawner
 
-<!-- PR link template: - [#](https://github.com/jupyterhub/kubespawner/pull/) ([@](https://github.com/)) -->
+<!-- PR summaries generated using github-activity CLI, see RELEASE.md for details -->
 
 ## [Unreleased]
+
+## 4.0
+
+### [4.0.0] - 2022-04-23
+
+#### Breaking changes
+
+- Support for use against k8s 1.17-1.19 is no longer maintained, please upgrade to k8s 1.20+ to ensure function.
+- If you have configured `c.JupyterHub.proxy_class` to use `KubeIngressProxy`, please read the notes in [#598](https://github.com/jupyterhub/kubespawner/pull/598) along with the [disclaimer for use of this JupyterHub proxy class](https://github.com/jupyterhub/kubespawner/blob/ea9a13b73e793574a1a5045be75930122c5b03c9/kubespawner/proxy.py#L44-L75).
+
+#### New features added
+
+- Add `services_enabled` to create a k8s Service for each user pod (enables use with Istio mTLS) [#522](https://github.com/jupyterhub/kubespawner/pull/522) ([@JJ11teen](https://github.com/JJ11teen))
+
+#### Bugs fixed
+
+- [KubeIngressProxy] breaking: Migrate to networking.k8s.io/v1 api for Ingress resources [#598](https://github.com/jupyterhub/kubespawner/pull/598) ([@consideRatio](https://github.com/consideRatio))
+
+#### Maintenance and upkeep improvements
+
+- pre-commit: replace reorder-python-imports with isort [#606](https://github.com/jupyterhub/kubespawner/pull/606) ([@consideRatio](https://github.com/consideRatio))
+
+#### Continuous integration
+
+- ci: stop testinging 1.17-1.19, assume k8s 1.20+ going onwards [#599](https://github.com/jupyterhub/kubespawner/pull/599) ([@consideRatio](https://github.com/consideRatio))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2022-03-15&to=2022-04-23&type=c))
+
+[@agt](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aagt+updated%3A2022-03-15..2022-04-23&type=Issues) | [@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2022-03-15..2022-04-23&type=Issues) | [@JJ11teen](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AJJ11teen+updated%3A2022-03-15..2022-04-23&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2022-03-15..2022-04-23&type=Issues) | [@zflamig](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Azflamig+updated%3A2022-03-15..2022-04-23&type=Issues)
 
 ## 3.0
 
@@ -508,7 +539,8 @@ Change highlights:
 - Update Kubernetes Python client to 6.0 (supporting Kubernetes 1.10 APIs)
 - Numerous bugfixes
 
-[unreleased]: https://github.com/jupyterhub/kubespawner/compare/3.0.2...HEAD
+[unreleased]: https://github.com/jupyterhub/kubespawner/compare/4.0.0...HEAD
+[4.0.0]: https://github.com/jupyterhub/kubespawner/compare/3.0.2...4.0.0
 [3.0.2]: https://github.com/jupyterhub/kubespawner/compare/3.0.1...3.0.2
 [3.0.1]: https://github.com/jupyterhub/kubespawner/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/jupyterhub/kubespawner/compare/2.0.1...3.0.0
