@@ -50,6 +50,18 @@ def shared_client(ClientType, *args, **kwargs):
 
         _client_cache[cache_key] = client
 
+        # This is a little bit silly, but: if you ask for ClientType
+        # "ApiClient", the returned client does not have an api_client
+        # attr.
+
+        # So we just create that attr, pointing at the object itself,
+        # if we requested ClientType "ApiClient".  This lets
+        # close_client_task(), below, succeed, and resolves
+        # https://github.com/jupyterhub/kubespawner/issues/602
+
+        if ClientType == "ApiClient":
+            client.api_client = client
+
         # create a task that will close the client when it is cancelled
         # relies on JupyterHub's task cleanup at shutdown
         async def close_client_task():
