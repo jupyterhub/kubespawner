@@ -18,6 +18,12 @@ repos:
           - --py37-plus
 
   # Autoformat: Python code
+  - repo: https://github.com/pycqa/isort
+    rev: 5.10.1
+    hooks:
+      - id: isort
+
+  # Autoformat: Python code
   - repo: https://github.com/psf/black
     rev: 22.3.0
     hooks:
@@ -29,12 +35,6 @@ repos:
     rev: v2.6.2
     hooks:
       - id: prettier
-
-  # Autoformat: https://github.com/asottile/reorder_python_imports
-  - repo: https://github.com/asottile/reorder_python_imports
-    rev: v3.0.1
-    hooks:
-      - id: reorder-python-imports
 
   # Misc...
   - repo: https://github.com/pre-commit/pre-commit-hooks
