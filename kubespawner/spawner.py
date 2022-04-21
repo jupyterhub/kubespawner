@@ -9,39 +9,39 @@ import os
 import string
 import sys
 import warnings
-from functools import partial
-from functools import wraps
+from functools import partial, wraps
 from urllib.parse import urlparse
 
 import escapism
-from jinja2 import BaseLoader
-from jinja2 import Environment
+from jinja2 import BaseLoader, Environment
 from jupyterhub.spawner import Spawner
-from jupyterhub.traitlets import Callable
-from jupyterhub.traitlets import Command
+from jupyterhub.traitlets import Callable, Command
 from jupyterhub.utils import exponential_backoff
 from kubernetes_asyncio import client
 from kubernetes_asyncio.client.rest import ApiException
 from slugify import slugify
 from tornado import gen
-from traitlets import Bool
-from traitlets import default
-from traitlets import Dict
-from traitlets import Integer
-from traitlets import List
-from traitlets import observe
-from traitlets import Unicode
-from traitlets import Union
-from traitlets import validate
+from traitlets import (
+    Bool,
+    Dict,
+    Integer,
+    List,
+    Unicode,
+    Union,
+    default,
+    observe,
+    validate,
+)
 
-from .clients import load_config
-from .clients import shared_client
-from .objects import make_namespace
-from .objects import make_owner_reference
-from .objects import make_pod
-from .objects import make_pvc
-from .objects import make_secret
-from .objects import make_service
+from .clients import load_config, shared_client
+from .objects import (
+    make_namespace,
+    make_owner_reference,
+    make_pod,
+    make_pvc,
+    make_secret,
+    make_service,
+)
 from .reflector import ResourceReflector
 
 

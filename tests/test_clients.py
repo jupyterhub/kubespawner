@@ -2,8 +2,7 @@ import asyncio
 
 from conftest import cancel_tasks
 
-from kubespawner.clients import load_config
-from kubespawner.clients import shared_client
+from kubespawner.clients import load_config, shared_client
 
 
 async def test_shared_client():

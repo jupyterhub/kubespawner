@@ -1,7 +1,6 @@
 from unittest.mock import Mock
 
-from jupyterhub.objects import Hub
-from jupyterhub.objects import Server
+from jupyterhub.objects import Hub, Server
 from traitlets.config import Config
 
 from kubespawner import KubeSpawner
