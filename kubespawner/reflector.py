@@ -6,11 +6,7 @@ import time
 from functools import partial
 
 from kubernetes_asyncio import watch
-from traitlets import Any
-from traitlets import Bool
-from traitlets import Dict
-from traitlets import Int
-from traitlets import Unicode
+from traitlets import Any, Bool, Dict, Int, Unicode
 from traitlets.config import LoggingConfigurable
 from urllib3.exceptions import ReadTimeoutError
 

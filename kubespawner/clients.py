@@ -11,8 +11,7 @@ from functools import lru_cache
 from unittest.mock import Mock
 
 import kubernetes_asyncio.client
-from kubernetes_asyncio.client import api_client
-from kubernetes_asyncio.client import Configuration
+from kubernetes_asyncio.client import Configuration, api_client
 
 # FIXME: Remove this workaround when instantiating a k8s client doesn't
 #        automatically create a ThreadPool with 1 thread that we won't use

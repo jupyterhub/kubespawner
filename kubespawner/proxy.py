@@ -9,8 +9,7 @@ from jupyterhub.utils import exponential_backoff
 from kubernetes_asyncio import client
 from traitlets import Unicode
 
-from .clients import load_config
-from .clients import shared_client
+from .clients import load_config, shared_client
 from .objects import make_ingress
 from .reflector import ResourceReflector
 from .utils import generate_hashed_slug
