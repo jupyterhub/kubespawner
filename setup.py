@@ -10,7 +10,7 @@ if v[:2] < (3, 7):
 
 setup(
     name='jupyterhub-kubespawner',
-    version='4.0.0',
+    version='4.0.1.dev',
     install_requires=[
         'escapism',
         'python-slugify',
