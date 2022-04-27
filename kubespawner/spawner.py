@@ -1478,11 +1478,11 @@ class KubeSpawner(Spawner):
                 {% if profile.description %}
                 <p>{{ profile.description }}</p>
                 {% endif %}
-                {% if profile.images %}
+                {% if profile.image_options %}
                 <div class='image-container'>
                     <label for='image'>Image </label>
                     <select name="image" class="form-control">
-                        {% for image in profile.images %}
+                        {% for image in profile.image_options %}
                         <option value="{{ image.spec }}">{{ image.display_name }}</option>
                         {% endfor %}
                     </select>
@@ -1522,7 +1522,7 @@ class KubeSpawner(Spawner):
         - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
           settings. Each value can be either the final value to change or a callable that
           take the `KubeSpawner` instance as parameter and return the final value.
-        - 'images': A list of dictionaries that specify a list of images that the user can
+        - 'image_options': A list of dictionaries that specify a list of images that the user can
           choose from for this profile. The values required are 'spec' and 'display_name'.
         - `default`: (optional Bool) True if this is the default selected option
 
@@ -2869,7 +2869,7 @@ class KubeSpawner(Spawner):
             setattr(self, k, v)
 
         if image:
-            if image not in set([i['spec'] for i in profile.get('images', [])]):
+            if image not in set([i['spec'] for i in profile.get('image_options', [])]):
                 self.log.warn(f'Image {image} requested, but not configured for profile {slug}')
             else:
                 self.log.info(f'Using image {image} with profile {slug} for user {self.user.name}')
