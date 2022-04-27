@@ -1438,23 +1438,58 @@ class KubeSpawner(Spawner):
         """
         <style>
         /* The profile description should not be bold, even though it is inside the <label> tag */
-        #kubespawner-profiles-list label p {
+        #kubespawner-profiles-list .profile p, #kubespawner-profiles-list .profile label {
             font-weight: normal;
+        }
+
+        #kubespawner-profiles-list .profile {
+            display: flex;
+            flex-direction: row;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 12px;
+        }
+
+        #kubespawner-profiles-list .profile .check {
+            display: flex;
+            align-content: center;
+            padding: 12px;
+        }
+
+        #kubespawner-profiles-list .profile .image-container {
+            display: flex;
+            align-items: center;
+        }
+
+        #kubespawner-profiles-list .profile .image-container label{
+            font-weight: normal;
+            margin-right: 8px;
         }
         </style>
 
         <div class='form-group' id='kubespawner-profiles-list'>
         {% for profile in profile_list %}
-        <label for='profile-item-{{ profile.slug }}' class='form-control input-group'>
-            <div class='col-md-1'>
+        {# Wrap everything in a <label> so clicking anywhere selects the option #}
+        <label for='profile-item-{{ profile.slug }}' class='profile'>
+            <div class='check'>
                 <input type='radio' name='profile' id='profile-item-{{ profile.slug }}' value='{{ profile.slug }}' {% if profile.default %}checked{% endif %} />
             </div>
-            <div class='col-md-11'>
-                <strong>{{ profile.display_name }}</strong>
+            <div>
+                <h3>{{ profile.display_name }}</h3>
                 {% if profile.description %}
                 <p>{{ profile.description }}</p>
                 {% endif %}
+                {% if profile.images %}
+                <div class='image-container'>
+                    <label for='image'>Image </label>
+                    <select name="image" class="form-control">
+                        {% for image in profile.images %}
+                        <option value="{{ image.spec }}">{{ image.display_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
             </div>
+
         </label>
         {% endfor %}
         </div>
@@ -1487,6 +1522,8 @@ class KubeSpawner(Spawner):
         - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
           settings. Each value can be either the final value to change or a callable that
           take the `KubeSpawner` instance as parameter and return the final value.
+        - 'images': A list of dictionaries that specify a list of images that the user can
+          choose from for this profile. The values required are 'spec' and 'display_name'.
         - `default`: (optional Bool) True if this is the default selected option
 
         Example::
@@ -1496,6 +1533,16 @@ class KubeSpawner(Spawner):
                     'display_name': 'Training Env - Python',
                     'slug': 'training-python',
                     'default': True,
+                    'images': [
+                        {
+                            'display_name': 'Pangeo Notebook',
+                            'spec': 'pangeo-data/pangeo-notebook:latest'
+                        },
+                        {
+                            'display_name': 'Pangeo ML Notebook',
+                            'spec': 'pangeo-data/ml-notebook:latest'
+                        }
+                    ]
                     'kubespawner_override': {
                         'image': 'training/python:label',
                         'cpu_limit': 1,
@@ -2775,9 +2822,13 @@ class KubeSpawner(Spawner):
             user_options (dict): the selected profile in the user_options form,
                 e.g. ``{"profile": "cpus-8"}``
         """
-        return {'profile': formdata.get('profile', [None])[0]}
+        options = {'profile': formdata.get('profile', [None])[0]}
+        if formdata.get('image', [None])[0]:
+            options['image'] = formdata.get('image')[0]
 
-    async def _load_profile(self, slug):
+        return options
+
+    async def _load_profile(self, slug, image):
         """Load a profile by name
 
         Called by load_user_options
@@ -2817,10 +2868,18 @@ class KubeSpawner(Spawner):
                 self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
             setattr(self, k, v)
 
+        if image:
+            if image not in set([i['spec'] for i in profile.get('images', [])]):
+                self.log.warn(f'Image {image} requested, but not configured for profile {slug}')
+            else:
+                self.log.info(f'Using image {image} with profile {slug} for user {self.user.name}')
+                self.image = image
+
     # set of recognised user option keys
     # used for warning about ignoring unrecognised options
     _user_option_keys = {
         'profile',
+        'image'
     }
 
     def _init_profile_list(self, profile_list):
@@ -2836,7 +2895,7 @@ class KubeSpawner(Spawner):
 
         This can be set via POST to the API or via options_from_form
 
-        Only supported argument by default is 'profile'.
+        Only supported argument by default is 'profile' and 'image'.
         Override in subclasses to support other options.
         """
 
@@ -2850,7 +2909,7 @@ class KubeSpawner(Spawner):
 
         selected_profile = self.user_options.get('profile', None)
         if self._profile_list:
-            await self._load_profile(selected_profile)
+            await self._load_profile(selected_profile, self.user_options.get('image', None))
         elif selected_profile:
             self.log.warning(
                 "Profile %r requested, but profiles are not enabled", selected_profile
