@@ -2869,18 +2869,19 @@ class KubeSpawner(Spawner):
             setattr(self, k, v)
 
         if image:
-            if image not in set([i['spec'] for i in profile.get('image_options', [])]):
-                self.log.warn(f'Image {image} requested, but not configured for profile {slug}')
+            if image not in {i['spec'] for i in profile.get('image_options', [])}:
+                self.log.warn(
+                    f'Image {image} requested, but not configured for profile {slug}'
+                )
             else:
-                self.log.info(f'Using image {image} with profile {slug} for user {self.user.name}')
+                self.log.info(
+                    f'Using image {image} with profile {slug} for user {self.user.name}'
+                )
                 self.image = image
 
     # set of recognised user option keys
     # used for warning about ignoring unrecognised options
-    _user_option_keys = {
-        'profile',
-        'image'
-    }
+    _user_option_keys = {'profile', 'image'}
 
     def _init_profile_list(self, profile_list):
         # generate missing slug fields from display_name
@@ -2909,7 +2910,9 @@ class KubeSpawner(Spawner):
 
         selected_profile = self.user_options.get('profile', None)
         if self._profile_list:
-            await self._load_profile(selected_profile, self.user_options.get('image', None))
+            await self._load_profile(
+                selected_profile, self.user_options.get('image', None)
+            )
         elif selected_profile:
             self.log.warning(
                 "Profile %r requested, but profiles are not enabled", selected_profile
