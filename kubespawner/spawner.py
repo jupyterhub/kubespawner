@@ -1547,6 +1547,15 @@ class KubeSpawner(Spawner):
             for this option, and value
         - `default`: (optional Bool) True if this is the default selected option
 
+        kubespawner setting overrides work in the following manner, with items further in the
+        list *replacing* (not merging with) items earlier in the list:
+
+        1. Settings directly set on KubeSpawner, via c.KubeSpawner.<traitlet_name>
+        2. `kubespawner_override` in the profile the user has chosen
+        3. `kubespawner_override` in the specific choices the user has made within the
+           profile, applied linearly based on the ordering of the option in the profile
+           definition configuration
+
         Example::
 
             c.KubeSpawner.profile_list = [
