@@ -1455,14 +1455,16 @@ class KubeSpawner(Spawner):
             padding: 12px;
         }
 
-        #kubespawner-profiles-list .profile .image-container {
+        #kubespawner-profiles-list .profile .option{
             display: flex;
             align-items: center;
+            padding-bottom: 12px;
         }
 
-        #kubespawner-profiles-list .profile .image-container label{
+        #kubespawner-profiles-list .profile .option label{
             font-weight: normal;
             margin-right: 8px;
+            min-width: 96px;
         }
         </style>
 
@@ -1478,14 +1480,18 @@ class KubeSpawner(Spawner):
                 {% if profile.description %}
                 <p>{{ profile.description }}</p>
                 {% endif %}
-                {% if profile.image_options %}
-                <div class='image-container'>
-                    <label for='image'>Image </label>
-                    <select name="image" class="form-control">
-                        {% for image in profile.image_options %}
-                        <option value="{{ image.spec }}">{{ image.display_name }}</option>
-                        {% endfor %}
-                    </select>
+                {% if profile.options %}
+                <div class='options'>
+                    {% for k, option in profile.options.items() %}
+                    <div class='option'>
+                        <label for='option-{{profile.slug}}-{{k}}'>{{option.display_name}}</label>
+                        <select name="option-{{profile.slug}}-{{k}}" class="form-control">
+                            {% for k, choice in option['choices'].items() %}
+                            <option value="{{ k }}" {% if choice.default %}selected{%endif %}>{{ choice.display_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endfor %}
                 </div>
                 {% endif %}
             </div>
@@ -1521,56 +1527,87 @@ class KubeSpawner(Spawner):
         - `description`: Optional description of this profile displayed to the user.
         - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
           settings. Each value can be either the final value to change or a callable that
-          take the `KubeSpawner` instance as parameter and return the final value.
-        - 'image_options': A list of dictionaries that specify a list of images that the user can
-          choose from for this profile. The values required are 'spec' and 'display_name'.
+          take the `KubeSpawner` instance as parameter and return the final value. This can
+          be further overridden by 'options'
+        ' 'options': A dictionry of sub-options that allow users to further customize the
+          selected profile. Items should have a unique key representing the customization,
+          and the value is a dictionary with the following  keys:
+          - 'display_name': Name used to identify this particular option
+          - 'choices': A dictionary containing list of choices for the user to choose from
+            to set the value for this particular option. The key is an identifier for this
+            choice, and the value is a dictionary with the following possible keys:
+            - 'display_name': Human readable display name for this choice.
+            - 'default': (optional Bool) True if this is the default selected choice
+            - 'kubespawner_override': A dictionary with overrides to apply to the KubeSpawner
+              settings, on top of whatever was applied with the 'kubespawner_override' key
+              for the profile itself. The key should be the name of the kubespawner setting,
+              and value can be either the final value or a callable that returns the final
+              value when called with the spawner instance as the only parameter.
+            for this option, and value
         - `default`: (optional Bool) True if this is the default selected option
 
         Example::
 
             c.KubeSpawner.profile_list = [
                 {
-                    'display_name': 'Training Env - Python',
+                    'display_name': 'Training Env',
                     'slug': 'training-python',
                     'default': True,
-                    'images': [
-                        {
-                            'display_name': 'Pangeo Notebook',
-                            'spec': 'pangeo-data/pangeo-notebook:latest'
-                        },
-                        {
-                            'display_name': 'Pangeo ML Notebook',
-                            'spec': 'pangeo-data/ml-notebook:latest'
+                    'options': {
+                        'image': {
+                            'display_name': 'Image',
+                            'choices': {
+                                'pytorch': {
+                                    'display_name': 'Python 3 Training Notebook',
+                                    'kubespawner_override': {
+                                        'image': 'training/python:2022.01.01'
+                                    }
+                                },
+                                'tf': {
+                                    'display_name': 'R 4.2 Training Notebook',
+                                    'kubespawner_override': {
+                                        'image': 'training/r:2021.12.03'
+                                    }
+                                }
+                            }
                         }
-                    ]
+                    },
                     'kubespawner_override': {
-                        'image': 'training/python:label',
                         'cpu_limit': 1,
                         'mem_limit': '512M',
                     }
                 }, {
-                    'display_name': 'Training Env - Datascience',
-                    'slug': 'training-datascience',
-                    'kubespawner_override': {
-                        'image': 'training/datascience:label',
-                        'cpu_limit': 4,
-                        'mem_limit': '8G',
-                    }
-                }, {
-                    'display_name': 'DataScience - Small instance',
+                    'display_name': 'Python DataScience',
                     'slug': 'datascience-small',
+                    'options': {
+                        'memory': {
+                            'display_name': 'CPUs',
+                            'choices': {
+                                '2': {
+                                    'display_name': '2 CPUs',
+                                    'kubespawner_override': {
+                                        'cpu_limit': 2,
+                                        'cpu_guarantee': 1.8,
+                                        'node_selectors': {
+                                            'node.kubernetes.io/instance-type': 'n1-standard-2'
+                                        }
+                                    }
+                                },
+                                '4': {
+                                    'display_name': '4 CPUs',
+                                    'kubespawner_override': {
+                                        'cpu_limit': 4,
+                                        'cpu_guarantee': 3.5,
+                                        'node_selectors': {
+                                            'node.kubernetes.io/instance-type': 'n1-standard-4'
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    },
                     'kubespawner_override': {
                         'image': 'datascience/small:label',
-                        'cpu_limit': 10,
-                        'mem_limit': '16G',
-                    }
-                }, {
-                    'display_name': 'DataScience - Medium instance',
-                    'slug': 'datascience-medium',
-                    'kubespawner_override': {
-                        'image': 'datascience/medium:label',
-                        'cpu_limit': 48,
-                        'mem_limit': '96G',
                     }
                 }, {
                     'display_name': 'DataScience - Medium instance (GPUx2)',
@@ -2822,13 +2859,24 @@ class KubeSpawner(Spawner):
             user_options (dict): the selected profile in the user_options form,
                 e.g. ``{"profile": "cpus-8"}``
         """
-        options = {'profile': formdata.get('profile', [None])[0]}
-        if formdata.get('image', [None])[0]:
-            options['image'] = formdata.get('image')[0]
+        profile = formdata.get('profile', [None])[0]
+
+        options = {'profile': profile}
+
+        # Load any options if they are set for this profile, and this profile only
+        # In the default template we use, all form options for a particular profile
+        # come through of the format 'option-{profile}-{option-slug}'
+        if profile:
+            option_formdata_prefix = f'option-{profile}-'
+            for k, v in formdata.items():
+                if k.startswith(option_formdata_prefix):
+                    options[k[:len(option_formdata_prefix)]] = v[0]
+
+        print(options)
 
         return options
 
-    async def _load_profile(self, slug, image):
+    async def _load_profile(self, slug, user_options):
         """Load a profile by name
 
         Called by load_user_options
@@ -2868,20 +2916,37 @@ class KubeSpawner(Spawner):
                 self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
             setattr(self, k, v)
 
-        if image:
-            if image not in {i['spec'] for i in profile.get('image_options', [])}:
-                self.log.warn(
-                    f'Image {image} requested, but not configured for profile {slug}'
-                )
-            else:
-                self.log.info(
-                    f'Using image {image} with profile {slug} for user {self.user.name}'
-                )
-                self.image = image
+        if profile.get('options'):
+            # each option specified here *must* have a value in our POST, as we
+            # render our HTML such that there's always something selected.
+
+            # We only honor options that are defined in the selected profile *and*
+            # are in the form data posted. This prevents users who may be authorized
+            # to only use one profile from being able to access options set for other
+            # profiles
+            for option_name, option in profile.get('options').items():
+                chosen_option = user_options.get(option_name)
+                if not chosen_option:
+                    raise ValueError(
+                        f'Expected option {k} for profile {slug}, not found in posted form'
+                    )
+
+                chosen_option_overrides = option['choices'][chosen_option]['kubespawner_override']
+                for k, v in chosen_option_overrides.items():
+                    if callable(v):
+                        v = v(self)
+                        self.log.debug(
+                            f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option} from callabale'
+                        )
+                    else:
+                        self.log.debug(
+                            f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option}'
+                        )
+                    setattr(self, k, v)
 
     # set of recognised user option keys
     # used for warning about ignoring unrecognised options
-    _user_option_keys = {'profile', 'image'}
+    _user_option_keys = {'profile'}
 
     def _init_profile_list(self, profile_list):
         # generate missing slug fields from display_name
@@ -2896,7 +2961,9 @@ class KubeSpawner(Spawner):
 
         This can be set via POST to the API or via options_from_form
 
-        Only supported argument by default is 'profile' and 'image'.
+        The default supported arguments are 'profile', and options for the
+        selected profile defined as 'option-{profile-slug}-{option-slug}'
+
         Override in subclasses to support other options.
         """
 
@@ -2911,7 +2978,7 @@ class KubeSpawner(Spawner):
         selected_profile = self.user_options.get('profile', None)
         if self._profile_list:
             await self._load_profile(
-                selected_profile, self.user_options.get('image', None)
+                selected_profile, self.user_options
             )
         elif selected_profile:
             self.log.warning(
@@ -2921,6 +2988,8 @@ class KubeSpawner(Spawner):
         # help debugging by logging any option fields that are not recognized
         option_keys = set(self.user_options)
         unrecognized_keys = option_keys.difference(self._user_option_keys)
+        # Make sure any profile options are recognized
+        unrecognized_keys = [k for k in unrecognized_keys if not k.startswith(f'option-{selected_profile}-')]
         if unrecognized_keys:
             self.log.warning(
                 "Ignoring unrecognized KubeSpawner user_options: %s",
