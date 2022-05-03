@@ -1530,9 +1530,9 @@ class KubeSpawner(Spawner):
           settings. Each value can be either the final value to change or a callable that
           take the `KubeSpawner` instance as parameter and return the final value. This can
           be further overridden by 'options'
-        ' 'options': A dictionry of sub-options that allow users to further customize the
+        - 'options': A dictionary of sub-options that allow users to further customize the
           selected profile. Items should have a unique key representing the customization,
-          and the value is a dictionary with the following  keys:
+          and the value is a dictionary with the following keys:
           - 'display_name': Name used to identify this particular option
           - 'choices': A dictionary containing list of choices for the user to choose from
             to set the value for this particular option. The key is an identifier for this
@@ -1544,7 +1544,6 @@ class KubeSpawner(Spawner):
               for the profile itself. The key should be the name of the kubespawner setting,
               and value can be either the final value or a callable that returns the final
               value when called with the spawner instance as the only parameter.
-            for this option, and value
         - `default`: (optional Bool) True if this is the default selected option
 
         kubespawner setting overrides work in the following manner, with items further in the
@@ -2881,8 +2880,6 @@ class KubeSpawner(Spawner):
             for k, v in formdata.items():
                 if k.startswith(option_formdata_prefix):
                     options[k[: len(option_formdata_prefix)]] = v[0]
-
-        print(options)
 
         return options
 
