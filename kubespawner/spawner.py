@@ -1437,31 +1437,31 @@ class KubeSpawner(Spawner):
     profile_form_template = Unicode(
         """
         <style>
-        /* The profile description should not be bold, even though it is inside the <label> tag */
-        #kubespawner-profiles-list .profile p, #kubespawner-profiles-list .profile label {
-            font-weight: normal;
-        }
-
+        /*
+            .profile divs holds two div tags: one for a radio button, and one
+            for the profile's content.
+        */
         #kubespawner-profiles-list .profile {
             display: flex;
             flex-direction: row;
+            font-weight: normal;
             border-bottom: 1px solid #ccc;
             padding-bottom: 12px;
         }
 
-        #kubespawner-profiles-list .profile .check {
-            display: flex;
-            align-content: center;
+        #kubespawner-profiles-list .profile .radio {
             padding: 12px;
         }
 
-        #kubespawner-profiles-list .profile .option{
+        /* .option divs holds a label and a select tag */
+        #kubespawner-profiles-list .profile .option {
             display: flex;
+            flex-direction: row;
             align-items: center;
             padding-bottom: 12px;
         }
 
-        #kubespawner-profiles-list .profile .option label{
+        #kubespawner-profiles-list .profile .option label {
             font-weight: normal;
             margin-right: 8px;
             min-width: 96px;
@@ -1469,35 +1469,36 @@ class KubeSpawner(Spawner):
         </style>
 
         <div class='form-group' id='kubespawner-profiles-list'>
-        {% for profile in profile_list %}
-        {# Wrap everything in a <label> so clicking anywhere selects the option #}
+        {%- for profile in profile_list %}
+        {#- Wrap everything in a <label> so clicking anywhere selects the option #}
         <label for='profile-item-{{ profile.slug }}' class='profile'>
-            <div class='check'>
+            <div class='radio'>
                 <input type='radio' name='profile' id='profile-item-{{ profile.slug }}' value='{{ profile.slug }}' {% if profile.default %}checked{% endif %} />
             </div>
             <div>
                 <h3>{{ profile.display_name }}</h3>
-                {% if profile.description %}
+
+                {%- if profile.description %}
                 <p>{{ profile.description }}</p>
-                {% endif %}
-                {% if profile.options %}
-                <div class='options'>
-                    {% for k, option in profile.options.items() %}
+                {%- endif %}
+
+                {%- if profile.options %}
+                <div>
+                    {%- for k, option in profile.options.items() %}
                     <div class='option'>
                         <label for='option-{{profile.slug}}-{{k}}'>{{option.display_name}}</label>
                         <select name="option-{{profile.slug}}-{{k}}" class="form-control">
-                            {% for k, choice in option['choices'].items() %}
+                            {%- for k, choice in option['choices'].items() %}
                             <option value="{{ k }}" {% if choice.default %}selected{%endif %}>{{ choice.display_name }}</option>
-                            {% endfor %}
+                            {%- endfor %}
                         </select>
                     </div>
-                    {% endfor %}
+                    {%- endfor %}
                 </div>
-                {% endif %}
+                {%- endif %}
             </div>
-
         </label>
-        {% endfor %}
+        {%- endfor %}
         </div>
         """,
         config=True,
