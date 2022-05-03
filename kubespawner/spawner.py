@@ -2870,7 +2870,7 @@ class KubeSpawner(Spawner):
             option_formdata_prefix = f'option-{profile}-'
             for k, v in formdata.items():
                 if k.startswith(option_formdata_prefix):
-                    options[k[:len(option_formdata_prefix)]] = v[0]
+                    options[k[: len(option_formdata_prefix)]] = v[0]
 
         print(options)
 
@@ -2931,7 +2931,9 @@ class KubeSpawner(Spawner):
                         f'Expected option {k} for profile {slug}, not found in posted form'
                     )
 
-                chosen_option_overrides = option['choices'][chosen_option]['kubespawner_override']
+                chosen_option_overrides = option['choices'][chosen_option][
+                    'kubespawner_override'
+                ]
                 for k, v in chosen_option_overrides.items():
                     if callable(v):
                         v = v(self)
@@ -2977,9 +2979,7 @@ class KubeSpawner(Spawner):
 
         selected_profile = self.user_options.get('profile', None)
         if self._profile_list:
-            await self._load_profile(
-                selected_profile, self.user_options
-            )
+            await self._load_profile(selected_profile, self.user_options)
         elif selected_profile:
             self.log.warning(
                 "Profile %r requested, but profiles are not enabled", selected_profile
@@ -2989,7 +2989,11 @@ class KubeSpawner(Spawner):
         option_keys = set(self.user_options)
         unrecognized_keys = option_keys.difference(self._user_option_keys)
         # Make sure any profile options are recognized
-        unrecognized_keys = [k for k in unrecognized_keys if not k.startswith(f'option-{selected_profile}-')]
+        unrecognized_keys = [
+            k
+            for k in unrecognized_keys
+            if not k.startswith(f'option-{selected_profile}-')
+        ]
         if unrecognized_keys:
             self.log.warning(
                 "Ignoring unrecognized KubeSpawner user_options: %s",
