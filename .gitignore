@@ -3,6 +3,7 @@ bin/
 lib64
 minikube-linux-amd64
 node_modules/
+package.json
 package-lock.json
 pyvenv.cfg
 share/
