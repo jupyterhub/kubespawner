@@ -1531,7 +1531,8 @@ class KubeSpawner(Spawner):
           take the `KubeSpawner` instance as parameter and return the final value. This can
           be further overridden by 'options'
         - 'options': A dictionary of sub-options that allow users to further customize the
-          selected profile. Items should have a unique key representing the customization,
+          selected profile. By default, these are rendered as a dropdown with the label
+          provided by `display_name`. Items should have a unique key representing the customization,
           and the value is a dictionary with the following keys:
           - 'display_name': Name used to identify this particular option
           - 'choices': A dictionary containing list of choices for the user to choose from
