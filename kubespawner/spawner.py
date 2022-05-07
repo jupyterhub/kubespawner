@@ -1482,12 +1482,12 @@ class KubeSpawner(Spawner):
                     <p>{{ profile.description }}</p>
                     {%- endif %}
 
-                    {%- if profile.options %}
+                    {%- if profile.profile_options %}
                     <div>
-                        {%- for k, option in profile.options.items() %}
+                        {%- for k, option in profile.profile_options.items() %}
                         <div class='option'>
-                            <label for='option-{{profile.slug}}-{{k}}'>{{option.display_name}}</label>
-                            <select name="option-{{profile.slug}}-{{k}}" class="form-control">
+                            <label for='profile-option-{{profile.slug}}-{{k}}'>{{option.display_name}}</label>
+                            <select name="profile-option-{{profile.slug}}-{{k}}" class="form-control">
                                 {%- for k, choice in option['choices'].items() %}
                                 <option value="{{ k }}" {% if choice.default %}selected{%endif %}>{{ choice.display_name }}</option>
                                 {%- endfor %}
@@ -1529,8 +1529,8 @@ class KubeSpawner(Spawner):
         - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
           settings. Each value can be either the final value to change or a callable that
           take the `KubeSpawner` instance as parameter and return the final value. This can
-          be further overridden by 'options'
-        - 'options': A dictionary of sub-options that allow users to further customize the
+          be further overridden by 'profile_options'
+        - 'profile_options': A dictionary of sub-options that allow users to further customize the
           selected profile. By default, these are rendered as a dropdown with the label
           provided by `display_name`. Items should have a unique key representing the customization,
           and the value is a dictionary with the following keys:
@@ -1563,7 +1563,7 @@ class KubeSpawner(Spawner):
                     'display_name': 'Training Env',
                     'slug': 'training-python',
                     'default': True,
-                    'options': {
+                    'profile_options': {
                         'image': {
                             'display_name': 'Image',
                             'choices': {
@@ -1589,7 +1589,7 @@ class KubeSpawner(Spawner):
                 }, {
                     'display_name': 'Python DataScience',
                     'slug': 'datascience-small',
-                    'options': {
+                    'profile_options': {
                         'memory': {
                             'display_name': 'CPUs',
                             'choices': {
@@ -2875,12 +2875,13 @@ class KubeSpawner(Spawner):
 
         # Load any options if they are set for this profile, and this profile only
         # In the default template we use, all form options for a particular profile
-        # come through of the format 'option-{profile}-{option-slug}'
+        # come through of the format 'profile-option-{profile}-{option-slug}'
         if profile:
-            option_formdata_prefix = f'option-{profile}-'
+            option_formdata_prefix = f'profile-option-{profile}-'
             for k, v in formdata.items():
                 if k.startswith(option_formdata_prefix):
-                    options[k[: len(option_formdata_prefix)]] = v[0]
+                    stripped_key = k[len(option_formdata_prefix):]
+                    options[stripped_key] = v[0]
 
         return options
 
@@ -2924,7 +2925,7 @@ class KubeSpawner(Spawner):
                 self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
             setattr(self, k, v)
 
-        if profile.get('options'):
+        if profile.get('profile_options'):
             # each option specified here *must* have a value in our POST, as we
             # render our HTML such that there's always something selected.
 
@@ -2932,7 +2933,7 @@ class KubeSpawner(Spawner):
             # are in the form data posted. This prevents users who may be authorized
             # to only use one profile from being able to access options set for other
             # profiles
-            for option_name, option in profile.get('options').items():
+            for option_name, option in profile.get('profile_options').items():
                 chosen_option = user_options.get(option_name)
                 if not chosen_option:
                     raise ValueError(
@@ -2972,7 +2973,7 @@ class KubeSpawner(Spawner):
         This can be set via POST to the API or via options_from_form
 
         The default supported arguments are 'profile', and options for the
-        selected profile defined as 'option-{profile-slug}-{option-slug}'
+        selected profile defined as 'profile-option-{profile-slug}-{option-slug}'
 
         Override in subclasses to support other options.
         """
@@ -3000,7 +3001,7 @@ class KubeSpawner(Spawner):
         unrecognized_keys = [
             k
             for k in unrecognized_keys
-            if not k.startswith(f'option-{selected_profile}-')
+            if not k.startswith(f'profile-option-{selected_profile}-')
         ]
         if unrecognized_keys:
             self.log.warning(

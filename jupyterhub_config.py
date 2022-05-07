@@ -43,7 +43,7 @@ c.KubeSpawner.profile_list = [
         'description': 'This is the description for the training env profile list choice. This should look good even though it is a bit lengthy.',
         'slug': 'training-python',
         'default': True,
-        'options': {
+        'profile_options': {
             'image': {
                 'display_name': 'Image',
                 'choices': {
@@ -67,7 +67,7 @@ c.KubeSpawner.profile_list = [
     {
         'display_name': 'Python DataScience',
         'slug': 'datascience-small',
-        'options': {
+        'profile_options': {
             'memory': {
                 'display_name': 'Memory',
                 'choices': {
