@@ -2880,7 +2880,7 @@ class KubeSpawner(Spawner):
             option_formdata_prefix = f'profile-option-{profile}-'
             for k, v in formdata.items():
                 if k.startswith(option_formdata_prefix):
-                    stripped_key = k[len(option_formdata_prefix):]
+                    stripped_key = k[len(option_formdata_prefix) :]
                     options[stripped_key] = v[0]
 
         return options
