@@ -1437,26 +1437,68 @@ class KubeSpawner(Spawner):
     profile_form_template = Unicode(
         """
         <style>
-        /* The profile description should not be bold, even though it is inside the <label> tag */
-        #kubespawner-profiles-list label p {
-            font-weight: normal;
-        }
+            /*
+                .profile divs holds two div tags: one for a radio button, and one
+                for the profile's content.
+            */
+            #kubespawner-profiles-list .profile {
+                display: flex;
+                flex-direction: row;
+                font-weight: normal;
+                border-bottom: 1px solid #ccc;
+                padding-bottom: 12px;
+            }
+
+            #kubespawner-profiles-list .profile .radio {
+                padding: 12px;
+            }
+
+            /* .option divs holds a label and a select tag */
+            #kubespawner-profiles-list .profile .option {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                padding-bottom: 12px;
+            }
+
+            #kubespawner-profiles-list .profile .option label {
+                font-weight: normal;
+                margin-right: 8px;
+                min-width: 96px;
+            }
         </style>
 
         <div class='form-group' id='kubespawner-profiles-list'>
-        {% for profile in profile_list %}
-        <label for='profile-item-{{ profile.slug }}' class='form-control input-group'>
-            <div class='col-md-1'>
-                <input type='radio' name='profile' id='profile-item-{{ profile.slug }}' value='{{ profile.slug }}' {% if profile.default %}checked{% endif %} />
-            </div>
-            <div class='col-md-11'>
-                <strong>{{ profile.display_name }}</strong>
-                {% if profile.description %}
-                <p>{{ profile.description }}</p>
-                {% endif %}
-            </div>
-        </label>
-        {% endfor %}
+            {%- for profile in profile_list %}
+            {#- Wrap everything in a <label> so clicking anywhere selects the option #}
+            <label for='profile-item-{{ profile.slug }}' class='profile'>
+                <div class='radio'>
+                    <input type='radio' name='profile' id='profile-item-{{ profile.slug }}' value='{{ profile.slug }}' {% if profile.default %}checked{% endif %} />
+                </div>
+                <div>
+                    <h3>{{ profile.display_name }}</h3>
+
+                    {%- if profile.description %}
+                    <p>{{ profile.description }}</p>
+                    {%- endif %}
+
+                    {%- if profile.profile_options %}
+                    <div>
+                        {%- for k, option in profile.profile_options.items() %}
+                        <div class='option'>
+                            <label for='profile-option-{{profile.slug}}-{{k}}'>{{option.display_name}}</label>
+                            <select name="profile-option-{{profile.slug}}-{{k}}" class="form-control">
+                                {%- for k, choice in option['choices'].items() %}
+                                <option value="{{ k }}" {% if choice.default %}selected{%endif %}>{{ choice.display_name }}</option>
+                                {%- endfor %}
+                            </select>
+                        </div>
+                        {%- endfor %}
+                    </div>
+                    {%- endif %}
+                </div>
+            </label>
+            {%- endfor %}
         </div>
         """,
         config=True,
@@ -1486,44 +1528,96 @@ class KubeSpawner(Spawner):
         - `description`: Optional description of this profile displayed to the user.
         - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
           settings. Each value can be either the final value to change or a callable that
-          take the `KubeSpawner` instance as parameter and return the final value.
+          take the `KubeSpawner` instance as parameter and return the final value. This can
+          be further overridden by 'profile_options'
+        - 'profile_options': A dictionary of sub-options that allow users to further customize the
+          selected profile. By default, these are rendered as a dropdown with the label
+          provided by `display_name`. Items should have a unique key representing the customization,
+          and the value is a dictionary with the following keys:
+          - 'display_name': Name used to identify this particular option
+          - 'choices': A dictionary containing list of choices for the user to choose from
+            to set the value for this particular option. The key is an identifier for this
+            choice, and the value is a dictionary with the following possible keys:
+            - 'display_name': Human readable display name for this choice.
+            - 'default': (optional Bool) True if this is the default selected choice
+            - 'kubespawner_override': A dictionary with overrides to apply to the KubeSpawner
+              settings, on top of whatever was applied with the 'kubespawner_override' key
+              for the profile itself. The key should be the name of the kubespawner setting,
+              and value can be either the final value or a callable that returns the final
+              value when called with the spawner instance as the only parameter.
         - `default`: (optional Bool) True if this is the default selected option
+
+        kubespawner setting overrides work in the following manner, with items further in the
+        list *replacing* (not merging with) items earlier in the list:
+
+        1. Settings directly set on KubeSpawner, via c.KubeSpawner.<traitlet_name>
+        2. `kubespawner_override` in the profile the user has chosen
+        3. `kubespawner_override` in the specific choices the user has made within the
+           profile, applied linearly based on the ordering of the option in the profile
+           definition configuration
 
         Example::
 
             c.KubeSpawner.profile_list = [
                 {
-                    'display_name': 'Training Env - Python',
+                    'display_name': 'Training Env',
                     'slug': 'training-python',
                     'default': True,
+                    'profile_options': {
+                        'image': {
+                            'display_name': 'Image',
+                            'choices': {
+                                'pytorch': {
+                                    'display_name': 'Python 3 Training Notebook',
+                                    'kubespawner_override': {
+                                        'image': 'training/python:2022.01.01'
+                                    }
+                                },
+                                'tf': {
+                                    'display_name': 'R 4.2 Training Notebook',
+                                    'kubespawner_override': {
+                                        'image': 'training/r:2021.12.03'
+                                    }
+                                }
+                            }
+                        }
+                    },
                     'kubespawner_override': {
-                        'image': 'training/python:label',
                         'cpu_limit': 1,
                         'mem_limit': '512M',
                     }
                 }, {
-                    'display_name': 'Training Env - Datascience',
-                    'slug': 'training-datascience',
-                    'kubespawner_override': {
-                        'image': 'training/datascience:label',
-                        'cpu_limit': 4,
-                        'mem_limit': '8G',
-                    }
-                }, {
-                    'display_name': 'DataScience - Small instance',
+                    'display_name': 'Python DataScience',
                     'slug': 'datascience-small',
+                    'profile_options': {
+                        'memory': {
+                            'display_name': 'CPUs',
+                            'choices': {
+                                '2': {
+                                    'display_name': '2 CPUs',
+                                    'kubespawner_override': {
+                                        'cpu_limit': 2,
+                                        'cpu_guarantee': 1.8,
+                                        'node_selectors': {
+                                            'node.kubernetes.io/instance-type': 'n1-standard-2'
+                                        }
+                                    }
+                                },
+                                '4': {
+                                    'display_name': '4 CPUs',
+                                    'kubespawner_override': {
+                                        'cpu_limit': 4,
+                                        'cpu_guarantee': 3.5,
+                                        'node_selectors': {
+                                            'node.kubernetes.io/instance-type': 'n1-standard-4'
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    },
                     'kubespawner_override': {
                         'image': 'datascience/small:label',
-                        'cpu_limit': 10,
-                        'mem_limit': '16G',
-                    }
-                }, {
-                    'display_name': 'DataScience - Medium instance',
-                    'slug': 'datascience-medium',
-                    'kubespawner_override': {
-                        'image': 'datascience/medium:label',
-                        'cpu_limit': 48,
-                        'mem_limit': '96G',
                     }
                 }, {
                     'display_name': 'DataScience - Medium instance (GPUx2)',
@@ -2775,9 +2869,23 @@ class KubeSpawner(Spawner):
             user_options (dict): the selected profile in the user_options form,
                 e.g. ``{"profile": "cpus-8"}``
         """
-        return {'profile': formdata.get('profile', [None])[0]}
+        profile = formdata.get('profile', [None])[0]
 
-    async def _load_profile(self, slug):
+        options = {'profile': profile}
+
+        # Load any options if they are set for this profile, and this profile only
+        # In the default template we use, all form options for a particular profile
+        # come through of the format 'profile-option-{profile}-{option-slug}'
+        if profile:
+            option_formdata_prefix = f'profile-option-{profile}-'
+            for k, v in formdata.items():
+                if k.startswith(option_formdata_prefix):
+                    stripped_key = k[len(option_formdata_prefix) :]
+                    options[stripped_key] = v[0]
+
+        return options
+
+    async def _load_profile(self, slug, user_options):
         """Load a profile by name
 
         Called by load_user_options
@@ -2817,11 +2925,39 @@ class KubeSpawner(Spawner):
                 self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
             setattr(self, k, v)
 
+        if profile.get('profile_options'):
+            # each option specified here *must* have a value in our POST, as we
+            # render our HTML such that there's always something selected.
+
+            # We only honor options that are defined in the selected profile *and*
+            # are in the form data posted. This prevents users who may be authorized
+            # to only use one profile from being able to access options set for other
+            # profiles
+            for option_name, option in profile.get('profile_options').items():
+                chosen_option = user_options.get(option_name)
+                if not chosen_option:
+                    raise ValueError(
+                        f'Expected option {k} for profile {slug}, not found in posted form'
+                    )
+
+                chosen_option_overrides = option['choices'][chosen_option][
+                    'kubespawner_override'
+                ]
+                for k, v in chosen_option_overrides.items():
+                    if callable(v):
+                        v = v(self)
+                        self.log.debug(
+                            f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option} from callabale'
+                        )
+                    else:
+                        self.log.debug(
+                            f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option}'
+                        )
+                    setattr(self, k, v)
+
     # set of recognised user option keys
     # used for warning about ignoring unrecognised options
-    _user_option_keys = {
-        'profile',
-    }
+    _user_option_keys = {'profile'}
 
     def _init_profile_list(self, profile_list):
         # generate missing slug fields from display_name
@@ -2836,7 +2972,9 @@ class KubeSpawner(Spawner):
 
         This can be set via POST to the API or via options_from_form
 
-        Only supported argument by default is 'profile'.
+        The default supported arguments are 'profile', and options for the
+        selected profile defined as 'profile-option-{profile-slug}-{option-slug}'
+
         Override in subclasses to support other options.
         """
 
@@ -2850,7 +2988,7 @@ class KubeSpawner(Spawner):
 
         selected_profile = self.user_options.get('profile', None)
         if self._profile_list:
-            await self._load_profile(selected_profile)
+            await self._load_profile(selected_profile, self.user_options)
         elif selected_profile:
             self.log.warning(
                 "Profile %r requested, but profiles are not enabled", selected_profile
@@ -2859,6 +2997,12 @@ class KubeSpawner(Spawner):
         # help debugging by logging any option fields that are not recognized
         option_keys = set(self.user_options)
         unrecognized_keys = option_keys.difference(self._user_option_keys)
+        # Make sure any profile options are recognized
+        unrecognized_keys = [
+            k
+            for k in unrecognized_keys
+            if not k.startswith(f'profile-option-{selected_profile}-')
+        ]
         if unrecognized_keys:
             self.log.warning(
                 "Ignoring unrecognized KubeSpawner user_options: %s",
