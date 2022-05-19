@@ -4,6 +4,24 @@
 
 ## [Unreleased]
 
+## 4.1
+
+### [4.1.0] - 2022-05-19
+
+#### New features added
+
+- Support dropdown list choices for `profile_list` profiles via `profile_options` [#607](https://github.com/jupyterhub/kubespawner/pull/607) ([@yuvipanda](https://github.com/yuvipanda))
+
+#### Maintenance and upkeep improvements
+
+- [pre-commit.ci] pre-commit autoupdate [#608](https://github.com/jupyterhub/kubespawner/pull/608) ([@pre-commit-ci](https://github.com/pre-commit-ci))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2022-04-23&to=2022-05-19&type=c))
+
+[@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2022-04-23..2022-05-19&type=Issues) | [@keniseli](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Akeniseli+updated%3A2022-04-23..2022-05-19&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Apre-commit-ci+updated%3A2022-04-23..2022-05-19&type=Issues) | [@rabernat](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Arabernat+updated%3A2022-04-23..2022-05-19&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2022-04-23..2022-05-19&type=Issues)
+
 ## 4.0
 
 ### [4.0.0] - 2022-04-23
