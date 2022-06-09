@@ -324,6 +324,40 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    user_namespace_labels = Dict(
+        config=True,
+        help="""
+        Kubernetes labels that user namespaces will get (only if
+        enable_user_namespaces is True).
+
+        Note that these are only set when the namespaces are created, not
+        later when this setting is updated.
+
+        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
+        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
+        found within strings of this configuration. The username and servername
+        come escaped to follow the [DNS label
+        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        """,
+    )
+
+    user_namespace_annotations = Dict(
+        config=True,
+        help="""
+        Kubernetes annotations that user namespaces will get (only if
+        enable_user_namespaces is True).
+
+        Note that these are only set when the namespaces are created, not
+        later when this setting is updated.
+
+        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
+        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
+        found within strings of this configuration. The username and servername
+        come escaped to follow the [DNS label
+        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        """,
+    )
+
     user_namespace_template = Unicode(
         "{hubnamespace}-{username}",
         config=True,
@@ -3010,7 +3044,11 @@ class KubeSpawner(Spawner):
             )
 
     async def _ensure_namespace(self):
-        ns = make_namespace(self.namespace)
+        ns = make_namespace(
+            self.namespace,
+            labels=self._expand_all(self.user_namespace_labels),
+            annotations=self._expand_all(self.user_namespace_annotations),
+        )
         api = self.api
         try:
             await asyncio.wait_for(
