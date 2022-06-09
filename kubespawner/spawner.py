@@ -3046,8 +3046,8 @@ class KubeSpawner(Spawner):
     async def _ensure_namespace(self):
         ns = make_namespace(
             self.namespace,
-            self._expand_all(self.user_namespace_labels),
-            self._expand_all(self.user_namespace_annotations),
+            labels=self._expand_all(self.user_namespace_labels),
+            annotations=self._expand_all(self.user_namespace_annotations),
         )
         api = self.api
         try:
