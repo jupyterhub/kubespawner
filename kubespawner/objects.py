@@ -940,7 +940,7 @@ def make_service(
         metadata=metadata,
         spec=V1ServiceSpec(
             type='ClusterIP',
-            ports=[V1ServicePort(port=port, target_port=port)],
+            ports=[V1ServicePort(name='http', port=port, target_port=port)],
             selector={
                 'component': 'singleuser-server',
                 'hub.jupyter.org/servername': servername,
