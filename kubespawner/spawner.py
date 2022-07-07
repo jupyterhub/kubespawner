@@ -199,6 +199,9 @@ class KubeSpawner(Spawner):
         if self.events_enabled:
             self._start_watching_events()
 
+        if self.namespaces is None:
+            self.namespaces = [self.namespace]
+
     def _await_pod_reflector(method):
         """Decorator to wait for pod reflector to load
 
@@ -404,6 +407,15 @@ class KubeSpawner(Spawner):
             with open(ns_path) as f:
                 return f.read().strip()
         return 'default'
+
+
+    namespaces = List(
+        config=True,
+        help="""
+        Namespaces to watch for resources in; leave at 'None' for
+        multi-namespace reflectors.
+        """,
+    )
 
     services_enabled = Bool(
         False,
@@ -2368,7 +2380,7 @@ class KubeSpawner(Spawner):
         if replace or not previous_reflector:
             self.__class__.reflectors[key] = ReflectorClass(
                 parent=self,
-                namespace=self.namespace,
+                namespaces=self.namespaces,
                 on_failure=on_reflector_failure,
                 **kwargs,
             )
@@ -3044,11 +3056,7 @@ class KubeSpawner(Spawner):
             )
 
     async def _ensure_namespace(self):
-        ns = make_namespace(
-            self.namespace,
-            labels=self._expand_all(self.user_namespace_labels),
-            annotations=self._expand_all(self.user_namespace_annotations),
-        )
+        ns = make_namespace(self.namespace)
         api = self.api
         try:
             await asyncio.wait_for(

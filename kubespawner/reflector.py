@@ -6,7 +6,7 @@ import time
 from functools import partial
 
 from kubernetes_asyncio import watch
-from traitlets import Any, Bool, Dict, Int, Unicode
+from traitlets import Any, Bool, Dict, Int, Unicode, List
 from traitlets.config import LoggingConfigurable
 from urllib3.exceptions import ReadTimeoutError
 
@@ -75,11 +75,12 @@ class ResourceReflector(LoggingConfigurable):
         """,
     )
 
-    namespace = Unicode(
-        None,
+
+    namespaces = List(
+        [],
         allow_none=True,
         help="""
-        Namespace to watch for resources in; leave at 'None' for
+        Namespaces to watch for resources in; leave at 'None' for
         multi-namespace reflectors.
         """,
     )
@@ -95,7 +96,7 @@ class ResourceReflector(LoggingConfigurable):
         If self.omit_namespace is False you want something of the form
         list_namespaced_<resource> - for example,
         `list_namespaced_pod` will give you a PodReflector.  It will
-        take its namespace from self.namespace (which therefore should
+        take its namespace from self.namespaces (which therefore should
         not be None).
 
         If self.omit_namespace is True, you want
@@ -221,17 +222,30 @@ class ResourceReflector(LoggingConfigurable):
             _request_timeout=self.request_timeout,
             _preload_content=False,
         )
-        if not self.omit_namespace:
-            kwargs["namespace"] = self.namespace
 
-        list_method = getattr(self.api, self.list_method_name)
-        initial_resources_raw = await list_method(**kwargs)
-        # This is an atomic operation on the dictionary!
-        initial_resources = json.loads(await initial_resources_raw.read())
-        self.resources = {
-            f'{p["metadata"]["namespace"]}/{p["metadata"]["name"]}': p
-            for p in initial_resources["items"]
-        }
+
+        self.resources = {}
+
+        for namespace in self.namespaces:
+            if not self.omit_namespace:
+                kwargs["namespace"] = namespace
+            kwargs["namespace"] = namespace
+            list_method = getattr(self.api, self.list_method_name)
+            initial_resources_raw = await list_method(**kwargs)
+            # This is an atomic operation on the dictionary!
+            initial_resources = json.loads(await initial_resources_raw.read())
+
+            temp_dict = {
+                f'{p["metadata"]["namespace"]}/{p["metadata"]["name"]}': p
+                for p in initial_resources["items"]
+            }
+
+            self.resources.update(temp_dict)
+
+
+        self.log.debug("Initial load found %s %s.", str(len(self.resources)), self.kind)
+
+
         if not self.first_load_future.done():
             # signal that we've loaded our initial data at least once
             self.first_load_future.set_result(None)
@@ -269,7 +283,8 @@ class ResourceReflector(LoggingConfigurable):
         if self.omit_namespace:
             ns_str = "all namespaces"
         else:
-            ns_str = f"namespace {self.namespace}"
+            ns_str = ', '.join(self.namespaces)
+            ns_str = f"namespace(s) {ns_str}"
 
         self.log.info(
             "watching for %s with %s in %s",
@@ -288,8 +303,7 @@ class ResourceReflector(LoggingConfigurable):
                     "field_selector": self.field_selector,
                     "resource_version": resource_version,
                 }
-                if not self.omit_namespace:
-                    watch_args["namespace"] = self.namespace
+
                 if self.request_timeout:
                     # set network receive timeout
                     watch_args['_request_timeout'] = self.request_timeout
@@ -302,40 +316,43 @@ class ResourceReflector(LoggingConfigurable):
                 method = partial(
                     getattr(self.api, self.list_method_name), _preload_content=False
                 )
-                async with w.stream(method, **watch_args) as stream:
-                    async for watch_event in stream:
-                        # in case of timeout_seconds, the w.stream just exits (no exception thrown)
-                        # -> we stop the watcher and start a new one
-                        # Remember that these events are k8s api related WatchEvents
-                        # objects, not k8s Event or Pod representations, they will
-                        # reside in the WatchEvent's object field depending on what
-                        # kind of resource is watched.
-                        #
-                        # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#watchevent-v1-meta
-                        # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#event-v1-core
-                        cur_delay = 0.1
-                        resource = watch_event['raw_object']
-                        ref_key = "{}/{}".format(
-                            resource["metadata"]["namespace"],
-                            resource["metadata"]["name"],
-                        )
-                        if watch_event['type'] == 'DELETED':
-                            # This is an atomic delete operation on the dictionary!
-                            self.resources.pop(ref_key, None)
-                        else:
-                            # This is an atomic operation on the dictionary!
-                            self.resources[ref_key] = resource
-                        if self._stopping:
-                            self.log.info("%s watcher stopped: inner", self.kind)
-                            break
-                        watch_duration = time.monotonic() - start
-                        if watch_duration >= self.restart_seconds:
-                            self.log.debug(
-                                "Restarting %s watcher after %i seconds",
-                                self.kind,
-                                watch_duration,
+                for namespace in self.namespaces:
+                    if not self.omit_namespace:
+                        watch_args["namespace"] = namespace
+                    async with w.stream(method, **watch_args) as stream:
+                        async for watch_event in stream:
+                            # in case of timeout_seconds, the w.stream just exits (no exception thrown)
+                            # -> we stop the watcher and start a new one
+                            # Remember that these events are k8s api related WatchEvents
+                            # objects, not k8s Event or Pod representations, they will
+                            # reside in the WatchEvent's object field depending on what
+                            # kind of resource is watched.
+                            #
+                            # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#watchevent-v1-meta
+                            # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#event-v1-core
+                            cur_delay = 0.1
+                            resource = watch_event['raw_object']
+                            ref_key = "{}/{}".format(
+                                resource["metadata"]["namespace"],
+                                resource["metadata"]["name"],
                             )
-                            break
+                            if watch_event['type'] == 'DELETED':
+                                # This is an atomic delete operation on the dictionary!
+                                self.resources.pop(ref_key, None)
+                            else:
+                                # This is an atomic operation on the dictionary!
+                                self.resources[ref_key] = resource
+                            if self._stopping:
+                                self.log.info("%s watcher stopped: inner", self.kind)
+                                break
+                            watch_duration = time.monotonic() - start
+                            if watch_duration >= self.restart_seconds:
+                                self.log.debug(
+                                    "Restarting %s watcher after %i seconds",
+                                    self.kind,
+                                    watch_duration,
+                                )
+                                break
 
             except ReadTimeoutError:
                 # network read time out, just continue and restart the watch
