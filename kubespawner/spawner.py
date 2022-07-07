@@ -408,7 +408,6 @@ class KubeSpawner(Spawner):
                 return f.read().strip()
         return 'default'
 
-
     namespaces = List(
         config=True,
         help="""

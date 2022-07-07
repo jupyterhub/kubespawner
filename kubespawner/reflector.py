@@ -6,7 +6,7 @@ import time
 from functools import partial
 
 from kubernetes_asyncio import watch
-from traitlets import Any, Bool, Dict, Int, Unicode, List
+from traitlets import Any, Bool, Dict, Int, List, Unicode
 from traitlets.config import LoggingConfigurable
 from urllib3.exceptions import ReadTimeoutError
 
@@ -74,7 +74,6 @@ class ResourceReflector(LoggingConfigurable):
         multiple namespaces.
         """,
     )
-
 
     namespaces = List(
         [],
@@ -223,7 +222,6 @@ class ResourceReflector(LoggingConfigurable):
             _preload_content=False,
         )
 
-
         self.resources = {}
 
         for namespace in self.namespaces:
@@ -242,9 +240,7 @@ class ResourceReflector(LoggingConfigurable):
 
             self.resources.update(temp_dict)
 
-
         self.log.debug("Initial load found %s %s.", str(len(self.resources)), self.kind)
-
 
         if not self.first_load_future.done():
             # signal that we've loaded our initial data at least once
