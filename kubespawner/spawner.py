@@ -5,11 +5,11 @@ This module exports `KubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
 import asyncio
+import ipaddress
 import os
 import string
 import sys
 import warnings
-import ipaddress
 from functools import partial, wraps
 from urllib.parse import urlparse
 
@@ -1935,7 +1935,9 @@ class KubeSpawner(Spawner):
         else:
             proto = "http"
             hostname = pod["status"]["podIP"]
-
+            if type(ipaddress.ip_address(hostname)) == ipaddress.IPv6Address:
+                hostname = f"[{hostname}]"
+            
         if self.pod_connect_ip:
             hostname = ".".join(
                 [
@@ -1945,21 +1947,12 @@ class KubeSpawner(Spawner):
                     )
                 ]
             )
-        
-        fmtstr = "{}://{}:{}"
-        # Parsing as an IP Address may fail if hostname is a DNS name.
-        try:
-            addr = ipaddress.ip_address(hostname)
-            if type(addr) == ipaddress.IPv6Address:
-                fmtstr = "{}://[{}]:{}"
-        except:
-            pass
-        
-        return fmtstr.format(
-                proto,
-                hostname,
-                self.port,
-            )
+
+        return "{}://{}:{}".format(
+            proto,
+            hostname,
+            self.port,
+        )
 
     async def get_pod_manifest(self):
         """

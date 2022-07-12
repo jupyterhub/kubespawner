@@ -802,3 +802,13 @@ async def test_delete_pvc(kube_ns, kube_client, hub, config):
         else:
             break
     assert pvc_name not in pvc_names
+
+
+async def test_ipv6_addr():
+    """make sure ipv6 addresses are templated into URL correctly"""
+    # https://github.com/jupyterhub/jupyterhub/pull/3020
+    # https://github.com/jupyterhub/kubespawner/pull/619
+
+    spawner = KubeSpawner(_mock=True,)
+    url = spawner._get_pod_url({"status": {"podIP": "cafe:f00d::"}})
+    assert "[" in url and "]" in url
