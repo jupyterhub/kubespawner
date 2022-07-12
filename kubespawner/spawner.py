@@ -9,6 +9,7 @@ import os
 import string
 import sys
 import warnings
+import ipaddress
 from functools import partial, wraps
 from urllib.parse import urlparse
 
@@ -1944,12 +1945,21 @@ class KubeSpawner(Spawner):
                     )
                 ]
             )
-
-        return "{}://{}:{}".format(
-            proto,
-            hostname,
-            self.port,
-        )
+        
+        fmtstr = "{}://{}:{}"
+        # Parsing as an IP Address may fail if hostname is a DNS name.
+        try:
+            addr = ipaddress.ip_address(hostname)
+            if type(addr) == ipaddress.IPv6Address:
+                fmtstr = "{}://[{}]:{}"
+        except:
+            pass
+        
+        return fmtstr.format(
+                proto,
+                hostname,
+                self.port,
+            )
 
     async def get_pod_manifest(self):
         """
