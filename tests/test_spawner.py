@@ -809,6 +809,8 @@ async def test_ipv6_addr():
     # https://github.com/jupyterhub/jupyterhub/pull/3020
     # https://github.com/jupyterhub/kubespawner/pull/619
 
-    spawner = KubeSpawner(_mock=True,)
+    spawner = KubeSpawner(
+        _mock=True,
+    )
     url = spawner._get_pod_url({"status": {"podIP": "cafe:f00d::"}})
     assert "[" in url and "]" in url

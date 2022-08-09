@@ -1937,7 +1937,7 @@ class KubeSpawner(Spawner):
             hostname = pod["status"]["podIP"]
             if type(ipaddress.ip_address(hostname)) == ipaddress.IPv6Address:
                 hostname = f"[{hostname}]"
-            
+
         if self.pod_connect_ip:
             hostname = ".".join(
                 [
