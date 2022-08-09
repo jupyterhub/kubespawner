@@ -1935,7 +1935,7 @@ class KubeSpawner(Spawner):
         else:
             proto = "http"
             hostname = pod["status"]["podIP"]
-            if type(ipaddress.ip_address(hostname)) == ipaddress.IPv6Address:
+            if isinstance(ipaddress.ip_address(hostname), ipaddress.IPv6Address):
                 hostname = f"[{hostname}]"
 
         if self.pod_connect_ip:
