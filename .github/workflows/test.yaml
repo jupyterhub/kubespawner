@@ -58,8 +58,8 @@ jobs:
             test_dependencies: git+https://github.com/jupyterhub/jupyterhub
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: "${{ matrix.python }}"
 
@@ -74,7 +74,7 @@ jobs:
       # though.
       #
       # ref: https://github.com/jupyterhub/action-k3s-helm/
-      - uses: jupyterhub/action-k3s-helm@v1
+      - uses: jupyterhub/action-k3s-helm@v3
         with:
           k3s-channel: ${{ matrix.k3s }}
           metrics-enabled: false
@@ -101,8 +101,8 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.9"
 
