@@ -2277,7 +2277,7 @@ def test_make_pod_with_ssl():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
-            'hostname': 'test',
+            'hostname': 'ssl',
             'restartPolicy': 'OnFailure',
             'volumes': [
                 {
