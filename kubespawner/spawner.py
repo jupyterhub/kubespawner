@@ -5,6 +5,7 @@ This module exports `KubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
 import asyncio
+import ipaddress
 import os
 import string
 import sys
@@ -1934,6 +1935,8 @@ class KubeSpawner(Spawner):
         else:
             proto = "http"
             hostname = pod["status"]["podIP"]
+            if isinstance(ipaddress.ip_address(hostname), ipaddress.IPv6Address):
+                hostname = f"[{hostname}]"
 
         if self.pod_connect_ip:
             hostname = ".".join(
