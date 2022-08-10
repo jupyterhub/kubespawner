@@ -674,6 +674,7 @@ def make_pod(
             changes_name="extra_pod_config",
         )
 
+    pod.spec.hostname = name
     return pod
 
 
