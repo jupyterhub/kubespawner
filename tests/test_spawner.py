@@ -564,6 +564,7 @@ async def test_get_pvc_manifest():
 
     c.KubeSpawner.pvc_name_template = "user-{username}"
     c.KubeSpawner.storage_extra_labels = {"user": "{username}"}
+    c.KubeSpawner.storage_extra_annotations = {"user": "{username}"}
     c.KubeSpawner.storage_selector = {"matchLabels": {"user": "{username}"}}
 
     spawner = KubeSpawner(config=c, _mock=True)
@@ -578,6 +579,10 @@ async def test_get_pvc_manifest():
         "app": "jupyterhub",
         "component": "singleuser-storage",
         "heritage": "jupyterhub",
+    }
+    assert manifest.metadata.annotations == {
+        "user": "mock-5fname",
+        "hub.jupyter.org/username": "mock_name",
     }
     assert manifest.spec.selector == {"matchLabels": {"user": "mock-5fname"}}
 
@@ -610,6 +615,10 @@ async def test_variable_expansion(ssl_app):
         },
         "storage_extra_labels": {
             "configured_value": {"dummy": "storage-extra-labels-{username}"},
+            "findable_in": ["pvc"],
+        },
+        "storage_extra_annotations": {
+            "configured_value": {"dummy": "storage-extra-annotations-{username}"},
             "findable_in": ["pvc"],
         },
         "extra_labels": {

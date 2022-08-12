@@ -1102,6 +1102,26 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    storage_extra_annotations = Dict(
+        config=True,
+        help="""
+        Extra kubernetes annotations to set on the user PVCs.
+
+        The keys and values specified here would be set as annotations on the PVCs
+        created by kubespawner for the user. Note that these are only set
+        when the PVC is created, not later when this setting is updated.
+
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>`__
+        for more info on what annotations are and why you might want to use them!
+
+        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
+        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
+        found within strings of this configuration. The username and servername
+        come escaped to follow the [DNS label
+        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        """,
+    )
+
     storage_extra_labels = Dict(
         config=True,
         help="""
@@ -2099,7 +2119,9 @@ class KubeSpawner(Spawner):
         labels = self._build_common_labels(self._expand_all(self.storage_extra_labels))
         labels.update({'component': 'singleuser-storage'})
 
-        annotations = self._build_common_annotations({})
+        annotations = self._build_common_annotations(
+            self._expand_all(self.storage_extra_annotations)
+        )
 
         storage_selector = self._expand_all(self.storage_selector)
 
