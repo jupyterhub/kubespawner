@@ -717,9 +717,7 @@ class KubeSpawner(Spawner):
 
         `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
         `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the [DNS label
-        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        found within strings of this configuration.
         """,
     )
 
@@ -1116,9 +1114,7 @@ class KubeSpawner(Spawner):
 
         `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
         `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the [DNS label
-        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        found within strings of this configuration.
         """,
     )
 
