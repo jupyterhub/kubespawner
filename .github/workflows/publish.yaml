@@ -22,8 +22,8 @@ jobs:
     name: Publish to PyPI
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.9"
 
@@ -40,7 +40,7 @@ jobs:
 
       # ref: https://github.com/pypa/gh-action-pypi-publish
       - name: publish to pypi
-        uses: pypa/gh-action-pypi-publish@v1.4.1
+        uses: pypa/gh-action-pypi-publish@v1.5.1
         with:
           user: __token__
           password: ${{ secrets.pypi_password }}
