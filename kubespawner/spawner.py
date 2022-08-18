@@ -2989,8 +2989,14 @@ class KubeSpawner(Spawner):
             # are in the form data posted. This prevents users who may be authorized
             # to only use one profile from being able to access options set for other
             # profiles
-            for user_selected_option_name, user_selected_option_val in selected_profile_user_options:
-                if user_selected_option_name not in profile.get('profile_options').items():
+            for (
+                user_selected_option_name,
+                user_selected_option_val,
+            ) in selected_profile_user_options:
+                if (
+                    user_selected_option_name
+                    not in profile.get('profile_options').items()
+                ):
                     raise ValueError(
                         f'Expected option {option_name} for profile {slug}, not found in posted form'
                     )
