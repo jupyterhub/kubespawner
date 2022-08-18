@@ -2991,11 +2991,10 @@ class KubeSpawner(Spawner):
             # profiles
             for (
                 user_selected_option_name,
-                user_selected_option_val,
-            ) in selected_profile_user_options:
+            ) in selected_profile_user_options.keys():
                 if (
                     user_selected_option_name
-                    not in profile.get('profile_options').items()
+                    not in profile.get('profile_options').keys()
                 ):
                     raise ValueError(
                         f'Expected option {user_selected_option_name} for profile {slug}, not found in posted form'
