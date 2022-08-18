@@ -2992,7 +2992,7 @@ class KubeSpawner(Spawner):
                 chosen_option = user_options.get(option_name)
                 if not chosen_option:
                     raise ValueError(
-                        f'Expected option {k} for profile {slug}, not found in posted form'
+                        f'Expected option {option_name} for profile {slug}, not found in posted form'
                     )
 
                 chosen_option_overrides = option['choices'][chosen_option][
