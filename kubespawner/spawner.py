@@ -2998,7 +2998,7 @@ class KubeSpawner(Spawner):
                     not in profile.get('profile_options').items()
                 ):
                     raise ValueError(
-                        f'Expected option {option_name} for profile {slug}, not found in posted form'
+                        f'Expected option {user_selected_option_name} for profile {slug}, not found in posted form'
                     )
 
             # Get selected options or default to a random option if none is passed
