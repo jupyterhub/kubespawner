@@ -2940,7 +2940,7 @@ class KubeSpawner(Spawner):
 
         return options
 
-    async def _load_profile(self, slug, user_options):
+    async def _load_profile(self, slug, selected_profile_user_options):
         """Load a profile by name
 
         Called by load_user_options
@@ -2969,6 +2969,7 @@ class KubeSpawner(Spawner):
         self.log.debug(
             "Applying KubeSpawner override for profile '%s'", profile['display_name']
         )
+
         kubespawner_override = profile.get('kubespawner_override', {})
         for k, v in kubespawner_override.items():
             if callable(v):
@@ -2988,12 +2989,23 @@ class KubeSpawner(Spawner):
             # are in the form data posted. This prevents users who may be authorized
             # to only use one profile from being able to access options set for other
             # profiles
-            for option_name, option in profile.get('profile_options').items():
-                chosen_option = user_options.get(option_name)
-                if not chosen_option:
+            for user_selected_option_name, user_selected_option_val in selected_profile_user_options:
+                if user_selected_option_name not in profile.get('profile_options').items():
                     raise ValueError(
                         f'Expected option {option_name} for profile {slug}, not found in posted form'
                     )
+
+            # Get selected options or default to a random option if none is passed
+            for option_name, option in profile.get('profile_options').items():
+                chosen_option = selected_profile_user_options.get(option_name, None)
+                # If none was selected get the default
+                if not chosen_option:
+                    default_option = list(option['choices'].keys())[0]
+                    for choice_name, choice in option['choices'].items():
+                        if choice.get('default', False):
+                            # explicit default, not the first
+                            default_option = choice_name
+                    chosen_option = default_option
 
                 chosen_option_overrides = option['choices'][chosen_option][
                     'kubespawner_override'
@@ -3042,8 +3054,13 @@ class KubeSpawner(Spawner):
             self._profile_list = self._init_profile_list(profile_list)
 
         selected_profile = self.user_options.get('profile', None)
+        selected_profile_user_options = dict(self.user_options)
+        if selected_profile:
+            # Remove the 'profile' key so we are left with only selected profile options
+            del selected_profile_user_options['profile']
+
         if self._profile_list:
-            await self._load_profile(selected_profile, self.user_options)
+            await self._load_profile(selected_profile, selected_profile_user_options)
         elif selected_profile:
             self.log.warning(
                 "Profile %r requested, but profiles are not enabled", selected_profile
