@@ -1649,7 +1649,7 @@ class KubeSpawner(Spawner):
                                     'kubespawner_override': {
                                         'cpu_limit': 2,
                                         'cpu_guarantee': 1.8,
-                                        'node_selectors': {
+                                        'node_selector': {
                                             'node.kubernetes.io/instance-type': 'n1-standard-2'
                                         }
                                     }
@@ -1659,7 +1659,7 @@ class KubeSpawner(Spawner):
                                     'kubespawner_override': {
                                         'cpu_limit': 4,
                                         'cpu_guarantee': 3.5,
-                                        'node_selectors': {
+                                        'node_selector': {
                                             'node.kubernetes.io/instance-type': 'n1-standard-4'
                                         }
                                     }
