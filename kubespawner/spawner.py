@@ -2393,7 +2393,16 @@ class KubeSpawner(Spawner):
                 on_failure=on_reflector_failure,
                 **kwargs,
             )
-            asyncio.ensure_future(self.__class__.reflectors[key].start())
+            f = asyncio.ensure_future(self.__class__.reflectors[key].start())
+
+            async def catch_reflector_start():
+                try:
+                    await f
+                except Exception as e:
+                    self.log.exception(f"Reflector for {kind} failed to start.")
+                    sys.exit(1)
+
+            asyncio.create_task(catch_reflector_start())
 
         if replace and previous_reflector:
             # we replaced the reflector, stop the old one
