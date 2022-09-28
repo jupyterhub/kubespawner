@@ -2998,7 +2998,7 @@ class KubeSpawner(Spawner):
                         f'Expected option {user_selected_option_name} for profile {slug}, not found in posted form'
                     )
 
-            # Get selected options or default to a random option if none is passed
+            # Get selected options or default to the first option if none is passed
             for option_name, option in profile.get('profile_options').items():
                 chosen_option = selected_profile_user_options.get(option_name, None)
                 # If none was selected get the default
