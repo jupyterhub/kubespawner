@@ -905,11 +905,13 @@ def make_secret(
 
 def make_service(
     name,
-    port,
+    ports,
     servername,
-    owner_references,
+    type="ClusterIP",
+    owner_references=None,
     labels=None,
     annotations=None,
+    spec=None,
 ):
     """
     Make a k8s service specification for using dns to communicate with the notebook.
@@ -919,13 +921,20 @@ def make_service(
     name:
         Name of the service. Must be unique within the namespace the object is
         going to be created in.
-    env:
-        Dictionary of environment variables.
+    ports:
+        List of dict with port description, e.g. `[{"name": "http", "port": 80, "target_port": 80}]`
     labels:
         Labels to add to the service.
     annotations:
         Annotations to add to the service.
-
+    spec:
+        Extra options should be added to a spec, like `{"clusterIP": "None"}`
+    servername:
+        Name of server user by selector
+    owner_references:
+        Pod UUID used by Kubernetes to remove service with the pod
+    type:
+        `ClusterIP` or `NodePort`
     """
 
     metadata = V1ObjectMeta(
@@ -935,20 +944,30 @@ def make_service(
         owner_references=owner_references,
     )
 
-    service = V1Service(
-        kind='Service',
-        metadata=metadata,
-        spec=V1ServiceSpec(
-            type='ClusterIP',
-            ports=[V1ServicePort(name='http', port=port, target_port=port)],
+    spec = (spec or {}).copy()
+
+    service_ports = [get_k8s_model(V1ServicePort, port) for port in ports]
+    service_spec = get_k8s_model(
+        V1ServiceSpec,
+        dict(
+            type=type,
+            ports=service_ports,
             selector={
                 'component': 'singleuser-server',
                 'hub.jupyter.org/servername': servername,
                 'hub.jupyter.org/username': metadata.labels['hub.jupyter.org/username'],
             },
+            **spec,
         ),
     )
-
+    service = get_k8s_model(
+        V1Service,
+        dict(
+            kind='Service',
+            metadata=metadata,
+            spec=service_spec,
+        ),
+    )
     return service
 
 

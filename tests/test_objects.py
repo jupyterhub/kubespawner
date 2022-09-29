@@ -4,7 +4,13 @@ Test functions used to create k8s objects
 import pytest
 from kubernetes_asyncio.client import ApiClient
 
-from kubespawner.objects import make_ingress, make_namespace, make_pod, make_pvc
+from kubespawner.objects import (
+    make_ingress,
+    make_namespace,
+    make_pod,
+    make_pvc,
+    make_service,
+)
 
 api_client = ApiClient()
 
@@ -2251,5 +2257,112 @@ def test_make_pod_with_ssl():
             ],
         },
         "kind": "Pod",
-        "apiVersion": "v1",
+        'apiVersion': 'v1',
+    }
+
+
+@pytest.mark.parametrize(
+    "service_type",
+    [
+        "ClusterIP",
+        "NodePort",
+    ],
+)
+def test_make_service_with_type(service_type):
+    """
+    Test specification of a service
+    """
+
+    assert api_client.sanitize_for_serialization(
+        make_service(
+            name='service',
+            ports=[
+                {
+                    "port": 80,
+                    "target_port": 80,
+                }
+            ],
+            servername='some',
+            type=service_type,
+            labels={
+                'hub.jupyter.org/username': 'user',
+            },
+        )
+    ) == {
+        "metadata": {
+            "name": "service",
+            "annotations": {},
+            "labels": {
+                'hub.jupyter.org/username': 'user',
+            },
+        },
+        "spec": {
+            "type": service_type,
+            "ports": [
+                {
+                    "port": 80,
+                    "targetPort": 80,
+                }
+            ],
+            "selector": {
+                'component': 'singleuser-server',
+                'hub.jupyter.org/servername': 'some',
+                'hub.jupyter.org/username': 'user',
+            },
+        },
+        "kind": "Service",
+    }
+
+
+def test_make_service_with_owner_references():
+    """
+    Test specification of a service
+    """
+
+    assert api_client.sanitize_for_serialization(
+        make_service(
+            name='service',
+            ports=[
+                {
+                    "port": 80,
+                    "target_port": 80,
+                }
+            ],
+            servername='some',
+            owner_references="abc",
+            labels={
+                'hub.jupyter.org/username': 'user',
+                'some/label': 'labeled',
+            },
+            annotations={
+                'some/annotation': 'annotated',
+            },
+        )
+    ) == {
+        "metadata": {
+            "name": "service",
+            "annotations": {
+                'some/annotation': 'annotated',
+            },
+            "labels": {
+                'hub.jupyter.org/username': 'user',
+                'some/label': 'labeled',
+            },
+            "ownerReferences": "abc",
+        },
+        "spec": {
+            "ports": [
+                {
+                    "port": 80,
+                    "targetPort": 80,
+                }
+            ],
+            "type": 'ClusterIP',
+            "selector": {
+                'component': 'singleuser-server',
+                'hub.jupyter.org/servername': 'some',
+                'hub.jupyter.org/username': 'user',
+            },
+        },
+        "kind": "Service",
     }

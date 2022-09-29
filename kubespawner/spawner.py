@@ -418,6 +418,47 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    extra_services = List(
+        config=True,
+        help="""
+        List of Kubernetes services that will be bounded yo the server pod.
+
+        Each item in the list must have the
+        following keys:
+
+          - `name`
+            Name that'll be used in the `metadata` config of a service, e.g. `'jupyter-{username}-myservice-{servername}'`
+          - `ports`
+             List of dicts with port description, e.g.
+             `[{"name": "http", "port": 80, "target_port": 80}]`
+
+        Optional keys:
+
+          - `type`
+            `ClusterIP` (default) or `NodePort`.
+          - `labels`
+            Extra labels added to a service
+          - `annotations`
+            Extra annotations added to a service
+          - `spec`
+            Extra specification options, e.g. `{"clusterIP": "None"}`
+
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/services-networking/service>`__
+        for more information on the various kinds of volumes available and their options.
+        Your kubernetes cluster must already be configured to support the service types you want to use.
+
+        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
+        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
+        found within strings of this configuration. The username and servername
+        come escaped to follow the [DNS label
+        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+
+        Keys could be either a camelCase word (used by Kubernetes yaml, e.g.
+        ``targetPort``) or a snake_case word (used by Kubernetes Python client,
+        e.g. ``target_port``).
+        """,
+    )
+
     ip = Unicode(
         '0.0.0.0',
         config=True,
@@ -2068,7 +2109,7 @@ class KubeSpawner(Spawner):
             logger=self.log,
         )
 
-    def get_secret_manifest(self, owner_reference):
+    def _get_internal_ssl_secret_manifest(self, owner_reference):
         """
         Make a secret manifest that contains the ssl certificates.
         """
@@ -2088,25 +2129,64 @@ class KubeSpawner(Spawner):
             annotations=annotations,
         )
 
-    def get_service_manifest(self, owner_reference):
+    def get_secret_manifests(self, owner_reference):
         """
-        Make a service manifest for dns.
+        Make secret manifests list.
         """
 
-        labels = self._build_common_labels(self._expand_all(self.extra_labels))
+        if self.internal_ssl:
+            return [self._get_internal_ssl_secret_manifest(owner_reference)]
+
+        return []
+
+    def _get_service_manifest(self, service, owner_reference):
+        """
+        Make a service manifest.
+        """
+
+        service_labels = self.extra_labels.copy()
+        service_labels.update(service.pop("labels", {}))
+
+        labels = self._build_common_labels(self._expand_all(service_labels))
+
+        service_annotations = self.extra_annotations.copy()
+        service_annotations.update(service.pop("annotations", {}))
         annotations = self._build_common_annotations(
-            self._expand_all(self.extra_annotations)
+            self._expand_all(service_annotations)
         )
 
-        # TODO: validate that the service name
+        service = self._expand_all(service)
+
         return make_service(
-            name=self.pod_name,
-            port=self.port,
             servername=self.name,
             owner_references=[owner_reference],
             labels=labels,
             annotations=annotations,
+            **service,
         )
+
+    def get_service_manifests(self, owner_reference):
+        """
+        Make service manifests list.
+        """
+
+        services = []
+        if self.internal_ssl or self.services_enabled:
+            # Add default service
+            services = [
+                {
+                    "name": self.pod_name,
+                    "ports": [
+                        {"name": "http", "port": self.port, "targetPort": self.port}
+                    ],
+                }
+            ]
+
+        services.extend(self.extra_services)
+        manifests = [
+            self._get_service_manifest(service, owner_reference) for service in services
+        ]
+        return manifests
 
     def get_pvc_manifest(self):
         """
@@ -2666,43 +2746,42 @@ class KubeSpawner(Spawner):
             timeout=self.k8s_api_request_retry_timeout,
         )
 
-        if self.internal_ssl or self.services_enabled:
-            try:
-                # wait for pod to have uid,
-                # required for creating owner reference
+        try:
+            # wait for pod to have uid
+            await exponential_backoff(
+                lambda: self.pod_has_uid(self.pod_reflector.pods.get(ref_key, None)),
+                f"pod/{ref_key} does not have a uid!",
+            )
+
+            pod = self.pod_reflector.pods[ref_key]
+            owner_reference = make_owner_reference(
+                self.pod_name, pod["metadata"]["uid"]
+            )
+
+            service_manifests = self.get_service_manifests(owner_reference)
+            secret_manifests = self.get_secret_manifests(owner_reference)
+
+            # bound secrets to a pod using owner_reference
+            for secret_manifest in secret_manifests:
                 await exponential_backoff(
-                    lambda: self.pod_has_uid(
-                        self.pod_reflector.pods.get(ref_key, None)
+                    partial(
+                        self._ensure_not_exists,
+                        "secret",
+                        secret_manifest.metadata.name,
                     ),
-                    f"pod/{ref_key} does not have a uid!",
+                    f"Failed to delete secret {secret_manifest.metadata.name}",
+                )
+                await exponential_backoff(
+                    partial(
+                        self._make_create_resource_request,
+                        "secret",
+                        secret_manifest,
+                    ),
+                    f"Failed to create secret {secret_manifest.metadata.name}",
                 )
 
-                pod = self.pod_reflector.pods[ref_key]
-                owner_reference = make_owner_reference(
-                    self.pod_name, pod["metadata"]["uid"]
-                )
-
-                if self.internal_ssl:
-                    # internal ssl, create secret object
-                    secret_manifest = self.get_secret_manifest(owner_reference)
-                    await exponential_backoff(
-                        partial(
-                            self._ensure_not_exists,
-                            "secret",
-                            secret_manifest.metadata.name,
-                        ),
-                        f"Failed to delete secret {secret_manifest.metadata.name}",
-                    )
-                    await exponential_backoff(
-                        partial(
-                            self._make_create_resource_request,
-                            "secret",
-                            secret_manifest,
-                        ),
-                        f"Failed to create secret {secret_manifest.metadata.name}",
-                    )
-
-                service_manifest = self.get_service_manifest(owner_reference)
+            # bound services to a pod using owner_reference
+            for service_manifest in service_manifests:
                 await exponential_backoff(
                     partial(
                         self._ensure_not_exists,
@@ -2717,10 +2796,10 @@ class KubeSpawner(Spawner):
                     ),
                     f"Failed to create service {service_manifest.metadata.name}",
                 )
-            except Exception:
-                # cleanup on failure and re-raise
-                await self.stop(True)
-                raise
+        except Exception:
+            # cleanup on failure and re-raise
+            await self.stop(True)
+            raise
 
         # we need a timeout here even though start itself has a timeout
         # in order for this coroutine to finish at some point.

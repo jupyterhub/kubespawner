@@ -284,7 +284,7 @@ async def test_spawn_internal_ssl(
 
     # verify service and secret are gone
     # it may take a little while for them to get cleaned up
-    for i in range(5):
+    for _ in range(5):
         secrets = (await kube_client.list_namespaced_secret(kube_ns)).items
         secret_names = {s.metadata.name for s in secrets}
 
@@ -295,6 +295,136 @@ async def test_spawn_internal_ssl(
         else:
             break
     assert secret_name not in secret_names
+    assert service_name not in service_names
+
+
+async def test_spawn_services_enabled(
+    kube_ns,
+    kube_client,
+    hub_pod,
+    hub,
+    config,
+):
+    spawner = KubeSpawner(
+        config=config,
+        hub=hub,
+        user=MockUser(name="enabled"),
+        api_token="abc123",
+        oauth_client_id="unused",
+        services_enabled=True,
+    )
+    # start the spawner
+    await spawner.start()
+    pod_name = "jupyter-%s" % spawner.user.name
+    # verify the pod exists
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+
+    service_name = pod_name
+    services = (await kube_client.list_namespaced_service(kube_ns)).items
+    service_names = [s.metadata.name for s in services]
+    assert service_name in service_names
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert "jupyter-%s" % spawner.user.name not in pod_names
+
+    # verify service is gone
+    # it may take a little while for them to get cleaned up
+    for _ in range(5):
+        services = (await kube_client.list_namespaced_service(kube_ns)).items
+        service_names = {s.metadata.name for s in services}
+        if service_name in service_names:
+            await asyncio.sleep(1)
+        else:
+            break
+    assert service_name not in service_names
+
+
+async def test_spawn_extra_services(
+    kube_ns,
+    kube_client,
+    hub_pod,
+    hub,
+    config,
+):
+    spawner = KubeSpawner(
+        config=config,
+        hub=hub,
+        user=MockUser(name="services"),
+        api_token="abc123",
+        oauth_client_id="unused",
+        extra_services=[
+            {
+                "name": "jupyter-{username}-some-service--{servername}",
+                "type": "NodePort",
+                "ports": [
+                    {
+                        "port": 40000,
+                        "target_port": 40000,  # name in snake_case
+                    }
+                ],
+                "spec": {
+                    "externalTrafficPolicy": "Local",  # name in camelCase
+                },
+                "labels": {
+                    "cde": "label",
+                },
+                "annotations": {
+                    "def": "annotation",
+                },
+            }
+        ],
+    )
+    # start the spawner
+    await spawner.start()
+    pod_name = "jupyter-%s" % spawner.user.name
+    # verify the pod exists
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+
+    service_name = "jupyter-%s-some-service" % spawner.user.name
+    services = (await kube_client.list_namespaced_service(kube_ns)).items
+    services = [s for s in services if s.metadata.name == service_name]
+    assert len(services) == 1
+    service = services[0]
+
+    # check that user-defined options are set
+    assert service.spec.type == "NodePort"
+    assert service.spec.ports[0].port == 40000
+    assert service.spec.external_traffic_policy == "Local"
+    assert service.metadata.labels["cde"] == "label"
+    assert service.metadata.annotations["def"] == "annotation"
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert "jupyter-%s" % spawner.user.name not in pod_names
+
+    # verify service is gone
+    # it may take a little while for them to get cleaned up
+    for _ in range(5):
+        services = (await kube_client.list_namespaced_service(kube_ns)).items
+        service_names = {s.metadata.name for s in services}
+        if service_name in service_names:
+            await asyncio.sleep(1)
+        else:
+            break
     assert service_name not in service_names
 
 
@@ -675,9 +805,20 @@ async def test_variable_expansion(ssl_app):
             ],
             "findable_in": ["pod"],
         },
-        "extra_pod_config": {
-            "configured_value": {"schedulerName": "extra-pod-config-{username}"},
-            "findable_in": ["pod"],
+        "extra_services": {
+            "configured_value": [
+                {
+                    "name": "extra-services-{username}",
+                    "ports": [
+                        {
+                            "name": "http",
+                            "port": 80,
+                            "targetPort": 80,
+                        }
+                    ],
+                },
+            ],
+            "findable_in": ["service"],
         },
     }
 
@@ -700,25 +841,26 @@ async def test_variable_expansion(ssl_app):
     spawner.cert_paths = await spawner.move_certs(hub_paths)
 
     manifests = {
-        "pod": await spawner.get_pod_manifest(),
-        "pvc": spawner.get_pvc_manifest(),
-        "secret": spawner.get_secret_manifest("dummy-owner-ref"),
-        "service": spawner.get_service_manifest("dummy-owner-ref"),
+        "pod": [await spawner.get_pod_manifest()],
+        "pvc": [spawner.get_pvc_manifest()],
+        "secret": spawner.get_secret_manifests("dummy-owner-ref"),
+        "service": spawner.get_service_manifests("dummy-owner-ref"),
     }
 
-    for resource_kind, manifest in manifests.items():
-        manifest_string = str(manifest)
-        for config in config_to_test.values():
-            if resource_kind in config["findable_in"]:
-                assert config["findable_value"] in manifest_string, (
-                    manifest_string
-                    + "\n\n"
-                    + "finable_value: "
-                    + config["findable_value"]
-                    + "\n"
-                    + "resource_kind: "
-                    + resource_kind
-                )
+    for resource_kind, manifests in manifests.items():
+        for manifest in manifests:
+            manifest_string = str(manifest)
+            for config in config_to_test.values():
+                if resource_kind in config["findable_in"]:
+                    assert config["findable_value"] in manifest_string, (
+                        manifest_string
+                        + "\n\n"
+                        + "finable_value: "
+                        + config["findable_value"]
+                        + "\n"
+                        + "resource_kind: "
+                        + resource_kind
+                    )
 
 
 async def test_url_changed(kube_ns, kube_client, config, hub_pod, hub):
