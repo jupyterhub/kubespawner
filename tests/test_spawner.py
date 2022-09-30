@@ -708,12 +708,12 @@ async def test_variable_expansion(ssl_app):
         },
         "extra_labels": {
             "configured_value": {"dummy": "common-extra-labels-{username}"},
-            "findable_value": "common-extra-labels-user1",
+            "findable_values": ["common-extra-labels-user1"],
             "findable_in": ["pod", "service", "secret"],
         },
         "extra_annotations": {
             "configured_value": {"dummy": "common-extra-annotations-{username}"},
-            "findable_value": "common-extra-annotations-user1",
+            "findable_values": ["common-extra-annotations-user1"],
             "findable_in": ["pod", "service", "secret"],
         },
         "working_dir": {
@@ -739,6 +739,31 @@ async def test_variable_expansion(ssl_app):
                     'name': 'volume-mounts-{username}',
                     'mountPath': '/tmp/',
                 }
+            ],
+            "findable_in": ["pod"],
+        },
+        "environment": {
+            "configured_value": {
+                'VAR1': 'VAR1-{username}',
+                'VAR2': {
+                    'value': 'VAR2-{username}',
+                },
+                'VAR3': {
+                    'valueFrom': {
+                        'secretKeyRef': {
+                            'name': 'VAR3-SECRET-{username}',
+                            'key': 'VAR3-KEY-{username}',
+                        },
+                    },
+                },
+                'VAR4': 'VAR4-{{username}}-{{SHELL}}',
+            },
+            "findable_values": [
+                "VAR1-user1",
+                "VAR2-user1",
+                "VAR3-SECRET-user1",
+                "VAR3-KEY-user1",
+                "VAR4-{username}-{SHELL}",
             ],
             "findable_in": ["pod"],
         },
@@ -770,8 +795,8 @@ async def test_variable_expansion(ssl_app):
     for key, value in config_to_test.items():
         c.KubeSpawner[key] = value["configured_value"]
 
-        if "findable_value" not in value:
-            value["findable_value"] = key.replace("_", "-") + "-user1"
+        if "findable_values" not in value:
+            value["findable_values"] = [key.replace("_", "-") + "-user1"]
 
     user = MockUser(name="user1")
     spawner = KubeSpawner(
@@ -795,15 +820,16 @@ async def test_variable_expansion(ssl_app):
         manifest_string = str(manifest)
         for config in config_to_test.values():
             if resource_kind in config["findable_in"]:
-                assert config["findable_value"] in manifest_string, (
-                    manifest_string
-                    + "\n\n"
-                    + "finable_value: "
-                    + config["findable_value"]
-                    + "\n"
-                    + "resource_kind: "
-                    + resource_kind
-                )
+                for value in config["findable_values"]:
+                    assert value in manifest_string, (
+                        manifest_string
+                        + "\n\n"
+                        + "findable_value: "
+                        + value
+                        + "\n"
+                        + "resource_kind: "
+                        + resource_kind
+                    )
 
 
 async def test_url_changed(kube_ns, kube_client, config, hub_pod, hub):
