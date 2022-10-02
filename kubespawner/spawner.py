@@ -1595,7 +1595,8 @@ class KubeSpawner(Spawner):
               settings, on top of whatever was applied with the 'kubespawner_override' key
               for the profile itself. The key should be the name of the kubespawner setting,
               and value can be either the final value or a callable that returns the final
-              value when called with the spawner instance as the only parameter.
+              value when called with the spawner instance as the only parameter. The callable
+              may be async.
         - `default`: (optional Bool) True if this is the default selected option
 
         kubespawner setting overrides work in the following manner, with items further in the
@@ -3024,7 +3025,7 @@ class KubeSpawner(Spawner):
                 ]
                 for k, v in chosen_option_overrides.items():
                     if callable(v):
-                        v = v(self)
+                        v = await gen.maybe_future(v(self))
                         self.log.debug(
                             f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option} from callabale'
                         )
