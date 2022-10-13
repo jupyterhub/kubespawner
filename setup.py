@@ -11,10 +11,12 @@ if v[:2] < (3, 7):
 setup(
     name='jupyterhub-kubespawner',
     version='4.2.1.dev',
+    # NOTE: If lower bounds are updated, also update our test for the lower
+    #       bounds in .github/workflows/test.yaml.
     install_requires=[
         'escapism',
         'python-slugify',
-        'jupyterhub>=0.9',
+        'jupyterhub>=1.3.0',
         'jinja2',
         'kubernetes_asyncio>=19.15.1',
         'urllib3',
@@ -27,7 +29,7 @@ setup(
             'kubernetes>=11',
             'pytest>=5.4',
             'pytest-cov',
-            'pytest-asyncio>=0.11.0',
+            'pytest-asyncio>=0.17',
         ]
     },
     description='JupyterHub Spawner for Kubernetes',

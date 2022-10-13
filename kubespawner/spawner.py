@@ -17,11 +17,10 @@ import escapism
 from jinja2 import BaseLoader, Environment
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Callable, Command
-from jupyterhub.utils import exponential_backoff
+from jupyterhub.utils import exponential_backoff, maybe_future
 from kubernetes_asyncio import client
 from kubernetes_asyncio.client.rest import ApiException
 from slugify import slugify
-from tornado import gen
 from traitlets import (
     Bool,
     Dict,
@@ -1976,32 +1975,32 @@ class KubeSpawner(Spawner):
         Make a pod manifest that will spawn current user's notebook pod.
         """
         if callable(self.uid):
-            uid = await gen.maybe_future(self.uid(self))
+            uid = await maybe_future(self.uid(self))
         else:
             uid = self.uid
 
         if callable(self.gid):
-            gid = await gen.maybe_future(self.gid(self))
+            gid = await maybe_future(self.gid(self))
         else:
             gid = self.gid
 
         if callable(self.fs_gid):
-            fs_gid = await gen.maybe_future(self.fs_gid(self))
+            fs_gid = await maybe_future(self.fs_gid(self))
         else:
             fs_gid = self.fs_gid
 
         if callable(self.supplemental_gids):
-            supplemental_gids = await gen.maybe_future(self.supplemental_gids(self))
+            supplemental_gids = await maybe_future(self.supplemental_gids(self))
         else:
             supplemental_gids = self.supplemental_gids
 
         if callable(self.container_security_context):
-            csc = await gen.maybe_future(self.container_security_context(self))
+            csc = await maybe_future(self.container_security_context(self))
         else:
             csc = self.container_security_context
 
         if callable(self.pod_security_context):
-            psc = await gen.maybe_future(self.pod_security_context(self))
+            psc = await maybe_future(self.pod_security_context(self))
         else:
             psc = self.pod_security_context
 
@@ -2657,7 +2656,7 @@ class KubeSpawner(Spawner):
         # try again. We try 4 times, and if it still fails we give up.
         pod = await self.get_pod_manifest()
         if self.modify_pod_hook:
-            pod = await gen.maybe_future(self.modify_pod_hook(self, pod))
+            pod = await maybe_future(self.modify_pod_hook(self, pod))
 
         ref_key = f"{self.namespace}/{self.pod_name}"
         # If there's a timeout, just let it propagate
@@ -2886,7 +2885,7 @@ class KubeSpawner(Spawner):
         return profile_form_template.render(profile_list=self._profile_list)
 
     async def _render_options_form_dynamically(self, current_spawner):
-        profile_list = await gen.maybe_future(self.profile_list(current_spawner))
+        profile_list = await maybe_future(self.profile_list(current_spawner))
         profile_list = self._init_profile_list(profile_list)
         return self._render_options_form(profile_list)
 
@@ -3025,7 +3024,7 @@ class KubeSpawner(Spawner):
                 ]
                 for k, v in chosen_option_overrides.items():
                     if callable(v):
-                        v = await gen.maybe_future(v(self))
+                        v = await maybe_future(v(self))
                         self.log.debug(
                             f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option} from callabale'
                         )
@@ -3060,7 +3059,7 @@ class KubeSpawner(Spawner):
 
         if self._profile_list is None:
             if callable(self.profile_list):
-                profile_list = await gen.maybe_future(self.profile_list(self))
+                profile_list = await maybe_future(self.profile_list(self))
             else:
                 profile_list = self.profile_list
 
