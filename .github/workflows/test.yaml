@@ -41,10 +41,12 @@ jobs:
         # kubernetes_asyncio:  https://github.com/tomplus/kubernetes_asyncio/tags
         #
         include:
-          # Tests with oldest supported Python, k8s, and k8s client
+          # Tests with oldest supported Python, jupyterhub, k8s, and k8s client
           - python: "3.7"
             k3s: v1.20
-            test_dependencies: kubernetes_asyncio==19.*
+            test_dependencies: >-
+              jupyterhub==1.3.0
+              kubernetes_asyncio==19.15.1
 
           # Test with modern python and k8s versions
           - python: "3.9"
