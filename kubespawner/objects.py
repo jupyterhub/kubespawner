@@ -23,6 +23,7 @@ from kubernetes_asyncio.client.models import (
     V1IngressRule,
     V1IngressServiceBackend,
     V1IngressSpec,
+    V1IngressTLS,
     V1Lifecycle,
     V1LocalObjectReference,
     V1Namespace,
@@ -728,25 +729,38 @@ def make_pvc(
     return pvc
 
 
-def make_ingress(name, routespec, target, labels, data):
+def make_ingress(
+    name,
+    routespec,
+    target,
+    data,
+    specifications=None,
+    ingress_class_name=None,
+    common_labels=None,
+    ingress_labels=None,
+    ingress_annotations=None,
+):
     """
     Returns an ingress, service, endpoint object that'll work for this service
     """
+    common_annotations = {
+        'hub.jupyter.org/proxy-data': json.dumps(data),
+        'hub.jupyter.org/proxy-routespec': routespec,
+        'hub.jupyter.org/proxy-target': target,
+    }
+    common_labels = (common_labels or {}).copy()
     meta = V1ObjectMeta(
         name=name,
-        annotations={
-            'hub.jupyter.org/proxy-data': json.dumps(data),
-            'hub.jupyter.org/proxy-routespec': routespec,
-            'hub.jupyter.org/proxy-target': target,
-        },
-        labels=labels,
+        annotations=common_annotations,
+        labels=common_labels,
     )
 
     if routespec.startswith('/'):
-        host = None
         path = routespec
     else:
-        host, path = routespec.split('/', 1)
+        path = routespec.split('/', 1)[1]
+
+    specifications = specifications or [{}]
 
     target_parts = urlparse(target)
     target_port = target_parts.port
@@ -796,32 +810,55 @@ def make_ingress(name, routespec, target, labels, data):
             ),
         )
 
+    rules = [
+        V1IngressRule(
+            host=spec.get("host"),
+            http=V1HTTPIngressRuleValue(
+                paths=[
+                    V1HTTPIngressPath(
+                        path=path,
+                        path_type="Prefix",
+                        backend=V1IngressBackend(
+                            service=V1IngressServiceBackend(
+                                name=name,
+                                port=V1ServiceBackendPort(
+                                    number=target_port,
+                                ),
+                            ),
+                        ),
+                    )
+                ]
+            ),
+        )
+        for spec in specifications
+    ]
+
+    tls = [
+        V1IngressTLS(hosts=[spec["host"]], secret_name=spec["tlsSecret"])
+        for spec in specifications
+        if "tlsSecret" in spec
+    ]
+
+    labels = common_labels.copy()
+    labels.update(ingress_labels or {})
+
+    annotations = common_annotations.copy()
+    annotations.update(ingress_annotations or {})
+
+    ingress_metadata = V1ObjectMeta(
+        name=name,
+        annotations=annotations,
+        labels=labels,
+    )
+
     # Make Ingress object
     ingress = V1Ingress(
         kind='Ingress',
-        metadata=meta,
+        metadata=ingress_metadata,
         spec=V1IngressSpec(
-            rules=[
-                V1IngressRule(
-                    host=host,
-                    http=V1HTTPIngressRuleValue(
-                        paths=[
-                            V1HTTPIngressPath(
-                                path=path,
-                                path_type="Prefix",
-                                backend=V1IngressBackend(
-                                    service=V1IngressServiceBackend(
-                                        name=name,
-                                        port=V1ServiceBackendPort(
-                                            number=target_port,
-                                        ),
-                                    ),
-                                ),
-                            )
-                        ]
-                    ),
-                )
-            ]
+            ingress_class_name=ingress_class_name,
+            rules=rules,
+            tls=tls or None,
         ),
     )
 

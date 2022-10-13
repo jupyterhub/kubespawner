@@ -7,7 +7,7 @@ import escapism
 from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
 from kubernetes_asyncio import client
-from traitlets import Unicode
+from traitlets import Dict, List, Unicode
 
 from .clients import load_config, shared_client
 from .objects import make_ingress
@@ -136,6 +136,75 @@ class KubeIngressProxy(Proxy):
         """,
     )
 
+    ingress_class_name = Unicode(
+        config=True,
+        help="""
+        Default value for 'ingressClassName' field in Ingress specification
+        """,
+    )
+
+    hub_specifications = List(
+        trait=Dict,
+        config=True,
+        help="""
+        Ingress specifications for /hub/* routes. List of dicts of the following format:
+
+        [{'host': 'host.example.domain'}]
+        [{'host': 'host.example.domain', 'tlsSecret': 'tlsSecretName'}]
+        [{'host': 'jh.{hubnamespace}.domain', 'tlsSecret': 'tlsSecretName'}]
+
+        Wildcard might not work, refer to your ingress controller documentation.
+
+        `{routespec}`, `{hubnamespace}`, and `{unescaped_routespec}` will be expanded if
+        found within strings of this configuration.
+
+        Names have to be are escaped to follow the [DNS label
+        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        """,
+    )
+
+    service_specifications = List(
+        trait=Dict,
+        config=True,
+        help="""
+        Ingress specifications for /services/:servicename/* routes. List of dicts of the following format:
+
+        [{'host': 'host.example.domain'}]
+        [{'host': 'host.example.domain', 'tlsSecret': 'tlsSecretName'}]
+        [{'host': 'jh.{hubnamespace}.domain', 'tlsSecret': 'tlsSecretName'}]
+
+        Wildcard might not work, refer to your ingress controller documentation.
+
+        `{username}`, `{service}`, `{routespec}`, `{hubnamespace}`,
+        `{unescaped_username}`, `{unescaped_service}` and `{unescaped_routespec}` will be expanded if
+        found within strings of this configuration.
+
+        Names have to be are escaped to follow the [DNS label
+        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        """,
+    )
+
+    server_specifications = List(
+        trait=Dict,
+        config=True,
+        help="""
+        Ingress specifications for /user/:user/:servername/* routes. List of dicts of the following format:
+
+        [{'host': 'host.example.domain'}]
+        [{'host': 'host.example.domain', 'tlsSecret': 'tlsSecretName'}]
+        [{'host': '{username}.{hubnamespace}.domain', 'tlsSecret': 'tlsSecretName'}]
+
+        Wildcard might not work, refer to your ingress controller documentation.
+
+        `{username}`, `{servername}`, `{routespec}`, `{hubnamespace}`,
+        `{unescaped_username}`, `{unescaped_servername}` and `{unescaped_routespec}` will be expanded if
+        found within strings of this configuration.
+
+        Names have to be are escaped to follow the [DNS label
+        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        """,
+    )
+
     def _namespace_default(self):
         """
         Set namespace default to current namespace if running in a k8s cluster
@@ -156,6 +225,62 @@ class KubeIngressProxy(Proxy):
         The component label used to tag the user pods. This can be used to override
         the spawner behavior when dealing with multiple hub instances in the same
         namespace. Usually helpful for CI workflows.
+        """,
+    )
+
+    common_labels = Dict(
+        config=True,
+        help="""
+        Extra kubernetes labels to set on all created objects.
+
+        The keys and values must both be strings that match the kubernetes
+        label key / value constraints.
+
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
+        for more info on what labels are and why you might want to use them!
+
+        `{username}`, `{servername}`, `{servicename}`, `{routespec}`, `{hubnamespace}`,
+        `{unescaped_username}`, `{unescaped_servername}`, `{unescaped_servicename}` and `{unescaped_routespec}` will be expanded if
+        found within strings of this configuration.
+
+        Names have to be are escaped to follow the [DNS label
+        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        """,
+    )
+
+    extra_labels = Dict(
+        config=True,
+        help="""
+        Extra kubernetes labels to set to ingress objects.
+
+        The keys and values must both be strings that match the kubernetes
+        label key / value constraints.
+
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
+        for more info on what labels are and why you might want to use them!
+
+        `{username}`, `{servername}`, `{servicename}`, `{routespec}`, `{hubnamespace}`,
+        `{unescaped_username}`, `{unescaped_servername}`, `{unescaped_servicename}` and `{unescaped_routespec}` will be expanded if
+        found within strings of this configuration.
+
+        Names have to be are escaped to follow the [DNS label
+        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        """,
+    )
+
+    extra_annotations = Dict(
+        config=True,
+        help="""
+        Extra kubernetes annotations to set on the ingress object.
+
+        The keys and values must both be strings.
+
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>`__
+        for more info on what annotations are and why you might want to use them!
+
+        `{username}`, `{servername}`, `{servicename}`, `{routespec}`, `{hubnamespace}`,
+        `{unescaped_username}`, `{unescaped_servername}`, `{unescaped_servicename}` and `{unescaped_routespec}` will be expanded if
+        found within strings of this configuration.
         """,
     )
 
@@ -223,6 +348,58 @@ class KubeIngressProxy(Proxy):
         )
         return safe_name
 
+    def _expand_user_properties(self, template, routespec, data):
+        # Make sure username and servername match the restrictions for DNS labels
+        # Note: '-' is not in safe_chars, as it is being used as escape character
+        safe_chars = set(string.ascii_lowercase + string.digits)
+
+        raw_servername = data.get('server_name') or ''
+        safe_servername = escapism.escape(
+            raw_servername, safe=safe_chars, escape_char='-'
+        ).lower()
+
+        hub_namespace = self._namespace_default()
+        if hub_namespace == "default":
+            hub_namespace = "user"
+
+        raw_username = data.get('user')
+        safe_username = escapism.escape(
+            raw_username, safe=safe_chars, escape_char='-'
+        ).lower()
+
+        raw_servicename = data.get('services')
+        safe_servicename = escapism.escape(
+            raw_servicename, safe=safe_chars, escape_char='-'
+        ).lower()
+
+        raw_routespec = routespec
+        safe_routespec = self._safe_name_for_routespec(routespec)
+
+        rendered = template.format(
+            username=safe_username,
+            unescaped_username=raw_username,
+            servername=safe_servername,
+            unescaped_servername=raw_servername,
+            servicename=safe_servicename,
+            unescaped_servicename=raw_servicename,
+            routespec=safe_routespec,
+            unescaped_routespec=raw_routespec,
+            hubnamespace=hub_namespace,
+        )
+        # strip trailing - delimiter in case of empty servername.
+        # k8s object names cannot have trailing -
+        return rendered.rstrip("-")
+
+    def _expand_all(self, src, routespec, data):
+        if isinstance(src, list):
+            return [self._expand_all(i, routespec, data) for i in src]
+        elif isinstance(src, dict):
+            return {k: self._expand_all(v, routespec, data) for k, v in src.items()}
+        elif isinstance(src, str):
+            return self._expand_user_properties(src, routespec, data)
+        else:
+            return src
+
     async def _delete_if_exists(self, kind, safe_name, future):
         try:
             await future
@@ -238,13 +415,41 @@ class KubeIngressProxy(Proxy):
         # 'data' is JSON encoded and put in an annotation - we don't need to query for it
 
         safe_name = self._safe_name_for_routespec(routespec).lower()
-        labels = {
+        if "user" in data:
+            specifications = self._expand_all(
+                self.server_specifications,
+                routespec,
+                data,
+            )
+        elif "services" in data:
+            specifications = self._expand_all(
+                self.service_specifications,
+                routespec,
+                data,
+            )
+        else:
+            specifications = self._expand_all(self.hub_specifications, routespec, data)
+
+        common_labels = {
             'heritage': 'jupyterhub',
             'component': self.component_label,
             'hub.jupyter.org/proxy-route': 'true',
         }
+        common_labels.update(self._expand_all(self.common_labels, routespec, data))
+
+        ingress_labels = self._expand_all(self.extra_labels, routespec, data)
+        ingress_annotations = self._expand_all(self.extra_annotations, routespec, data)
+
         endpoint, service, ingress = make_ingress(
-            safe_name, routespec, target, labels, data
+            name=safe_name,
+            routespec=routespec,
+            data=data,
+            target=target,
+            specifications=specifications,
+            ingress_class_name=self.ingress_class_name,
+            common_labels=common_labels,
+            ingress_labels=ingress_labels,
+            ingress_annotations=ingress_annotations,
         )
 
         async def ensure_object(create_func, patch_func, body, kind):

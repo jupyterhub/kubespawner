@@ -1984,18 +1984,26 @@ def test_make_ingress(target, ip):
     """
     Test specification of the ingress objects
     """
-    labels = {
+    common_labels = {
         'heritage': 'jupyterhub',
         'component': 'singleuser-server',
         'hub.jupyter.org/proxy-route': 'true',
+        'common': 'label',
     }
+    ingress_labels = {
+        'extra': 'label',
+    }
+    ingress_annotations = {'extra': 'annotation'}
     endpoint, service, ingress = api_client.sanitize_for_serialization(
         make_ingress(
             name='jupyter-test',
             routespec='/my-path',
             target=target,
-            labels=labels,
             data={"mykey": "myvalue"},
+            common_labels=common_labels,
+            ingress_labels=ingress_labels,
+            ingress_annotations=ingress_annotations,
+            ingress_class_name='nginx',
         )
     )
 
@@ -2011,6 +2019,7 @@ def test_make_ingress(target, ip):
                 'component': 'singleuser-server',
                 'heritage': 'jupyterhub',
                 'hub.jupyter.org/proxy-route': 'true',
+                'common': 'label',
             },
             'name': 'jupyter-test',
         },
@@ -2029,6 +2038,7 @@ def test_make_ingress(target, ip):
                 'component': 'singleuser-server',
                 'heritage': 'jupyterhub',
                 'hub.jupyter.org/proxy-route': 'true',
+                'common': 'label',
             },
             'name': 'jupyter-test',
         },
@@ -2045,15 +2055,19 @@ def test_make_ingress(target, ip):
                 'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
                 'hub.jupyter.org/proxy-routespec': '/my-path',
                 'hub.jupyter.org/proxy-target': target,
+                'extra': 'annotation',
             },
             'labels': {
                 'component': 'singleuser-server',
                 'heritage': 'jupyterhub',
                 'hub.jupyter.org/proxy-route': 'true',
+                'common': 'label',
+                'extra': 'label',
             },
             'name': 'jupyter-test',
         },
         'spec': {
+            'ingressClassName': 'nginx',
             'rules': [
                 {
                     'http': {
@@ -2073,7 +2087,7 @@ def test_make_ingress(target, ip):
                         ]
                     }
                 }
-            ]
+            ],
         },
     }
 
@@ -2082,7 +2096,7 @@ def test_make_ingress_external_name():
     """
     Test specification of the ingress objects
     """
-    labels = {
+    common_labels = {
         'heritage': 'jupyterhub',
         'component': 'singleuser-server',
         'hub.jupyter.org/proxy-route': 'true',
@@ -2092,7 +2106,7 @@ def test_make_ingress_external_name():
             name='jupyter-test',
             routespec='/my-path',
             target='http://my-pod-name:9000',
-            labels=labels,
+            common_labels=common_labels,
             data={"mykey": "myvalue"},
         )
     )
@@ -2157,6 +2171,266 @@ def test_make_ingress_external_name():
                     }
                 }
             ]
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    'target,ip',
+    [
+        ('http://192.168.1.10:9000', '192.168.1.10'),
+        ('http://[2001:db8::dead:babe]:9000', '2001:db8::dead:babe'),
+    ],
+)
+def test_make_ingress_with_hosts(target, ip):
+    """
+    Test specification of the ingress objects
+    """
+    common_labels = {
+        'heritage': 'jupyterhub',
+        'component': 'singleuser-server',
+        'hub.jupyter.org/proxy-route': 'true',
+    }
+    specifications = [
+        {
+            "host": "host1.domain.com",
+        },
+        {
+            "host": "host2.domain.com",
+            "tlsSecret": "tls-secret",
+        },
+    ]
+    endpoint, service, ingress = api_client.sanitize_for_serialization(
+        make_ingress(
+            name='jupyter-test',
+            routespec='/my-path',
+            target=target,
+            common_labels=common_labels,
+            data={"mykey": "myvalue"},
+            specifications=specifications,
+        )
+    )
+
+    assert endpoint == {
+        'kind': 'Endpoints',
+        'metadata': {
+            'annotations': {
+                'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
+                'hub.jupyter.org/proxy-routespec': '/my-path',
+                'hub.jupyter.org/proxy-target': target,
+            },
+            'labels': {
+                'component': 'singleuser-server',
+                'heritage': 'jupyterhub',
+                'hub.jupyter.org/proxy-route': 'true',
+            },
+            'name': 'jupyter-test',
+        },
+        'subsets': [{'addresses': [{'ip': ip}], 'ports': [{'port': 9000}]}],
+    }
+
+    assert service == {
+        'kind': 'Service',
+        'metadata': {
+            'annotations': {
+                'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
+                'hub.jupyter.org/proxy-routespec': '/my-path',
+                'hub.jupyter.org/proxy-target': target,
+            },
+            'labels': {
+                'component': 'singleuser-server',
+                'heritage': 'jupyterhub',
+                'hub.jupyter.org/proxy-route': 'true',
+            },
+            'name': 'jupyter-test',
+        },
+        'spec': {
+            'externalName': '',
+            'ports': [{'port': 9000, 'targetPort': 9000}],
+            'type': 'ClusterIP',
+        },
+    }
+    assert ingress == {
+        'kind': 'Ingress',
+        'metadata': {
+            'annotations': {
+                'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
+                'hub.jupyter.org/proxy-routespec': '/my-path',
+                'hub.jupyter.org/proxy-target': target,
+            },
+            'labels': {
+                'component': 'singleuser-server',
+                'heritage': 'jupyterhub',
+                'hub.jupyter.org/proxy-route': 'true',
+            },
+            'name': 'jupyter-test',
+        },
+        'spec': {
+            'rules': [
+                {
+                    'host': 'host1.domain.com',
+                    'http': {
+                        'paths': [
+                            {
+                                'backend': {
+                                    'service': {
+                                        'name': 'jupyter-test',
+                                        'port': {
+                                            'number': 9000,
+                                        },
+                                    },
+                                },
+                                'path': '/my-path',
+                                'pathType': 'Prefix',
+                            }
+                        ]
+                    },
+                },
+                {
+                    'host': 'host2.domain.com',
+                    'http': {
+                        'paths': [
+                            {
+                                'backend': {
+                                    'service': {
+                                        'name': 'jupyter-test',
+                                        'port': {
+                                            'number': 9000,
+                                        },
+                                    },
+                                },
+                                'path': '/my-path',
+                                'pathType': 'Prefix',
+                            }
+                        ]
+                    },
+                },
+            ],
+            'tls': [
+                {
+                    'hosts': ['host2.domain.com'],
+                    'secretName': 'tls-secret',
+                }
+            ],
+        },
+    }
+
+
+def test_make_ingress_external_name_with_hosts():
+    """
+    Test specification of the ingress objects
+    """
+    common_labels = {
+        'heritage': 'jupyterhub',
+        'component': 'singleuser-server',
+        'hub.jupyter.org/proxy-route': 'true',
+    }
+    specifications = [
+        {
+            "host": "host1.domain.com",
+        },
+        {
+            "host": "host2.domain.com",
+            "tlsSecret": "tls-secret",
+        },
+    ]
+    endpoint, service, ingress = api_client.sanitize_for_serialization(
+        make_ingress(
+            name='jupyter-test',
+            routespec='/my-path',
+            target='http://my-pod-name:9000',
+            common_labels=common_labels,
+            data={"mykey": "myvalue"},
+            specifications=specifications,
+        )
+    )
+
+    assert endpoint == None
+
+    assert service == {
+        'kind': 'Service',
+        'metadata': {
+            'annotations': {
+                'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
+                'hub.jupyter.org/proxy-routespec': '/my-path',
+                'hub.jupyter.org/proxy-target': 'http://my-pod-name:9000',
+            },
+            'labels': {
+                'component': 'singleuser-server',
+                'heritage': 'jupyterhub',
+                'hub.jupyter.org/proxy-route': 'true',
+            },
+            'name': 'jupyter-test',
+        },
+        'spec': {
+            'externalName': 'my-pod-name',
+            'clusterIP': '',
+            'ports': [{'port': 9000, 'targetPort': 9000}],
+            'type': 'ExternalName',
+        },
+    }
+    assert ingress == {
+        'kind': 'Ingress',
+        'metadata': {
+            'annotations': {
+                'hub.jupyter.org/proxy-data': '{"mykey": "myvalue"}',
+                'hub.jupyter.org/proxy-routespec': '/my-path',
+                'hub.jupyter.org/proxy-target': 'http://my-pod-name:9000',
+            },
+            'labels': {
+                'component': 'singleuser-server',
+                'heritage': 'jupyterhub',
+                'hub.jupyter.org/proxy-route': 'true',
+            },
+            'name': 'jupyter-test',
+        },
+        'spec': {
+            'rules': [
+                {
+                    'host': 'host1.domain.com',
+                    'http': {
+                        'paths': [
+                            {
+                                'backend': {
+                                    'service': {
+                                        'name': 'jupyter-test',
+                                        'port': {
+                                            'number': 9000,
+                                        },
+                                    },
+                                },
+                                'path': '/my-path',
+                                'pathType': 'Prefix',
+                            }
+                        ]
+                    },
+                },
+                {
+                    'host': 'host2.domain.com',
+                    'http': {
+                        'paths': [
+                            {
+                                'backend': {
+                                    'service': {
+                                        'name': 'jupyter-test',
+                                        'port': {
+                                            'number': 9000,
+                                        },
+                                    },
+                                },
+                                'path': '/my-path',
+                                'pathType': 'Prefix',
+                            }
+                        ]
+                    },
+                },
+            ],
+            'tls': [
+                {
+                    'hosts': ['host2.domain.com'],
+                    'secretName': 'tls-secret',
+                }
+            ],
         },
     }
 
