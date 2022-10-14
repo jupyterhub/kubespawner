@@ -324,19 +324,19 @@ class KubeIngressProxy(Proxy):
 
         delete_options = client.V1DeleteOptions(grace_period_seconds=0)
 
-        delete_endpoint = await self.core_api.delete_namespaced_endpoints(
+        delete_endpoint = self.core_api.delete_namespaced_endpoints(
             name=safe_name,
             namespace=self.namespace,
             body=delete_options,
         )
 
-        delete_service = await self.core_api.delete_namespaced_service(
+        delete_service = self.core_api.delete_namespaced_service(
             name=safe_name,
             namespace=self.namespace,
             body=delete_options,
         )
 
-        delete_ingress = await self.networking_api.delete_namespaced_ingress(
+        delete_ingress = self.networking_api.delete_namespaced_ingress(
             name=safe_name,
             namespace=self.namespace,
             body=delete_options,
