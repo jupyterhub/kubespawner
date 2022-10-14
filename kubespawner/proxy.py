@@ -282,7 +282,7 @@ class KubeIngressProxy(Proxy):
                 'Could not find endpoints/%s after creating it' % safe_name,
             )
         else:
-            delete_endpoint = await self.core_api.delete_namespaced_endpoints(
+            delete_endpoint = self.core_api.delete_namespaced_endpoints(
                 name=safe_name,
                 namespace=self.namespace,
                 body=client.V1DeleteOptions(grace_period_seconds=0),
