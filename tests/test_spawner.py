@@ -1,11 +1,13 @@
 import asyncio
 import json
 import os
+from functools import partial
 from unittest.mock import Mock
 
 import pytest
 from jupyterhub.objects import Hub, Server
 from jupyterhub.orm import Spawner
+from jupyterhub.utils import exponential_backoff
 from kubernetes_asyncio.client.models import (
     V1Capabilities,
     V1Container,
@@ -16,6 +18,7 @@ from kubernetes_asyncio.client.models import (
 from traitlets.config import Config
 
 from kubespawner import KubeSpawner
+from kubespawner.objects import make_owner_reference, make_service
 
 
 class MockUser(Mock):
@@ -295,6 +298,88 @@ async def test_spawn_internal_ssl(
         else:
             break
     assert secret_name not in secret_names
+    assert service_name not in service_names
+
+
+async def test_spawn_after_pod_created_hook(
+    kube_ns,
+    kube_client,
+    hub,
+    config,
+):
+    async def after_pod_created_hook(spawner: KubeSpawner, pod: dict):
+        owner_reference = make_owner_reference(spawner.pod_name, pod["metadata"]["uid"])
+
+        labels = spawner._build_common_labels(spawner._expand_all(spawner.extra_labels))
+        annotations = spawner._build_common_annotations(
+            spawner._expand_all(spawner.extra_annotations)
+        )
+
+        service_manifest = make_service(
+            name=spawner.pod_name + "-hook",
+            port=spawner.port,
+            servername=spawner.name,
+            owner_references=[owner_reference],
+            labels=labels,
+            annotations=annotations,
+        )
+
+        await exponential_backoff(
+            partial(
+                spawner._ensure_not_exists,
+                "service",
+                service_manifest.metadata.name,
+            ),
+            f"Failed to delete service {service_manifest.metadata.name}",
+        )
+        await exponential_backoff(
+            partial(spawner._make_create_resource_request, "service", service_manifest),
+            f"Failed to create service {service_manifest.metadata.name}",
+        )
+
+    spawner = KubeSpawner(
+        config=config,
+        hub=hub,
+        user=MockUser(name="ssl"),
+        api_token="abc123",
+        oauth_client_id="unused",
+        after_pod_created_hook=after_pod_created_hook,
+    )
+    # start the spawner
+    await spawner.start()
+    pod_name = "jupyter-%s" % spawner.user.name
+    # verify the pod exists
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+
+    # verify service exist
+    service_name = pod_name + "-hook"
+    services = (await kube_client.list_namespaced_service(kube_ns)).items
+    service_names = [s.metadata.name for s in services]
+    assert service_name in service_names
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert "jupyter-%s" % spawner.user.name not in pod_names
+
+    # verify service is gone
+    # it may take a little while for them to get cleaned up
+    for _ in range(5):
+        services = (await kube_client.list_namespaced_service(kube_ns)).items
+        service_names = {s.metadata.name for s in services}
+        if service_name in service_names:
+            await asyncio.sleep(1)
+        else:
+            break
+
     assert service_name not in service_names
 
 

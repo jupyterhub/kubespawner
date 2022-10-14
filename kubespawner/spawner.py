@@ -1022,6 +1022,26 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    after_pod_created_hook = Callable(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        Callable to augment the Pod object after launching.
+
+        Expects a callable that takes two parameters:
+
+           1. The spawner object that is doing the spawning
+           2. The Pod object that was launched
+
+        This can be a coroutine if necessary. When set to none, no augmenting is done.
+
+        This is very useful if you want to add some services or ingress to the pod after it is launched.
+        Note that the spawner object can change between versions of KubeSpawner and JupyterHub,
+        so be careful relying on this!
+        """,
+    )
+
     volumes = List(
         config=True,
         help="""
@@ -2656,6 +2676,7 @@ class KubeSpawner(Spawner):
         # try again. We try 4 times, and if it still fails we give up.
         pod = await self.get_pod_manifest()
         if self.modify_pod_hook:
+            self.log.info('Pod is being modified via modify_pod_hook')
             pod = await maybe_future(self.modify_pod_hook(self, pod))
 
         ref_key = f"{self.namespace}/{self.pod_name}"
@@ -2666,7 +2687,7 @@ class KubeSpawner(Spawner):
             timeout=self.k8s_api_request_retry_timeout,
         )
 
-        if self.internal_ssl or self.services_enabled:
+        if self.internal_ssl or self.services_enabled or self.after_pod_created_hook:
             try:
                 # wait for pod to have uid,
                 # required for creating owner reference
@@ -2702,21 +2723,28 @@ class KubeSpawner(Spawner):
                         f"Failed to create secret {secret_manifest.metadata.name}",
                     )
 
-                service_manifest = self.get_service_manifest(owner_reference)
-                await exponential_backoff(
-                    partial(
-                        self._ensure_not_exists,
-                        "service",
-                        service_manifest.metadata.name,
-                    ),
-                    f"Failed to delete service {service_manifest.metadata.name}",
-                )
-                await exponential_backoff(
-                    partial(
-                        self._make_create_resource_request, "service", service_manifest
-                    ),
-                    f"Failed to create service {service_manifest.metadata.name}",
-                )
+                if self.internal_ssl or self.services_enabled:
+                    service_manifest = self.get_service_manifest(owner_reference)
+                    await exponential_backoff(
+                        partial(
+                            self._ensure_not_exists,
+                            "service",
+                            service_manifest.metadata.name,
+                        ),
+                        f"Failed to delete service {service_manifest.metadata.name}",
+                    )
+                    await exponential_backoff(
+                        partial(
+                            self._make_create_resource_request,
+                            "service",
+                            service_manifest,
+                        ),
+                        f"Failed to create service {service_manifest.metadata.name}",
+                    )
+
+                if self.after_pod_created_hook:
+                    self.log.info('Executing after_pod_created_hook')
+                    await maybe_future(self.after_pod_created_hook(self, pod))
             except Exception:
                 # cleanup on failure and re-raise
                 await self.stop(True)
