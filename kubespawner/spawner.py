@@ -3029,7 +3029,14 @@ class KubeSpawner(Spawner):
                 )
             else:
                 self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
-            setattr(self, k, v)
+
+            # If v is a dict, *merge* it with existing values, rather than completely
+            # resetting it. This allows *adding* things like environment variables rather
+            # than completely replacing them.
+            if isinstance(v, dict) and isinstance(getattr(self, k), dict):
+                getattr(self, k).update(v)
+            else:
+                setattr(self, k, v)
 
         if profile.get('profile_options'):
             # each option specified here *must* have a value in our POST, as we
@@ -3073,7 +3080,14 @@ class KubeSpawner(Spawner):
                         self.log.debug(
                             f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option}'
                         )
-                    setattr(self, k, v)
+
+                    # If v is a dict, *merge* it with existing values, rather than completely
+                    # resetting it. This allows *adding* things like environment variables rather
+                    # than completely replacing them.
+                    if isinstance(v, dict) and isinstance(getattr(self, k), dict):
+                        getattr(self, k).update(v)
+                    else:
+                        setattr(self, k, v)
 
     # set of recognised user option keys
     # used for warning about ignoring unrecognised options
