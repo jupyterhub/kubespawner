@@ -703,10 +703,7 @@ _test_profiles = [
             'image': 'training/python:label',
             'cpu_limit': 1,
             'mem_limit': 512 * 1024 * 1024,
-            'environment': {
-                'override': 'override-value'
-            }
-
+            'environment': {'override': 'override-value'},
         },
     },
     {
@@ -738,13 +735,12 @@ async def test_user_options_set_from_form():
     for key, value in _test_profiles[1]['kubespawner_override'].items():
         assert getattr(spawner, key) == value
 
+
 async def test_kubespawner_override():
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = _test_profiles
     # Set a base environment
-    spawner.environment = {
-        "existing": "existing-value"
-    }
+    spawner.environment = {"existing": "existing-value"}
     # render the form, select first option
     await spawner.get_options_form()
     spawner.user_options = spawner.options_from_form(
@@ -756,7 +752,7 @@ async def test_kubespawner_override():
     await spawner.load_user_options()
     assert spawner.environment == {
         "existing": "existing-value",
-        "override": "override-value"
+        "override": "override-value",
     }
 
 
