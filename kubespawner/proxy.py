@@ -78,7 +78,7 @@ class KubeIngressProxy(Proxy):
     KubeIngressProxy is an implementation of the JupyterHub Proxy class that
     JupyterHub can be configured to rely on:
 
-        c.JupyterHub.proxy_class = "kubespawner:KubeIngressProxy"
+        c.JupyterHub.proxy_class = "kubespawner.proxy:KubeIngressProxy"
 
     Like all JupyterHub Proxy implementations, KubeIngressProxy will know
     how to respond to hub requests like `get_all_routes`, `add_route`, and
@@ -125,6 +125,9 @@ class KubeIngressProxy(Proxy):
                verbs: ["get", "watch", "list", "create", "update", "patch", "delete"]
            ```
     """
+
+    # JupyterHub should not try to start or stop this proxy
+    should_start = False
 
     namespace = Unicode(
         config=True,
