@@ -1984,18 +1984,17 @@ def test_make_ingress(target, ip):
     """
     Test specification of the ingress objects
     """
-    labels = {
+    common_labels = {
         'heritage': 'jupyterhub',
         'component': 'singleuser-server',
-        'hub.jupyter.org/proxy-route': 'true',
     }
     endpoint, service, ingress = api_client.sanitize_for_serialization(
         make_ingress(
             name='jupyter-test',
             routespec='/my-path',
             target=target,
-            labels=labels,
             data={"mykey": "myvalue"},
+            common_labels=common_labels,
         )
     )
 
@@ -2082,18 +2081,17 @@ def test_make_ingress_external_name():
     """
     Test specification of the ingress objects
     """
-    labels = {
+    common_labels = {
         'heritage': 'jupyterhub',
         'component': 'singleuser-server',
-        'hub.jupyter.org/proxy-route': 'true',
     }
     endpoint, service, ingress = api_client.sanitize_for_serialization(
         make_ingress(
             name='jupyter-test',
             routespec='/my-path',
             target='http://my-pod-name:9000',
-            labels=labels,
             data={"mykey": "myvalue"},
+            common_labels=common_labels,
         )
     )
 
