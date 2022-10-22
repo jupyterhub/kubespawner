@@ -6,6 +6,7 @@ import ipaddress
 import json
 import operator
 import re
+from typing import Optional
 from urllib.parse import urlparse
 
 from kubernetes_asyncio.client.models import (
@@ -728,10 +729,24 @@ def make_pvc(
     return pvc
 
 
-def make_ingress(name, routespec, target, labels, data):
+def make_ingress(
+    name: str,
+    routespec: str,
+    target: str,
+    data: dict,
+    common_labels: Optional[dict] = None,
+):
     """
     Returns an ingress, service, endpoint object that'll work for this service
     """
+
+    default_labels = {
+        'hub.jupyter.org/proxy-route': 'true',
+    }
+
+    common_labels = (common_labels or {}).copy()
+    common_labels.update(default_labels)
+
     meta = V1ObjectMeta(
         name=name,
         annotations={
@@ -739,7 +754,7 @@ def make_ingress(name, routespec, target, labels, data):
             'hub.jupyter.org/proxy-routespec': routespec,
             'hub.jupyter.org/proxy-target': target,
         },
-        labels=labels,
+        labels=common_labels,
     )
 
     if routespec.startswith('/'):
