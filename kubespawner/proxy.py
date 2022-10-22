@@ -186,6 +186,45 @@ class KubeIngressProxy(Proxy):
         """,
     )
 
+    ingress_extra_labels = Dict(
+        config=True,
+        help="""
+        Extra kubernetes labels to set to Ingress objects.
+
+        The keys and values must both be strings that match the kubernetes
+        label key / value constraints.
+
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
+        for more info on what labels are and why you might want to use them!
+
+        `{username}`, `{servername}`, `{servicename}`, `{routespec}`, `{hubnamespace}`,
+        `{unescaped_username}`, `{unescaped_servername}`, `{unescaped_servicename}` and `{unescaped_routespec}` will be expanded if
+        found within strings of this configuration.
+
+        Names have to be are escaped to follow the [DNS label
+        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        """,
+    )
+
+    ingress_extra_annotations = Dict(
+        config=True,
+        help="""
+        Extra kubernetes annotations to set on the Ingress object.
+
+        The keys and values must both be strings.
+
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
+        for more info on what labels are and why you might want to use them!
+
+        `{username}`, `{servername}`, `{servicename}`, `{routespec}`, `{hubnamespace}`,
+        `{unescaped_username}`, `{unescaped_servername}`, `{unescaped_servicename}` and `{unescaped_routespec}` will be expanded if
+        found within strings of this configuration.
+
+        Names have to be are escaped to follow the [DNS label
+        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        """,
+    )
+
     k8s_api_ssl_ca_cert = Unicode(
         "",
         config=True,
@@ -317,14 +356,25 @@ class KubeIngressProxy(Proxy):
         # 'data' is JSON encoded and put in an annotation - we don't need to query for it
 
         safe_name = self._safe_name_for_routespec(routespec).lower()
+
         common_labels = self._expand_all(self.common_labels, routespec, data)
         common_labels.update({'component': self.component_label})
+
+        ingress_extra_labels = self._expand_all(
+            self.ingress_extra_labels, routespec, data
+        )
+        ingress_extra_annotations = self._expand_all(
+            self.ingress_extra_annotations, routespec, data
+        )
+
         endpoint, service, ingress = make_ingress(
             name=safe_name,
             routespec=routespec,
             target=target,
-            common_labels=common_labels,
             data=data,
+            common_labels=common_labels,
+            ingress_extra_labels=ingress_extra_labels,
+            ingress_extra_annotations=ingress_extra_annotations,
         )
 
         async def ensure_object(create_func, patch_func, body, kind):
