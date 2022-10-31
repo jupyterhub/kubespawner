@@ -10,6 +10,7 @@ target_version = [
     "py38",
     "py39",
     "py310",
+    "py311",
 ]
 
 # pytest is used for running Python based tests

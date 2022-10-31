@@ -51,11 +51,11 @@ jobs:
           # Test with modern python and k8s versions
           - python: "3.9"
             k3s: stable
-          - python: "3.9"
+          - python: "3.10"
             k3s: latest
 
           # Test with latest python and JupyterHub in main branch
-          - python: "3.10"
+          - python: "3.11"
             k3s: latest
             test_dependencies: git+https://github.com/jupyterhub/jupyterhub
 
