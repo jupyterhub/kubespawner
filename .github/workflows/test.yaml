@@ -3,8 +3,6 @@
 #
 name: Test
 
-# Trigger the workflow's on pushed branches, pull requests, and manually run
-# workflows.
 on:
   pull_request:
     paths-ignore:
@@ -25,8 +23,7 @@ on:
 
 jobs:
   run-pytest:
-    name: Run pytest
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
 
     strategy:
@@ -67,7 +64,6 @@ jobs:
 
       - name: Install package and test dependencies
         run: |
-          pip install --upgrade pip
           pip install -e ".[test]" ${{ matrix.test_dependencies }}
           pip freeze
 
@@ -85,7 +81,7 @@ jobs:
 
       - name: Run pytest
         run: |
-          pytest -v --durations 10 --cov kubespawner --color=yes
+          pytest --cov kubespawner
 
       # ref: https://github.com/jupyterhub/action-k8s-namespace-report
       - name: Kubernetes namespace report

@@ -3,7 +3,6 @@
 #
 name: Publish
 
-# Trigger the workflow's on pushed version tags.
 on:
   pull_request:
     paths-ignore:
@@ -23,16 +22,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Builds and pushes docker images to DockerHub and package the Helm chart and
-  # pushes it to jupyterhub/helm-chart@gh-pages where index.yaml represents the
-  # JupyterHub organization Helm chart repository.
-  #
-  # ref: https://github.com/jupyterhub/helm-chart
-  # ref: https://hub.docker.com/orgs/jupyterhub
-  #
-  publish:
-    name: Publish to PyPI
-    runs-on: ubuntu-20.04
+  publish-to-pypi:
+    runs-on: ubuntu-22.04
+
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -41,7 +33,6 @@ jobs:
 
       - name: install build package
         run: |
-          pip install --upgrade pip
           pip install build
           pip freeze
 
