@@ -96,25 +96,3 @@ jobs:
         run: |
           pip install codecov
           codecov
-
-  # Keep this job synced with the publish job in publish.yaml!
-  package-build:
-    name: Test package build
-    runs-on: ubuntu-20.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.9"
-
-      - name: install build package
-        run: |
-          pip install --upgrade pip
-          pip install build
-          pip freeze
-
-      - name: build release
-        run: |
-          python -m build --sdist --wheel .
-          ls -alh dist
