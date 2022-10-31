@@ -11,3 +11,13 @@ target_version = [
     "py39",
     "py310",
 ]
+
+# pytest is used for running Python based tests
+#
+# ref: https://docs.pytest.org/en/stable/
+#
+[tool.pytest.ini_options]
+addopts = "--verbose --color=yes --durations=10"
+asyncio_mode = "auto"
+# Ignore thousands of tests in dependencies installed in a virtual environment
+norecursedirs = "lib lib64"
