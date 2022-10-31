@@ -92,7 +92,5 @@ jobs:
         uses: jupyterhub/action-k8s-namespace-report@v1
         if: always()
 
-      - name: Submit a codecov report
-        run: |
-          pip install codecov
-          codecov
+      # ref: https://github.com/codecov/codecov-action
+      - uses: codecov/codecov-action@v3
