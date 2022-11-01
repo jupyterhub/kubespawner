@@ -28,7 +28,6 @@ repos:
     rev: 22.10.0
     hooks:
       - id: black
-        args: [--target-version=py37]
 
   # Autoformat: markdown, yaml
   - repo: https://github.com/pre-commit/mirrors-prettier

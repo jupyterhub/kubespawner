@@ -1,6 +1,7 @@
-[tool.isort]
-profile = "black"
-
+# black is used for autoformatting Python code
+#
+# ref: https://black.readthedocs.io/en/stable/
+#
 [tool.black]
 skip-string-normalization = true
 # target-version should be all supported versions, see
@@ -10,4 +11,24 @@ target_version = [
     "py38",
     "py39",
     "py310",
+    "py311",
 ]
+
+
+# isort is used for autoformatting Python code
+#
+# ref: https://pycqa.github.io/isort/
+#
+[tool.isort]
+profile = "black"
+
+
+# pytest is used for running Python based tests
+#
+# ref: https://docs.pytest.org/en/stable/
+#
+[tool.pytest.ini_options]
+addopts = "--verbose --color=yes --durations=10"
+asyncio_mode = "auto"
+# Ignore thousands of tests in dependencies installed in a virtual environment
+norecursedirs = "lib lib64"
