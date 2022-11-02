@@ -3026,7 +3026,7 @@ class KubeSpawner(Spawner):
             # are in the form data posted. This prevents users who may be authorized
             # to only use one profile from being able to access options set for other
             # profiles
-            for (user_selected_option_name,) in selected_profile_user_options.keys():
+            for user_selected_option_name in selected_profile_user_options.keys():
                 if (
                     user_selected_option_name
                     not in profile.get('profile_options').keys()
