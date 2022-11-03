@@ -627,7 +627,8 @@ Change highlights:
 - Update Kubernetes Python client to 6.0 (supporting Kubernetes 1.10 APIs)
 - Numerous bugfixes
 
-[unreleased]: https://github.com/jupyterhub/kubespawner/compare/4.2.0...HEAD
+[unreleased]: https://github.com/jupyterhub/kubespawner/compare/4.3.0...HEAD
+[4.3.0]: https://github.com/jupyterhub/kubespawner/compare/4.2.0...4.3.0
 [4.2.0]: https://github.com/jupyterhub/kubespawner/compare/4.1.0...4.2.0
 [4.1.0]: https://github.com/jupyterhub/kubespawner/compare/4.0.0...4.1.0
 [4.0.0]: https://github.com/jupyterhub/kubespawner/compare/3.0.2...4.0.0
