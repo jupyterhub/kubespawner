@@ -4,6 +4,48 @@
 
 ## [Unreleased]
 
+## 4.3
+
+### [4.3.0] - 2022-11-03
+
+#### New features added
+
+- [KubeIngressProxy] Add common_labels option and expand username etc [#653](https://github.com/jupyterhub/kubespawner/pull/653) ([@dolfinus](https://github.com/dolfinus))
+- Add after_pod_created_hook [#644](https://github.com/jupyterhub/kubespawner/pull/644) ([@dolfinus](https://github.com/dolfinus))
+- Add `storage_extra_annotations` configuration, used when PVCs are created [#630](https://github.com/jupyterhub/kubespawner/pull/630) ([@TomHellier](https://github.com/TomHellier))
+- Add user_namespace_labels and user_namespace_annotations for use with enable_user_namespaces [#612](https://github.com/jupyterhub/kubespawner/pull/612) ([@zv0n](https://github.com/zv0n))
+
+#### Enhancements made
+
+- Allow profile_options callable to be async [#640](https://github.com/jupyterhub/kubespawner/pull/640) ([@yuvipanda](https://github.com/yuvipanda))
+- Set first value in `profile-options` as default when none is specified [#631](https://github.com/jupyterhub/kubespawner/pull/631) ([@GeorgianaElena](https://github.com/GeorgianaElena))
+- Add "http" as a name to created k8s Services' port (required by Istio) [#614](https://github.com/jupyterhub/kubespawner/pull/614) ([@ddebeau](https://github.com/ddebeau))
+
+#### Bugs fixed
+
+- Fix dict keys iteration [#662](https://github.com/jupyterhub/kubespawner/pull/662) ([@GeorgianaElena](https://github.com/GeorgianaElena))
+- [KubeIngressProxy] Fix delete_route [#649](https://github.com/jupyterhub/kubespawner/pull/649) ([@dolfinus](https://github.com/dolfinus))
+- [KubeIngressProxy] Set `should_start` to false and documentation fix [#647](https://github.com/jupyterhub/kubespawner/pull/647) ([@dolfinus](https://github.com/dolfinus))
+- [KubeIngressProxy] Fix 404 error in `add_route` [#646](https://github.com/jupyterhub/kubespawner/pull/646) ([@dolfinus](https://github.com/dolfinus))
+- Fix async `modify_pod_hook`s - use jupyterhub.utils.maybe_future instead of tornado.get.maybe_future [#645](https://github.com/jupyterhub/kubespawner/pull/645) ([@dolfinus](https://github.com/dolfinus))
+- catch errors in reflector.start [#635](https://github.com/jupyterhub/kubespawner/pull/635) ([@minrk](https://github.com/minrk))
+- properly handle IPv6 IPs [#619](https://github.com/jupyterhub/kubespawner/pull/619) ([@nikhiljha](https://github.com/nikhiljha))
+
+#### Documentation improvements
+
+- Add changelog for 4.2.0 [#636](https://github.com/jupyterhub/kubespawner/pull/636) ([@consideRatio](https://github.com/consideRatio))
+
+#### Continuous integration improvements
+
+- ci: add dependabot to bump github action versions, and bump them [#624](https://github.com/jupyterhub/kubespawner/pull/624) ([@consideRatio](https://github.com/consideRatio))
+- ci: misc ci updates [#661](https://github.com/jupyterhub/kubespawner/pull/661) ([@consideRatio](https://github.com/consideRatio))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2022-05-19&to=2022-11-02&type=c))
+
+[@abkfenris](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aabkfenris+updated%3A2022-05-19..2022-11-02&type=Issues) | [@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2022-05-19..2022-11-02&type=Issues) | [@ddebeau](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Addebeau+updated%3A2022-05-19..2022-11-02&type=Issues) | [@dolfinus](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adolfinus+updated%3A2022-05-19..2022-11-02&type=Issues) | [@GeorgianaElena](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AGeorgianaElena+updated%3A2022-05-19..2022-11-02&type=Issues) | [@manics](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2022-05-19..2022-11-02&type=Issues) | [@minrk](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2022-05-19..2022-11-02&type=Issues) | [@nikhiljha](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Anikhiljha+updated%3A2022-05-19..2022-11-02&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Apre-commit-ci+updated%3A2022-05-19..2022-11-02&type=Issues) | [@sgibson91](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Asgibson91+updated%3A2022-05-19..2022-11-02&type=Issues) | [@TomHellier](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3ATomHellier+updated%3A2022-05-19..2022-11-02&type=Issues) | [@welcome](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Awelcome+updated%3A2022-05-19..2022-11-02&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2022-05-19..2022-11-02&type=Issues) | [@zv0n](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Azv0n+updated%3A2022-05-19..2022-11-02&type=Issues)
+
 ## 4.2
 
 ### [4.2.0] - 2022-08-29
@@ -585,7 +627,8 @@ Change highlights:
 - Update Kubernetes Python client to 6.0 (supporting Kubernetes 1.10 APIs)
 - Numerous bugfixes
 
-[unreleased]: https://github.com/jupyterhub/kubespawner/compare/4.2.0...HEAD
+[unreleased]: https://github.com/jupyterhub/kubespawner/compare/4.3.0...HEAD
+[4.3.0]: https://github.com/jupyterhub/kubespawner/compare/4.2.0...4.3.0
 [4.2.0]: https://github.com/jupyterhub/kubespawner/compare/4.1.0...4.2.0
 [4.1.0]: https://github.com/jupyterhub/kubespawner/compare/4.0.0...4.1.0
 [4.0.0]: https://github.com/jupyterhub/kubespawner/compare/3.0.2...4.0.0
