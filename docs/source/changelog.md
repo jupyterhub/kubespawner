@@ -6,6 +6,18 @@
 
 ## 4.3
 
+### [4.3.1] - 2022-11-03
+
+#### Continuous integration improvements
+
+- ci: Make sure we run the publish workflow on every tag pushed [#664](https://github.com/jupyterhub/kubespawner/pull/664) ([@GeorgianaElena](https://github.com/GeorgianaElena))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2022-11-03&to=2022-11-03&type=c))
+
+[@GeorgianaElena](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AGeorgianaElena+updated%3A2022-11-03..2022-11-03&type=Issues)
+
 ### [4.3.0] - 2022-11-03
 
 #### New features added
@@ -627,7 +639,8 @@ Change highlights:
 - Update Kubernetes Python client to 6.0 (supporting Kubernetes 1.10 APIs)
 - Numerous bugfixes
 
-[unreleased]: https://github.com/jupyterhub/kubespawner/compare/4.3.0...HEAD
+[unreleased]: https://github.com/jupyterhub/kubespawner/compare/4.3.1...HEAD
+[4.3.1]: https://github.com/jupyterhub/kubespawner/compare/4.3.0...4.3.1
 [4.3.0]: https://github.com/jupyterhub/kubespawner/compare/4.2.0...4.3.0
 [4.2.0]: https://github.com/jupyterhub/kubespawner/compare/4.1.0...4.2.0
 [4.1.0]: https://github.com/jupyterhub/kubespawner/compare/4.0.0...4.1.0
