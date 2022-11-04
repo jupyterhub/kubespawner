@@ -9,4 +9,5 @@ builtins = c, get_config
 exclude =
     .cache,
     .github,
-    docs
+    docs,
+    __init__.py
