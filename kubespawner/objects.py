@@ -735,6 +735,8 @@ def make_ingress(
     target: str,
     data: dict,
     common_labels: Optional[dict] = None,
+    ingress_extra_labels: Optional[dict] = None,
+    ingress_extra_annotations: Optional[dict] = None,
 ):
     """
     Returns an ingress, service, endpoint object that'll work for this service
@@ -747,13 +749,15 @@ def make_ingress(
     common_labels = (common_labels or {}).copy()
     common_labels.update(default_labels)
 
+    common_annotations = {
+        'hub.jupyter.org/proxy-data': json.dumps(data),
+        'hub.jupyter.org/proxy-routespec': routespec,
+        'hub.jupyter.org/proxy-target': target,
+    }
+
     meta = V1ObjectMeta(
         name=name,
-        annotations={
-            'hub.jupyter.org/proxy-data': json.dumps(data),
-            'hub.jupyter.org/proxy-routespec': routespec,
-            'hub.jupyter.org/proxy-target': target,
-        },
+        annotations=common_annotations,
         labels=common_labels,
     )
 
@@ -812,9 +816,22 @@ def make_ingress(
         )
 
     # Make Ingress object
+
+    ingress_labels = common_labels.copy()
+    ingress_labels.update(ingress_extra_labels or {})
+
+    ingress_annotations = common_annotations.copy()
+    ingress_annotations.update(ingress_extra_annotations or {})
+
+    ingress_meta = V1ObjectMeta(
+        name=name,
+        annotations=ingress_annotations,
+        labels=ingress_labels,
+    )
+
     ingress = V1Ingress(
         kind='Ingress',
-        metadata=meta,
+        metadata=ingress_meta,
         spec=V1IngressSpec(
             rules=[
                 V1IngressRule(
