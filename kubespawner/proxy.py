@@ -7,7 +7,7 @@ import escapism
 from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
 from kubernetes_asyncio import client
-from traitlets import Unicode
+from traitlets import Dict, Unicode
 
 from .clients import load_config, shared_client
 from .objects import make_ingress
@@ -162,6 +162,69 @@ class KubeIngressProxy(Proxy):
         """,
     )
 
+    common_labels = Dict(
+        {
+            'app': 'jupyterhub',
+            'heritage': 'jupyterhub',
+        },
+        config=True,
+        help="""
+        Extra kubernetes labels to set on all created objects.
+
+        The keys and values must both be strings that match the kubernetes
+        label key / value constraints.
+
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
+        for more info on what labels are and why you might want to use them!
+
+        `{username}`, `{servername}`, `{servicename}`, `{routespec}`, `{hubnamespace}`,
+        `{unescaped_username}`, `{unescaped_servername}`, `{unescaped_servicename}` and `{unescaped_routespec}` will be expanded if
+        found within strings of this configuration.
+
+        Names have to be are escaped to follow the [DNS label
+        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        """,
+    )
+
+    ingress_extra_labels = Dict(
+        config=True,
+        help="""
+        Extra kubernetes labels to set to Ingress objects.
+
+        The keys and values must both be strings that match the kubernetes
+        label key / value constraints.
+
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
+        for more info on what labels are and why you might want to use them!
+
+        `{username}`, `{servername}`, `{servicename}`, `{routespec}`, `{hubnamespace}`,
+        `{unescaped_username}`, `{unescaped_servername}`, `{unescaped_servicename}` and `{unescaped_routespec}` will be expanded if
+        found within strings of this configuration.
+
+        Names have to be are escaped to follow the [DNS label
+        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        """,
+    )
+
+    ingress_extra_annotations = Dict(
+        config=True,
+        help="""
+        Extra kubernetes annotations to set on the Ingress object.
+
+        The keys and values must both be strings.
+
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
+        for more info on what labels are and why you might want to use them!
+
+        `{username}`, `{servername}`, `{servicename}`, `{routespec}`, `{hubnamespace}`,
+        `{unescaped_username}`, `{unescaped_servername}`, `{unescaped_servicename}` and `{unescaped_routespec}` will be expanded if
+        found within strings of this configuration.
+
+        Names have to be are escaped to follow the [DNS label
+        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        """,
+    )
+
     k8s_api_ssl_ca_cert = Unicode(
         "",
         config=True,
@@ -226,6 +289,58 @@ class KubeIngressProxy(Proxy):
         )
         return safe_name
 
+    def _expand_user_properties(self, template, routespec, data):
+        # Make sure username and servername match the restrictions for DNS labels
+        # Note: '-' is not in safe_chars, as it is being used as escape character
+        safe_chars = set(string.ascii_lowercase + string.digits)
+
+        raw_servername = data.get('server_name') or ''
+        safe_servername = escapism.escape(
+            raw_servername, safe=safe_chars, escape_char='-'
+        ).lower()
+
+        hub_namespace = self._namespace_default()
+        if hub_namespace == "default":
+            hub_namespace = "user"
+
+        raw_username = data.get('user')
+        safe_username = escapism.escape(
+            raw_username, safe=safe_chars, escape_char='-'
+        ).lower()
+
+        raw_servicename = data.get('services')
+        safe_servicename = escapism.escape(
+            raw_servicename, safe=safe_chars, escape_char='-'
+        ).lower()
+
+        raw_routespec = routespec
+        safe_routespec = self._safe_name_for_routespec(routespec)
+
+        rendered = template.format(
+            username=safe_username,
+            unescaped_username=raw_username,
+            servername=safe_servername,
+            unescaped_servername=raw_servername,
+            servicename=safe_servicename,
+            unescaped_servicename=raw_servicename,
+            routespec=safe_routespec,
+            unescaped_routespec=raw_routespec,
+            hubnamespace=hub_namespace,
+        )
+        # strip trailing - delimiter in case of empty servername.
+        # k8s object names cannot have trailing -
+        return rendered.rstrip("-")
+
+    def _expand_all(self, src, routespec, data):
+        if isinstance(src, list):
+            return [self._expand_all(i, routespec, data) for i in src]
+        elif isinstance(src, dict):
+            return {k: self._expand_all(v, routespec, data) for k, v in src.items()}
+        elif isinstance(src, str):
+            return self._expand_user_properties(src, routespec, data)
+        else:
+            return src
+
     async def _delete_if_exists(self, kind, safe_name, future):
         try:
             await future
@@ -241,13 +356,25 @@ class KubeIngressProxy(Proxy):
         # 'data' is JSON encoded and put in an annotation - we don't need to query for it
 
         safe_name = self._safe_name_for_routespec(routespec).lower()
-        labels = {
-            'heritage': 'jupyterhub',
-            'component': self.component_label,
-            'hub.jupyter.org/proxy-route': 'true',
-        }
+
+        common_labels = self._expand_all(self.common_labels, routespec, data)
+        common_labels.update({'component': self.component_label})
+
+        ingress_extra_labels = self._expand_all(
+            self.ingress_extra_labels, routespec, data
+        )
+        ingress_extra_annotations = self._expand_all(
+            self.ingress_extra_annotations, routespec, data
+        )
+
         endpoint, service, ingress = make_ingress(
-            safe_name, routespec, target, labels, data
+            name=safe_name,
+            routespec=routespec,
+            target=target,
+            data=data,
+            common_labels=common_labels,
+            ingress_extra_labels=ingress_extra_labels,
+            ingress_extra_annotations=ingress_extra_annotations,
         )
 
         async def ensure_object(create_func, patch_func, body, kind):
