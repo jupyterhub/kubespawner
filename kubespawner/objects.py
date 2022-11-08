@@ -737,6 +737,7 @@ def make_ingress(
     common_labels: Optional[dict] = None,
     ingress_extra_labels: Optional[dict] = None,
     ingress_extra_annotations: Optional[dict] = None,
+    ingress_class_name: Optional[str] = None,
 ):
     """
     Returns an ingress, service, endpoint object that'll work for this service
@@ -833,6 +834,7 @@ def make_ingress(
         kind='Ingress',
         metadata=ingress_meta,
         spec=V1IngressSpec(
+            ingress_class_name=ingress_class_name,
             rules=[
                 V1IngressRule(
                     host=host,
@@ -853,7 +855,7 @@ def make_ingress(
                         ]
                     ),
                 )
-            ]
+            ],
         ),
     )
 

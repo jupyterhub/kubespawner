@@ -2004,6 +2004,7 @@ def test_make_ingress(target, ip):
             common_labels=common_labels,
             ingress_extra_labels=ingress_extra_labels,
             ingress_extra_annotations=ingress_extra_annotations,
+            ingress_class_name='nginx',
         )
     )
 
@@ -2067,6 +2068,7 @@ def test_make_ingress(target, ip):
             'name': 'jupyter-test',
         },
         'spec': {
+            'ingressClassName': 'nginx',
             'rules': [
                 {
                     'http': {
@@ -2086,7 +2088,7 @@ def test_make_ingress(target, ip):
                         ]
                     }
                 }
-            ]
+            ],
         },
     }
 
