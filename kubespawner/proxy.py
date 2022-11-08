@@ -225,6 +225,13 @@ class KubeIngressProxy(Proxy):
         """,
     )
 
+    ingress_class_name = Unicode(
+        config=True,
+        help="""
+        Default value for 'ingressClassName' field in Ingress specification
+        """,
+    )
+
     k8s_api_ssl_ca_cert = Unicode(
         "",
         config=True,
@@ -375,6 +382,7 @@ class KubeIngressProxy(Proxy):
             common_labels=common_labels,
             ingress_extra_labels=ingress_extra_labels,
             ingress_extra_annotations=ingress_extra_annotations,
+            ingress_class_name=self.ingress_class_name,
         )
 
         async def ensure_object(create_func, patch_func, body, kind):
