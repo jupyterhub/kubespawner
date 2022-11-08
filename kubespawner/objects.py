@@ -24,6 +24,7 @@ from kubernetes_asyncio.client.models import (
     V1IngressRule,
     V1IngressServiceBackend,
     V1IngressSpec,
+    V1IngressTLS,
     V1Lifecycle,
     V1LocalObjectReference,
     V1Namespace,
@@ -738,6 +739,7 @@ def make_ingress(
     ingress_extra_labels: Optional[dict] = None,
     ingress_extra_annotations: Optional[dict] = None,
     ingress_class_name: Optional[str] = None,
+    ingress_specifications: Optional[dict] = None,
 ):
     """
     Returns an ingress, service, endpoint object that'll work for this service
@@ -830,32 +832,44 @@ def make_ingress(
         labels=ingress_labels,
     )
 
+    ingress_specifications = ingress_specifications or [{}]
+
+    rules = [
+        V1IngressRule(
+            host=host or spec.get("host"),
+            http=V1HTTPIngressRuleValue(
+                paths=[
+                    V1HTTPIngressPath(
+                        path=path,
+                        path_type="Prefix",
+                        backend=V1IngressBackend(
+                            service=V1IngressServiceBackend(
+                                name=name,
+                                port=V1ServiceBackendPort(
+                                    number=target_port,
+                                ),
+                            ),
+                        ),
+                    ),
+                ],
+            ),
+        )
+        for spec in ingress_specifications
+    ]
+
+    tls = [
+        V1IngressTLS(hosts=[spec["host"]], secret_name=spec["tlsSecret"])
+        for spec in ingress_specifications
+        if "tlsSecret" in spec
+    ]
+
     ingress = V1Ingress(
         kind='Ingress',
         metadata=ingress_meta,
         spec=V1IngressSpec(
+            rules=rules,
+            tls=tls or None,
             ingress_class_name=ingress_class_name,
-            rules=[
-                V1IngressRule(
-                    host=host,
-                    http=V1HTTPIngressRuleValue(
-                        paths=[
-                            V1HTTPIngressPath(
-                                path=path,
-                                path_type="Prefix",
-                                backend=V1IngressBackend(
-                                    service=V1IngressServiceBackend(
-                                        name=name,
-                                        port=V1ServiceBackendPort(
-                                            number=target_port,
-                                        ),
-                                    ),
-                                ),
-                            )
-                        ]
-                    ),
-                )
-            ],
         ),
     )
 
