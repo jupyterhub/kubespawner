@@ -1599,19 +1599,21 @@ class KubeSpawner(Spawner):
         - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
           settings. Each value can be either the final value to change or a callable that
           take the `KubeSpawner` instance as parameter and return the final value. This can
-          be further overridden by 'profile_options'
-        - 'profile_options': A dictionary of sub-options that allow users to further customize the
+          be further overridden by `profile_options`
+        - `profile_options`: A dictionary of sub-options that allow users to further customize the
           selected profile. By default, these are rendered as a dropdown with the label
           provided by `display_name`. Items should have a unique key representing the customization,
           and the value is a dictionary with the following keys:
-          - 'display_name': Name used to identify this particular option
-          - 'choices': A dictionary containing list of choices for the user to choose from
+
+          - `display_name`: Name used to identify this particular option
+          - `choices`: A dictionary containing list of choices for the user to choose from
             to set the value for this particular option. The key is an identifier for this
             choice, and the value is a dictionary with the following possible keys:
-            - 'display_name': Human readable display name for this choice.
-            - 'default': (optional Bool) True if this is the default selected choice
-            - 'kubespawner_override': A dictionary with overrides to apply to the KubeSpawner
-              settings, on top of whatever was applied with the 'kubespawner_override' key
+
+            - `display_name`: Human readable display name for this choice.
+            - `default`: (optional Bool) True if this is the default selected choice
+            - `kubespawner_override`: A dictionary with overrides to apply to the KubeSpawner
+              settings, on top of whatever was applied with the `kubespawner_override` key
               for the profile itself. The key should be the name of the kubespawner setting,
               and value can be either the final value or a callable that returns the final
               value when called with the spawner instance as the only parameter. The callable
