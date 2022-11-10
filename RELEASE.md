@@ -1,4 +1,4 @@
-\*\*# How to make a release
+# How to make a release
 
 `jupyterhub-kubespawner` is a package available on [PyPI][] and [conda-forge][].
 These are instructions on how to make a release.
