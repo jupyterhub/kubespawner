@@ -6,7 +6,7 @@ import ipaddress
 import json
 import operator
 import re
-from typing import Optional
+from typing import List, Optional
 from urllib.parse import urlparse
 
 from kubernetes_asyncio.client.models import (
@@ -938,12 +938,12 @@ def make_secret(
 
 
 def make_service(
-    name,
-    port,
-    servername,
-    owner_references,
-    labels=None,
-    annotations=None,
+    name: str,
+    port: int,
+    selector: dict,
+    owner_references: List[V1OwnerReference],
+    labels: Optional[dict] = None,
+    annotations: Optional[dict] = None,
 ):
     """
     Make a k8s service specification for using dns to communicate with the notebook.
@@ -953,8 +953,10 @@ def make_service(
     name:
         Name of the service. Must be unique within the namespace the object is
         going to be created in.
-    env:
-        Dictionary of environment variables.
+    selector:
+        Labels of server pod to be used in spec.selector
+    owner_references:
+        Pod's owner references used to automatically remote service after pod removal
     labels:
         Labels to add to the service.
     annotations:
@@ -975,11 +977,7 @@ def make_service(
         spec=V1ServiceSpec(
             type='ClusterIP',
             ports=[V1ServicePort(name='http', port=port, target_port=port)],
-            selector={
-                'component': 'singleuser-server',
-                'hub.jupyter.org/servername': servername,
-                'hub.jupyter.org/username': metadata.labels['hub.jupyter.org/username'],
-            },
+            selector=selector,
         ),
     )
 

@@ -206,6 +206,40 @@ async def test_spawn_start(
     assert isinstance(status, int)
 
 
+async def test_spawn_component_label(
+    kube_ns,
+    kube_client,
+    config,
+    hub,
+    reset_pod_reflector,
+):
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="start"),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+        component_label="something",
+    )
+
+    pod_name = spawner.pod_name
+
+    # start the spawner
+    await spawner.start()
+
+    # verify the pod exists
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pods = [p for p in pods if p.metadata.name == pod_name]
+    assert pods
+
+    # component label is same as expected
+    pod = pods[0]
+    assert pod.metadata.labels["component"] == "something"
+
+    # stop the pod
+    await spawner.stop()
+
+
 async def test_spawn_internal_ssl(
     kube_ns,
     kube_client,
@@ -301,6 +335,76 @@ async def test_spawn_internal_ssl(
     assert service_name not in service_names
 
 
+async def test_spawn_services_enabled(
+    kube_ns,
+    kube_client,
+    hub,
+    config,
+    reset_pod_reflector,
+):
+    spawner = KubeSpawner(
+        config=config,
+        hub=hub,
+        user=MockUser(name="services"),
+        api_token="abc123",
+        oauth_client_id="unused",
+        services_enabled=True,
+        component_label="something",
+        common_labels={
+            "some/label": "value1",
+        },
+        extra_labels={
+            "extra/label": "value2",
+        },
+    )
+
+    # start the spawner
+    await spawner.start()
+    pod_name = "jupyter-%s" % spawner.user.name
+    # verify the pod exists
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+
+    # verify service exist
+    service_name = pod_name
+    services = (await kube_client.list_namespaced_service(kube_ns)).items
+    services = [s for s in services if s.metadata.name == service_name]
+    assert services
+
+    # verify selector contains component_label, common_labels and extra_labels
+    # as well as user and server name
+    selector = services[0].spec.selector
+    assert selector["component"] == "something"
+    assert selector["some/label"] == "value1"
+    assert selector["extra/label"] == "value2"
+    assert selector["hub.jupyter.org/servername"] == ""
+    assert selector["hub.jupyter.org/username"] == "services"
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert "jupyter-%s" % spawner.user.name not in pod_names
+
+    # verify service is gone
+    # it may take a little while for them to get cleaned up
+    for _ in range(5):
+        services = (await kube_client.list_namespaced_service(kube_ns)).items
+        service_names = {s.metadata.name for s in services}
+        if service_name in service_names:
+            await asyncio.sleep(1)
+        else:
+            break
+
+    assert service_name not in service_names
+
+
 async def test_spawn_after_pod_created_hook(
     kube_ns,
     kube_client,
@@ -314,11 +418,12 @@ async def test_spawn_after_pod_created_hook(
         annotations = spawner._build_common_annotations(
             spawner._expand_all(spawner.extra_annotations)
         )
+        selector = spawner._build_pod_labels(spawner._expand_all(spawner.extra_labels))
 
         service_manifest = make_service(
             name=spawner.pod_name + "-hook",
             port=spawner.port,
-            servername=spawner.name,
+            selector=selector,
             owner_references=[owner_reference],
             labels=labels,
             annotations=annotations,
@@ -340,7 +445,7 @@ async def test_spawn_after_pod_created_hook(
     spawner = KubeSpawner(
         config=config,
         hub=hub,
-        user=MockUser(name="ssl"),
+        user=MockUser(name="hook"),
         api_token="abc123",
         oauth_client_id="unused",
         after_pod_created_hook=after_pod_created_hook,

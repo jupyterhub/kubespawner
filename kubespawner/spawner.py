@@ -118,6 +118,9 @@ class KubeSpawner(Spawner):
     spawned by a user will have its own KubeSpawner instance.
     """
 
+    # Reflectors keeping track of the k8s api-server's state for various k8s
+    # resources are singletons as that state can be tracked and shared by all
+    # KubeSpawner objects.
     reflectors = {
         "pods": None,
         "events": None,
@@ -2119,12 +2122,13 @@ class KubeSpawner(Spawner):
         annotations = self._build_common_annotations(
             self._expand_all(self.extra_annotations)
         )
+        selector = self._build_pod_labels(self._expand_all(self.extra_labels))
 
         # TODO: validate that the service name
         return make_service(
             name=self.pod_name,
             port=self.port,
-            servername=self.name,
+            selector=selector,
             owner_references=[owner_reference],
             labels=labels,
             annotations=annotations,
@@ -2394,7 +2398,6 @@ class KubeSpawner(Spawner):
     ):
         """Start a shared reflector on the KubeSpawner class
 
-
         kind: key for the reflector (e.g. 'pod' or 'events')
         reflector_class: Reflector class to be instantiated
         kwargs: extra keyword-args to be relayed to ReflectorClass
@@ -2429,7 +2432,7 @@ class KubeSpawner(Spawner):
             async def catch_reflector_start():
                 try:
                     await f
-                except Exception as e:
+                except Exception:
                     self.log.exception(f"Reflector for {kind} failed to start.")
                     sys.exit(1)
 
