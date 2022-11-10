@@ -55,6 +55,11 @@ class PodReflector(ResourceReflector):
 
     kind = "pods"
 
+    # The default component label can be over-ridden by specifying the component_label property
+    labels = {
+        'component': 'singleuser-server',
+    }
+
     @property
     def pods(self):
         """
@@ -113,25 +118,24 @@ class KubeSpawner(Spawner):
     spawned by a user will have its own KubeSpawner instance.
     """
 
-    # Reflectors are stored in class variable for performance reasons.
-    # If every pod will start its own reflector, Kubelet will not be happy
-    # with attaching 20k event watchers
-    reflectors = {}
+    # Reflectors keeping track of the k8s api-server's state for various k8s
+    # resources are singletons as that state can be tracked and shared by all
+    # KubeSpawner objects.
+    reflectors = {
+        "pods": None,
+        "events": None,
+    }
 
     # Characters as defined by safe for DNS
     # Note: '-' is not in safe_chars, as it is being used as escape character
     safe_chars = set(string.ascii_lowercase + string.digits)
-
-    def get_reflector_key(self, kind: str) -> tuple:
-        namespace = None if self.enable_user_namespaces else self.namespace
-        return (kind, self.component_label, namespace)
 
     @property
     def pod_reflector(self):
         """
         A convenience alias to the class variable reflectors['pods'].
         """
-        return self.__class__.reflectors.get(self.get_reflector_key('pods'))
+        return self.__class__.reflectors['pods']
 
     @property
     def event_reflector(self):
@@ -140,9 +144,7 @@ class KubeSpawner(Spawner):
         spawner instance has events_enabled.
         """
         if self.events_enabled:
-            return self.__class__.reflectors.get(self.get_reflector_key('events'))
-
-        return None
+            return self.__class__.reflectors['events']
 
     def __init__(self, *args, **kwargs):
         _mock = kwargs.pop('_mock', False)
@@ -2378,9 +2380,9 @@ class KubeSpawner(Spawner):
 
     def _start_reflector(
         self,
-        kind: str,
-        reflector_class: ResourceReflector,
-        replace: bool = False,
+        kind=None,
+        reflector_class=ResourceReflector,
+        replace=False,
         **kwargs,
     ):
         """Start a shared reflector on the KubeSpawner class
@@ -2395,7 +2397,8 @@ class KubeSpawner(Spawner):
         If replace=True, a running pod reflector will be stopped
         and a new one started (for recovering from possible errors).
         """
-        key = self.get_reflector_key(kind)
+        key = kind
+        ReflectorClass = reflector_class
 
         def on_reflector_failure():
             self.log.critical(
@@ -2407,7 +2410,7 @@ class KubeSpawner(Spawner):
         previous_reflector = self.__class__.reflectors.get(key)
 
         if replace or not previous_reflector:
-            self.__class__.reflectors[key] = reflector_class(
+            self.__class__.reflectors[key] = ReflectorClass(
                 parent=self,
                 namespace=self.namespace,
                 on_failure=on_reflector_failure,
@@ -2457,10 +2460,11 @@ class KubeSpawner(Spawner):
         If replace=True, a running pod reflector will be stopped
         and a new one started (for recovering from possible errors).
         """
+        pod_reflector_class = PodReflector
+        pod_reflector_class.labels.update({"component": self.component_label})
         return self._start_reflector(
-            kind="pods",
-            reflector_class=PodReflector,
-            labels={"component": self.component_label},
+            "pods",
+            PodReflector,
             omit_namespace=self.enable_user_namespaces,
             replace=replace,
         )
@@ -2637,7 +2641,6 @@ class KubeSpawner(Spawner):
         else:
             return True
 
-    @_await_pod_reflector
     async def _start(self):
         """Start the user's pod"""
 
