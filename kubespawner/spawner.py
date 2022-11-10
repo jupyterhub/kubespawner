@@ -55,11 +55,6 @@ class PodReflector(ResourceReflector):
 
     kind = "pods"
 
-    # The default component label can be over-ridden by specifying the component_label property
-    labels = {
-        'component': 'singleuser-server',
-    }
-
     @property
     def pods(self):
         """
@@ -2391,8 +2386,8 @@ class KubeSpawner(Spawner):
 
     def _start_reflector(
         self,
-        kind=None,
-        reflector_class=ResourceReflector,
+        kind,
+        reflector_class,
         replace=False,
         **kwargs,
     ):
@@ -2471,11 +2466,10 @@ class KubeSpawner(Spawner):
         If replace=True, a running pod reflector will be stopped
         and a new one started (for recovering from possible errors).
         """
-        pod_reflector_class = PodReflector
-        pod_reflector_class.labels.update({"component": self.component_label})
         return self._start_reflector(
-            "pods",
-            PodReflector,
+            kind="pods",
+            reflector_class=PodReflector,
+            labels={"component": self.component_label},
             omit_namespace=self.enable_user_namespaces,
             replace=replace,
         )
