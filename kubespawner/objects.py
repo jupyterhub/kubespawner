@@ -6,7 +6,7 @@ import ipaddress
 import json
 import operator
 import re
-from typing import List, Optional
+from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 from kubernetes_asyncio.client.models import (
@@ -60,7 +60,7 @@ try:
 except ImportError:
     from kubernetes_asyncio.client.models import V1EndpointPort as CoreV1EndpointPort
 
-from .utils import get_k8s_model, update_k8s_model
+from .utils import get_k8s_model, host_matching, update_k8s_model
 
 
 def make_pod(
@@ -739,7 +739,7 @@ def make_ingress(
     ingress_extra_labels: Optional[dict] = None,
     ingress_extra_annotations: Optional[dict] = None,
     ingress_class_name: Optional[str] = None,
-    ingress_specifications: Optional[dict] = None,
+    ingress_specifications: Optional[List[Dict]] = None,
 ):
     """
     Returns an ingress, service, endpoint object that'll work for this service
@@ -764,11 +764,12 @@ def make_ingress(
         labels=common_labels,
     )
 
-    if routespec.startswith('/'):
-        host = None
-        path = routespec
-    else:
-        host, path = routespec.split('/', 1)
+    # /myuser/myserver or https://myuser.example.com/myserver for spawned server
+    # /services/myservice or https://services.example.com/myservice for service
+    # / or https://example.com/ for hub
+    route_parts = urlparse(routespec)
+    routespec_host = route_parts.netloc or None
+    routespec_path = route_parts.path
 
     target_parts = urlparse(target)
     target_port = target_parts.port
@@ -832,15 +833,38 @@ def make_ingress(
         labels=ingress_labels,
     )
 
-    ingress_specifications = ingress_specifications or [{}]
+    ingress_specifications = ingress_specifications or []
+
+    hosts = []
+    add_routespec_host = True
+    for ingress_spec in ingress_specifications:
+        if routespec_host and host_matching(routespec_host, ingress_spec["host"]):
+            # if routespec is URL like "http[s]://user.example.com"
+            # and ingress_specifications contains item like
+            # {"host": "user.example.com"} or {"host": "*.example.com"},
+            # prefer routespec_host over than wildcard
+            if add_routespec_host:
+                hosts.append(routespec_host)
+
+            add_routespec_host = False
+        elif ingress_spec["host"] not in hosts:
+            hosts.append(ingress_spec["host"])
+
+    if add_routespec_host and (routespec_host or not hosts):
+        # if routespec is URL like "http[s]://user.example.com"
+        # and does not match any host from ingress_specifications, create rule with routespec_host.
+
+        # if routespec is path like /base/url, and ingress_specifications is empty,
+        # create one ingress rule without host name.
+        hosts.insert(0, routespec_host)
 
     rules = [
         V1IngressRule(
-            host=host or spec.get("host"),
+            host=host,
             http=V1HTTPIngressRuleValue(
                 paths=[
                     V1HTTPIngressPath(
-                        path=path,
+                        path=routespec_path,
                         path_type="Prefix",
                         backend=V1IngressBackend(
                             service=V1IngressServiceBackend(
@@ -854,7 +878,7 @@ def make_ingress(
                 ],
             ),
         )
-        for spec in ingress_specifications
+        for host in hosts
     ]
 
     tls = [

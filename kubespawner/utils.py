@@ -186,3 +186,19 @@ def _get_k8s_model_attribute(model_type, field_name):
                 model_type.__name__, field_name
             )
         )
+
+
+def host_matching(host: str, wildcard: str) -> bool:
+    # user.example.com == user.example.com
+    # user.example.com != wrong.example.com
+    # user.example.com != example.com
+    if not wildcard.startswith("*."):
+        return host == wildcard
+
+    host_parts = host.split(".")
+    wildcard_parts = wildcard.split(".")
+
+    # user.example.com =~ *.example.com
+    # user.example.com !~ *.user.example.com
+    # user.example.com !~ *.example
+    return host_parts[1:] == wildcard_parts[1:]
