@@ -7,7 +7,7 @@ import escapism
 from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
 from kubernetes_asyncio import client
-from traitlets import Dict, Unicode
+from traitlets import Dict, List, Unicode
 
 from .clients import load_config, shared_client
 from .objects import make_ingress
@@ -232,6 +232,26 @@ class KubeIngressProxy(Proxy):
         """,
     )
 
+    ingress_specifications = List(
+        trait=Dict,
+        config=True,
+        help="""
+        Specifications for ingress routes. List of dicts of the following format:
+
+        [{'host': 'host.example.domain'}]
+        [{'host': 'host.example.domain', 'tlsSecret': 'tlsSecretName'}]
+        [{'host': 'jh.{hubnamespace}.domain', 'tlsSecret': 'tlsSecretName'}]
+
+        Wildcard might not work, refer to your ingress controller documentation.
+
+        `{routespec}`, `{hubnamespace}`, and `{unescaped_routespec}` will be expanded if
+        found within strings of this configuration.
+
+        Names have to be are escaped to follow the [DNS label
+        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        """,
+    )
+
     k8s_api_ssl_ca_cert = Unicode(
         "",
         config=True,
@@ -374,6 +394,12 @@ class KubeIngressProxy(Proxy):
             self.ingress_extra_annotations, routespec, data
         )
 
+        ingress_specifications = self._expand_all(
+            self.ingress_specifications,
+            routespec,
+            data,
+        )
+
         endpoint, service, ingress = make_ingress(
             name=safe_name,
             routespec=routespec,
@@ -383,6 +409,7 @@ class KubeIngressProxy(Proxy):
             ingress_extra_labels=ingress_extra_labels,
             ingress_extra_annotations=ingress_extra_annotations,
             ingress_class_name=self.ingress_class_name,
+            ingress_specifications=ingress_specifications,
         )
 
         async def ensure_object(create_func, patch_func, body, kind):
