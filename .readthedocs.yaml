@@ -14,10 +14,5 @@ build:
 
 python:
   install:
-    - requirements: docs/requirements.txt
-    # NOTE:    We also install the kubespawner package itself, because we use
-    #          the autodoc_traits sphinx extension to generate documentation via
-    #          source code inspection.
-    #
     - method: pip
-      path: .
+      path: ".[doc]"

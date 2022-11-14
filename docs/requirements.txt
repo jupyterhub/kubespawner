@@ -1,9 +1,0 @@
-autodoc_traits
-myst-parser>=0.17.0
-pyyaml
-setuptools
-# sphinx 4.2+ is required to be compatible with Python 3.10
-sphinx>=4.2,<5
-sphinx-book-theme
-sphinx-copybutton
-traitlets>=4.1
