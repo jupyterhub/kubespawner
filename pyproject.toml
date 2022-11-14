@@ -33,7 +33,7 @@ dependencies = [
     "kubernetes_asyncio>=19.15.1",
     "python-slugify",
     "pyYAML",
-    "traitlets>=4.1",
+    "traitlets>=4.3.2",
     "urllib3",
 ]
 dynamic = ["version"]
