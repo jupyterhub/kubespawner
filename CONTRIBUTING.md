@@ -48,13 +48,9 @@ walk you through the process of proposing your change ("making a Pull Request").
 A brief guide to setting up for local development
 
 ```sh
-# Installing kubespawner itself is required as its source code
-# is inspected to construct the reference documentation.
-pip install -e .
+pip install -e ".[doc]"
 
 cd docs
-pip install -r requirements.txt
-
 make html
 ```
 
