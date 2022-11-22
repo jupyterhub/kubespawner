@@ -151,13 +151,13 @@ rules on your computer. We will now walk you through the steps to get going:
 
     ```sh
     npm install configurable-http-proxy
-    export PATH=$(pwd)/node_modules/.bin:$PATH
+    export PATH=/<path>/<to>/node_modules/.bin:$PATH
     ```
 
 1.  Start JupyterHub
 
     ```sh
-    # Run this from the repo's root directory where the preconfigured
+    # Run this from the kubespawner repo's root directory where the preconfigured
     # jupyterhub_config.py file resides!
     jupyterhub
     ```
