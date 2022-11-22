@@ -65,7 +65,7 @@ rules on your computer. We will now walk you through the steps to get going:
 
 1.  Install VirtualBox by [downloading and running an
     installer](https://www.virtualbox.org/wiki/Downloads), or
-    [Docker|https://www.docker.com/].
+    [Docker](https://www.docker.com/).
 
 1.  Install
     [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/).
