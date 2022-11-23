@@ -520,6 +520,85 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
     await spawner.stop()
 
 
+async def test_spawn_start_restore_pod_name(
+    kube_ns,
+    kube_client,
+    config,
+    hub,
+    exec_python,
+):
+    # Emulate stopping Jupyterhub and starting with different settings while some pods still exist
+
+    # Save state with old config
+    old_spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="start"),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+    )
+    old_spawner_pod_name = old_spawner.pod_name
+
+    # save state
+    await old_spawner.start()
+    old_state = old_spawner.get_state()
+    await old_spawner.stop()
+
+    # Change config
+    config.KubeSpawner.pod_name_template = 'new-{username}--{servername}'
+
+    # Load old state
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="start"),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+    )
+    spawner.load_state(old_state)
+
+    # previous pod name is restored
+    assert spawner.pod_name == old_spawner_pod_name
+
+    # empty spawner isn't running
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+    pod_name = spawner.pod_name
+
+    # start the spawner
+    url = await spawner.start()
+
+    # verify the pod exists
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+
+    # pod should be running when start returns
+    pod = await kube_client.read_namespaced_pod(namespace=kube_ns, name=pod_name)
+    assert pod.status.phase == "Running"
+
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+
+    # make sure spawn url is correct
+    r = await exec_python(check_up, {"url": url}, _retries=3)
+    assert r == "302"
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name not in pod_names
+
+    # verify exit status
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+
 async def test_get_pod_manifest_tolerates_mixed_input():
     """
     Test that the get_pod_manifest function can handle a either a dictionary or
