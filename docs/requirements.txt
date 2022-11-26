@@ -1,4 +1,4 @@
-# This requirements.txt file must be installed from the projects root folder:
+# This requirements.txt file must be installed from the project's root folder:
 #
 #     pip install -r docs/requirements.txt
 #
