@@ -1,9 +1,9 @@
 # Reflectors
 
-```{eval-rst}
-.. automodule:: kubespawner.reflector
+```{automodule} kubespawner.reflector
+
 ```
 
-```{eval-rst}
-.. autoclass:: kubespawner.reflector.NamespacedResourceReflector
+```{autoclass} kubespawner.reflector.NamespacedResourceReflector
+
 ```
