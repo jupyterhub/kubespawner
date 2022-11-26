@@ -48,7 +48,7 @@ walk you through the process of proposing your change ("making a Pull Request").
 A brief guide to setting up for local development
 
 ```sh
-pip install -e ".[doc]"
+pip install -r docs/requirements.txt
 
 cd docs
 make html

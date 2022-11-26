@@ -39,12 +39,6 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-doc = [
-    "autodoc_traits",
-    "myst-parser>=0.17.0",
-    "sphinx-book-theme",
-    "sphinx-copybutton",
-]
 test = [
     "kubernetes>=11",
     "pytest>=5.4",
