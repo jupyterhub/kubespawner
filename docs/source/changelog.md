@@ -4,7 +4,7 @@
 
 ## [Unreleased]
 
-#### Breaking changes
+### Breaking changes
 
 - Now `c.KubeSpawner.environment` values supports substitution, just like other config options [#642](https://github.com/jupyterhub/kubespawner/pull/642) ([@dolfinus](https://github.com/dolfinus)).
   For example, `{"MYVAR": "jupyterhub-{username}"}` will rendered as `{"MYVAR": "jupyterhub-sam"}` for a user named `sam`.
