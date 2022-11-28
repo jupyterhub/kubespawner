@@ -1,0 +1,12 @@
+# This requirements.txt file must be installed from the project's root folder:
+#
+#     pip install -r docs/requirements.txt
+#
+# Install the package to help autodoc-traits inspect and generate documentation.
+#
+--editable .
+
+autodoc-traits
+myst-parser>=0.17.0
+sphinx-book-theme
+sphinx-copybutton
