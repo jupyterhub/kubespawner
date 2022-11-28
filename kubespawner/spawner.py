@@ -2190,12 +2190,13 @@ class KubeSpawner(Spawner):
         It's also useful for cases when the `pod_template` changes between
         restarts - this keeps the old pods around.
 
-        We also save the namespace for use cases where the namespace is
-        calculated dynamically.
+        We also save the namespace and DNS name for use cases where the namespace is
+        calculated dynamically, or it changes between restarts.
         """
         state = super().get_state()
         state['pod_name'] = self.pod_name
         state['namespace'] = self.namespace
+        state['dns_name'] = self.dns_name
         return state
 
     def get_env(self):
@@ -2228,6 +2229,9 @@ class KubeSpawner(Spawner):
 
         if 'namespace' in state:
             self.namespace = state['namespace']
+
+        if 'dns_name' in state:
+            self.dns_name = state['dns_name']
 
     @_await_pod_reflector
     async def poll(self):
