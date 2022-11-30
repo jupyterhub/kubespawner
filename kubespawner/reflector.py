@@ -391,9 +391,16 @@ class ResourceReflector(LoggingConfigurable):
         and not afterwards!
         """
         if self.watch_task and not self.watch_task.done():
-            raise RuntimeError('Task watching for resources is already running')
+            raise RuntimeError(f"Task watching for {self.kind} is already running")
+        try:
+            await self._list_and_update()
+        except Exception as e:
+            self.log.exception(f"Initial list of {self.kind} failed")
+            if not self.first_load_future.done():
+                # anyone awaiting our first load event should fail
+                self.first_load_future.set_exception(e)
+            raise
 
-        await self._list_and_update()
         self.watch_task = asyncio.create_task(self._watch_and_update())
 
     async def stop(self):

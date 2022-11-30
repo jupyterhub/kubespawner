@@ -1,64 +1,50 @@
 # How to make a release
 
-`jupyterhub-kubespawner` is a package [available on
-PyPI](https://pypi.org/project/jupyterhub-kubespawner/). These are instructions
-on how to make a release on PyPI.
+`jupyterhub-kubespawner` is a package available on [PyPI][] and [conda-forge][].
+These are instructions on how to make a release.
 
-For you to follow along according to these instructions, you need:
+## Pre-requisites
 
-- To have push rights to the [kubespawner GitHub
-  repository](https://github.com/jupyterhub/kubespawner).
+- Push rights to [github.com/jupyterhub/kubespawner][]
+- Push rights to [conda-forge/jupyterhub-kubespawner-feedstock][]
 
 ## Steps to make a release
 
-1. Update [CHANGELOG.md](CHANGELOG.md). Doing this can be made easier with the
-   help of the
-   [choldgraf/github-activity](https://github.com/choldgraf/github-activity)
-   utility to list merged PRs and generate a list of contributors.
+1. Create a PR updating `docs/source/changelog.md` with [github-activity][] and
+   continue only when its merged.
 
-   ```bash
-   github-activity jupyterhub/kubespawner --output tmp-changelog-prep.md
-   ```
+1. Checkout main and make sure it is up to date.
 
-1. Once the changelog is up to date, checkout main and make sure it is up to date and clean.
-
-   ```bash
-   ORIGIN=${ORIGIN:-origin} # set to the canonical remote, e.g. 'upstream' if 'origin' is not the official repo
+   ```shell
    git checkout main
-   git fetch $ORIGIN main
-   git reset --hard $ORIGIN/main
-   # WARNING! This next command deletes any untracked files in the repo
-   git clean -xfd
+   git fetch origin main
+   git reset --hard origin/main
    ```
 
-1. Update version and tag, and return to a dev version, with `bump2version`.
+1. Update the version, make commits, and push a git tag with `tbump`.
 
-   ```bash
-   VERSION=...  # e.g. 1.2.3
-   bump2version --tag --new-version $VERSION -
-   bump2version --no-tag patch
+   ```shell
+   pip install tbump
+   tbump --dry-run ${VERSION}
 
-   # verify tags, commits, and version tagged
-   git log
+   # run
+   tbump ${VERSION}
    ```
 
-1. Push your two commits to main along with the annotated tags referencing
-   commits on main. A GitHub workflow will trigger on the pushed git tag and
-   publish to PyPI.
+   Following this, the [CI system][] will build and publish a release.
 
-   ```bash
-   # pushing the commits standalone allows you to
-   # ensure you don't end up only pushing the tag
-   # because the commit were rejected but the tag
-   # wasn't
-   git push $ORIGIN main
+1. Reset the version back to dev, e.g. `2.0.1.dev0` after releasing `2.0.0`.
 
-   # if you could push the commits without issues
-   # go ahead and push the tag also
-   git push --follow-tags $ORIGIN main
+   ```shell
+   tbump --no-tag ${NEXT_VERSION}.dev0
    ```
 
-1. Verify that [the GitHub
-   workflow](https://github.com/jupyterhub/kubespawner/actions?query=workflow%3APublish)
-   triggers and succeeds and that that PyPI received a [new
-   release](https://pypi.org/project/jupyterhub-kubespawner/).
+1. Following the release to PyPI, an automated PR should arrive to
+   [conda-forge/jupyterhub-kubespawner-feedstock][] with instructions.
+
+[github-activity]: https://github.com/executablebooks/github-activity
+[github.com/jupyterhub/kubespawner]: https://github.com/jupyterhub/kubespawner
+[pypi]: https://pypi.org/project/jupyterhub-kubespawner/
+[conda-forge]: https://anaconda.org/conda-forge/jupyterhub-kubespawner
+[conda-forge/jupyterhub-kubespawner-feedstock]: https://github.com/conda-forge/jupyterhub-kubespawner-feedstock
+[ci system]: https://github.com/jupyterhub/kubespawner/actions/workflows/publish.yaml

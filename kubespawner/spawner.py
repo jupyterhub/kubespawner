@@ -5,6 +5,7 @@ This module exports `KubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
 import asyncio
+import ipaddress
 import os
 import string
 import sys
@@ -16,11 +17,10 @@ import escapism
 from jinja2 import BaseLoader, Environment
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Callable, Command
-from jupyterhub.utils import exponential_backoff
+from jupyterhub.utils import exponential_backoff, maybe_future
 from kubernetes_asyncio import client
 from kubernetes_asyncio.client.rest import ApiException
 from slugify import slugify
-from tornado import gen
 from traitlets import (
     Bool,
     Dict,
@@ -54,11 +54,6 @@ class PodReflector(ResourceReflector):
     """
 
     kind = "pods"
-
-    # The default component label can be over-ridden by specifying the component_label property
-    labels = {
-        'component': 'singleuser-server',
-    }
 
     @property
     def pods(self):
@@ -118,6 +113,9 @@ class KubeSpawner(Spawner):
     spawned by a user will have its own KubeSpawner instance.
     """
 
+    # Reflectors keeping track of the k8s api-server's state for various k8s
+    # resources are singletons as that state can be tracked and shared by all
+    # KubeSpawner objects.
     reflectors = {
         "pods": None,
         "events": None,
@@ -727,9 +725,7 @@ class KubeSpawner(Spawner):
 
         `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
         `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the [DNS label
-        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        found within strings of this configuration.
         """,
     )
 
@@ -1035,6 +1031,26 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    after_pod_created_hook = Callable(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        Callable to augment the Pod object after launching.
+
+        Expects a callable that takes two parameters:
+
+           1. The spawner object that is doing the spawning
+           2. The Pod object that was launched
+
+        This can be a coroutine if necessary. When set to none, no augmenting is done.
+
+        This is very useful if you want to add some services or ingress to the pod after it is launched.
+        Note that the spawner object can change between versions of KubeSpawner and JupyterHub,
+        so be careful relying on this!
+        """,
+    )
+
     volumes = List(
         config=True,
         help="""
@@ -1109,6 +1125,24 @@ class KubeSpawner(Spawner):
         integers with one of these SI suffices (`E, P, T, G, M, K, m`) or their power-of-two
         equivalents (`Ei, Pi, Ti, Gi, Mi, Ki`). For example, the following represent roughly
         the same value: `128974848`, `129e6`, `129M`, `123Mi`.
+        """,
+    )
+
+    storage_extra_annotations = Dict(
+        config=True,
+        help="""
+        Extra kubernetes annotations to set on the user PVCs.
+
+        The keys and values specified here would be set as annotations on the PVCs
+        created by kubespawner for the user. Note that these are only set
+        when the PVC is created, not later when this setting is updated.
+
+        See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>`__
+        for more info on what annotations are and why you might want to use them!
+
+        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
+        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
+        found within strings of this configuration.
         """,
     )
 
@@ -1574,22 +1608,25 @@ class KubeSpawner(Spawner):
         - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
           settings. Each value can be either the final value to change or a callable that
           take the `KubeSpawner` instance as parameter and return the final value. This can
-          be further overridden by 'profile_options'
-        - 'profile_options': A dictionary of sub-options that allow users to further customize the
+          be further overridden by `profile_options`
+        - `profile_options`: A dictionary of sub-options that allow users to further customize the
           selected profile. By default, these are rendered as a dropdown with the label
           provided by `display_name`. Items should have a unique key representing the customization,
           and the value is a dictionary with the following keys:
-          - 'display_name': Name used to identify this particular option
-          - 'choices': A dictionary containing list of choices for the user to choose from
+
+          - `display_name`: Name used to identify this particular option
+          - `choices`: A dictionary containing list of choices for the user to choose from
             to set the value for this particular option. The key is an identifier for this
             choice, and the value is a dictionary with the following possible keys:
-            - 'display_name': Human readable display name for this choice.
-            - 'default': (optional Bool) True if this is the default selected choice
-            - 'kubespawner_override': A dictionary with overrides to apply to the KubeSpawner
-              settings, on top of whatever was applied with the 'kubespawner_override' key
+
+            - `display_name`: Human readable display name for this choice.
+            - `default`: (optional Bool) True if this is the default selected choice
+            - `kubespawner_override`: A dictionary with overrides to apply to the KubeSpawner
+              settings, on top of whatever was applied with the `kubespawner_override` key
               for the profile itself. The key should be the name of the kubespawner setting,
               and value can be either the final value or a callable that returns the final
-              value when called with the spawner instance as the only parameter.
+              value when called with the spawner instance as the only parameter. The callable
+              may be async.
         - `default`: (optional Bool) True if this is the default selected option
 
         kubespawner setting overrides work in the following manner, with items further in the
@@ -1643,7 +1680,7 @@ class KubeSpawner(Spawner):
                                     'kubespawner_override': {
                                         'cpu_limit': 2,
                                         'cpu_guarantee': 1.8,
-                                        'node_selectors': {
+                                        'node_selector': {
                                             'node.kubernetes.io/instance-type': 'n1-standard-2'
                                         }
                                     }
@@ -1653,7 +1690,7 @@ class KubeSpawner(Spawner):
                                     'kubespawner_override': {
                                         'cpu_limit': 4,
                                         'cpu_guarantee': 3.5,
-                                        'node_selectors': {
+                                        'node_selector': {
                                             'node.kubernetes.io/instance-type': 'n1-standard-4'
                                         }
                                     }
@@ -1945,6 +1982,8 @@ class KubeSpawner(Spawner):
         else:
             proto = "http"
             hostname = pod["status"]["podIP"]
+            if isinstance(ipaddress.ip_address(hostname), ipaddress.IPv6Address):
+                hostname = f"[{hostname}]"
 
         if self.pod_connect_ip:
             hostname = ".".join(
@@ -1967,32 +2006,32 @@ class KubeSpawner(Spawner):
         Make a pod manifest that will spawn current user's notebook pod.
         """
         if callable(self.uid):
-            uid = await gen.maybe_future(self.uid(self))
+            uid = await maybe_future(self.uid(self))
         else:
             uid = self.uid
 
         if callable(self.gid):
-            gid = await gen.maybe_future(self.gid(self))
+            gid = await maybe_future(self.gid(self))
         else:
             gid = self.gid
 
         if callable(self.fs_gid):
-            fs_gid = await gen.maybe_future(self.fs_gid(self))
+            fs_gid = await maybe_future(self.fs_gid(self))
         else:
             fs_gid = self.fs_gid
 
         if callable(self.supplemental_gids):
-            supplemental_gids = await gen.maybe_future(self.supplemental_gids(self))
+            supplemental_gids = await maybe_future(self.supplemental_gids(self))
         else:
             supplemental_gids = self.supplemental_gids
 
         if callable(self.container_security_context):
-            csc = await gen.maybe_future(self.container_security_context(self))
+            csc = await maybe_future(self.container_security_context(self))
         else:
             csc = self.container_security_context
 
         if callable(self.pod_security_context):
-            psc = await gen.maybe_future(self.pod_security_context(self))
+            psc = await maybe_future(self.pod_security_context(self))
         else:
             psc = self.pod_security_context
 
@@ -2027,7 +2066,7 @@ class KubeSpawner(Spawner):
             allow_privilege_escalation=self.allow_privilege_escalation,
             container_security_context=csc,
             pod_security_context=psc,
-            env=self.get_env(),
+            env=self._expand_all(self.get_env()),
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),
             working_dir=self.working_dir,
@@ -2089,12 +2128,13 @@ class KubeSpawner(Spawner):
         annotations = self._build_common_annotations(
             self._expand_all(self.extra_annotations)
         )
+        selector = self._build_pod_labels(self._expand_all(self.extra_labels))
 
         # TODO: validate that the service name
         return make_service(
             name=self.pod_name,
             port=self.port,
-            servername=self.name,
+            selector=selector,
             owner_references=[owner_reference],
             labels=labels,
             annotations=annotations,
@@ -2107,7 +2147,9 @@ class KubeSpawner(Spawner):
         labels = self._build_common_labels(self._expand_all(self.storage_extra_labels))
         labels.update({'component': 'singleuser-storage'})
 
-        annotations = self._build_common_annotations({})
+        annotations = self._build_common_annotations(
+            self._expand_all(self.storage_extra_annotations)
+        )
 
         storage_selector = self._expand_all(self.storage_selector)
 
@@ -2158,9 +2200,14 @@ class KubeSpawner(Spawner):
 
         It's also useful for cases when the `pod_template` changes between
         restarts - this keeps the old pods around.
+
+        We also save the namespace and DNS name for use cases where the namespace is
+        calculated dynamically, or it changes between restarts.
         """
         state = super().get_state()
         state['pod_name'] = self.pod_name
+        state['namespace'] = self.namespace
+        state['dns_name'] = self.dns_name
         return state
 
     def get_env(self):
@@ -2185,9 +2232,17 @@ class KubeSpawner(Spawner):
         but if the `pod_template` has changed in between restarts, it will no longer
         be the case. This allows us to continue serving from the old pods with
         the old names.
+
+        For a similar reason, we also save the namespace.
         """
         if 'pod_name' in state:
             self.pod_name = state['pod_name']
+
+        if 'namespace' in state:
+            self.namespace = state['namespace']
+
+        if 'dns_name' in state:
+            self.dns_name = state['dns_name']
 
     @_await_pod_reflector
     async def poll(self):
@@ -2346,13 +2401,12 @@ class KubeSpawner(Spawner):
 
     def _start_reflector(
         self,
-        kind=None,
-        reflector_class=ResourceReflector,
+        kind,
+        reflector_class,
         replace=False,
         **kwargs,
     ):
         """Start a shared reflector on the KubeSpawner class
-
 
         kind: key for the reflector (e.g. 'pod' or 'events')
         reflector_class: Reflector class to be instantiated
@@ -2383,7 +2437,16 @@ class KubeSpawner(Spawner):
                 on_failure=on_reflector_failure,
                 **kwargs,
             )
-            asyncio.ensure_future(self.__class__.reflectors[key].start())
+            f = asyncio.ensure_future(self.__class__.reflectors[key].start())
+
+            async def catch_reflector_start():
+                try:
+                    await f
+                except Exception:
+                    self.log.exception(f"Reflector for {kind} failed to start.")
+                    sys.exit(1)
+
+            asyncio.create_task(catch_reflector_start())
 
         if replace and previous_reflector:
             # we replaced the reflector, stop the old one
@@ -2418,11 +2481,10 @@ class KubeSpawner(Spawner):
         If replace=True, a running pod reflector will be stopped
         and a new one started (for recovering from possible errors).
         """
-        pod_reflector_class = PodReflector
-        pod_reflector_class.labels.update({"component": self.component_label})
         return self._start_reflector(
-            "pods",
-            PodReflector,
+            kind="pods",
+            reflector_class=PodReflector,
+            labels={"component": self.component_label},
             omit_namespace=self.enable_user_namespaces,
             replace=replace,
         )
@@ -2637,7 +2699,8 @@ class KubeSpawner(Spawner):
         # try again. We try 4 times, and if it still fails we give up.
         pod = await self.get_pod_manifest()
         if self.modify_pod_hook:
-            pod = await gen.maybe_future(self.modify_pod_hook(self, pod))
+            self.log.info('Pod is being modified via modify_pod_hook')
+            pod = await maybe_future(self.modify_pod_hook(self, pod))
 
         ref_key = f"{self.namespace}/{self.pod_name}"
         # If there's a timeout, just let it propagate
@@ -2647,7 +2710,7 @@ class KubeSpawner(Spawner):
             timeout=self.k8s_api_request_retry_timeout,
         )
 
-        if self.internal_ssl or self.services_enabled:
+        if self.internal_ssl or self.services_enabled or self.after_pod_created_hook:
             try:
                 # wait for pod to have uid,
                 # required for creating owner reference
@@ -2683,21 +2746,28 @@ class KubeSpawner(Spawner):
                         f"Failed to create secret {secret_manifest.metadata.name}",
                     )
 
-                service_manifest = self.get_service_manifest(owner_reference)
-                await exponential_backoff(
-                    partial(
-                        self._ensure_not_exists,
-                        "service",
-                        service_manifest.metadata.name,
-                    ),
-                    f"Failed to delete service {service_manifest.metadata.name}",
-                )
-                await exponential_backoff(
-                    partial(
-                        self._make_create_resource_request, "service", service_manifest
-                    ),
-                    f"Failed to create service {service_manifest.metadata.name}",
-                )
+                if self.internal_ssl or self.services_enabled:
+                    service_manifest = self.get_service_manifest(owner_reference)
+                    await exponential_backoff(
+                        partial(
+                            self._ensure_not_exists,
+                            "service",
+                            service_manifest.metadata.name,
+                        ),
+                        f"Failed to delete service {service_manifest.metadata.name}",
+                    )
+                    await exponential_backoff(
+                        partial(
+                            self._make_create_resource_request,
+                            "service",
+                            service_manifest,
+                        ),
+                        f"Failed to create service {service_manifest.metadata.name}",
+                    )
+
+                if self.after_pod_created_hook:
+                    self.log.info('Executing after_pod_created_hook')
+                    await maybe_future(self.after_pod_created_hook(self, pod))
             except Exception:
                 # cleanup on failure and re-raise
                 await self.stop(True)
@@ -2866,7 +2936,7 @@ class KubeSpawner(Spawner):
         return profile_form_template.render(profile_list=self._profile_list)
 
     async def _render_options_form_dynamically(self, current_spawner):
-        profile_list = await gen.maybe_future(self.profile_list(current_spawner))
+        profile_list = await maybe_future(self.profile_list(current_spawner))
         profile_list = self._init_profile_list(profile_list)
         return self._render_options_form(profile_list)
 
@@ -2930,7 +3000,7 @@ class KubeSpawner(Spawner):
 
         return options
 
-    async def _load_profile(self, slug, user_options):
+    async def _load_profile(self, slug, selected_profile_user_options):
         """Load a profile by name
 
         Called by load_user_options
@@ -2959,6 +3029,7 @@ class KubeSpawner(Spawner):
         self.log.debug(
             "Applying KubeSpawner override for profile '%s'", profile['display_name']
         )
+
         kubespawner_override = profile.get('kubespawner_override', {})
         for k, v in kubespawner_override.items():
             if callable(v):
@@ -2978,19 +3049,33 @@ class KubeSpawner(Spawner):
             # are in the form data posted. This prevents users who may be authorized
             # to only use one profile from being able to access options set for other
             # profiles
-            for option_name, option in profile.get('profile_options').items():
-                chosen_option = user_options.get(option_name)
-                if not chosen_option:
+            for user_selected_option_name in selected_profile_user_options.keys():
+                if (
+                    user_selected_option_name
+                    not in profile.get('profile_options').keys()
+                ):
                     raise ValueError(
-                        f'Expected option {k} for profile {slug}, not found in posted form'
+                        f'Expected option {user_selected_option_name} for profile {slug}, not found in posted form'
                     )
+
+            # Get selected options or default to the first option if none is passed
+            for option_name, option in profile.get('profile_options').items():
+                chosen_option = selected_profile_user_options.get(option_name, None)
+                # If none was selected get the default
+                if not chosen_option:
+                    default_option = list(option['choices'].keys())[0]
+                    for choice_name, choice in option['choices'].items():
+                        if choice.get('default', False):
+                            # explicit default, not the first
+                            default_option = choice_name
+                    chosen_option = default_option
 
                 chosen_option_overrides = option['choices'][chosen_option][
                     'kubespawner_override'
                 ]
                 for k, v in chosen_option_overrides.items():
                     if callable(v):
-                        v = v(self)
+                        v = await maybe_future(v(self))
                         self.log.debug(
                             f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option} from callabale'
                         )
@@ -3025,15 +3110,20 @@ class KubeSpawner(Spawner):
 
         if self._profile_list is None:
             if callable(self.profile_list):
-                profile_list = await gen.maybe_future(self.profile_list(self))
+                profile_list = await maybe_future(self.profile_list(self))
             else:
                 profile_list = self.profile_list
 
             self._profile_list = self._init_profile_list(profile_list)
 
         selected_profile = self.user_options.get('profile', None)
+        selected_profile_user_options = dict(self.user_options)
+        if selected_profile:
+            # Remove the 'profile' key so we are left with only selected profile options
+            del selected_profile_user_options['profile']
+
         if self._profile_list:
-            await self._load_profile(selected_profile, self.user_options)
+            await self._load_profile(selected_profile, selected_profile_user_options)
         elif selected_profile:
             self.log.warning(
                 "Profile %r requested, but profiles are not enabled", selected_profile
