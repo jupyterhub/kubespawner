@@ -1,9 +1,9 @@
 # Utilities
 
-```{automodule} kubespawner.utils
-
+```{eval-rst}
+.. automodule:: kubespawner.utils
 ```
 
-```{autofunction} kubespawner.utils.generate_hashed_slug
-
+```{eval-rst}
+.. autofunction:: kubespawner.utils.generate_hashed_slug
 ```

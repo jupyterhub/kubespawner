@@ -1,9 +1,9 @@
 # KubeSpawner
 
-```{automodule} kubespawner
-
+```{eval-rst}
+.. automodule:: kubespawner
 ```
 
-```{autoconfigurable} KubeSpawner
-
+```{eval-rst}
+.. autoconfigurable:: KubeSpawner
 ```
