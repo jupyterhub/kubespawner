@@ -1,13 +1,13 @@
 # Objects
 
-```{automodule} kubespawner.objects
-
+```{eval-rst}
+.. automodule:: kubespawner.objects
 ```
 
-```{autofunction} make_pod
-
+```{eval-rst}
+.. autofunction:: kubespawner.objects.make_pod
 ```
 
-```{autofunction} make_pvc
-
+```{eval-rst}
+.. autofunction:: kubespawner.objects.make_pvc
 ```
