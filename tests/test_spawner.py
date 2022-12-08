@@ -589,7 +589,7 @@ async def test_spawn_start_restore_pod_name(
     # stop the pod
     await spawner.stop()
 
-    # verify pod is gone
+    # verify pod with old name is gone
     pods = (await kube_client.list_namespaced_pod(kube_ns)).items
     pod_names = [p.metadata.name for p in pods]
     assert pod_name not in pod_names
