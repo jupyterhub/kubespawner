@@ -569,7 +569,7 @@ async def test_spawn_start_restore_pod_name(
     # start the spawner
     url = await spawner.start()
 
-    # verify the pod exists
+    # verify pod with old name now exists
     pods = (await kube_client.list_namespaced_pod(kube_ns)).items
     pod_names = [p.metadata.name for p in pods]
     assert pod_name in pod_names
