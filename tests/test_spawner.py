@@ -557,7 +557,7 @@ async def test_spawn_start_restore_pod_name(
     )
     spawner.load_state(old_state)
 
-    # previous pod name is restored
+    # previous pod name is restored by the load_state call
     assert spawner.pod_name == old_spawner_pod_name
 
     # empty spawner isn't running
