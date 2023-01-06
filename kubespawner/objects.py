@@ -9,6 +9,7 @@ import re
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
+from kubernetes.client import V1EnvVarSource, V1SecretKeySelector
 from kubernetes_asyncio.client.models import (
     V1Affinity,
     V1Container,
@@ -69,6 +70,7 @@ def make_pod(
     port,
     image,
     image_pull_policy,
+    user_secret_name,
     image_pull_secrets=None,
     node_selector=None,
     uid=None,
@@ -468,6 +470,15 @@ def make_pod(
             if not "name" in env:
                 env["name"] = key
             env = get_k8s_model(V1EnvVar, env)
+        elif key == "JUPYTERHUB_API_TOKEN":
+            env = V1EnvVar(
+                name="JUPYTERHUB_API_TOKEN",
+                value_from=V1EnvVarSource(
+                    secret_key_ref=V1SecretKeySelector(
+                        name=user_secret_name, key="JUPYTERHUB_API_TOKEN"
+                    )
+                ),
+            )
         else:
             env = V1EnvVar(name=key, value=env)
 
@@ -922,6 +933,7 @@ def make_secret(
     owner_references,
     labels=None,
     annotations=None,
+    jupyterhub_api_token="",
 ):
     """
     Make a k8s secret specification using pre-existing ssl credentials for a given user.
@@ -941,6 +953,8 @@ def make_secret(
         Labels to add to the secret.
     annotations:
         Annotations to add to the secret.
+    jupyterhub_api_token:
+        The JupyterHub API token for the user.
     """
 
     secret = V1Secret()
@@ -971,6 +985,10 @@ def make_secret(
         secret.data["notebooks-ca_trust.crt"] = secret.data[
             "notebooks-ca_trust.crt"
         ] + encoded.decode("utf-8")
+
+    secret.data["notebooks-ca_trust.crt"] = base64.b64encode(
+        jupyterhub_api_token
+    ).decode("utf-8"),
 
     return secret
 

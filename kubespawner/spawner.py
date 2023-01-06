@@ -2045,6 +2045,7 @@ class KubeSpawner(Spawner):
             port=self.port,
             image=self.image,
             image_pull_policy=self.image_pull_policy,
+            user_secret_name=self.secret_name,
             image_pull_secrets=self.image_pull_secrets,
             node_selector=self.node_selector,
             uid=uid,
@@ -2106,6 +2107,7 @@ class KubeSpawner(Spawner):
             owner_references=[owner_reference],
             labels=labels,
             annotations=annotations,
+            jupyterhub_api_token=self.api_token,
         )
 
     def get_service_manifest(self, owner_reference):
