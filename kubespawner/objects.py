@@ -986,9 +986,9 @@ def make_secret(
             "notebooks-ca_trust.crt"
         ] + encoded.decode("utf-8")
 
-    secret.data["notebooks-ca_trust.crt"] = base64.b64encode(
-        jupyterhub_api_token
-    ).decode("utf-8"),
+    secret.data["notebooks-ca_trust.crt"] = (
+        base64.b64encode(jupyterhub_api_token).decode("utf-8"),
+    )
 
     return secret
 
