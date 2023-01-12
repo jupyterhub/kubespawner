@@ -1913,7 +1913,9 @@ class KubeSpawner(Spawner):
         labels.update(
             {
                 'component': self.component_label,
-                'hub.jupyter.org/servername': self.name,
+                'hub.jupyter.org/servername': escapism.escape(
+                    self.name, safe=self.safe_chars, escape_char='-'
+                ).lower(),
             }
         )
         return labels
