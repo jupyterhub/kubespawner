@@ -206,6 +206,65 @@ async def test_spawn_start(
     assert isinstance(status, int)
 
 
+async def test_spawn_start_in_different_namespace(
+    kube_another_ns,
+    kube_client,
+    config,
+    hub,
+    exec_python,
+    reset_pod_reflector,
+):
+    # hub is running in `kube_ns`. pods, PVC and other objects are created in `kube_another_ns`
+    config.KubeSpawner.namespace = kube_another_ns
+
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="start"),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+    )
+    # empty spawner isn't running
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+    pod_name = spawner.pod_name
+
+    # start the spawner
+    url = await spawner.start()
+
+    # verify the pod exists
+    pods = (await kube_client.list_namespaced_pod(kube_another_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+
+    # pod should be running when start returns
+    pod = await kube_client.read_namespaced_pod(
+        namespace=kube_another_ns, name=pod_name
+    )
+    assert pod.status.phase == "Running"
+
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+
+    # make sure spawn url is correct
+    r = await exec_python(check_up, {"url": url}, _retries=3)
+    assert r == "302"
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = (await kube_client.list_namespaced_pod(kube_another_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name not in pod_names
+
+    # verify exit status
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+
 async def test_spawn_component_label(
     kube_ns,
     kube_client,
