@@ -2876,7 +2876,6 @@ class KubeSpawner(Spawner):
 
     @_await_pod_reflector
     async def stop(self, now=False):
-
         delete_options = client.V1DeleteOptions()
 
         if now:

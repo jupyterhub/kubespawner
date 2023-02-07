@@ -202,7 +202,6 @@ async def watch_kubernetes(kube_client, kube_ns):
             func=kube_client.list_namespaced_event,
             namespace=kube_ns,
         ):
-
             resource = event['object']
             obj = resource.involved_object
             print(
