@@ -10,7 +10,7 @@ import os
 import string
 import sys
 import warnings
-from functools import partial, wraps
+from functools import lru_cache, partial, wraps
 from urllib.parse import urlparse
 
 import escapism
@@ -1616,6 +1616,8 @@ class KubeSpawner(Spawner):
               and value can be either the final value or a callable that returns the final
               value when called with the spawner instance as the only parameter. The callable
               may be async.
+            - `oauthenticator_override` in the profile will allow certain profiles to be set
+               based on specific OAuthenticator instance. Top level override 
         - `default`: (optional Bool) True if this is the default selected option
 
         kubespawner setting overrides work in the following manner, with items further in the
@@ -1626,6 +1628,8 @@ class KubeSpawner(Spawner):
         3. `kubespawner_override` in the specific choices the user has made within the
            profile, applied linearly based on the ordering of the option in the profile
            definition configuration
+        4. `oauthenticator_override` in the profile will allow certain profiles to be set
+           based on specific OAuthenticator instance.           
 
         Example::
 
@@ -1698,6 +1702,9 @@ class KubeSpawner(Spawner):
                         'cpu_limit': 48,
                         'mem_limit': '96G',
                         'extra_resource_guarantees': {"nvidia.com/gpu": "2"},
+                    },
+                    'oauthenticator_override': {
+                        'allowed_groups': ['gpu_user', 'ml_engineers']
                     }
                 }
             ]
@@ -2876,7 +2883,6 @@ class KubeSpawner(Spawner):
 
     @_await_pod_reflector
     async def stop(self, now=False):
-
         delete_options = client.V1DeleteOptions()
 
         if now:
@@ -2927,9 +2933,54 @@ class KubeSpawner(Spawner):
         return profile_form_template.render(profile_list=self._profile_list)
 
     async def _render_options_form_dynamically(self, current_spawner):
-        profile_list = await maybe_future(self.profile_list(current_spawner))
+        if callable(self.profile_list):
+            profile_list = await maybe_future(self.profile_list(current_spawner))
         profile_list = self._init_profile_list(profile_list)
+        # protect non oauthenticator instances
+        if all(
+            (
+                hasattr(self.authenticator, 'enable_auth_state'),
+                hasattr(self.authenticator, 'user_is_authorized'),
+                self.authenticator.enable_auth_state,
+            )
+        ):
+            profile_list = await self._filter_profile_options_form(profile_list)
         return self._render_options_form(profile_list)
+
+    async def _filter_profile_options_form(self, profile_list):
+        @lru_cache
+        async def check_auth_overrides(auth_state, oauthenticator_overrides=None):
+            # only check if overrides are present
+            if oauthenticator_overrides:
+                return await self.authenticator.user_is_authorized(
+                    auth_state, **oauthenticator_overrides
+                )
+            return True
+
+        auth_profile_list = []
+
+        auth_state = await self.user.get_auth_state()
+        for profile in profile_list:
+            # top level oauthenticator_override should take precendent
+            if not await check_auth_overrides(
+                auth_state, profile.pop("oauthenticator_override", None)
+            ):
+                continue
+
+            profile_options = {}
+            for pk, pv in profile.pop("profile_options", {}).items():
+                # filter out choices on profile_options
+                profile_options[pk]["choices"] = {
+                    ck: cv
+                    for ck, cv in pv.pop("choices", {}).items()
+                    if await check_auth_overrides(
+                        auth_state, cv.pop("oauthenticator_override", None)
+                    )
+                }
+
+            profile["profile_options"] = profile_options
+            auth_profile_list.append(profile)
+        return auth_profile_list
 
     @default('options_form')
     def _options_form_default(self):
@@ -2942,10 +2993,7 @@ class KubeSpawner(Spawner):
         """
         if not self.profile_list:
             return ''
-        if callable(self.profile_list):
-            return self._render_options_form_dynamically
-        else:
-            return self._render_options_form(self.profile_list)
+        return self._render_options_form_dynamically
 
     @default('options_from_form')
     def _options_from_form_default(self):
