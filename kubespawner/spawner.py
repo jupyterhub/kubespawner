@@ -2935,6 +2935,8 @@ class KubeSpawner(Spawner):
     async def _render_options_form_dynamically(self, current_spawner):
         if callable(self.profile_list):
             profile_list = await maybe_future(self.profile_list(current_spawner))
+        else:
+            profile_list = self.profile_list
         profile_list = self._init_profile_list(profile_list)
         # protect non oauthenticator instances
         if all(
