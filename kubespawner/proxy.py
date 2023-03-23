@@ -7,7 +7,7 @@ import escapism
 from jupyterhub.proxy import Proxy
 from jupyterhub.utils import exponential_backoff
 from kubernetes_asyncio import client
-from traitlets import Dict, List, Unicode
+from traitlets import Bool, Dict, List, Unicode
 
 from .clients import load_config, shared_client
 from .objects import make_ingress
@@ -252,6 +252,25 @@ class KubeIngressProxy(Proxy):
         """,
     )
 
+    reuse_existing_services = Bool(
+        False,
+        config=True,
+        help="""
+        If `True`, proxy will try to reuse existing services created by `KubeSpawner.services_enabled=True`
+        or `KubeSpawner.internal_ssl=True`.
+        If `False` (default), KubeSpawner creates service with type `ExternalName`, pointing to the pod's service.
+
+        Sometimes `ExternalName` could lead to issues with accessing pod, like `500 Redirect loop detected`,
+        so setting this option to `True` could solve this issue.
+
+        By default, KubeSpawner does not create service for a pod at all (`service_enabled=False`, `internal_ssl=False`).
+        In such a case KubeSpawner creates service with type `ClusterIP`, pointing to the pod IP and port.
+
+        If KubeSpawner creates pod in a different namespace, this option is ignored,
+        because Ingress(namespace=hub) cannot point to Service(namespace=user).
+        """,
+    )
+
     k8s_api_ssl_ca_cert = Unicode(
         "",
         config=True,
@@ -383,6 +402,7 @@ class KubeIngressProxy(Proxy):
         # 'data' is JSON encoded and put in an annotation - we don't need to query for it
 
         safe_name = self._safe_name_for_routespec(routespec).lower()
+        full_name = f'{self.namespace}/{safe_name}'
 
         common_labels = self._expand_all(self.common_labels, routespec, data)
         common_labels.update({'component': self.component_label})
@@ -405,11 +425,13 @@ class KubeIngressProxy(Proxy):
             routespec=routespec,
             target=target,
             data=data,
+            namespace=self.namespace,
             common_labels=common_labels,
             ingress_extra_labels=ingress_extra_labels,
             ingress_extra_annotations=ingress_extra_annotations,
             ingress_class_name=self.ingress_class_name,
             ingress_specifications=ingress_specifications,
+            reuse_existing_services=self.reuse_existing_services,
         )
 
         async def ensure_object(create_func, patch_func, body, kind):
@@ -439,8 +461,7 @@ class KubeIngressProxy(Proxy):
             )
 
             await exponential_backoff(
-                lambda: f'{self.namespace}/{safe_name}'
-                in self.endpoint_reflector.endpoints.keys(),
+                lambda: full_name in self.endpoint_reflector.endpoints,
                 'Could not find endpoints/%s after creating it' % safe_name,
             )
         else:
@@ -451,18 +472,24 @@ class KubeIngressProxy(Proxy):
             )
             await self._delete_if_exists('endpoint', safe_name, delete_endpoint)
 
-        await ensure_object(
-            self.core_api.create_namespaced_service,
-            self.core_api.patch_namespaced_service,
-            body=service,
-            kind='service',
-        )
-
-        await exponential_backoff(
-            lambda: f'{self.namespace}/{safe_name}'
-            in self.service_reflector.services.keys(),
-            'Could not find service/%s after creating it' % safe_name,
-        )
+        if service is not None:
+            await ensure_object(
+                self.core_api.create_namespaced_service,
+                self.core_api.patch_namespaced_service,
+                body=service,
+                kind='service',
+            )
+            await exponential_backoff(
+                lambda: full_name in self.service_reflector.services,
+                'Could not find services/%s after creating it' % safe_name,
+            )
+        else:
+            delete_service = self.core_api.delete_namespaced_service(
+                name=safe_name,
+                namespace=self.namespace,
+                body=client.V1DeleteOptions(grace_period_seconds=0),
+            )
+            await self._delete_if_exists('service', safe_name, delete_service)
 
         await ensure_object(
             self.networking_api.create_namespaced_ingress,
@@ -472,8 +499,7 @@ class KubeIngressProxy(Proxy):
         )
 
         await exponential_backoff(
-            lambda: f'{self.namespace}/{safe_name}'
-            in self.ingress_reflector.ingresses.keys(),
+            lambda: full_name in self.ingress_reflector.ingresses,
             'Could not find ingress/%s after creating it' % safe_name,
         )
 

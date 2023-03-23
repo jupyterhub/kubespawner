@@ -6,7 +6,7 @@ import ipaddress
 import json
 import operator
 import re
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from kubernetes_asyncio.client.models import (
@@ -61,6 +61,18 @@ except ImportError:
     from kubernetes_asyncio.client.models import V1EndpointPort as CoreV1EndpointPort
 
 from .utils import get_k8s_model, host_matching, update_k8s_model
+
+# Matches Kubernetes DNS names template for services
+# https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#namespaces-of-services:
+# * service.namespace.svc.cluster.local
+# * service.namespace.svc.cluster
+# * service.namespace.svc
+# * service.namespace
+# * service
+# User by `KubeIngressProxy.reuse_existing_services=True`
+SERVICE_DNS_PATTERN = re.compile(
+    r"(?P<service>[^.]+)\.?(?P<namespace>[^.]+)?(?P<rest>\.svc(\.cluster(\.local)?)?)?"
+)
 
 
 def make_pod(
@@ -735,12 +747,14 @@ def make_ingress(
     routespec: str,
     target: str,
     data: dict,
+    namespace: str,
     common_labels: Optional[dict] = None,
     ingress_extra_labels: Optional[dict] = None,
     ingress_extra_annotations: Optional[dict] = None,
     ingress_class_name: Optional[str] = None,
     ingress_specifications: Optional[List[Dict]] = None,
-):
+    reuse_existing_services: bool = False,
+) -> Tuple[Optional[V1Endpoints], Optional[V1Service], V1Ingress]:
     """
     Returns an ingress, service, endpoint object that'll work for this service
     """
@@ -782,8 +796,14 @@ def make_ingress(
     else:
         target_is_ip = True
 
+    service_name = name
+
     if target_is_ip:
-        # Make endpoint object
+        # c.KubeSpawner.services_enabled = False
+        # routespec='http://192.168.1.1:8888/'
+
+        # ingress -> service -> endpoint -> pod
+        # endpoint is used just to allow access from ingress to Pod IP (if PodNetworkPolicy is used)
         endpoint = V1Endpoints(
             kind='Endpoints',
             metadata=meta,
@@ -807,17 +827,46 @@ def make_ingress(
     else:
         endpoint = None
 
-        # Make service object
-        service = V1Service(
-            kind='Service',
-            metadata=meta,
-            spec=V1ServiceSpec(
-                type='ExternalName',
-                external_name=target_parts.hostname,
-                cluster_ip='',
-                ports=[V1ServicePort(port=target_port, target_port=target_port)],
-            ),
-        )
+        service_match = SERVICE_DNS_PATTERN.match(target_parts.hostname)
+        if (
+            reuse_existing_services
+            and service_match
+            and (
+                not service_match.group("namespace")
+                or service_match.group("namespace") == namespace
+            )
+        ):
+            # c.KubeSpawner.services_enabled = True
+            # routespec='http://myservice.mynamespace.svc.cluster.local:8888/'
+            # routespec='http://myservice.mynamespace.svc.cluster:8888/'
+            # routespec='http://myservice.mynamespace.svc:8888/'
+            # routespec='http://myservice.mynamespace:8888/'
+            # routespec='http://hub:8888/'
+
+            # Ingress -> Service (same namespace, created by KubeSpawner)
+            service = None  # just use this service in ingress, do not create it
+            service_name = service_match.group("service")
+        else:
+            # config: c.KubeSpawner.namespace='another-namespace'
+            # routespec: 'http://myservice.another-namespace...:8888/'
+            # or
+            # config: c.KubeSpawner.enable_user_namespaces=True
+            # routespec: 'http://myservice.user-namespace...:8888/'
+            # or
+            # c.JupyterHub.services = [{"name": "my-service", "url": "http://some.domain:9000"}]
+            # routespec: 'http://some.domain:9000/'
+
+            # Ingress -> ExternalName -> Service (different namespace or some external domain)
+            service = V1Service(
+                kind='Service',
+                metadata=meta,
+                spec=V1ServiceSpec(
+                    type='ExternalName',
+                    external_name=target_parts.hostname,
+                    cluster_ip='',
+                    ports=[V1ServicePort(port=target_port, target_port=target_port)],
+                ),
+            )
 
     # Make Ingress object
 
@@ -868,7 +917,7 @@ def make_ingress(
                         path_type="Prefix",
                         backend=V1IngressBackend(
                             service=V1IngressServiceBackend(
-                                name=name,
+                                name=service_name,
                                 port=V1ServiceBackendPort(
                                     number=target_port,
                                 ),
