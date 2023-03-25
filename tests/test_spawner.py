@@ -335,7 +335,6 @@ async def test_spawn_component_label(
     kube_client,
     config,
     hub,
-    reset_pod_reflectors,
 ):
     spawner = KubeSpawner(
         hub=hub,
@@ -464,7 +463,6 @@ async def test_spawn_services_enabled(
     kube_client,
     hub,
     config,
-    reset_pod_reflectors,
 ):
     spawner = KubeSpawner(
         config=config,
@@ -681,7 +679,7 @@ async def test_spawn_start_restore_pod_name(
     )
     spawner.load_state(old_state)
 
-    # previous pod name is restored
+    # previous pod name is restored by the load_state call
     assert spawner.pod_name == old_spawner_pod_name
 
     # empty spawner isn't running
@@ -693,7 +691,7 @@ async def test_spawn_start_restore_pod_name(
     # start the spawner
     url = await spawner.start()
 
-    # verify the pod exists
+    # verify pod with old name now exists
     pods = (await kube_client.list_namespaced_pod(kube_ns)).items
     pod_names = [p.metadata.name for p in pods]
     assert pod_name in pod_names
@@ -713,7 +711,7 @@ async def test_spawn_start_restore_pod_name(
     # stop the pod
     await spawner.stop()
 
-    # verify pod is gone
+    # verify pod with old name is gone
     pods = (await kube_client.list_namespaced_pod(kube_ns)).items
     pod_names = [p.metadata.name for p in pods]
     assert pod_name not in pod_names

@@ -202,7 +202,6 @@ async def watch_kubernetes(kube_client, kube_ns):
             func=kube_client.list_namespaced_event,
             namespace=kube_ns,
         ):
-
             resource = event['object']
             obj = resource.involved_object
             print(
@@ -239,9 +238,7 @@ async def watch_kubernetes(kube_client, kube_ns):
 @pytest_asyncio.fixture(scope="session")
 async def kube_client(request, kube_ns, kube_another_ns):
     """fixture for the Kubernetes client object.
-
     skips test that require kubernetes if kubernetes cannot be contacted
-
     - Ensures kube_ns and kube_another_ns namespaces do exist
     - Hooks up kubernetes events and logs to pytest capture
     - Cleans up kubernetes namespace on exit

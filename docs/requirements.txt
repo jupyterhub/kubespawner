@@ -1,9 +1,12 @@
-autodoc_traits
+# This requirements.txt file must be installed from the project's root folder:
+#
+#     pip install -r docs/requirements.txt
+#
+# Install the package to help autodoc-traits inspect and generate documentation.
+#
+--editable .
+
+autodoc-traits
 myst-parser>=0.17.0
-pyyaml
-setuptools
-# sphinx 4.2+ is required to be compatible with Python 3.10
-sphinx>=4.2,<5
 sphinx-book-theme
 sphinx-copybutton
-traitlets>=4.1
