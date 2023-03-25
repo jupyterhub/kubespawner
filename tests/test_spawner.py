@@ -335,6 +335,7 @@ async def test_spawn_component_label(
     kube_client,
     config,
     hub,
+    reset_pod_reflectors,
 ):
     spawner = KubeSpawner(
         hub=hub,
@@ -463,6 +464,7 @@ async def test_spawn_services_enabled(
     kube_client,
     hub,
     config,
+    reset_pod_reflectors,
 ):
     spawner = KubeSpawner(
         config=config,

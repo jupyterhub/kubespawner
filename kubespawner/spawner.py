@@ -10,7 +10,7 @@ import os
 import string
 import sys
 import warnings
-from functools import partial, wraps
+from functools import partial
 from typing import Optional, Tuple, Type
 from urllib.parse import urlparse
 
@@ -133,7 +133,7 @@ class KubeSpawner(Spawner):
     @property
     def pod_reflector(self):
         """
-        A convenience alias to the class variable reflectors['pods'].
+        Returns instance of ResourceReflector for pods.
         """
         key = self._get_reflector_key('pods')
         return self.__class__.reflectors.get(key, None)
@@ -141,7 +141,7 @@ class KubeSpawner(Spawner):
     @property
     def event_reflector(self):
         """
-        A convenience alias to the class variable reflectors['events'] if the
+        Returns instance of ResourceReflector for events, if the
         spawner instance has events_enabled.
         """
         if self.events_enabled:
@@ -200,40 +200,6 @@ class KubeSpawner(Spawner):
 
         load_config(host=self.k8s_api_host, ssl_ca_cert=self.k8s_api_ssl_ca_cert)
         self.api = shared_client("CoreV1Api")
-
-    def _await_pod_reflector(method):
-        """Decorator to wait for pod reflector to load
-
-        Apply to methods which require the pod reflector
-        to have completed its first load of pods.
-        """
-
-        @wraps(method)
-        async def async_method(self, *args, **kwargs):
-            await self._start_watching_pods()
-            return await method(self, *args, **kwargs)
-
-        return async_method
-
-    def _await_event_reflector(method):
-        """Decorator to wait for pod reflector to load
-
-        Apply to methods which require the pod reflector
-        to have completed its first load of pods.
-
-        Note: if `events_enabled=False`, decorator will immediately return None
-        without calling the original method.
-        """
-
-        @wraps(method)
-        async def async_method(self, *args, **kwargs):
-            if not self.events_enabled:
-                return
-
-            await self._start_watching_pods()
-            return await method(self, *args, **kwargs)
-
-        return async_method
 
     k8s_api_ssl_ca_cert = Unicode(
         "",
@@ -2240,7 +2206,6 @@ class KubeSpawner(Spawner):
         if 'dns_name' in state:
             self.dns_name = state['dns_name']
 
-    @_await_pod_reflector
     async def poll(self):
         """
         Check if the pod is still running.
@@ -2254,6 +2219,9 @@ class KubeSpawner(Spawner):
         necessary to check that the returned value is None, rather than
         just Falsy, to determine that the pod is still running.
         """
+
+        await self._start_watching_pods()
+
         ref_key = f"{self.namespace}/{self.pod_name}"
         pod = self.pod_reflector.pods.get(ref_key, None)
         if pod is not None:
@@ -2407,7 +2375,7 @@ class KubeSpawner(Spawner):
     ):
         """Start a shared reflector on the KubeSpawner class
 
-        kind: key for the reflector (e.g. 'pod' or 'events')
+        kind: used to generate key to store reflector shared instance (e.g. 'pod' or 'events')
         reflector_class: Reflector class to be instantiated
         kwargs: extra keyword-args to be relayed to ReflectorClass
 
@@ -2418,13 +2386,22 @@ class KubeSpawner(Spawner):
         and a new one started (for recovering from possible errors).
         """
 
+        key = self._get_reflector_key(kind)
+        previous_reflector = self.__class__.reflectors.get(key, None)
+
+        if previous_reflector and not replace:
+            # fast path
+            return previous_reflector
+
         if self.enable_user_namespaces:
-            # One reflector for all namespaces (requires ClusterRole), fail if it cannot be created
+            # Create one reflector for all namespaces.
+            # This requires binding ServiceAccount to ClusterRole.
 
             def on_reflector_failure():
+                # If reflector cannot be started, halt the JH application.
                 self.log.critical(
-                    "%s reflector failed, halting Hub.",
-                    key.title(),
+                    "Reflector with key %r reflector, halting Hub.",
+                    key,
                 )
                 sys.exit(1)
 
@@ -2432,46 +2409,38 @@ class KubeSpawner(Spawner):
                 try:
                     await func
                 except Exception:
-                    self.log.exception(f"Reflector for {kind} failed to start.")
+                    self.log.exception(f"Reflector with key {key} failed to start.")
                     sys.exit(1)
 
         else:
-            # Separate reflector for each namespace (does not require ClusterRole),
-            # avoid failing if it cannot be created.
-            # Namespace can be already deleted, or there can be missing access to only one namespace,
-            # and halting the entire Jupyterhub instance is not the best idea.
+            # Create a dedicated reflector for each namespace.
+            # This allows JH to run pods in multiple namespaces without binding ServiceAccount to ClusterRole.
 
             on_reflector_failure = None
 
             async def catch_reflector_start(func):
+                # If reflector cannot be started (e.g. insufficient access rights, namespace cannot be found),
+                # just raise an exception instead halting the entire JH application.
                 try:
                     await func
                 except Exception:
-                    self.log.exception(f"Reflector for {kind} failed to start.")
+                    self.log.exception(f"Reflector with key {key} failed to start.")
                     raise
 
-        key = self._get_reflector_key(kind)
-        previous_reflector = self.__class__.reflectors.get(key, None)
+        self.__class__.reflectors[key] = current_reflector = reflector_class(
+            parent=self,
+            namespace=self.namespace,
+            on_failure=on_reflector_failure,
+            **kwargs,
+        )
+        await catch_reflector_start(current_reflector.start())
 
-        if replace or not previous_reflector:
-            self.__class__.reflectors[key] = reflector_class(
-                parent=self,
-                namespace=self.namespace,
-                on_failure=on_reflector_failure,
-                **kwargs,
-            )
-            await catch_reflector_start(self.__class__.reflectors[key].start())
-
-        if replace and previous_reflector:
+        if previous_reflector:
             # we replaced the reflector, stop the old one
-            await previous_reflector.stop()
-
-        reflector = self.__class__.reflectors[key]
-        if not reflector.first_load_future.done():
-            await catch_reflector_start(reflector.first_load_future)
+            asyncio.ensure_future(previous_reflector.stop())
 
         # return the current reflector
-        return reflector
+        return current_reflector
 
     async def _start_watching_events(self, replace=False):
         """Start the events reflector
@@ -2507,38 +2476,20 @@ class KubeSpawner(Spawner):
             replace=replace,
         )
 
-    async def _stop_reflector(self, kind: str):
-        """Stop a shared reflector on the KubeSpawner class"""
-
-        key = self._get_reflector_key(kind)
-        reflector = self.__class__.reflectors.pop(key, None)
-
-        if reflector:
-            await reflector.stop()
-
-    async def _stop_watching_pods(self):
-        """Stop pods reflector"""
-        await self._stop_reflector("pods")
-
-    async def _stop_watching_events(self):
-        """Stop events reflector"""
-        await self._stop_reflector("events")
-
-    async def _stop_watchers(self):
-        """Stop reflectors for current spawner instance"""
-        await self._stop_reflector()
-        if self.events_enabled:
-            await self._stop_watching_events()
-
     @classmethod
     async def _stop_all_reflectors(cls):
-        """Stop reflectors for all instances"""
+        """Stop reflectors for all instances, a function used when running tests."""
         tasks = []
         for key in list(cls.reflectors.keys()):
             reflector = cls.reflectors.pop(key)
             tasks.append(reflector.stop())
 
-        await asyncio.gather(*tasks)
+        try:
+            await asyncio.gather(*tasks)
+        except Exception:
+            for task in tasks:
+                task.cancel()
+            raise
 
     def start(self):
         """Thin wrapper around self._start
@@ -2725,9 +2676,15 @@ class KubeSpawner(Spawner):
 
         # namespace can be changed via kubespawner_override, start watching pods only after
         # load_user_options() is called
-        await self._start_watching_pods()
+        start_futures = [self._start_watching_pods()]
         if self.events_enabled:
-            await self._start_watching_events()
+            start_futures.append(self._start_watching_events())
+        try:
+            await asyncio.gather(*start_futures)
+        except Exception:
+            for future in start_futures:
+                future.cancel()
+            raise
 
         # record latest event so we don't include old
         # events from previous pods in self.events
@@ -2940,8 +2897,9 @@ class KubeSpawner(Spawner):
             else:
                 raise
 
-    @_await_pod_reflector
     async def stop(self, now=False):
+        await self._start_watching_pods()
+
         delete_options = client.V1DeleteOptions()
 
         if now:
