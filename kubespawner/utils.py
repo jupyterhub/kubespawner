@@ -216,9 +216,6 @@ def recursive_update(target, new):
             if k not in target:
                 target[k] = {}
             recursive_update(target[k], v)
-            if not target[k]:
-                # Prune empty subdicts
-                del target[k]
 
         elif v is None:
             target.pop(k, None)
