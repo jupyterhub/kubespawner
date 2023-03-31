@@ -34,8 +34,6 @@ from traitlets import (
 )
 
 from .clients import load_config, shared_client
-from .utils import recursive_update
-
 from .objects import (
     make_namespace,
     make_owner_reference,
@@ -45,6 +43,7 @@ from .objects import (
     make_service,
 )
 from .reflector import ResourceReflector
+from .utils import recursive_update
 
 
 class PodReflector(ResourceReflector):
@@ -3089,7 +3088,6 @@ class KubeSpawner(Spawner):
                         self.log.debug(
                             f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option}'
                         )
-
 
                     # If v is a dict, *merge* it with existing values, rather than completely
                     # resetting it. This allows *adding* things like environment variables rather
