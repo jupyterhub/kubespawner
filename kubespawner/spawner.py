@@ -34,6 +34,8 @@ from traitlets import (
 )
 
 from .clients import load_config, shared_client
+from .utils import recursive_update
+
 from .objects import (
     make_namespace,
     make_owner_reference,
@@ -3032,9 +3034,10 @@ class KubeSpawner(Spawner):
 
             # If v is a dict, *merge* it with existing values, rather than completely
             # resetting it. This allows *adding* things like environment variables rather
-            # than completely replacing them.
+            # than completely replacing them. If value is set to None, the key
+            # will be removed
             if isinstance(v, dict) and isinstance(getattr(self, k), dict):
-                getattr(self, k).update(v)
+                recursive_update(getattr(self, k), v)
             else:
                 setattr(self, k, v)
 
@@ -3081,11 +3084,13 @@ class KubeSpawner(Spawner):
                             f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option}'
                         )
 
+
                     # If v is a dict, *merge* it with existing values, rather than completely
                     # resetting it. This allows *adding* things like environment variables rather
-                    # than completely replacing them.
+                    # than completely replacing them. If value is set to None, the key
+                    # will be removed
                     if isinstance(v, dict) and isinstance(getattr(self, k), dict):
-                        getattr(self, k).update(v)
+                        recursive_update(getattr(self, k), v)
                     else:
                         setattr(self, k, v)
 

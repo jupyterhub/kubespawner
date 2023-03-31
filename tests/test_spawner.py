@@ -703,7 +703,7 @@ _test_profiles = [
             'image': 'training/python:label',
             'cpu_limit': 1,
             'mem_limit': 512 * 1024 * 1024,
-            'environment': {'override': 'override-value'},
+            'environment': {'override': 'override-value', 'to-remove': None},
         },
     },
     {
@@ -740,7 +740,9 @@ async def test_kubespawner_override():
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = _test_profiles
     # Set a base environment
-    spawner.environment = {"existing": "existing-value"}
+    # to-remove will be removed because we set its value to None
+    # in the override
+    spawner.environment = {"existing": "existing-value", "to-remove": "does-it-matter"}
     # render the form, select first option
     await spawner.get_options_form()
     spawner.user_options = spawner.options_from_form(
