@@ -1599,7 +1599,10 @@ class KubeSpawner(Spawner):
         - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
           settings. Each value can be either the final value to change or a callable that
           take the `KubeSpawner` instance as parameter and return the final value. This can
-          be further overridden by `profile_options`
+          be further overridden by 'profile_options'
+          If the traitlet being overriden is a *dictionary*, the dictionary
+          will be *recursively updated*, rather than overriden. If you want to
+          remove a key, set its value to `None`
         - `profile_options`: A dictionary of sub-options that allow users to further customize the
           selected profile. By default, these are rendered as a dropdown with the label
           provided by `display_name`. Items should have a unique key representing the customization,
@@ -1618,6 +1621,9 @@ class KubeSpawner(Spawner):
               and value can be either the final value or a callable that returns the final
               value when called with the spawner instance as the only parameter. The callable
               may be async.
+              If the traitlet being overriden is a *dictionary*, the dictionary
+              will be *recursively updated*, rather than overriden. If you want to
+              remove a key, set its value to `None`
         - `default`: (optional Bool) True if this is the default selected option
 
         kubespawner setting overrides work in the following manner, with items further in the
