@@ -703,7 +703,7 @@ _test_profiles = [
             'image': 'training/python:label',
             'cpu_limit': 1,
             'mem_limit': 512 * 1024 * 1024,
-            'environment': {'override': 'override-value', 'to-remove': None},
+            'environment': {'override': 'override-value'},
         },
     },
     {
@@ -713,6 +713,17 @@ _test_profiles = [
             'image': 'training/datascience:label',
             'cpu_limit': 4,
             'mem_limit': 8 * 1024 * 1024 * 1024,
+        },
+    },
+    {
+        'display_name': 'Training Env - R',
+        'slug': 'training-r',
+        'default': True,
+        'kubespawner_override': {
+            'image': 'training/r:label',
+            'cpu_limit': 1,
+            'mem_limit': 512 * 1024 * 1024,
+            'environment': {'override': 'override-value', "to-remove": None},
         },
     },
 ]
@@ -746,10 +757,10 @@ async def test_kubespawner_override():
     # render the form, select first option
     await spawner.get_options_form()
     spawner.user_options = spawner.options_from_form(
-        {'profile': [_test_profiles[0]['slug']]}
+        {'profile': [_test_profiles[2]['slug']]}
     )
     assert spawner.user_options == {
-        'profile': _test_profiles[0]['slug'],
+        'profile': _test_profiles[2]['slug'],
     }
     await spawner.load_user_options()
     assert spawner.environment == {
