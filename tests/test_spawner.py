@@ -718,7 +718,6 @@ _test_profiles = [
     {
         'display_name': 'Training Env - R',
         'slug': 'training-r',
-        'default': True,
         'kubespawner_override': {
             'image': 'training/r:label',
             'cpu_limit': 1,
