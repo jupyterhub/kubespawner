@@ -9,6 +9,45 @@
 - Now `c.KubeSpawner.environment` values supports substitution, just like other config options [#642](https://github.com/jupyterhub/kubespawner/pull/642) ([@dolfinus](https://github.com/dolfinus)).
   For example, `{"MYVAR": "jupyterhub-{username}"}` will rendered as `{"MYVAR": "jupyterhub-sam"}` for a user named `sam`.
   This could break backward compatibility if environment variable value contains strings like `{something}` there `something` is a substitution variable unknown for the KubeSpawner. You should escape braces by using `{{something}}` syntax.
+- A breaking change could occur if `kubespawner_override` is used to
+  override a dictionary based configuration listed below. It will only
+  be a breaking change if there is a difference between merging and
+  replacing previous dictionary though.
+
+  There could be a difference between merging and replacing if for
+  example `common_labels` is configured ahead of time to be `{"a": "a"}`,
+  and then `kubespawner_override` is used to set it to `{"b": "b"}`. Then
+  previosly the result would be {"b": "b"} while now it will be `{"a": "a", "b": "b"}`.
+
+  Only `common_labels` has a default value provided by KubeSpawner or the
+  JupyterHub Helm chart, making this mainly an issue for users that
+  first have configured one of these values and then expect it to be
+  entirely replaced in `kubespawner_override`. As an example, someone may
+  have configured `node_selector` to be `{"a": "a"}` by default and then
+  expect it to become `{"b": "b"}` after using `kubespawner_override`, but
+  after this change it will end up being `{"a": "a", "b": "b"}`.
+
+  Audit your config for any of the following traitlets that could be overriden
+  in `kubespawner_override`, and make sure they behave as you expect.
+
+  ```
+  common_labels
+  environment
+  extra_annotations
+  extra_container_config
+  extra_labels
+  extra_pod_config
+  extra_resource_guarantees
+  extra_resource_limits
+  lifecycle_hooks
+  node_selector
+  storage_extra_annotations
+  storage_extra_labels
+  storage_selector
+  user_namespace_annotations
+  user_namespace_labels
+  ```
+
 
 ## 4.3
 
