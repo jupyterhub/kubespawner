@@ -703,6 +703,7 @@ _test_profiles = [
             'image': 'training/python:label',
             'cpu_limit': 1,
             'mem_limit': 512 * 1024 * 1024,
+            'environment': {'override': 'override-value'},
         },
     },
     {
@@ -712,6 +713,16 @@ _test_profiles = [
             'image': 'training/datascience:label',
             'cpu_limit': 4,
             'mem_limit': 8 * 1024 * 1024 * 1024,
+        },
+    },
+    {
+        'display_name': 'Training Env - R',
+        'slug': 'training-r',
+        'kubespawner_override': {
+            'image': 'training/r:label',
+            'cpu_limit': 1,
+            'mem_limit': 512 * 1024 * 1024,
+            'environment': {'override': 'override-value', "to-remove": None},
         },
     },
 ]
@@ -733,6 +744,28 @@ async def test_user_options_set_from_form():
     await spawner.load_user_options()
     for key, value in _test_profiles[1]['kubespawner_override'].items():
         assert getattr(spawner, key) == value
+
+
+async def test_kubespawner_override():
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    # Set a base environment
+    # to-remove will be removed because we set its value to None
+    # in the override
+    spawner.environment = {"existing": "existing-value", "to-remove": "does-it-matter"}
+    # render the form, select first option
+    await spawner.get_options_form()
+    spawner.user_options = spawner.options_from_form(
+        {'profile': [_test_profiles[2]['slug']]}
+    )
+    assert spawner.user_options == {
+        'profile': _test_profiles[2]['slug'],
+    }
+    await spawner.load_user_options()
+    assert spawner.environment == {
+        "existing": "existing-value",
+        "override": "override-value",
+    }
 
 
 async def test_user_options_api():

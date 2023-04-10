@@ -43,6 +43,7 @@ from .objects import (
     make_service,
 )
 from .reflector import ResourceReflector
+from .utils import recursive_update
 
 
 class PodReflector(ResourceReflector):
@@ -1597,7 +1598,10 @@ class KubeSpawner(Spawner):
         - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
           settings. Each value can be either the final value to change or a callable that
           take the `KubeSpawner` instance as parameter and return the final value. This can
-          be further overridden by `profile_options`
+          be further overridden by 'profile_options'
+          If the traitlet being overriden is a *dictionary*, the dictionary
+          will be *recursively updated*, rather than overriden. If you want to
+          remove a key, set its value to `None`
         - `profile_options`: A dictionary of sub-options that allow users to further customize the
           selected profile. By default, these are rendered as a dropdown with the label
           provided by `display_name`. Items should have a unique key representing the customization,
@@ -1616,6 +1620,9 @@ class KubeSpawner(Spawner):
               and value can be either the final value or a callable that returns the final
               value when called with the spawner instance as the only parameter. The callable
               may be async.
+              If the traitlet being overriden is a *dictionary*, the dictionary
+              will be *recursively updated*, rather than overriden. If you want to
+              remove a key, set its value to `None`
         - `default`: (optional Bool) True if this is the default selected option
 
         kubespawner setting overrides work in the following manner, with items further in the
@@ -3029,7 +3036,15 @@ class KubeSpawner(Spawner):
                 )
             else:
                 self.log.debug(".. overriding KubeSpawner value %s=%s", k, v)
-            setattr(self, k, v)
+
+            # If v is a dict, *merge* it with existing values, rather than completely
+            # resetting it. This allows *adding* things like environment variables rather
+            # than completely replacing them. If value is set to None, the key
+            # will be removed
+            if isinstance(v, dict) and isinstance(getattr(self, k), dict):
+                recursive_update(getattr(self, k), v)
+            else:
+                setattr(self, k, v)
 
         if profile.get('profile_options'):
             # each option specified here *must* have a value in our POST, as we
@@ -3073,7 +3088,15 @@ class KubeSpawner(Spawner):
                         self.log.debug(
                             f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option}'
                         )
-                    setattr(self, k, v)
+
+                    # If v is a dict, *merge* it with existing values, rather than completely
+                    # resetting it. This allows *adding* things like environment variables rather
+                    # than completely replacing them. If value is set to None, the key
+                    # will be removed
+                    if isinstance(v, dict) and isinstance(getattr(self, k), dict):
+                        recursive_update(getattr(self, k), v)
+                    else:
+                        setattr(self, k, v)
 
     # set of recognised user option keys
     # used for warning about ignoring unrecognised options
