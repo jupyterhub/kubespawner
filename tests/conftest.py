@@ -638,19 +638,13 @@ async def exec_python(kube_client, kube_ns):
 
 
 @pytest.fixture(scope="function")
-def reset_pod_reflector():
+async def reset_pod_reflectors():
     """
-    Resets the class state KubeSpawner.reflectors["pods"] before and after the
+    Resets the class state KubeSpawner.reflectors before and after the
     test function executes. This enables us to start fresh if a test needs to
-    test configuration influencing our singleton pod reflector.
+    test configuration influencing the pod reflector options.
     """
 
-    def _reset_pod_reflector():
-        pods_reflector = KubeSpawner.reflectors["pods"]
-        KubeSpawner.reflectors["pods"] = None
-        if pods_reflector:
-            asyncio.ensure_future(pods_reflector.stop())
-
-    _reset_pod_reflector()
+    await KubeSpawner._stop_all_reflectors()
     yield
-    _reset_pod_reflector()
+    await KubeSpawner._stop_all_reflectors()
