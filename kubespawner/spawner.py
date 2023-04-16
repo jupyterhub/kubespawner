@@ -2019,6 +2019,20 @@ class KubeSpawner(Spawner):
             self._expand_all(self.extra_annotations)
         )
 
+        # Assuming we chose static singleuser volume type in k8s-hub Helm chart
+        # Add group shared directory, if applicable
+        if self.volume_mounts:
+            if list(filter(lambda x: x["name"] == "home", self.volume_mounts)):
+                user_groups = self.user.groups
+                if user_groups:
+                    for group in user_groups:
+                        volume_mnt = {
+                            "name": "home",
+                            "mountPath": os.path.join(self._expand_user_properties("/home/{username}"), group),
+                            "subPath": group,
+                        }
+                        self.volume_mounts.append(volume_mnt)
+
         return make_pod(
             name=self.pod_name,
             cmd=real_cmd,
