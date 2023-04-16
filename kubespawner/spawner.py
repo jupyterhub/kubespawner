@@ -2023,7 +2023,7 @@ class KubeSpawner(Spawner):
         # Add group shared directory, if applicable
         if self.volume_mounts:
             if list(filter(lambda x: x["name"] == "home", self.volume_mounts)):
-                user_groups = self.user.groups
+                user_groups = {g.name for g in self.user.orm_user.groups}
                 if user_groups:
                     for group in user_groups:
                         volume_mnt = {
