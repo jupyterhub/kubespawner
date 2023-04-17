@@ -43,7 +43,7 @@ jobs:
             k3s: v1.23
             test_dependencies: >-
               jupyterhub==1.3.0
-              kubernetes_asyncio==19.15.1
+              kubernetes_asyncio==23.6.0
               traitlets==4.3.2
 
           # Test with modern python and k8s versions

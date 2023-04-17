@@ -30,7 +30,7 @@ dependencies = [
     "escapism",
     "jinja2",
     "jupyterhub>=1.3.0",
-    "kubernetes_asyncio>=19.15.1",
+    "kubernetes_asyncio>=23.6.0",
     "python-slugify",
     "pyYAML",
     "traitlets>=4.3.2",
