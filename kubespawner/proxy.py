@@ -181,8 +181,8 @@ class KubeIngressProxy(Proxy):
         `{unescaped_username}`, `{unescaped_servername}`, `{unescaped_servicename}` and `{unescaped_routespec}` will be expanded if
         found within strings of this configuration.
 
-        Names have to be are escaped to follow the [DNS label
-        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        Names have to be are escaped to follow the `DNS label standard
+        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
         """,
     )
 
@@ -201,8 +201,8 @@ class KubeIngressProxy(Proxy):
         `{unescaped_username}`, `{unescaped_servername}`, `{unescaped_servicename}` and `{unescaped_routespec}` will be expanded if
         found within strings of this configuration.
 
-        Names have to be are escaped to follow the [DNS label
-        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        Names have to be are escaped to follow the `DNS label standard
+        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
         """,
     )
 
@@ -220,8 +220,8 @@ class KubeIngressProxy(Proxy):
         `{unescaped_username}`, `{unescaped_servername}`, `{unescaped_servicename}` and `{unescaped_routespec}` will be expanded if
         found within strings of this configuration.
 
-        Names have to be are escaped to follow the [DNS label
-        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        Names have to be are escaped to follow the `DNS label standard
+        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
         """,
     )
 
@@ -247,8 +247,8 @@ class KubeIngressProxy(Proxy):
         `{routespec}`, `{hubnamespace}`, and `{unescaped_routespec}` will be expanded if
         found within strings of this configuration.
 
-        Names have to be are escaped to follow the [DNS label
-        standard](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names).
+        Names have to be are escaped to follow the `DNS label standard
+        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
         """,
     )
 
