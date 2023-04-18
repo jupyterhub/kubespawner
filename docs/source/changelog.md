@@ -6,8 +6,8 @@
 
 ### Breaking changes
 
-- Support for use against k8s 1.20-1.22 is no longer maintained, please upgrade
-  to k8s 1.23+ to ensure function.
+- Versions of K8s older than 1.23 are no longer supported, they may work but
+  this is not guaranteed.
 - Now `c.KubeSpawner.environment` values supports substitution, just like other config options [#642](https://github.com/jupyterhub/kubespawner/pull/642) ([@dolfinus](https://github.com/dolfinus)).
   For example, `{"MYVAR": "jupyterhub-{username}"}` will rendered as `{"MYVAR": "jupyterhub-sam"}` for a user named `sam`.
   This could break backward compatibility if environment variable value contains strings like `{something}` there `something` is a substitution variable unknown for the KubeSpawner. You should escape braces by using `{{something}}` syntax.
