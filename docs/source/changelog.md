@@ -4,33 +4,40 @@
 
 ## [Unreleased]
 
-### Breaking changes
+## 5.0
 
-- Versions of K8s older than 1.23 are no longer supported, they may work but
-  this is not guaranteed.
-- Now `c.KubeSpawner.environment` values supports substitution, just like other config options [#642](https://github.com/jupyterhub/kubespawner/pull/642) ([@dolfinus](https://github.com/dolfinus)).
-  For example, `{"MYVAR": "jupyterhub-{username}"}` will rendered as `{"MYVAR": "jupyterhub-sam"}` for a user named `sam`.
-  This could break backward compatibility if environment variable value contains strings like `{something}` there `something` is a substitution variable unknown for the KubeSpawner. You should escape braces by using `{{something}}` syntax.
-- A breaking change could occur if `kubespawner_override` is used to
-  override a dictionary based configuration listed below. It will only
-  be a breaking change if there is a difference between merging and
-  replacing previous dictionary though.
+### [5.0.0] - 2023-04-19
 
-  There could be a difference between merging and replacing if for
-  example `common_labels` is configured ahead of time to be `{"a": "a"}`,
-  and then `kubespawner_override` is used to set it to `{"b": "b"}`. Then
-  previosly the result would be {"b": "b"} while now it will be `{"a": "a", "b": "b"}`.
+#### Breaking changes
 
-  Only `common_labels` has a default value provided by KubeSpawner or the
-  JupyterHub Helm chart, making this mainly an issue for users that
-  first have configured one of these values and then expect it to be
-  entirely replaced in `kubespawner_override`. As an example, someone may
-  have configured `node_selector` to be `{"a": "a"}` by default and then
-  expect it to become `{"b": "b"}` after using `kubespawner_override`, but
-  after this change it will end up being `{"a": "a", "b": "b"}`.
+- Versions of K8s older than 1.23 are no longer supported, KubeSpawner may still
+  work but this is not guaranteed.
+  [#718](https://github.com/jupyterhub/kubespawner/pull/718)
 
-  Audit your config for any of the following traitlets that could be overriden
-  in `kubespawner_override`, and make sure they behave as you expect.
+- {attr}`.KubeSpawner.environment` now reserve the symbols `{` and `}` for use
+  by variable expansion. To retain existing behavior, replace `{` and `}` with
+  `{{` and `}}` respectively.
+  [#642](https://github.com/jupyterhub/kubespawner/pull/642)
+
+- {attr}`.KubeSpawner.profile_list`'s `kubespawner_override` behavior has
+  changed to merge instead of replace dictionary based configuration.
+  [#650](https://github.com/jupyterhub/kubespawner/pull/650)
+
+  :::{admonition} More about `kubespawner_override` behavior change
+  If for example {attr}`.KubeSpawner.node_selector` is set to `{"a": "a"}`, and
+  `kubespawner_override` to `{"node_selector": {"b": "b"}}`, then the resulting
+  `node_selector` configuration becomes `{"a": "a", "b": "b"}`. Before
+  KubeSpawner 5 it would have become `{"b": "b"}`.
+
+  Since only {attr}`.KubeSpawner.common_labels` has a non empty
+  dictionary by default in either KubeSpawner or the JupyterHub Helm chart, this
+  is likely only to be an issue for users that first have configured one of
+  these values and then expect it to be entirely replaced in
+  `kubespawner_override`.
+
+  To conclude if this is a breaking change to your deployment, audit use of
+  `kubespawner_override` to replace rather than merge KubeSpawner's dictionary
+  based configuration that is listed below.
 
   ```
   common_labels
@@ -49,6 +56,60 @@
   user_namespace_annotations
   user_namespace_labels
   ```
+
+  :::
+
+- The pod label `hub.jupyter.org/servername` is now given a escaped servername
+  as value. [#694](https://github.com/jupyterhub/kubespawner/pull/694)
+
+#### New features added
+
+- Allow to watch multiple namespaces at the same time [#678](https://github.com/jupyterhub/kubespawner/pull/678) ([@dolfinus](https://github.com/dolfinus))
+- [KubeIngressProxy] Add KubeIngressProxy.ingress_class_name [#668](https://github.com/jupyterhub/kubespawner/pull/668) ([@dolfinus](https://github.com/dolfinus))
+- [KubeIngressProxy] Add KubeIngressProxy.ingress_specifications [#667](https://github.com/jupyterhub/kubespawner/pull/667) ([@dolfinus](https://github.com/dolfinus))
+- [KubeIngressProxy] Add reuse_existing_services option [#656](https://github.com/jupyterhub/kubespawner/pull/656) ([@dolfinus](https://github.com/dolfinus))
+- [KubeIngressProxy] Add ingress_extra_annotations and ingress_extra_labels [#655](https://github.com/jupyterhub/kubespawner/pull/655) ([@dolfinus](https://github.com/dolfinus))
+- Expand environment variables [#642](https://github.com/jupyterhub/kubespawner/pull/642) ([@dolfinus](https://github.com/dolfinus))
+
+#### Bugs fixed
+
+- Fix error message when default profile is missing options [#704](https://github.com/jupyterhub/kubespawner/pull/704) ([@holzman](https://github.com/holzman))
+- Escape pod label `hub.jupyter.org/servername` (pod annotation remains unescaped) [#694](https://github.com/jupyterhub/kubespawner/pull/694) ([@yuvipanda](https://github.com/yuvipanda))
+- Save dns_name between restarts [#677](https://github.com/jupyterhub/kubespawner/pull/677) ([@dolfinus](https://github.com/dolfinus))
+- Save the namespace between restarts [#657](https://github.com/jupyterhub/kubespawner/pull/657) ([@totycro](https://github.com/totycro))
+- Fix hard-coded component label for services_enabled=True [#654](https://github.com/jupyterhub/kubespawner/pull/654) ([@dolfinus](https://github.com/dolfinus))
+- Let `kubespawner_override` merge instead of replace dictionaries [#650](https://github.com/jupyterhub/kubespawner/pull/650) ([@yuvipanda](https://github.com/yuvipanda))
+
+#### Maintenance and upkeep improvements
+
+- Drop support for k8s 1.20-1.22 (stop testing against it) [#718](https://github.com/jupyterhub/kubespawner/pull/718) ([@consideRatio](https://github.com/consideRatio))
+- dependabot: monthly updates of github actions [#713](https://github.com/jupyterhub/kubespawner/pull/713) ([@consideRatio](https://github.com/consideRatio))
+- Add test to restore pod name from previous spawner state after JupyterHub restart [#682](https://github.com/jupyterhub/kubespawner/pull/682) ([@dolfinus](https://github.com/dolfinus))
+- Add test to spawn a pod in a separate namespace [#681](https://github.com/jupyterhub/kubespawner/pull/681) ([@dolfinus](https://github.com/dolfinus))
+- Avoid class state by passing relevant config to PodReflector on instanciation [#672](https://github.com/jupyterhub/kubespawner/pull/672) ([@dolfinus](https://github.com/dolfinus))
+- maint: pyproject.toml, hatchling, tbump, .readthedocs.yaml updates [#666](https://github.com/jupyterhub/kubespawner/pull/666) ([@consideRatio](https://github.com/consideRatio))
+
+#### Documentation improvements
+
+- docs: add pypi/conda-forge badges to readme [#720](https://github.com/jupyterhub/kubespawner/pull/720) ([@consideRatio](https://github.com/consideRatio))
+- Fix tests badge [#719](https://github.com/jupyterhub/kubespawner/pull/719) ([@dolfinus](https://github.com/dolfinus))
+- docs: fix broken api references [#687](https://github.com/jupyterhub/kubespawner/pull/687) ([@consideRatio](https://github.com/consideRatio))
+- docs: run rst2myst [#684](https://github.com/jupyterhub/kubespawner/pull/684) ([@consideRatio](https://github.com/consideRatio))
+- docs: stick with docs/requirements.txt [#683](https://github.com/jupyterhub/kubespawner/pull/683) ([@consideRatio](https://github.com/consideRatio))
+- Update docs on setting up a development environment [#680](https://github.com/jupyterhub/kubespawner/pull/680) ([@shaneknapp](https://github.com/shaneknapp))
+- docs: relocate docs/requirements.txt into pyproject.toml [#673](https://github.com/jupyterhub/kubespawner/pull/673) ([@consideRatio](https://github.com/consideRatio))
+- docs: fix typo in release.md [#671](https://github.com/jupyterhub/kubespawner/pull/671) ([@consideRatio](https://github.com/consideRatio))
+- docs: fix bullet lists in profile_list [#670](https://github.com/jupyterhub/kubespawner/pull/670) ([@holzman](https://github.com/holzman))
+
+#### Continuous integration improvements
+
+- ci: Make sure we run the publish workflow on every tag pushed [#664](https://github.com/jupyterhub/kubespawner/pull/664) ([@GeorgianaElena](https://github.com/GeorgianaElena))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2022-11-03&to=2023-04-18&type=c))
+
+[@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2022-11-03..2023-04-18&type=Issues) | [@dependabot](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adependabot+updated%3A2022-11-03..2023-04-18&type=Issues) | [@dolfinus](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adolfinus+updated%3A2022-11-03..2023-04-18&type=Issues) | [@droctothorpe](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adroctothorpe+updated%3A2022-11-03..2023-04-18&type=Issues) | [@GeorgianaElena](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AGeorgianaElena+updated%3A2022-11-03..2023-04-18&type=Issues) | [@holzman](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aholzman+updated%3A2022-11-03..2023-04-18&type=Issues) | [@jbusecke](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajbusecke+updated%3A2022-11-03..2023-04-18&type=Issues) | [@manics](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2022-11-03..2023-04-18&type=Issues) | [@meeseeksmachine](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ameeseeksmachine+updated%3A2022-11-03..2023-04-18&type=Issues) | [@minrk](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2022-11-03..2023-04-18&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Apre-commit-ci+updated%3A2022-11-03..2023-04-18&type=Issues) | [@shaneknapp](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ashaneknapp+updated%3A2022-11-03..2023-04-18&type=Issues) | [@totycro](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Atotycro+updated%3A2022-11-03..2023-04-18&type=Issues) | [@welcome](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Awelcome+updated%3A2022-11-03..2023-04-18&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2022-11-03..2023-04-18&type=Issues)
 
 ## 4.3
 
@@ -673,7 +734,8 @@ Change highlights:
 - Update Kubernetes Python client to 6.0 (supporting Kubernetes 1.10 APIs)
 - Numerous bugfixes
 
-[unreleased]: https://github.com/jupyterhub/kubespawner/compare/4.3.0...HEAD
+[unreleased]: https://github.com/jupyterhub/kubespawner/compare/5.0.0...HEAD
+[5.0.0]: https://github.com/jupyterhub/kubespawner/compare/4.3.0...5.0.0
 [4.3.0]: https://github.com/jupyterhub/kubespawner/compare/4.2.0...4.3.0
 [4.2.0]: https://github.com/jupyterhub/kubespawner/compare/4.1.0...4.2.0
 [4.1.0]: https://github.com/jupyterhub/kubespawner/compare/4.0.0...4.1.0

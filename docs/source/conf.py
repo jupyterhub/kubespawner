@@ -66,6 +66,15 @@ pygments_style = 'sphinx'
 todo_include_todos = False
 
 
+# -- MyST configuration ------------------------------------------------------
+# ref: https://myst-parser.readthedocs.io/en/latest/configuration.html
+#
+myst_enable_extensions = [
+    # available extensions: https://myst-parser.readthedocs.io/en/latest/syntax/optional.html
+    "colon_fence",
+]
+
+
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
