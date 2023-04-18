@@ -2028,7 +2028,7 @@ class KubeSpawner(Spawner):
                     for group in user_groups:
                         volume_mnt = {
                             "name": "home",
-                            "mountPath": os.path.join(self._expand_user_properties("/home/{username}"), group),
+                            "mountPath": os.path.join(self._expand_user_properties("/home/{username}/shared"), group),
                             "subPath": group,
                         }
                         self.volume_mounts.append(volume_mnt)
