@@ -15,7 +15,7 @@ from typing import Optional, Tuple, Type
 from urllib.parse import urlparse
 
 import escapism
-from jinja2 import BaseLoader, Environment
+from jinja2 import Environment, FileSystemLoader
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Callable, Command
 from jupyterhub.utils import exponential_backoff, maybe_future
@@ -2894,8 +2894,11 @@ class KubeSpawner(Spawner):
 
     def _render_options_form(self, profile_list):
         self._profile_list = self._init_profile_list(profile_list)
-        profile_form_template = Environment(loader=BaseLoader).from_string(
-            self.profile_form_template
+        loader = FileSystemLoader(
+            [os.path.join(os.path.dirname(__file__), 'templates')]
+        )
+        profile_form_template = Environment(loader=loader).from_string(
+            self._profile_form_template()
         )
         return profile_form_template.render(profile_list=self._profile_list)
 
