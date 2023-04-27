@@ -69,6 +69,8 @@ repos:
         files: "kubespawner/templates/.*\\.html"
         types_or:
           - html
+        args:
+          - --reformat
 
 # pre-commit.ci config reference: https://pre-commit.ci/#configuration
 ci:
