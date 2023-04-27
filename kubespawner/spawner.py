@@ -1477,7 +1477,13 @@ class KubeSpawner(Spawner):
     additional_profile_form_template_paths = List(
         default=[],
         help="""
-        Path to search for jinja2 templates when rendering profile_form
+        Additional paths to search for jinja2 templates when rendering profile_form.
+
+        These directories will be searched before the default `templates/` directory
+        shipped with kubespawner with the default template.
+
+        Any file named `form.html` in these directories will be used to render the
+        profile options form.
         """,
         config=True,
     )
@@ -1486,7 +1492,7 @@ class KubeSpawner(Spawner):
         "",
         config=True,
         help="""
-        Jinja2 template for constructing profile list shown to user.
+        Literal Jinja2 template for constructing profile list shown to user.
 
         Used when `profile_list` is set.
 
@@ -1494,16 +1500,17 @@ class KubeSpawner(Spawner):
         This should be used to construct the contents of a HTML form. When
         posted, this form is expected to have an item with name `profile` and
         the value the index of the profile in `profile_list`.
+
+        When this traitlet is not set, the default template `form.html` from the
+        directory `kubespawner/templates` is used. Admins can override this by
+        setting the `additional_profile_form_template_paths` config to a directory
+        with jinja2 templates, and any file named `form.html` in there will be used
+        instead of the default.
+
+        Using additional_profile_form_template_paths is recommended instead of
+        this.
         """,
     )
-
-    @default("profile_form_template")
-    def _profile_form_template(self):
-        here = os.path.dirname(__file__)
-        # Use importlib.resources once we are Python 3.10+ only
-        # https://setuptools.pypa.io/en/latest/userguide/datafiles.html#accessing-data-files-at-runtime
-        with open(os.path.join(here, 'templates/profile_form_template.html')) as f:
-            return f.read()
 
     profile_list = Union(
         trait_types=[List(trait=Dict()), Callable()],
@@ -2902,13 +2909,20 @@ class KubeSpawner(Spawner):
 
     def _render_options_form(self, profile_list):
         self._profile_list = self._init_profile_list(profile_list)
+
         loader = FileSystemLoader(
             self.additional_profile_form_template_paths
             + [os.path.join(os.path.dirname(__file__), 'templates')]
         )
-        profile_form_template = Environment(loader=loader).from_string(
-            self._profile_form_template()
-        )
+
+        if self.profile_form_template != "":
+            # Admin has custom set the profile_form_template as a templated string
+            # so we use that directly
+            profile_form_template = Environment(loader=loader).from_string(
+                self.profile_form_template
+            )
+        else:
+            profile_form_template = Environment(loader=loader).get_template("form.html")
         return profile_form_template.render(profile_list=self._profile_list)
 
     async def _render_options_form_dynamically(self, current_spawner):
