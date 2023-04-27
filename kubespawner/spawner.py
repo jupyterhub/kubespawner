@@ -1474,6 +1474,14 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    additional_profile_form_template_paths = List(
+        default=[],
+        help="""
+        Path to search for jinja2 templates when rendering profile_form
+        """,
+        config=True,
+    )
+
     profile_form_template = Unicode(
         "",
         config=True,
@@ -2895,7 +2903,8 @@ class KubeSpawner(Spawner):
     def _render_options_form(self, profile_list):
         self._profile_list = self._init_profile_list(profile_list)
         loader = FileSystemLoader(
-            [os.path.join(os.path.dirname(__file__), 'templates')]
+            self.additional_profile_form_template_paths
+            + [os.path.join(os.path.dirname(__file__), 'templates')]
         )
         profile_form_template = Environment(loader=loader).from_string(
             self._profile_form_template()
