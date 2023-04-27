@@ -1492,6 +1492,8 @@ class KubeSpawner(Spawner):
     @default("profile_form_template")
     def _profile_form_template(self):
         here = os.path.dirname(__file__)
+        # Use importlib.resources once we are Python 3.10+ only
+        # https://setuptools.pypa.io/en/latest/userguide/datafiles.html#accessing-data-files-at-runtime
         with open(os.path.join(here, 'templates/profile_form_template.html')) as f:
             return f.read()
 
