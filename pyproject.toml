@@ -122,6 +122,10 @@ tag_template = "{new_version}"
 [[tool.tbump.file]]
 src = "kubespawner/_version.py"
 
+# djlint is used for autoformatting jinja templates
+#
+# ref: https://www.djlint.com/docs/formatter/
+#
 [tool.djlint]
 indent = 2
 profile = "jinja"
