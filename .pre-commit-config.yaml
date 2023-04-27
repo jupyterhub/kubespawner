@@ -67,6 +67,8 @@ repos:
     hooks:
       - id: djlint-jinja
         files: "kubespawner/templates/.*\\.html"
+        types_or:
+          - html
 
 # pre-commit.ci config reference: https://pre-commit.ci/#configuration
 ci:
