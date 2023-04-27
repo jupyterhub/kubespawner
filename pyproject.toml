@@ -121,3 +121,7 @@ tag_template = "{new_version}"
 
 [[tool.tbump.file]]
 src = "kubespawner/_version.py"
+
+[tool.djlint]
+indent = 2
+profile = "jinja"

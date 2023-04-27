@@ -31,34 +31,34 @@
 </style>
 
 <div class='form-group' id='kubespawner-profiles-list'>
-    {%- for profile in profile_list %}
-    {#- Wrap everything in a <label> so clicking anywhere selects the option #}
+  {%- for profile in profile_list %}
+    {#- Wrap everything in a label tag so clicking anywhere selects the option #}
     <label for='profile-item-{{ profile.slug }}' class='profile'>
-        <div class='radio'>
-            <input type='radio' name='profile' id='profile-item-{{ profile.slug }}' value='{{ profile.slug }}' {% if profile.default %}checked{% endif %} />
-        </div>
-        <div>
-            <h3>{{ profile.display_name }}</h3>
-
-            {%- if profile.description %}
-            <p>{{ profile.description }}</p>
-            {%- endif %}
-
-            {%- if profile.profile_options %}
-            <div>
-                {%- for k, option in profile.profile_options.items() %}
-                <div class='option'>
-                    <label for='profile-option-{{profile.slug}}-{{k}}'>{{option.display_name}}</label>
-                    <select name="profile-option-{{profile.slug}}-{{k}}" class="form-control">
-                        {%- for k, choice in option['choices'].items() %}
-                        <option value="{{ k }}" {% if choice.default %}selected{%endif %}>{{ choice.display_name }}</option>
-                        {%- endfor %}
-                    </select>
-                </div>
-                {%- endfor %}
-            </div>
-            {%- endif %}
-        </div>
+      <div class='radio'>
+        <input type='radio'
+               name='profile'
+               id='profile-item-{{ profile.slug }}'
+               value='{{ profile.slug }}'
+               {% if profile.default %}checked{% endif %} />
+      </div>
+      <div>
+        <h3>{{ profile.display_name }}</h3>
+        {%- if profile.description %}<p>{{ profile.description }}</p>{%- endif %}
+        {%- if profile.profile_options %}
+          <div>
+            {%- for k, option in profile.profile_options.items() %}
+              <div class='option'>
+                <label for='profile-option-{{ profile.slug }}-{{k }}'>{{ option.display_name }}</label>
+                <select name="profile-option-{{ profile.slug }}-{{k }}" class="form-control">
+                  {%- for k, choice in option['choices'].items() %}
+                    <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
+                  {%- endfor %}
+                </select>
+              </div>
+            {%- endfor %}
+          </div>
+        {%- endif %}
+      </div>
     </label>
-    {%- endfor %}
+  {%- endfor %}
 </div>
