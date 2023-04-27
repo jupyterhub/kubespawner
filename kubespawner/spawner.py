@@ -2917,14 +2917,13 @@ class KubeSpawner(Spawner):
             ]
         )
 
+        env = Environment(loader=loader)
         if self.profile_form_template != "":
             # Admin has custom set the profile_form_template as a templated string
             # so we use that directly
-            profile_form_template = Environment(loader=loader).from_string(
-                self.profile_form_template
-            )
+            profile_form_template = env.from_string(self.profile_form_template)
         else:
-            profile_form_template = Environment(loader=loader).get_template("form.html")
+            profile_form_template = env.get_template("form.html")
         return profile_form_template.render(profile_list=self._profile_list)
 
     async def _render_options_form_dynamically(self, current_spawner):
