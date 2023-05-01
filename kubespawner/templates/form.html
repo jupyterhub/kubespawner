@@ -2,7 +2,7 @@
 <div class="form-group" id="kubespawner-profiles-list">
   {%- for profile in profile_list %}
     {#- Wrap everything in a label tag so clicking anywhere selects the option #}
-    <label for="profile-item-{{ profile.slug }}" class="profile">
+    <label for="profile-item-{{ profile.slug }}" class="profile js-profile-label">
       <div class="radio">
         <input type="radio"
                name="profile"
@@ -18,7 +18,7 @@
             {%- for k, option in profile.profile_options.items() %}
               <div class="option">
                 <label for="profile-option-{{ profile.slug }}-{{ k }}">{{ option.display_name }}</label>
-                <select name="profile-option-{{ profile.slug }}-{{ k }}" class="form-control">
+                <select name="profile-option-{{ profile.slug }}-{{ k }}" class="js-profile-option-select form-control">
                   {%- for k, choice in option['choices'].items() %}
                     <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
                   {%- endfor %}
@@ -31,3 +31,10 @@
     </label>
   {%- endfor %}
 </div>
+<script>
+  $('.js-profile-option-select').change(function() {
+    // if the user changes a select box of an option,
+    // make sure we also select that option
+    $(this).parents('.js-profile-label').find('input[type=radio]').prop('checked', true);
+  });
+</script>
