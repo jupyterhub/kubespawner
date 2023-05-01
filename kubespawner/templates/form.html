@@ -33,8 +33,10 @@
 </div>
 <script>
   $('.js-profile-option-select').change(function() {
-    // if the user changes a select box of an option,
-    // make sure we also select that option
-    $(this).parents('.js-profile-label').find('input[type=radio]').prop('checked', true);
+    // if the user changes a select box of a profile option,
+    // make sure we also select the radio button for that option
+    $(this).parents('.js-profile-label')
+      .find('input[type=radio]')
+      .prop('checked', true);
   });
 </script>
