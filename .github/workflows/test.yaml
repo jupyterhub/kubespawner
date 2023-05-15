@@ -9,13 +9,13 @@ on:
       - "docs/**"
       - "**.md"
       - ".github/workflows/*"
-      - "!.github/workflows/test-chart.yaml"
+      - "!.github/workflows/test.yaml"
   push:
     paths-ignore:
       - "docs/**"
       - "**.md"
       - ".github/workflows/*"
-      - "!.github/workflows/test-chart.yaml"
+      - "!.github/workflows/test.yaml"
     branches-ignore:
       - "dependabot/**"
       - "pre-commit-ci-update-config"
