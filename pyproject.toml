@@ -29,11 +29,11 @@ dependencies = [
     #       bounds in .github/workflows/test.yaml.
     "escapism",
     "jinja2",
-    "jupyterhub>=1.3.0",
-    "kubernetes_asyncio>=23.6.0",
+    "jupyterhub>=4.0.0",
+    "kubernetes_asyncio>=24.2.3",
     "python-slugify",
     "pyYAML",
-    "traitlets>=4.3.2",
+    "traitlets",
     "urllib3",
 ]
 dynamic = ["version"]

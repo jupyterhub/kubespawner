@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+#### Breaking changes
+
+- JupyterHub 4 is now required by KubeSpawner.
+  [#726](https://github.com/jupyterhub/kubespawner/pull/726)
+
 ## 5.0
 
 ### [5.0.0] - 2023-04-19
