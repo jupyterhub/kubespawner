@@ -44,7 +44,7 @@ jobs:
           #       lower bounds in pyproject.toml.
           #
           - python: "3.7"
-            k3s: v1.23
+            k3s: v1.24
             test_dependencies: >-
               jupyterhub==4.0.0
               kubernetes_asyncio==24.2.3
