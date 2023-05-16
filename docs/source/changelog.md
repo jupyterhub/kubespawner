@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+#### Breaking changes
+
+- JupyterHub 4 is now required by KubeSpawner.
+  [#726](https://github.com/jupyterhub/kubespawner/pull/726)
+- Versions of K8s older than 1.24 are no longer supported, KubeSpawner may still
+  work but this is not guaranteed.
+  [#726](https://github.com/jupyterhub/kubespawner/pull/726)
+
 ## 5.0
 
 ### [5.0.0] - 2023-04-19
