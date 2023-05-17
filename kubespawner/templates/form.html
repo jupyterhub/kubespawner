@@ -17,10 +17,15 @@
           <div>
             {%- for k, option in profile.profile_options.items() %}
               <div class="option">
-                <label for="profile-option-{{ profile.slug }}-{{ k }}" class="js-profile-option-label">{{ option.display_name }}</label>
-                <select name="profile-option-{{ profile.slug }}-{{ k }}" class="js-profile-option-select form-control">
+                <label for="profile-option-{{ profile.slug }}-{{ k }}" class="js-profile-option-label">
+                  {{ option.display_name }}
+                </label>
+                <select name="profile-option-{{ profile.slug }}-{{ k }}"
+                        class="form-control js-profile-option-select">
                   {%- for k, choice in option['choices'].items() %}
-                    <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
+                    <option value="{{ k }}" {% if choice.default %}selected{% endif %}>
+                      {{ choice.display_name }}
+                    </option>
                   {%- endfor %}
                 </select>
               </div>
@@ -33,8 +38,8 @@
 </div>
 <script>
   $('.js-profile-option-select, .js-profile-option-label').click(function() {
-    // if the user changes a select box of a profile option,
-    // make sure we also select the radio button for that option
+    // if the user clicks on either the select or label for the select,
+    // make sure to select the associated profile radio.
     $(this).parents('.js-profile-label')
       .find('input[type=radio]')
       .prop('checked', true);
