@@ -5,7 +5,6 @@
 [![Documentation status](https://img.shields.io/readthedocs/jupyterhub-kubespawner?logo=read-the-docs)](https://jupyterhub-kubespawner.readthedocs.io/en/latest/?badge=latest)
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/jupyterhub/kubespawner/test.yaml?logo=github&label=tests)](https://github.com/jupyterhub/kubespawner/actions)
 [![Code coverage](https://codecov.io/gh/jupyterhub/kubespawner/branch/main/graph/badge.svg)](https://codecov.io/gh/jupyterhub/kubespawner)
-[![](https://img.shields.io/pypi/v/jupyterhub-kubespawner.svg?logo=pypi)](https://pypi.python.org/pypi/jupyterhub-kubespawner)
 
 The _kubespawner_ (also known as JupyterHub Kubernetes Spawner) enables JupyterHub to spawn
 single-user notebook servers on a [Kubernetes](https://kubernetes.io/)
@@ -57,9 +56,13 @@ and you can use all of them along with this spawner.
 
 ## Requirements
 
+### JupyterHub
+
+Requires JupyterHub 4.0+
+
 ### Kubernetes
 
-Everything should work from Kubernetes v1.6+.
+Everything should work from Kubernetes v1.24+.
 
 The [Kube DNS addon](https://kubernetes.io/docs/user-guide/connecting-applications/#dns)
 is not strictly required - the spawner uses
