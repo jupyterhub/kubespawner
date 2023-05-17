@@ -2,7 +2,8 @@
 <div class="form-group" id="kubespawner-profiles-list">
   {%- for profile in profile_list %}
     {#- Wrap everything in a label tag so clicking anywhere selects the option #}
-    <label for="profile-item-{{ profile.slug }}" class="profile js-profile-label">
+    <label for="profile-item-{{ profile.slug }}"
+           class="profile js-profile-label">
       <div class="radio">
         <input type="radio"
                name="profile"
@@ -17,14 +18,10 @@
           <div>
             {%- for k, option in profile.profile_options.items() %}
               <div class="option">
-                <span class="profile-options-label">
-                  {{ option.display_name }}
-                </span>
+                <span class="profile-options-label">{{ option.display_name }}</span>
                 <select name="profile-option-{{ profile.slug }}-{{ k }}">
                   {%- for k, choice in option['choices'].items() %}
-                    <option value="{{ k }}" {% if choice.default %}selected{% endif %}>
-                      {{ choice.display_name }}
-                    </option>
+                    <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
                   {%- endfor %}
                 </select>
               </div>
