@@ -22,7 +22,7 @@
   padding-bottom: 12px;
 }
 
-#kubespawner-profiles-list .profile .option label {
+#kubespawner-profiles-list .profile-options-label {
   font-weight: normal;
   margin-right: 8px;
   min-width: 96px;
