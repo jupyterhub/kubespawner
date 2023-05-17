@@ -15,7 +15,7 @@ from typing import Optional, Tuple, Type
 from urllib.parse import urlparse
 
 import escapism
-from jinja2 import BaseLoader, Environment
+from jinja2 import ChoiceLoader, Environment, FileSystemLoader, PackageLoader
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Callable, Command
 from jupyterhub.utils import exponential_backoff, maybe_future
@@ -1474,76 +1474,25 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    profile_form_template = Unicode(
-        """
-        <style>
-            /*
-                .profile divs holds two div tags: one for a radio button, and one
-                for the profile's content.
-            */
-            #kubespawner-profiles-list .profile {
-                display: flex;
-                flex-direction: row;
-                font-weight: normal;
-                border-bottom: 1px solid #ccc;
-                padding-bottom: 12px;
-            }
+    additional_profile_form_template_paths = List(
+        default=[],
+        help="""
+        Additional paths to search for jinja2 templates when rendering profile_form.
 
-            #kubespawner-profiles-list .profile .radio {
-                padding: 12px;
-            }
+        These directories will be searched before the default `templates/` directory
+        shipped with kubespawner with the default template.
 
-            /* .option divs holds a label and a select tag */
-            #kubespawner-profiles-list .profile .option {
-                display: flex;
-                flex-direction: row;
-                align-items: center;
-                padding-bottom: 12px;
-            }
-
-            #kubespawner-profiles-list .profile .option label {
-                font-weight: normal;
-                margin-right: 8px;
-                min-width: 96px;
-            }
-        </style>
-
-        <div class='form-group' id='kubespawner-profiles-list'>
-            {%- for profile in profile_list %}
-            {#- Wrap everything in a <label> so clicking anywhere selects the option #}
-            <label for='profile-item-{{ profile.slug }}' class='profile'>
-                <div class='radio'>
-                    <input type='radio' name='profile' id='profile-item-{{ profile.slug }}' value='{{ profile.slug }}' {% if profile.default %}checked{% endif %} />
-                </div>
-                <div>
-                    <h3>{{ profile.display_name }}</h3>
-
-                    {%- if profile.description %}
-                    <p>{{ profile.description }}</p>
-                    {%- endif %}
-
-                    {%- if profile.profile_options %}
-                    <div>
-                        {%- for k, option in profile.profile_options.items() %}
-                        <div class='option'>
-                            <label for='profile-option-{{profile.slug}}-{{k}}'>{{option.display_name}}</label>
-                            <select name="profile-option-{{profile.slug}}-{{k}}" class="form-control">
-                                {%- for k, choice in option['choices'].items() %}
-                                <option value="{{ k }}" {% if choice.default %}selected{%endif %}>{{ choice.display_name }}</option>
-                                {%- endfor %}
-                            </select>
-                        </div>
-                        {%- endfor %}
-                    </div>
-                    {%- endif %}
-                </div>
-            </label>
-            {%- endfor %}
-        </div>
+        Any file named `form.html` in these directories will be used to render the
+        profile options form.
         """,
         config=True,
+    )
+
+    profile_form_template = Unicode(
+        "",
+        config=True,
         help="""
-        Jinja2 template for constructing profile list shown to user.
+        Literal Jinja2 template for constructing profile list shown to user.
 
         Used when `profile_list` is set.
 
@@ -1551,6 +1500,15 @@ class KubeSpawner(Spawner):
         This should be used to construct the contents of a HTML form. When
         posted, this form is expected to have an item with name `profile` and
         the value the index of the profile in `profile_list`.
+
+        When this traitlet is not set, the default template `form.html` from the
+        directory `kubespawner/templates` is used. Admins can override this by
+        setting the `additional_profile_form_template_paths` config to a directory
+        with jinja2 templates, and any file named `form.html` in there will be used
+        instead of the default.
+
+        Using additional_profile_form_template_paths is recommended instead of
+        this.
         """,
     )
 
@@ -2951,9 +2909,21 @@ class KubeSpawner(Spawner):
 
     def _render_options_form(self, profile_list):
         self._profile_list = self._init_profile_list(profile_list)
-        profile_form_template = Environment(loader=BaseLoader).from_string(
-            self.profile_form_template
+
+        loader = ChoiceLoader(
+            [
+                FileSystemLoader(self.additional_profile_form_template_paths),
+                PackageLoader("kubespawner", "templates"),
+            ]
         )
+
+        env = Environment(loader=loader)
+        if self.profile_form_template != "":
+            # Admin has custom set the profile_form_template as a templated string
+            # so we use that directly
+            profile_form_template = env.from_string(self.profile_form_template)
+        else:
+            profile_form_template = env.get_template("form.html")
         return profile_form_template.render(profile_list=self._profile_list)
 
     async def _render_options_form_dynamically(self, current_spawner):

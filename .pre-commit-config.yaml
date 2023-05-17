@@ -34,6 +34,8 @@ repos:
     rev: v3.0.0-alpha.9-for-vscode
     hooks:
       - id: prettier
+        # Don't run prettier on our jinja2 template files. We run djlint instead
+        exclude: "kubespawner/templates/.*\\.html"
 
   # Misc...
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -58,6 +60,17 @@ repos:
     rev: "6.0.0"
     hooks:
       - id: flake8
+
+  # Lint our jinja2 templates
+  - repo: https://github.com/Riverside-Healthcare/djLint
+    rev: v1.24.0
+    hooks:
+      - id: djlint-jinja
+        files: "kubespawner/templates/.*\\.html"
+        types_or:
+          - html
+        args:
+          - --reformat
 
 # pre-commit.ci config reference: https://pre-commit.ci/#configuration
 ci:
