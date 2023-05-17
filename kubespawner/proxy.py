@@ -349,12 +349,12 @@ class KubeIngressProxy(Proxy):
         if hub_namespace == "default":
             hub_namespace = "user"
 
-        raw_username = data.get('user')
+        raw_username = data.get('user') or ''
         safe_username = escapism.escape(
             raw_username, safe=safe_chars, escape_char='-'
         ).lower()
 
-        raw_servicename = data.get('services')
+        raw_servicename = data.get('services') or ''
         safe_servicename = escapism.escape(
             raw_servicename, safe=safe_chars, escape_char='-'
         ).lower()
