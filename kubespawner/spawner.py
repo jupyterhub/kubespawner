@@ -1537,9 +1537,16 @@ class KubeSpawner(Spawner):
           and the value is a dictionary with the following keys:
 
           - `display_name`: Name used to identify this particular option
-          - `allow_other`: Boolean, defines whether the select drop-down showing choices will show
-            an "Other" value. If "Other" is selected, the user will be given an input box. Defaults
-            to False.
+          - `free_form`: Object to specify if there should be a free-form field if the user
+            select "Other" as a choice:
+            - `enabled`: Boolean, whether the free form input should be enabled
+            - `display_name`: String, label for input field
+            - `match_regex`: Optional, regex that the free form input should match - eg. ^pangeo/.*$
+            - `validation_message`: Optional, validation message for the regex. Should describe the required
+               input format in a human-readable way.
+            - `kubespawner_override`: Object specifying what key:values should be over-ridden
+               with the value of the free form input
+              - some_config_key: some_value-with-{value}-substituted-with-what-user-wrote 
           - `choices`: A dictionary containing list of choices for the user to choose from
             to set the value for this particular option. The key is an identifier for this
             choice, and the value is a dictionary with the following possible keys:
@@ -1576,7 +1583,15 @@ class KubeSpawner(Spawner):
                     'profile_options': {
                         'image': {
                             'display_name': 'Image',
-                            'allow_other': True,
+                            'free_form': {
+                                'enabled': true,
+                                'display_name': 'Image Location',
+                                'match_regex': '^pangeo/.*$',
+                                'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
+                                'kubespawner_override': {
+                                    'image': '{value}'
+                                }
+                            },
                             'choices': {
                                 'pytorch': {
                                     'display_name': 'Python 3 Training Notebook',

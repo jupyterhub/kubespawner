@@ -26,13 +26,16 @@
                     {%- for k, choice in option['choices'].items() %}
                       <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
                     {%- endfor %}
-                    {%- if option['allow_other'] %}<option value="other">Other...</option>{%- endif %}
+                    {%- if option['free_form'] and option['free_form']['enabled'] %}<option value="other">Other...</option>{%- endif %}
                   </select>
                 </div>
-                {%- if option['allow_other'] %}
+                {%- if option['free_form'] and option['free_form']['enabled'] %}
                   <div class="option hide js-other-input-container">
-                    <label for="profile-option-{{ profile.slug }}-other">Image location:</label>
-                    <input name="profile-option-{{ profile.slug }}-other" class="form-control">
+                    <label for="profile-option-{{ profile.slug }}-{{ k }}-other">{{ option['free_form']['display_name'] }}</label>
+                    <input name="profile-option-{{ profile.slug }}-{{ k }}-other"
+                           pattern="{{ option['free_form']['match_regex'] }}"
+                           title="{{ option['free_form']['validation_message'] }}"
+                           class="form-control" />
                   </div>
                 {%- endif %}
               </div>
