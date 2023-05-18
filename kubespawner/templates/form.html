@@ -18,8 +18,10 @@
           <div>
             {%- for k, option in profile.profile_options.items() %}
               <div class="option">
-                <span class="profile-options-label">{{ option.display_name }}</span>
-                <select name="profile-option-{{ profile.slug }}-{{ k }}">
+                <label for="profile-option-{{ profile.slug }}-{{ k }}"
+                       class="js-profile-option-label">{{ option.display_name }}</label>
+                <select name="profile-option-{{ profile.slug }}-{{ k }}"
+                        class="form-control js-profile-option-select">
                   {%- for k, choice in option['choices'].items() %}
                     <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
                   {%- endfor %}
@@ -33,7 +35,7 @@
   {%- endfor %}
 </div>
 <script>
-  $('.js-profile-option-select').click(function() {
+  $('.js-profile-option-select, .js-profile-option-label').click(function() {
     // we need this bit of JS to select the profile when a <select> inside is clicked.
     $(this).parents('.js-profile-label')
       .find('input[type=radio]')
