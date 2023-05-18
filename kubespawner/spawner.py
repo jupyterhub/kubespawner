@@ -1537,6 +1537,9 @@ class KubeSpawner(Spawner):
           and the value is a dictionary with the following keys:
 
           - `display_name`: Name used to identify this particular option
+          - `allow_other`: Boolean, defines whether the select drop-down showing choices will show
+            an "Other" value. If "Other" is selected, the user will be given an input box. Defaults
+            to False.
           - `choices`: A dictionary containing list of choices for the user to choose from
             to set the value for this particular option. The key is an identifier for this
             choice, and the value is a dictionary with the following possible keys:
@@ -1573,6 +1576,7 @@ class KubeSpawner(Spawner):
                     'profile_options': {
                         'image': {
                             'display_name': 'Image',
+                            'allow_other': True,
                             'choices': {
                                 'pytorch': {
                                     'display_name': 'Python 3 Training Notebook',

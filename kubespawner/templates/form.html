@@ -17,15 +17,24 @@
         {%- if profile.profile_options %}
           <div>
             {%- for k, option in profile.profile_options.items() %}
-              <div class="option">
-                <label for="profile-option-{{ profile.slug }}-{{ k }}"
-                       class="js-profile-option-label">{{ option.display_name }}</label>
-                <select name="profile-option-{{ profile.slug }}-{{ k }}"
-                        class="form-control js-profile-option-select">
-                  {%- for k, choice in option['choices'].items() %}
-                    <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
-                  {%- endfor %}
-                </select>
+              <div class="js-options-container">
+                <div class="option">
+                  <label for="profile-option-{{ profile.slug }}-{{ k }}"
+                         class="js-profile-option-label">{{ option.display_name }}</label>
+                  <select name="profile-option-{{ profile.slug }}-{{ k }}"
+                          class="form-control js-profile-option-select">
+                    {%- for k, choice in option['choices'].items() %}
+                      <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
+                    {%- endfor %}
+                    {%- if option['allow_other'] %}<option value="other">Other...</option>{%- endif %}
+                  </select>
+                </div>
+                {%- if option['allow_other'] %}
+                  <div class="option hide js-other-input-container">
+                    <label for="profile-option-{{ profile.slug }}-other">Image location:</label>
+                    <input name="profile-option-{{ profile.slug }}-other" class="form-control">
+                  </div>
+                {%- endif %}
               </div>
             {%- endfor %}
           </div>
@@ -41,4 +50,16 @@
       .find('input[type=radio]')
       .prop('checked', true);
   });
+
+  // If the user selects "Other" in the dropdown, show the free text field
+  $('.js-profile-option-select').change(function() {
+    const selectionValue = $(this).val();
+    const $otherInputContainer = $(this).parents('.js-options-container').find('.js-other-input-container');
+    if (selectionValue === 'other') {
+      $otherInputContainer.removeClass('hide');
+    } else {
+      $otherInputContainer.addClass('hide');
+    }
+  });
+
 </script>

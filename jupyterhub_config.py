@@ -46,6 +46,7 @@ c.KubeSpawner.profile_list = [
         'profile_options': {
             'image': {
                 'display_name': 'Image',
+                'allow_other': True,
                 'choices': {
                     'pytorch': {
                         'display_name': 'Python 3 Training Notebook',
