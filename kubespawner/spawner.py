@@ -1537,11 +1537,11 @@ class KubeSpawner(Spawner):
           and the value is a dictionary with the following keys:
 
           - `display_name`: Name used to identify this particular option
-          - `free_form`: Object to specify if there should be a free-form field if the user
+          - `other_choice`: Object to specify if there should be a free-form field if the user
             select "Other" as a choice:
             - `enabled`: Boolean, whether the free form input should be enabled
             - `display_name`: String, label for input field
-            - `match_regex`: Optional, regex that the free form input should match - eg. ^pangeo/.*$
+            - `validation_match_regex`: Optional, regex that the free form input should match - eg. ^pangeo/.*$
             - `validation_message`: Optional, validation message for the regex. Should describe the required
                input format in a human-readable way.
             - `kubespawner_override`: Object specifying what key:values should be over-ridden
@@ -1583,10 +1583,10 @@ class KubeSpawner(Spawner):
                     'profile_options': {
                         'image': {
                             'display_name': 'Image',
-                            'free_form': {
+                            'other_choice': {
                                 'enabled': true,
                                 'display_name': 'Image Location',
-                                'match_regex': '^pangeo/.*$',
+                                'validation_match_regex': '^pangeo/.*$',
                                 'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
                                 'kubespawner_override': {
                                     'image': '{value}'
