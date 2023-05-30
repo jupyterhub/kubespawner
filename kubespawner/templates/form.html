@@ -18,8 +18,8 @@
           <div>
             {%- for k, option in profile.profile_options.items() %}
               <div class="option">
-                <label for="profile-option-{{ profile.slug }}-{{ k }}"
-                       class="js-profile-option-label">{{ option.display_name }}</label>
+                <span for="profile-option-{{ profile.slug }}-{{ k }}"
+                      class="js-profile-option-label">{{ option.display_name }}</span>
                 <select name="profile-option-{{ profile.slug }}-{{ k }}"
                         class="form-control js-profile-option-select">
                   {%- for k, choice in option['choices'].items() %}
