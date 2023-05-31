@@ -12,6 +12,41 @@
   work but this is not guaranteed.
   [#726](https://github.com/jupyterhub/kubespawner/pull/726)
 
+## 6.0
+
+### [6.0.0] - 2023-05-31
+
+#### Breaking changes
+
+- Versions of K8s older than 1.24 are no longer officially supported,
+  KubeSpawner still likely works but this is not guaranteed through tests.
+  [#726](https://github.com/jupyterhub/kubespawner/pull/726)
+- `jupyterhub` 4+ and `kubernetes_asyncio` 24.2.3+ is now required.
+  [#726](https://github.com/jupyterhub/kubespawner/pull/726)
+
+#### New features added
+
+- Allow building more complex profile_list templates [#724](https://github.com/jupyterhub/kubespawner/pull/724) ([@yuvipanda](https://github.com/yuvipanda))
+
+#### Bugs fixed
+
+- [KubeIngressProxy] Do not try to escape None [#731](https://github.com/jupyterhub/kubespawner/pull/731) ([@dolfinus](https://github.com/dolfinus))
+- Select profile if any of its choices are interacted with [#729](https://github.com/jupyterhub/kubespawner/pull/729) ([@batpad](https://github.com/batpad))
+
+#### Maintenance and upkeep improvements
+
+- Require jupyterhub 4+, currently latest kubernetes_asyncio, and stop testing k8s 1.23 [#726](https://github.com/jupyterhub/kubespawner/pull/726) ([@consideRatio](https://github.com/consideRatio))
+
+#### Documentation improvements
+
+- Update Readme badges & requirements [#733](https://github.com/jupyterhub/kubespawner/pull/733) ([@dolfinus](https://github.com/dolfinus))
+
+#### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2023-04-18&to=2023-05-30&type=c))
+
+[@batpad](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Abatpad+updated%3A2023-04-18..2023-05-30&type=Issues) | [@consideRatio](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2023-04-18..2023-05-30&type=Issues) | [@dolfinus](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adolfinus+updated%3A2023-04-18..2023-05-30&type=Issues) | [@manics](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2023-04-18..2023-05-30&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Apre-commit-ci+updated%3A2023-04-18..2023-05-30&type=Issues) | [@yuvipanda](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2023-04-18..2023-05-30&type=Issues)
+
 ## 5.0
 
 ### [5.0.0] - 2023-04-19
@@ -742,7 +777,8 @@ Change highlights:
 - Update Kubernetes Python client to 6.0 (supporting Kubernetes 1.10 APIs)
 - Numerous bugfixes
 
-[unreleased]: https://github.com/jupyterhub/kubespawner/compare/5.0.0...HEAD
+[unreleased]: https://github.com/jupyterhub/kubespawner/compare/6.0.0...HEAD
+[6.0.0]: https://github.com/jupyterhub/kubespawner/compare/5.0.0...6.0.0
 [5.0.0]: https://github.com/jupyterhub/kubespawner/compare/4.3.0...5.0.0
 [4.3.0]: https://github.com/jupyterhub/kubespawner/compare/4.2.0...4.3.0
 [4.2.0]: https://github.com/jupyterhub/kubespawner/compare/4.1.0...4.2.0
