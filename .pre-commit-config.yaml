@@ -11,7 +11,7 @@
 repos:
   # Autoformat: Python code, syntax patterns are modernized
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.3.2
+    rev: v3.4.0
     hooks:
       - id: pyupgrade
         args:
@@ -63,7 +63,7 @@ repos:
 
   # Lint our jinja2 templates
   - repo: https://github.com/Riverside-Healthcare/djLint
-    rev: v1.24.0
+    rev: v1.30.2
     hooks:
       - id: djlint-jinja
         files: "kubespawner/templates/.*\\.html"
