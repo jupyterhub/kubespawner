@@ -2185,7 +2185,9 @@ class KubeSpawner(Spawner):
         just Falsy, to determine that the pod is still running.
         """
 
-        await self._start_watching_pods()
+        reflector = await self._start_watching_pods()
+        if not reflector.first_load_future.done():
+            await reflector.first_load_future
 
         ref_key = f"{self.namespace}/{self.pod_name}"
         pod = self.pod_reflector.pods.get(ref_key, None)
