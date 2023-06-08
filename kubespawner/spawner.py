@@ -25,6 +25,7 @@ from slugify import slugify
 from traitlets import (
     Bool,
     Dict,
+    Enum,
     Integer,
     List,
     Unicode,
@@ -44,6 +45,7 @@ from .objects import (
     make_service,
 )
 from .reflector import ResourceReflector
+from .slugs import is_valid_label, safe_slug
 from .utils import recursive_update
 
 
@@ -291,6 +293,31 @@ class KubeSpawner(Spawner):
 
         If you use this, consider cleaning up the user namespace in your
         post_stop_hook.
+        """,
+    )
+
+    slug_scheme = Enum(
+        "escape",
+        choices=["escape", "safe"],
+        config=True,
+        help="""Select the scheme for producing slugs.
+
+        Can be 'escape' or 'safe'.
+
+        'escape' is the default for backward-compatibility,
+        escaping strings for safety.
+
+        but 'safe' is preferred as it produces both:
+
+        - better values, where possible (no `-2d` inserted to escape hyphens)
+        - always valid names, avoiding issues where escaping produces invalid names,
+          stripping characters and appending hashes where needed for names
+          that are not already valid.
+
+
+
+
+        .. versionadded:: 6.1
         """,
     )
 
@@ -1809,18 +1836,32 @@ class KubeSpawner(Spawner):
         safe_username = escapism.escape(
             self.user.name, safe=safe_chars, escape_char='-'
         ).lower()
+
+        if self.slug_scheme == "safe":
+            # safe slug scheme escapes _after_ rendering the template
+            username = self.user.name
+            servername = raw_servername
+        else:
+            username = safe_username
+            servername = safe_servername
+
         rendered = template.format(
             userid=self.user.id,
-            username=safe_username,
+            username=username,
+            escaped_username=safe_username,
             unescaped_username=self.user.name,
             legacy_escape_username=legacy_escaped_username,
-            servername=safe_servername,
+            servername=servername,
             unescaped_servername=raw_servername,
+            escaped_servername=safe_servername,
             hubnamespace=hub_namespace,
         )
         # strip trailing - delimiter in case of empty servername.
         # k8s object names cannot have trailing -
-        return rendered.rstrip("-")
+        rendered = rendered.rstrip("-")
+        if self.slug_scheme == "safe":
+            rendered = safe_slug(rendered)
+        return rendered
 
     def _expand_all(self, src):
         if isinstance(src, list):
@@ -1836,9 +1877,9 @@ class KubeSpawner(Spawner):
         # Default set of labels, picked up from
         # https://github.com/helm/helm-www/blob/HEAD/content/en/docs/chart_best_practices/labels.md
         labels = {
-            'hub.jupyter.org/username': escapism.escape(
-                self.user.name, safe=self.safe_chars, escape_char='-'
-            ).lower()
+            'hub.jupyter.org/username': safe_slug(
+                self.user.name, is_valid=is_valid_label
+            ),
         }
         labels.update(extra_labels)
         labels.update(self.common_labels)
