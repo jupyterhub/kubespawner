@@ -1,0 +1,29 @@
+/*
+    .profile divs holds two div tags: one for a radio button, and one
+    for the profile's content.
+*/
+#kubespawner-profiles-list .profile {
+  display: flex;
+  flex-direction: row;
+  font-weight: normal;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 12px;
+}
+
+#kubespawner-profiles-list .profile .radio {
+  padding: 12px;
+}
+
+/* .option divs holds a label and a select tag */
+#kubespawner-profiles-list .profile .option {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding-bottom: 12px;
+}
+
+#kubespawner-profiles-list .profile .option label {
+  font-weight: normal;
+  margin-right: 8px;
+  min-width: 96px;
+}

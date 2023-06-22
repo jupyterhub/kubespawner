@@ -48,13 +48,9 @@ walk you through the process of proposing your change ("making a Pull Request").
 A brief guide to setting up for local development
 
 ```sh
-# Installing kubespawner itself is required as its source code
-# is inspected to construct the reference documentation.
-pip install -e .
+pip install -r docs/requirements.txt
 
 cd docs
-pip install -r requirements.txt
-
 make html
 ```
 
@@ -67,18 +63,18 @@ local kubernetes cluster!
 You need to have a local kubernetes cluster and be able to edit networking
 rules on your computer. We will now walk you through the steps to get going:
 
-1.  Install VirtualBox by [downloading and running an
-    installer](https://www.virtualbox.org/wiki/Downloads).
+1.  Install [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
+    with a container manager such as
+    [docker](https://minikube.sigs.k8s.io/docs/drivers/docker/) (or a virtual
+    machine manager).
 
-1.  Install
-    [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/).
+1.  Run `minikube start --driver=docker`. This will start your kubernetes
+    cluster if it isn't already up. Run `kubectl get node` to make sure it is.
 
-1.  Run `minikube start`. This will start your kubernetes cluster if it isn't
-    already up. Run `kubectl get node` to make sure it is.
-
-    Note that the `minikube start` command will also setup `kubectl` on your
-    host machine to interact with the kubernetes cluster along with a
-    `~/.kube/config` file with credentials for connecting to this cluster.
+    Note that the `minikube start --driver=docker` command will also setup
+    `kubectl` on your host machine to interact with the kubernetes cluster along
+    with a `~/.kube/config` file with credentials for connecting to this
+    cluster.
 
 1.  Setup a networking route so that a program on your host can talk to the
     pods inside minikube.
@@ -161,7 +157,7 @@ rules on your computer. We will now walk you through the steps to get going:
 1.  Start JupyterHub
 
     ```sh
-    # Run this from the repo's root directory where the preconfigured
+    # Run this from the kubespawner repo's root directory where the preconfigured
     # jupyterhub_config.py file resides!
     jupyterhub
     ```

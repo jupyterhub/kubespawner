@@ -186,3 +186,39 @@ def _get_k8s_model_attribute(model_type, field_name):
                 model_type.__name__, field_name
             )
         )
+
+
+def host_matching(host: str, wildcard: str) -> bool:
+    # user.example.com == user.example.com
+    # user.example.com != wrong.example.com
+    # user.example.com != example.com
+    if not wildcard.startswith("*."):
+        return host == wildcard
+
+    host_parts = host.split(".")
+    wildcard_parts = wildcard.split(".")
+
+    # user.example.com =~ *.example.com
+    # user.example.com !~ *.user.example.com
+    # user.example.com !~ *.example
+    return host_parts[1:] == wildcard_parts[1:]
+
+
+# From https://github.com/jupyter-server/jupyter_server/blob/fc0ac3236fdd92778ea765db6e8982212c8389ee/jupyter_server/config_manager.py#L14
+def recursive_update(target, new):
+    """
+    Recursively update one dictionary in-place using another.
+
+    None values will delete their keys.
+    """
+    for k, v in new.items():
+        if isinstance(v, dict):
+            if k not in target:
+                target[k] = {}
+            recursive_update(target[k], v)
+
+        elif v is None:
+            target.pop(k, None)
+
+        else:
+            target[k] = v

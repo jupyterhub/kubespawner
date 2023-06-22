@@ -6,6 +6,7 @@ import ipaddress
 import json
 import operator
 import re
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from kubernetes_asyncio.client.models import (
@@ -23,6 +24,7 @@ from kubernetes_asyncio.client.models import (
     V1IngressRule,
     V1IngressServiceBackend,
     V1IngressSpec,
+    V1IngressTLS,
     V1Lifecycle,
     V1LocalObjectReference,
     V1Namespace,
@@ -58,7 +60,19 @@ try:
 except ImportError:
     from kubernetes_asyncio.client.models import V1EndpointPort as CoreV1EndpointPort
 
-from .utils import get_k8s_model, update_k8s_model
+from .utils import get_k8s_model, host_matching, update_k8s_model
+
+# Matches Kubernetes DNS names template for services
+# https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#namespaces-of-services:
+# * service.namespace.svc.cluster.local
+# * service.namespace.svc.cluster
+# * service.namespace.svc
+# * service.namespace
+# * service
+# User by `KubeIngressProxy.reuse_existing_services=True`
+SERVICE_DNS_PATTERN = re.compile(
+    r"(?P<service>[^.]+)\.?(?P<namespace>[^.]+)?(?P<rest>\.svc(\.cluster(\.local)?)?)?"
+)
 
 
 def make_pod(
@@ -728,25 +742,48 @@ def make_pvc(
     return pvc
 
 
-def make_ingress(name, routespec, target, labels, data):
+def make_ingress(
+    name: str,
+    routespec: str,
+    target: str,
+    data: dict,
+    namespace: str,
+    common_labels: Optional[dict] = None,
+    ingress_extra_labels: Optional[dict] = None,
+    ingress_extra_annotations: Optional[dict] = None,
+    ingress_class_name: Optional[str] = None,
+    ingress_specifications: Optional[List[Dict]] = None,
+    reuse_existing_services: bool = False,
+) -> Tuple[Optional[V1Endpoints], Optional[V1Service], V1Ingress]:
     """
     Returns an ingress, service, endpoint object that'll work for this service
     """
+
+    default_labels = {
+        'hub.jupyter.org/proxy-route': 'true',
+    }
+
+    common_labels = (common_labels or {}).copy()
+    common_labels.update(default_labels)
+
+    common_annotations = {
+        'hub.jupyter.org/proxy-data': json.dumps(data),
+        'hub.jupyter.org/proxy-routespec': routespec,
+        'hub.jupyter.org/proxy-target': target,
+    }
+
     meta = V1ObjectMeta(
         name=name,
-        annotations={
-            'hub.jupyter.org/proxy-data': json.dumps(data),
-            'hub.jupyter.org/proxy-routespec': routespec,
-            'hub.jupyter.org/proxy-target': target,
-        },
-        labels=labels,
+        annotations=common_annotations,
+        labels=common_labels,
     )
 
-    if routespec.startswith('/'):
-        host = None
-        path = routespec
-    else:
-        host, path = routespec.split('/', 1)
+    # /myuser/myserver or https://myuser.example.com/myserver for spawned server
+    # /services/myservice or https://services.example.com/myservice for service
+    # / or https://example.com/ for hub
+    route_parts = urlparse(routespec)
+    routespec_host = route_parts.netloc or None
+    routespec_path = route_parts.path
 
     target_parts = urlparse(target)
     target_port = target_parts.port
@@ -759,8 +796,14 @@ def make_ingress(name, routespec, target, labels, data):
     else:
         target_is_ip = True
 
+    service_name = name
+
     if target_is_ip:
-        # Make endpoint object
+        # c.KubeSpawner.services_enabled = False
+        # routespec='http://192.168.1.1:8888/'
+
+        # ingress -> service -> endpoint -> pod
+        # endpoint is used just to allow access from ingress to Pod IP (if PodNetworkPolicy is used)
         endpoint = V1Endpoints(
             kind='Endpoints',
             metadata=meta,
@@ -784,44 +827,122 @@ def make_ingress(name, routespec, target, labels, data):
     else:
         endpoint = None
 
-        # Make service object
-        service = V1Service(
-            kind='Service',
-            metadata=meta,
-            spec=V1ServiceSpec(
-                type='ExternalName',
-                external_name=target_parts.hostname,
-                cluster_ip='',
-                ports=[V1ServicePort(port=target_port, target_port=target_port)],
-            ),
-        )
+        service_match = SERVICE_DNS_PATTERN.match(target_parts.hostname)
+        if (
+            reuse_existing_services
+            and service_match
+            and (
+                not service_match.group("namespace")
+                or service_match.group("namespace") == namespace
+            )
+        ):
+            # c.KubeSpawner.services_enabled = True
+            # routespec='http://myservice.mynamespace.svc.cluster.local:8888/'
+            # routespec='http://myservice.mynamespace.svc.cluster:8888/'
+            # routespec='http://myservice.mynamespace.svc:8888/'
+            # routespec='http://myservice.mynamespace:8888/'
+            # routespec='http://hub:8888/'
+
+            # Ingress -> Service (same namespace, created by KubeSpawner)
+            service = None  # just use this service in ingress, do not create it
+            service_name = service_match.group("service")
+        else:
+            # config: c.KubeSpawner.namespace='another-namespace'
+            # routespec: 'http://myservice.another-namespace...:8888/'
+            # or
+            # config: c.KubeSpawner.enable_user_namespaces=True
+            # routespec: 'http://myservice.user-namespace...:8888/'
+            # or
+            # c.JupyterHub.services = [{"name": "my-service", "url": "http://some.domain:9000"}]
+            # routespec: 'http://some.domain:9000/'
+
+            # Ingress -> ExternalName -> Service (different namespace or some external domain)
+            service = V1Service(
+                kind='Service',
+                metadata=meta,
+                spec=V1ServiceSpec(
+                    type='ExternalName',
+                    external_name=target_parts.hostname,
+                    cluster_ip='',
+                    ports=[V1ServicePort(port=target_port, target_port=target_port)],
+                ),
+            )
 
     # Make Ingress object
+
+    ingress_labels = common_labels.copy()
+    ingress_labels.update(ingress_extra_labels or {})
+
+    ingress_annotations = common_annotations.copy()
+    ingress_annotations.update(ingress_extra_annotations or {})
+
+    ingress_meta = V1ObjectMeta(
+        name=name,
+        annotations=ingress_annotations,
+        labels=ingress_labels,
+    )
+
+    ingress_specifications = ingress_specifications or []
+
+    hosts = []
+    add_routespec_host = True
+    for ingress_spec in ingress_specifications:
+        if routespec_host and host_matching(routespec_host, ingress_spec["host"]):
+            # if routespec is URL like "http[s]://user.example.com"
+            # and ingress_specifications contains item like
+            # {"host": "user.example.com"} or {"host": "*.example.com"},
+            # prefer routespec_host over than wildcard
+            if add_routespec_host:
+                hosts.append(routespec_host)
+
+            add_routespec_host = False
+        elif ingress_spec["host"] not in hosts:
+            hosts.append(ingress_spec["host"])
+
+    if add_routespec_host and (routespec_host or not hosts):
+        # if routespec is URL like "http[s]://user.example.com"
+        # and does not match any host from ingress_specifications, create rule with routespec_host.
+
+        # if routespec is path like /base/url, and ingress_specifications is empty,
+        # create one ingress rule without host name.
+        hosts.insert(0, routespec_host)
+
+    rules = [
+        V1IngressRule(
+            host=host,
+            http=V1HTTPIngressRuleValue(
+                paths=[
+                    V1HTTPIngressPath(
+                        path=routespec_path,
+                        path_type="Prefix",
+                        backend=V1IngressBackend(
+                            service=V1IngressServiceBackend(
+                                name=service_name,
+                                port=V1ServiceBackendPort(
+                                    number=target_port,
+                                ),
+                            ),
+                        ),
+                    ),
+                ],
+            ),
+        )
+        for host in hosts
+    ]
+
+    tls = [
+        V1IngressTLS(hosts=[spec["host"]], secret_name=spec["tlsSecret"])
+        for spec in ingress_specifications
+        if "tlsSecret" in spec
+    ]
+
     ingress = V1Ingress(
         kind='Ingress',
-        metadata=meta,
+        metadata=ingress_meta,
         spec=V1IngressSpec(
-            rules=[
-                V1IngressRule(
-                    host=host,
-                    http=V1HTTPIngressRuleValue(
-                        paths=[
-                            V1HTTPIngressPath(
-                                path=path,
-                                path_type="Prefix",
-                                backend=V1IngressBackend(
-                                    service=V1IngressServiceBackend(
-                                        name=name,
-                                        port=V1ServiceBackendPort(
-                                            number=target_port,
-                                        ),
-                                    ),
-                                ),
-                            )
-                        ]
-                    ),
-                )
-            ]
+            rules=rules,
+            tls=tls or None,
+            ingress_class_name=ingress_class_name,
         ),
     )
 
@@ -904,12 +1025,12 @@ def make_secret(
 
 
 def make_service(
-    name,
-    port,
-    servername,
-    owner_references,
-    labels=None,
-    annotations=None,
+    name: str,
+    port: int,
+    selector: dict,
+    owner_references: List[V1OwnerReference],
+    labels: Optional[dict] = None,
+    annotations: Optional[dict] = None,
 ):
     """
     Make a k8s service specification for using dns to communicate with the notebook.
@@ -919,8 +1040,10 @@ def make_service(
     name:
         Name of the service. Must be unique within the namespace the object is
         going to be created in.
-    env:
-        Dictionary of environment variables.
+    selector:
+        Labels of server pod to be used in spec.selector
+    owner_references:
+        Pod's owner references used to automatically remote service after pod removal
     labels:
         Labels to add to the service.
     annotations:
@@ -941,11 +1064,7 @@ def make_service(
         spec=V1ServiceSpec(
             type='ClusterIP',
             ports=[V1ServicePort(name='http', port=port, target_port=port)],
-            selector={
-                'component': 'singleuser-server',
-                'hub.jupyter.org/servername': servername,
-                'hub.jupyter.org/username': metadata.labels['hub.jupyter.org/username'],
-            },
+            selector=selector,
         ),
     )
 

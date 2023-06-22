@@ -1,11 +1,13 @@
 import asyncio
 import json
 import os
+from functools import partial
 from unittest.mock import Mock
 
 import pytest
 from jupyterhub.objects import Hub, Server
 from jupyterhub.orm import Spawner
+from jupyterhub.utils import exponential_backoff
 from kubernetes_asyncio.client.models import (
     V1Capabilities,
     V1Container,
@@ -16,6 +18,7 @@ from kubernetes_asyncio.client.models import (
 from traitlets.config import Config
 
 from kubespawner import KubeSpawner
+from kubespawner.objects import make_owner_reference, make_service
 
 
 class MockUser(Mock):
@@ -203,6 +206,164 @@ async def test_spawn_start(
     assert isinstance(status, int)
 
 
+async def test_spawn_start_in_different_namespace(
+    kube_another_ns,
+    kube_client,
+    config,
+    hub,
+    exec_python,
+):
+    # hub is running in `kube_ns`. pods, PVC and other objects are created in `kube_another_ns`
+    config.KubeSpawner.namespace = kube_another_ns
+
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="start"),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+    )
+    # empty spawner isn't running
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+    pod_name = spawner.pod_name
+
+    # start the spawner
+    url = await spawner.start()
+
+    # verify the pod exists
+    pods = (await kube_client.list_namespaced_pod(kube_another_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+
+    # pod should be running when start returns
+    pod = await kube_client.read_namespaced_pod(
+        namespace=kube_another_ns, name=pod_name
+    )
+    assert pod.status.phase == "Running"
+
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+
+    # make sure spawn url is correct
+    r = await exec_python(check_up, {"url": url}, _retries=3)
+    assert r == "302"
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = (await kube_client.list_namespaced_pod(kube_another_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name not in pod_names
+
+    # verify exit status
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+
+async def test_spawn_enable_user_namespaces():
+    user = MockUser()
+    spawner = KubeSpawner(user=user, _mock=True, enable_user_namespaces=True)
+    assert spawner.namespace.endswith(f"-{user.escaped_name}")
+
+
+async def test_spawn_start_enable_user_namespaces(
+    kube_another_ns,
+    kube_client,
+    config,
+    hub,
+    exec_python,
+):
+    # this should be a template, but using a static value
+    # just to properly cleanup created namespace after test is finished
+    config.KubeSpawner.user_namespace_template = kube_another_ns
+    config.KubeSpawner.enable_user_namespaces = True
+
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="start"),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+    )
+    # empty spawner isn't running
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+    pod_name = spawner.pod_name
+
+    # start the spawner
+    url = await spawner.start()
+
+    # verify the pod exists
+    pods = (await kube_client.list_namespaced_pod(kube_another_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+
+    # pod should be running when start returns
+    pod = await kube_client.read_namespaced_pod(
+        namespace=kube_another_ns, name=pod_name
+    )
+    assert pod.status.phase == "Running"
+
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+
+    # make sure spawn url is correct
+    r = await exec_python(check_up, {"url": url}, _retries=3)
+    assert r == "302"
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = (await kube_client.list_namespaced_pod(kube_another_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name not in pod_names
+
+    # verify exit status
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+
+async def test_spawn_component_label(
+    kube_ns,
+    kube_client,
+    config,
+    hub,
+    reset_pod_reflectors,
+):
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="start"),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+        component_label="something",
+    )
+
+    pod_name = spawner.pod_name
+
+    # start the spawner
+    await spawner.start()
+
+    # verify the pod exists
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pods = [p for p in pods if p.metadata.name == pod_name]
+    assert pods
+
+    # component label is same as expected
+    pod = pods[0]
+    assert pod.metadata.labels["component"] == "something"
+
+    # stop the pod
+    await spawner.stop()
+
+
 async def test_spawn_internal_ssl(
     kube_ns,
     kube_client,
@@ -298,6 +459,159 @@ async def test_spawn_internal_ssl(
     assert service_name not in service_names
 
 
+async def test_spawn_services_enabled(
+    kube_ns,
+    kube_client,
+    hub,
+    config,
+    reset_pod_reflectors,
+):
+    spawner = KubeSpawner(
+        config=config,
+        hub=hub,
+        user=MockUser(name="services"),
+        api_token="abc123",
+        oauth_client_id="unused",
+        services_enabled=True,
+        component_label="something",
+        common_labels={
+            "some/label": "value1",
+        },
+        extra_labels={
+            "extra/label": "value2",
+        },
+    )
+
+    # start the spawner
+    await spawner.start()
+    pod_name = "jupyter-%s" % spawner.user.name
+    # verify the pod exists
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+
+    # verify service exist
+    service_name = pod_name
+    services = (await kube_client.list_namespaced_service(kube_ns)).items
+    services = [s for s in services if s.metadata.name == service_name]
+    assert services
+
+    # verify selector contains component_label, common_labels and extra_labels
+    # as well as user and server name
+    selector = services[0].spec.selector
+    assert selector["component"] == "something"
+    assert selector["some/label"] == "value1"
+    assert selector["extra/label"] == "value2"
+    assert selector["hub.jupyter.org/servername"] == ""
+    assert selector["hub.jupyter.org/username"] == "services"
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert "jupyter-%s" % spawner.user.name not in pod_names
+
+    # verify service is gone
+    # it may take a little while for them to get cleaned up
+    for _ in range(5):
+        services = (await kube_client.list_namespaced_service(kube_ns)).items
+        service_names = {s.metadata.name for s in services}
+        if service_name in service_names:
+            await asyncio.sleep(1)
+        else:
+            break
+
+    assert service_name not in service_names
+
+
+async def test_spawn_after_pod_created_hook(
+    kube_ns,
+    kube_client,
+    hub,
+    config,
+):
+    async def after_pod_created_hook(spawner: KubeSpawner, pod: dict):
+        owner_reference = make_owner_reference(spawner.pod_name, pod["metadata"]["uid"])
+
+        labels = spawner._build_common_labels(spawner._expand_all(spawner.extra_labels))
+        annotations = spawner._build_common_annotations(
+            spawner._expand_all(spawner.extra_annotations)
+        )
+        selector = spawner._build_pod_labels(spawner._expand_all(spawner.extra_labels))
+
+        service_manifest = make_service(
+            name=spawner.pod_name + "-hook",
+            port=spawner.port,
+            selector=selector,
+            owner_references=[owner_reference],
+            labels=labels,
+            annotations=annotations,
+        )
+
+        await exponential_backoff(
+            partial(
+                spawner._ensure_not_exists,
+                "service",
+                service_manifest.metadata.name,
+            ),
+            f"Failed to delete service {service_manifest.metadata.name}",
+        )
+        await exponential_backoff(
+            partial(spawner._make_create_resource_request, "service", service_manifest),
+            f"Failed to create service {service_manifest.metadata.name}",
+        )
+
+    spawner = KubeSpawner(
+        config=config,
+        hub=hub,
+        user=MockUser(name="hook"),
+        api_token="abc123",
+        oauth_client_id="unused",
+        after_pod_created_hook=after_pod_created_hook,
+    )
+    # start the spawner
+    await spawner.start()
+    pod_name = "jupyter-%s" % spawner.user.name
+    # verify the pod exists
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+
+    # verify service exist
+    service_name = pod_name + "-hook"
+    services = (await kube_client.list_namespaced_service(kube_ns)).items
+    service_names = [s.metadata.name for s in services]
+    assert service_name in service_names
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert "jupyter-%s" % spawner.user.name not in pod_names
+
+    # verify service is gone
+    # it may take a little while for them to get cleaned up
+    for _ in range(5):
+        services = (await kube_client.list_namespaced_service(kube_ns)).items
+        service_names = {s.metadata.name for s in services}
+        if service_name in service_names:
+            await asyncio.sleep(1)
+        else:
+            break
+
+    assert service_name not in service_names
+
+
 async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
     spawner = KubeSpawner(
         hub=hub,
@@ -328,6 +642,176 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
     await start_future
     # stop the pod
     await spawner.stop()
+
+
+async def test_spawn_start_restore_pod_name(
+    kube_ns,
+    kube_client,
+    config,
+    hub,
+    exec_python,
+):
+    # Emulate stopping Jupyterhub and starting with different settings while some pods still exist
+
+    # Save state with old config
+    old_spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="start"),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+    )
+    old_spawner_pod_name = old_spawner.pod_name
+
+    # create reflector
+    await old_spawner.start()
+    old_state = old_spawner.get_state()
+    await old_spawner.stop()
+
+    # Change config
+    config.KubeSpawner.pod_name_template = 'new-{username}--{servername}'
+
+    # Load old state
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="start"),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+    )
+    spawner.load_state(old_state)
+
+    # previous pod name is restored by the load_state call
+    assert spawner.pod_name == old_spawner_pod_name
+
+    # empty spawner isn't running
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+    pod_name = spawner.pod_name
+
+    # start the spawner
+    url = await spawner.start()
+
+    # verify pod with old name now exists
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+
+    # pod should be running when start returns
+    pod = await kube_client.read_namespaced_pod(namespace=kube_ns, name=pod_name)
+    assert pod.status.phase == "Running"
+
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+
+    # make sure spawn url is correct
+    r = await exec_python(check_up, {"url": url}, _retries=3)
+    assert r == "302"
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod with old name is gone
+    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name not in pod_names
+
+    # verify exit status
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+
+@pytest.mark.parametrize("enable_user_namespaces", [True, False])
+async def test_spawn_start_restore_namespace(
+    kube_ns,
+    kube_another_ns,
+    kube_client,
+    config,
+    hub,
+    exec_python,
+    enable_user_namespaces,
+):
+    # Emulate stopping Jupyterhub and starting with different settings with existing pods
+
+    config.KubeSpawner.enable_user_namespaces = enable_user_namespaces
+
+    # Save state with old config
+    config.KubeSpawner.namespace = kube_another_ns
+    config.KubeSpawner.user_namespace_template = kube_another_ns
+
+    old_spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="start"),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+    )
+    old_spawner_namespace = old_spawner.namespace
+
+    # create reflector with old namespace
+    await old_spawner.start()
+    old_state = old_spawner.get_state()
+    await old_spawner.stop()
+
+    # Save config
+    config.KubeSpawner.namespace = kube_ns
+    config.KubeSpawner.user_namespace_template = kube_ns
+
+    # Load old state
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="start"),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+    )
+    spawner.load_state(old_state)
+
+    # previous namespace is restored
+    # KubeSpawner should properly run on a different namespace
+    assert spawner.namespace == old_spawner_namespace
+
+    # empty spawner isn't running
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+    pod_name = spawner.pod_name
+
+    # start the spawner
+    url = await spawner.start()
+
+    # verify the pod exists
+    pods = (await kube_client.list_namespaced_pod(kube_another_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+
+    # pod should be running when start returns
+    pod = await kube_client.read_namespaced_pod(
+        namespace=kube_another_ns, name=pod_name
+    )
+    assert pod.status.phase == "Running"
+
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+
+    # make sure spawn url is correct
+    r = await exec_python(check_up, {"url": url}, _retries=3)
+    assert r == "302"
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = (await kube_client.list_namespaced_pod(kube_another_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name not in pod_names
+
+    # verify exit status
+    status = await spawner.poll()
+    assert isinstance(status, int)
 
 
 async def test_get_pod_manifest_tolerates_mixed_input():
@@ -375,6 +859,7 @@ _test_profiles = [
             'image': 'training/python:label',
             'cpu_limit': 1,
             'mem_limit': 512 * 1024 * 1024,
+            'environment': {'override': 'override-value'},
         },
     },
     {
@@ -384,6 +869,16 @@ _test_profiles = [
             'image': 'training/datascience:label',
             'cpu_limit': 4,
             'mem_limit': 8 * 1024 * 1024 * 1024,
+        },
+    },
+    {
+        'display_name': 'Training Env - R',
+        'slug': 'training-r',
+        'kubespawner_override': {
+            'image': 'training/r:label',
+            'cpu_limit': 1,
+            'mem_limit': 512 * 1024 * 1024,
+            'environment': {'override': 'override-value', "to-remove": None},
         },
     },
 ]
@@ -405,6 +900,28 @@ async def test_user_options_set_from_form():
     await spawner.load_user_options()
     for key, value in _test_profiles[1]['kubespawner_override'].items():
         assert getattr(spawner, key) == value
+
+
+async def test_kubespawner_override():
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    # Set a base environment
+    # to-remove will be removed because we set its value to None
+    # in the override
+    spawner.environment = {"existing": "existing-value", "to-remove": "does-it-matter"}
+    # render the form, select first option
+    await spawner.get_options_form()
+    spawner.user_options = spawner.options_from_form(
+        {'profile': [_test_profiles[2]['slug']]}
+    )
+    assert spawner.user_options == {
+        'profile': _test_profiles[2]['slug'],
+    }
+    await spawner.load_user_options()
+    assert spawner.environment == {
+        "existing": "existing-value",
+        "override": "override-value",
+    }
 
 
 async def test_user_options_api():
@@ -429,6 +946,179 @@ async def test_default_profile():
     await spawner.load_user_options()
     for key, value in _test_profiles[0]['kubespawner_override'].items():
         assert getattr(spawner, key) == value
+
+
+async def test_spawn_start_profile_list_override_namespace(
+    kube_another_ns,
+    kube_client,
+    config,
+    hub,
+    exec_python,
+):
+    # Emulate case when different profiles create objects in different namespaces
+
+    profiles = [
+        {
+            'display_name': 'Default namespace - Python',
+            'slug': 'default-namespace',
+            'default': True,
+            'kubespawner_override': {
+                'cpu_limit': 1,
+            },
+        },
+        {
+            'display_name': 'Different namespace - Python',
+            'slug': 'different-namespace',
+            'default': False,
+            'kubespawner_override': {
+                'namespace': kube_another_ns,
+                'cpu_limit': 1,
+            },
+        },
+    ]
+
+    config.KubeSpawner.profile_list = profiles
+
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="start"),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+    )
+    # set user_options (via form or API)
+    spawner.user_options = {'profile': profiles[1]['slug']}
+
+    # empty spawner isn't running
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+    pod_name = spawner.pod_name
+
+    # start the spawner
+    url = await spawner.start()
+
+    # pod started in namespace which is different from constructor
+
+    # verify the pod exists
+    pods = (await kube_client.list_namespaced_pod(kube_another_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+
+    # pod should be running when start returns
+    pod = await kube_client.read_namespaced_pod(
+        namespace=kube_another_ns, name=pod_name
+    )
+    assert pod.status.phase == "Running"
+
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+
+    # make sure spawn url is correct
+    r = await exec_python(check_up, {"url": url}, _retries=3)
+    assert r == "302"
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = (await kube_client.list_namespaced_pod(kube_another_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name not in pod_names
+
+    # verify exit status
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+
+async def test_spawn_start_profile_callback_override_namespace(
+    kube_ns,
+    kube_another_ns,
+    kube_client,
+    config,
+    hub,
+    exec_python,
+):
+    def get_profile(spawner):
+        return [
+            {
+                'display_name': 'Default namespace - Python',
+                'slug': 'default-namespace',
+                'default': True,
+                'kubespawner_override': {
+                    'cpu_limit': 1,
+                },
+            },
+            {
+                'display_name': 'Different namespace - Python',
+                'slug': 'different-namespace',
+                'default': False,
+                'kubespawner_override': {
+                    'namespace': kube_another_ns,
+                    'cpu_limit': 1,
+                },
+            },
+        ]
+
+    config.KubeSpawner.profile_list = get_profile
+
+    # It does not matter if namespace is set explicitly or generated from a template,
+    # checking enable_user_namespaces=True only to cover case with one reflector per all namespaces
+    config.KubeSpawner.enable_user_namespaces = True
+    config.KubeSpawner.user_namespace_template = kube_ns
+
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="start"),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+    )
+    # set user_options (via form or API)
+    spawner.user_options = {'profile': 'different-namespace'}
+
+    # empty spawner isn't running
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+    pod_name = spawner.pod_name
+
+    # start the spawner
+    url = await spawner.start()
+
+    # pod started in namespace which is different from constructor
+
+    # verify the pod exists
+    pods = (await kube_client.list_namespaced_pod(kube_another_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name in pod_names
+
+    # pod should be running when start returns
+    pod = await kube_client.read_namespaced_pod(
+        namespace=kube_another_ns, name=pod_name
+    )
+    assert pod.status.phase == "Running"
+
+    # verify poll while running
+    status = await spawner.poll()
+    assert status is None
+
+    # make sure spawn url is correct
+    r = await exec_python(check_up, {"url": url}, _retries=3)
+    assert r == "302"
+
+    # stop the pod
+    await spawner.stop()
+
+    # verify pod is gone
+    pods = (await kube_client.list_namespaced_pod(kube_another_ns)).items
+    pod_names = [p.metadata.name for p in pods]
+    assert pod_name not in pod_names
+
+    # verify exit status
+    status = await spawner.poll()
+    assert isinstance(status, int)
 
 
 async def test_pod_name_no_named_servers():
@@ -623,12 +1313,12 @@ async def test_variable_expansion(ssl_app):
         },
         "extra_labels": {
             "configured_value": {"dummy": "common-extra-labels-{username}"},
-            "findable_value": "common-extra-labels-user1",
+            "findable_values": ["common-extra-labels-user1"],
             "findable_in": ["pod", "service", "secret"],
         },
         "extra_annotations": {
             "configured_value": {"dummy": "common-extra-annotations-{username}"},
-            "findable_value": "common-extra-annotations-user1",
+            "findable_values": ["common-extra-annotations-user1"],
             "findable_in": ["pod", "service", "secret"],
         },
         "working_dir": {
@@ -654,6 +1344,31 @@ async def test_variable_expansion(ssl_app):
                     'name': 'volume-mounts-{username}',
                     'mountPath': '/tmp/',
                 }
+            ],
+            "findable_in": ["pod"],
+        },
+        "environment": {
+            "configured_value": {
+                'VAR1': 'VAR1-{username}',
+                'VAR2': {
+                    'value': 'VAR2-{username}',
+                },
+                'VAR3': {
+                    'valueFrom': {
+                        'secretKeyRef': {
+                            'name': 'VAR3-SECRET-{username}',
+                            'key': 'VAR3-KEY-{username}',
+                        },
+                    },
+                },
+                'VAR4': 'VAR4-{{username}}-{{SHELL}}',
+            },
+            "findable_values": [
+                "VAR1-user1",
+                "VAR2-user1",
+                "VAR3-SECRET-user1",
+                "VAR3-KEY-user1",
+                "VAR4-{username}-{SHELL}",
             ],
             "findable_in": ["pod"],
         },
@@ -685,8 +1400,8 @@ async def test_variable_expansion(ssl_app):
     for key, value in config_to_test.items():
         c.KubeSpawner[key] = value["configured_value"]
 
-        if "findable_value" not in value:
-            value["findable_value"] = key.replace("_", "-") + "-user1"
+        if "findable_values" not in value:
+            value["findable_values"] = [key.replace("_", "-") + "-user1"]
 
     user = MockUser(name="user1")
     spawner = KubeSpawner(
@@ -710,15 +1425,16 @@ async def test_variable_expansion(ssl_app):
         manifest_string = str(manifest)
         for config in config_to_test.values():
             if resource_kind in config["findable_in"]:
-                assert config["findable_value"] in manifest_string, (
-                    manifest_string
-                    + "\n\n"
-                    + "finable_value: "
-                    + config["findable_value"]
-                    + "\n"
-                    + "resource_kind: "
-                    + resource_kind
-                )
+                for value in config["findable_values"]:
+                    assert value in manifest_string, (
+                        manifest_string
+                        + "\n\n"
+                        + "findable_value: "
+                        + value
+                        + "\n"
+                        + "resource_kind: "
+                        + resource_kind
+                    )
 
 
 async def test_url_changed(kube_ns, kube_client, config, hub_pod, hub):

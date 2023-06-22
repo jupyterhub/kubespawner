@@ -1,6 +1,68 @@
-[tool.isort]
-profile = "black"
+# build-system
+# - ref: https://peps.python.org/pep-0517/
+#
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
+
+# project
+# - ref 1: https://peps.python.org/pep-0621/
+# - ref 2: https://hatch.pypa.io/latest/config/metadata/#project-metadata
+#
+[project]
+name = "jupyterhub-kubespawner"
+description = "JupyterHub Spawner for Kubernetes"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {file = "LICENSE"}
+keywords = ["jupyterhub", "spawner"]
+authors = [
+    {name = "Jupyter Contributors", email = "jupyter@googlegroups.com"},
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    # NOTE: If lower bounds are updated, also update our test for the lower
+    #       bounds in .github/workflows/test.yaml.
+    "escapism",
+    "jinja2",
+    "jupyterhub>=4.0.0",
+    "kubernetes_asyncio>=24.2.3",
+    "python-slugify",
+    "pyYAML",
+    "traitlets",
+    "urllib3",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = [
+    "kubernetes>=11",
+    "pytest>=5.4",
+    "pytest-cov",
+    "pytest-asyncio>=0.17",
+]
+
+[project.urls]
+Documentation = "https://jupyterhub-kubespawner.readthedocs.io"
+Source = "https://github.com/jupyterhub/kubespawner"
+Issues = "https://github.com/jupyterhub/kubespawner/issues"
+
+# Explicitly include our profile_list templates, as hatch doesn't
+# respect MANIFEST.in.
+# Documentation: https://hatch.pypa.io/latest/config/build/#artifacts
+[tool.hatch.build]
+artifacts = [
+    "kubespawner/templates/*"
+]
+
+# black is used for autoformatting Python code
+#
+# ref: https://black.readthedocs.io/en/stable/
+#
 [tool.black]
 skip-string-normalization = true
 # target-version should be all supported versions, see
@@ -10,4 +72,67 @@ target_version = [
     "py38",
     "py39",
     "py310",
+    "py311",
 ]
+
+
+# hatch ref: https://hatch.pypa.io/latest/
+#
+[tool.hatch.version]
+path = "kubespawner/_version.py"
+
+
+# isort is used for autoformatting Python code
+#
+# ref: https://pycqa.github.io/isort/
+#
+[tool.isort]
+profile = "black"
+
+
+# pytest is used for running Python based tests
+#
+# ref: https://docs.pytest.org/en/stable/
+#
+[tool.pytest.ini_options]
+addopts = "--verbose --color=yes --durations=10"
+asyncio_mode = "auto"
+# Ignore thousands of tests in dependencies installed in a virtual environment
+norecursedirs = "lib lib64"
+
+
+# tbump is used to simplify and standardize the release process when updating
+# the version, making a git commit and tag, and pushing changes.
+#
+# ref: https://github.com/your-tools/tbump#readme
+#
+[tool.tbump]
+github_url = "https://github.com/jupyterhub/kubespawner"
+
+[tool.tbump.version]
+current = "6.0.1.dev0"
+regex = '''
+    (?P<major>\d+)
+    \.
+    (?P<minor>\d+)
+    \.
+    (?P<patch>\d+)
+    (?P<pre>((a|b|rc)\d+)|)
+    \.?
+    (?P<dev>(?<=\.)dev\d*|)
+'''
+
+[tool.tbump.git]
+message_template = "Bump to {new_version}"
+tag_template = "{new_version}"
+
+[[tool.tbump.file]]
+src = "kubespawner/_version.py"
+
+# djlint is used for autoformatting jinja templates
+#
+# ref: https://www.djlint.com/docs/formatter/
+#
+[tool.djlint]
+indent = 2
+profile = "jinja"

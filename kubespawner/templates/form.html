@@ -1,0 +1,44 @@
+<style>{% include 'style.css' %}</style>
+<div class="form-group" id="kubespawner-profiles-list">
+  {%- for profile in profile_list %}
+    {#- Wrap everything in a label tag so clicking anywhere selects the option #}
+    <label for="profile-item-{{ profile.slug }}"
+           class="profile js-profile-label">
+      <div class="radio">
+        <input type="radio"
+               name="profile"
+               id="profile-item-{{ profile.slug }}"
+               value="{{ profile.slug }}"
+               {% if profile.default %}checked{% endif %} />
+      </div>
+      <div>
+        <h3>{{ profile.display_name }}</h3>
+        {%- if profile.description %}<p>{{ profile.description }}</p>{%- endif %}
+        {%- if profile.profile_options %}
+          <div>
+            {%- for k, option in profile.profile_options.items() %}
+              <div class="option">
+                <label for="profile-option-{{ profile.slug }}-{{ k }}"
+                       class="js-profile-option-label">{{ option.display_name }}</label>
+                <select name="profile-option-{{ profile.slug }}-{{ k }}"
+                        class="form-control js-profile-option-select">
+                  {%- for k, choice in option['choices'].items() %}
+                    <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
+                  {%- endfor %}
+                </select>
+              </div>
+            {%- endfor %}
+          </div>
+        {%- endif %}
+      </div>
+    </label>
+  {%- endfor %}
+</div>
+<script>
+  $('.js-profile-option-select, .js-profile-option-label').click(function() {
+    // we need this bit of JS to select the profile when a <select> inside is clicked.
+    $(this).parents('.js-profile-label')
+      .find('input[type=radio]')
+      .prop('checked', true);
+  });
+</script>

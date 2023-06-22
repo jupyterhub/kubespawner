@@ -3,21 +3,19 @@
 #
 name: Test
 
-# Trigger the workflow's on pushed branches, pull requests, and manually run
-# workflows.
 on:
   pull_request:
     paths-ignore:
       - "docs/**"
       - "**.md"
       - ".github/workflows/*"
-      - "!.github/workflows/test-chart.yaml"
+      - "!.github/workflows/test.yaml"
   push:
     paths-ignore:
       - "docs/**"
       - "**.md"
       - ".github/workflows/*"
-      - "!.github/workflows/test-chart.yaml"
+      - "!.github/workflows/test.yaml"
     branches-ignore:
       - "dependabot/**"
       - "pre-commit-ci-update-config"
@@ -25,8 +23,7 @@ on:
 
 jobs:
   run-pytest:
-    name: Run pytest
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
 
     strategy:
@@ -41,19 +38,25 @@ jobs:
         # kubernetes_asyncio:  https://github.com/tomplus/kubernetes_asyncio/tags
         #
         include:
-          # Tests with oldest supported Python, k8s, and k8s client
+          # Tests with oldest supported Python, jupyterhub, k8s, and k8s client
+          #
+          # NOTE: If lower bounds are updated, also update our test for the
+          #       lower bounds in pyproject.toml.
+          #
           - python: "3.7"
-            k3s: v1.20
-            test_dependencies: kubernetes_asyncio==19.*
+            k3s: v1.24
+            test_dependencies: >-
+              jupyterhub==4.0.0
+              kubernetes_asyncio==24.2.3
 
           # Test with modern python and k8s versions
           - python: "3.9"
             k3s: stable
-          - python: "3.9"
+          - python: "3.10"
             k3s: latest
 
           # Test with latest python and JupyterHub in main branch
-          - python: "3.10"
+          - python: "3.11"
             k3s: latest
             test_dependencies: git+https://github.com/jupyterhub/jupyterhub
 
@@ -65,7 +68,6 @@ jobs:
 
       - name: Install package and test dependencies
         run: |
-          pip install --upgrade pip
           pip install -e ".[test]" ${{ matrix.test_dependencies }}
           pip freeze
 
@@ -83,36 +85,12 @@ jobs:
 
       - name: Run pytest
         run: |
-          pytest -v --durations 10 --cov kubespawner --color=yes
+          pytest --cov kubespawner
 
       # ref: https://github.com/jupyterhub/action-k8s-namespace-report
       - name: Kubernetes namespace report
         uses: jupyterhub/action-k8s-namespace-report@v1
         if: always()
 
-      - name: Submit a codecov report
-        run: |
-          pip install codecov
-          codecov
-
-  # Keep this job synced with the publish job in publish.yaml!
-  package-build:
-    name: Test package build
-    runs-on: ubuntu-20.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.9"
-
-      - name: install build package
-        run: |
-          pip install --upgrade pip
-          pip install build
-          pip freeze
-
-      - name: build release
-        run: |
-          python -m build --sdist --wheel .
-          ls -alh dist
+      # ref: https://github.com/codecov/codecov-action
+      - uses: codecov/codecov-action@v3

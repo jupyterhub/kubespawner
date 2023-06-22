@@ -31,6 +31,7 @@ from kubernetes_asyncio.config import load_kube_config
 from kubernetes_asyncio.watch import Watch
 from traitlets.config import Config
 
+from kubespawner import KubeSpawner
 from kubespawner.clients import shared_client
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -93,6 +94,12 @@ def traitlets_logging():
 def kube_ns():
     """Fixture for the kubernetes namespace"""
     return os.environ.get("KUBESPAWNER_TEST_NAMESPACE") or "kubespawner-test"
+
+
+@pytest.fixture(scope="session")
+def kube_another_ns():
+    """Fixture for the another kubernetes namespace"""
+    return os.environ.get("KUBESPAWNER_ANOTHER_NAMESPACE") or "kubespawner-another"
 
 
 @pytest.fixture
@@ -195,7 +202,6 @@ async def watch_kubernetes(kube_client, kube_ns):
             func=kube_client.list_namespaced_event,
             namespace=kube_ns,
         ):
-
             resource = event['object']
             obj = resource.involved_object
             print(
@@ -230,55 +236,61 @@ async def watch_kubernetes(kube_client, kube_ns):
 
 
 @pytest_asyncio.fixture(scope="session")
-async def kube_client(request, kube_ns):
+async def kube_client(request, kube_ns, kube_another_ns):
     """fixture for the Kubernetes client object.
-
     skips test that require kubernetes if kubernetes cannot be contacted
-
-    - Ensures kube_ns namespace exists
+    - Ensures kube_ns and kube_another_ns namespaces do exist
     - Hooks up kubernetes events and logs to pytest capture
     - Cleans up kubernetes namespace on exit
     """
     await load_kube_config()
     client = shared_client("CoreV1Api")
-    stop_signal = asyncio.Queue()
+
+    expected_namespaces = [kube_ns, kube_another_ns]
     try:
         namespaces = await client.list_namespace(_request_timeout=3)
     except Exception as e:
         pytest.skip("Kubernetes not found: %s" % e)
 
-    if not any(ns.metadata.name == kube_ns for ns in namespaces.items):
-        print("Creating namespace %s" % kube_ns)
-        await client.create_namespace(V1Namespace(metadata=dict(name=kube_ns)))
-    else:
-        print("Using existing namespace %s" % kube_ns)
+    for namespace in expected_namespaces:
+        if not any(ns.metadata.name == namespace for ns in namespaces.items):
+            print("Creating namespace %s" % namespace)
+            await client.create_namespace(V1Namespace(metadata=dict(name=namespace)))
+        else:
+            print("Using existing namespace %s" % namespace)
 
     # begin streaming all logs and events in our test namespace
-    t = asyncio.create_task(watch_kubernetes(client, kube_ns))
+    log_tasks = [
+        asyncio.create_task(watch_kubernetes(client, namespace))
+        for namespace in expected_namespaces
+    ]
 
     yield client
 
     # Clean up at close by sending a cancel to watch_kubernetes and letting
     # it handle the signal, cancel the tasks *it* started, and then raising
     # it back to us.
-    try:
-        t.cancel()
-    except asyncio.CancelledError:
-        pass
+    for task in log_tasks:
+        try:
+            task.cancel()
+        except asyncio.CancelledError:
+            pass
+
     # allow opting out of namespace cleanup, for post-mortem debugging
     if not os.environ.get("KUBESPAWNER_DEBUG_NAMESPACE"):
-        await client.delete_namespace(kube_ns, body={}, grace_period_seconds=0)
-        for i in range(20):  # Usually finishes a good deal faster
-            try:
-                ns = await client.read_namespace(kube_ns)
-            except ApiException as e:
-                if e.status == 404:
-                    return
+        for namespace in expected_namespaces:
+            await client.delete_namespace(namespace, body={}, grace_period_seconds=0)
+            for _ in range(20):  # Usually finishes a good deal faster
+                try:
+                    await client.read_namespace(namespace)
+                except ApiException as e:
+                    if e.status == 404:
+                        return
+                    else:
+                        raise
                 else:
-                    raise
-            else:
-                print("waiting for %s to delete" % kube_ns)
-                await asyncio.sleep(1)
+                    print("waiting for %s to delete" % namespace)
+                    await asyncio.sleep(1)
 
 
 async def wait_for_pod(kube_client, kube_ns, pod_name, timeout=90):
@@ -623,3 +635,16 @@ async def exec_python(kube_client, kube_ns):
     pod = await create_resource(kube_client, kube_ns, "pod", pod_manifest)
 
     yield partial(_exec_python_in_pod, kube_client, kube_ns, pod_name)
+
+
+@pytest.fixture(scope="function")
+async def reset_pod_reflectors():
+    """
+    Resets the class state KubeSpawner.reflectors before and after the
+    test function executes. This enables us to start fresh if a test needs to
+    test configuration influencing the pod reflector options.
+    """
+
+    await KubeSpawner._stop_all_reflectors()
+    yield
+    await KubeSpawner._stop_all_reflectors()
