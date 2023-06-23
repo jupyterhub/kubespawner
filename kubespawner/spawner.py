@@ -2772,7 +2772,7 @@ class KubeSpawner(Spawner):
                     "Pod %s never showed up in reflector, restarting pod reflector",
                     ref_key,
                 )
-                self.log.error(f"Pods: {self.pod_reflector.pods}")
+                self.log.error("Pods: %s", sorted(self.pod_reflector.pods.keys()))
                 asyncio.ensure_future(self._start_watching_pods(replace=True))
             raise
 
