@@ -3067,14 +3067,23 @@ class KubeSpawner(Spawner):
             # are in the form data posted. This prevents users who may be authorized
             # to only use one profile from being able to access options set for other
             # profiles
-            for user_selected_option_name in selected_profile_user_options.keys():
-                if (
-                    user_selected_option_name
-                    not in profile.get('profile_options').keys()
-                ):
-                    raise ValueError(
-                        f'Expected option {user_selected_option_name} for profile {profile["slug"]}, not found in posted form'
-                    )
+
+            for option_name, option in profile.get('profile_options').items():
+                if option_name not in selected_profile_user_options:
+                    # other_choice in Enabled:
+                    if option.get('other_choice', {}).get('enabled', False):
+                        if (
+                            f'{option_name}-other-choice'
+                            not in selected_profile_user_options
+                        ):
+                            raise ValueError(
+                                f'Expected option {option_name} for profile {profile["slug"]} or -other-choice, not found in posted form'
+                            )
+                    # other_choice is Disabled
+                    else:
+                        raise ValueError(
+                            f'Expected option {option_name} for profile {profile["slug"]}, not found in posted form'
+                        )
 
             # Get selected options or default to the first option if none is passed
             for option_name, option in profile.get('profile_options').items():
@@ -3088,9 +3097,24 @@ class KubeSpawner(Spawner):
                             default_option = choice_name
                     chosen_option = default_option
 
-                chosen_option_overrides = option['choices'][chosen_option][
-                    'kubespawner_override'
-                ]
+                if (
+                    option.get('other_choice', {}).get('enabled', False)
+                    and f'{option_name}-other-choice' in selected_profile_user_options
+                ):
+                    chosen_option_overrides = option['other_choice'][
+                        'kubespawner_override'
+                    ]
+                    for k, v in chosen_option_overrides.items():
+                        chosen_option_overrides[k] = v.format(
+                            value=selected_profile_user_options[
+                                f'{option_name}-other-choice'
+                            ]
+                        )
+                else:
+                    chosen_option_overrides = option['choices'][chosen_option][
+                        'kubespawner_override'
+                    ]
+
                 for k, v in chosen_option_overrides.items():
                     if callable(v):
                         v = await maybe_future(v(self))
