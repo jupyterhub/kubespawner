@@ -36,10 +36,10 @@
                     <label for="profile-option-{{ profile.slug }}-{{ k }}-other-choice">
                       {{ option['other_choice']['display_name'] }}
                     </label>
-                    <input name="profile-option-{{ profile.slug }}-{{ k }}-other-choice"
+                    <input data-name="profile-option-{{ profile.slug }}-{{ k }}-other-choice"
                            pattern="{{ option['other_choice']['validation_match_regex'] }}"
                            title="{{ option['other_choice']['validation_message'] }}"
-                           class="form-control" />
+                           class="form-control js-other-input" />
                   </div>
                 {%- endif %}
               </div>
@@ -62,11 +62,18 @@
   $('.js-profile-option-select').change(function() {
     const selectionValue = $(this).val();
     const $otherInputContainer = $(this).parents('.js-options-container').find('.js-other-input-container');
+    const $otherInput = $(this).parents('.js-options-container').find('.js-other-input');
     if (selectionValue === 'other') {
+      $(this).data('name', $(this).attr('name'));
+      $(this).removeAttr('name');
+      $otherInput.attr('name', $otherInput.data('name'));
       $otherInputContainer.removeClass('hide');
     } else {
+      $otherInput.removeAttr('name');
+      $(this).attr('name', $(this).data('name'));
       $otherInputContainer.addClass('hide');
     }
   });
+
 
 </script>
