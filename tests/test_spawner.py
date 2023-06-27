@@ -881,6 +881,35 @@ _test_profiles = [
             'environment': {'override': 'override-value', "to-remove": None},
         },
     },
+    {
+        'display_name': 'Test choices',
+        'slug': 'test-choices',
+        'profile_options': {
+            'image': {
+                'display_name': 'Image',
+                'other_choice': {
+                    'enabled': True,
+                    'display_name': 'Image Location',
+                    'validation_match_regex': '^pangeo/.*$',
+                    'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
+                    'kubespawner_override': {'image': '{value}'},
+                },
+                'choices': {
+                    'pytorch': {
+                        'display_name': 'Python 3 Training Notebook',
+                        'kubespawner_override': {
+                            'image': 'pangeo/pytorch-notebook:master'
+                        },
+                    },
+                    'tf': {
+                        'display_name': 'R 4.2 Training Notebook',
+                        'default': True,
+                        'kubespawner_override': {'image': 'training/r:label'},
+                    },
+                },
+            },
+        },
+    },
 ]
 
 
@@ -900,6 +929,44 @@ async def test_user_options_set_from_form():
     await spawner.load_user_options()
     for key, value in _test_profiles[1]['kubespawner_override'].items():
         assert getattr(spawner, key) == value
+
+
+async def test_user_options_set_from_form_choices():
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    await spawner.get_options_form()
+    spawner.user_options = spawner.options_from_form(
+        {
+            'profile': [_test_profiles[3]['slug']],
+            'profile-option-test-choices-image': ['pytorch'],
+        }
+    )
+    assert spawner.user_options == {
+        'image': 'pytorch',
+        'profile': _test_profiles[3]['slug'],
+    }
+    assert spawner.cpu_limit is None
+    await spawner.load_user_options()
+    assert getattr(spawner, 'image') == 'pangeo/pytorch-notebook:master'
+
+
+async def test_user_options_set_from_form_other_choice():
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    await spawner.get_options_form()
+    spawner.user_options = spawner.options_from_form(
+        {
+            'profile': [_test_profiles[3]['slug']],
+            'profile-option-test-choices-image-other-choice': ['pangeo/test:latest'],
+        }
+    )
+    assert spawner.user_options == {
+        'image-other-choice': 'pangeo/test:latest',
+        'profile': _test_profiles[3]['slug'],
+    }
+    assert spawner.cpu_limit is None
+    await spawner.load_user_options()
+    assert getattr(spawner, 'image') == 'pangeo/test:latest'
 
 
 async def test_kubespawner_override():
