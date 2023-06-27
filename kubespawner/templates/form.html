@@ -64,6 +64,15 @@
     const $otherInputContainer = $(this).parents('.js-options-container').find('.js-other-input-container');
     const $otherInput = $(this).parents('.js-options-container').find('.js-other-input');
     if (selectionValue === 'other') {
+
+      // if the Select box is selected with a value that is not 'other',
+      // we remove the "name" attribute for the other-choice input
+      // and vice-versa, so that we only submit valid form values
+      // and don't leave the complexity of figuring out which value
+      // to use to the back-end.
+
+      // This can probably be done cleaner by completely refactoring
+      // how we send values from the frontend.
       $(this).data('name', $(this).attr('name'));
       $(this).removeAttr('name');
       $otherInput.attr('name', $otherInput.data('name'));

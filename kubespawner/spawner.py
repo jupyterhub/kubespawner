@@ -3083,6 +3083,8 @@ class KubeSpawner(Spawner):
                         other_choice = selected_profile_user_options[
                             f'{option_name}-other-choice'
                         ]
+
+                        # Validate value of 'other-choice' against validation regex
                         other_choice_validation_regex = profile.get('profile_options')[
                             option_name
                         ]['other_choice']['validation_match_regex']
@@ -3109,6 +3111,7 @@ class KubeSpawner(Spawner):
                             default_option = choice_name
                     chosen_option = default_option
 
+                # Handle override for other-choice free text specified by user
                 if (
                     option.get('other_choice', {}).get('enabled', False)
                     and f'{option_name}-other-choice' in selected_profile_user_options
