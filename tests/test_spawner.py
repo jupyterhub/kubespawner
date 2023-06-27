@@ -969,6 +969,26 @@ async def test_user_options_set_from_form_other_choice():
     assert getattr(spawner, 'image') == 'pangeo/test:latest'
 
 
+async def test_user_options_set_from_form_invalid_regex():
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    await spawner.get_options_form()
+    spawner.user_options = spawner.options_from_form(
+        {
+            'profile': [_test_profiles[3]['slug']],
+            'profile-option-test-choices-image-other-choice': ['invalid/foo:latest'],
+        }
+    )
+    assert spawner.user_options == {
+        'image-other-choice': 'invalid/foo:latest',
+        'profile': _test_profiles[3]['slug'],
+    }
+    assert spawner.cpu_limit is None
+
+    with pytest.raises(ValueError):
+        await spawner.load_user_options()
+
+
 async def test_kubespawner_override():
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = _test_profiles

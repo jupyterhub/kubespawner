@@ -7,6 +7,7 @@ implementation that should be used by JupyterHub.
 import asyncio
 import ipaddress
 import os
+import re
 import string
 import sys
 import warnings
@@ -3078,6 +3079,17 @@ class KubeSpawner(Spawner):
                         ):
                             raise ValueError(
                                 f'Expected option {option_name} for profile {profile["slug"]} or -other-choice, not found in posted form'
+                            )
+                        other_choice = selected_profile_user_options[
+                            f'{option_name}-other-choice'
+                        ]
+                        other_choice_validation_regex = profile.get('profile_options')[
+                            option_name
+                        ]['other_choice']['validation_match_regex']
+                        regex = re.compile(other_choice_validation_regex)
+                        if not regex.match(other_choice):
+                            raise ValueError(
+                                f'Value of {option_name}-other-choice does not match validation regex.'
                             )
                     # other_choice is Disabled
                     else:
