@@ -910,6 +910,33 @@ _test_profiles = [
             },
         },
     },
+    {
+        'display_name': 'Test choices no regex',
+        'slug': 'no-regex',
+        'profile_options': {
+            'image': {
+                'display_name': 'Image',
+                'other_choice': {
+                    'enabled': True,
+                    'display_name': 'Image Location',
+                    'kubespawner_override': {'image': '{value}'},
+                },
+                'choices': {
+                    'pytorch': {
+                        'display_name': 'Python 3 Training Notebook',
+                        'kubespawner_override': {
+                            'image': 'pangeo/pytorch-notebook:master'
+                        },
+                    },
+                    'tf': {
+                        'display_name': 'R 4.2 Training Notebook',
+                        'default': True,
+                        'kubespawner_override': {'image': 'training/r:label'},
+                    },
+                },
+            },
+        },
+    },
 ]
 
 
@@ -987,6 +1014,26 @@ async def test_user_options_set_from_form_invalid_regex():
 
     with pytest.raises(ValueError):
         await spawner.load_user_options()
+
+
+async def test_user_options_set_from_form_no_regex():
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    await spawner.get_options_form()
+    # print(_test_profiles[4])
+    spawner.user_options = spawner.options_from_form(
+        {
+            'profile': [_test_profiles[4]['slug']],
+            'profile-option-no-regex-image--other-choice': ['invalid/foo:latest'],
+        }
+    )
+    assert spawner.user_options == {
+        'image--other-choice': 'invalid/foo:latest',
+        'profile': _test_profiles[4]['slug'],
+    }
+    assert spawner.cpu_limit is None
+    await spawner.load_user_options()
+    assert getattr(spawner, 'image') == 'invalid/foo:latest'
 
 
 async def test_kubespawner_override():

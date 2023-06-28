@@ -37,7 +37,9 @@
                       {{ option['other_choice']['display_name'] }}
                     </label>
                     <input data-name="profile-option-{{ profile.slug }}-{{ k }}--other-choice"
+                           {%- if option['other_choice']['validation_regex'] %}
                            pattern="{{ option['other_choice']['validation_regex'] }}"
+                           {%- endif %}
                            title="{{ option['other_choice']['validation_message'] }}"
                            class="form-control js-other-input" />
                   </div>

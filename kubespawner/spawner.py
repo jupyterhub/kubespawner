@@ -1542,7 +1542,7 @@ class KubeSpawner(Spawner):
             select "Other" as a choice:
             - `enabled`: Boolean, whether the free form input should be enabled
             - `display_name`: String, label for input field
-            - `validation_regex`: Required if enabled is True, regex that the free form input should match - eg. ^pangeo/.*$
+            - `validation_regex`: Optional, regex that the free form input should match - eg. ^pangeo/.*$
             - `validation_message`: Optional, validation message for the regex. Should describe the required
                input format in a human-readable way.
             - `kubespawner_override`: Object specifying what key:values should be over-ridden
@@ -3085,14 +3085,17 @@ class KubeSpawner(Spawner):
                         ]
 
                         # Validate value of 'other-choice' against validation regex
-                        other_choice_validation_regex = profile.get('profile_options')[
-                            option_name
-                        ]['other_choice']['validation_regex']
-                        regex = re.compile(other_choice_validation_regex)
-                        if not regex.match(other_choice):
-                            raise ValueError(
-                                f'Value of {option_name}--other-choice does not match validation regex.'
-                            )
+                        if profile.get('profile_options')[option_name][
+                            'other_choice'
+                        ].get('validation_regex', False):
+                            other_choice_validation_regex = profile.get(
+                                'profile_options'
+                            )[option_name]['other_choice']['validation_regex']
+                            regex = re.compile(other_choice_validation_regex)
+                            if not regex.match(other_choice):
+                                raise ValueError(
+                                    f'Value of {option_name}--other-choice does not match validation regex.'
+                                )
                     # other_choice is Disabled
                     else:
                         raise ValueError(
