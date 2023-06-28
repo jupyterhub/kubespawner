@@ -33,10 +33,10 @@
                 </div>
                 {%- if option['other_choice'] and option['other_choice']['enabled'] %}
                   <div class="option hide js-other-input-container">
-                    <label for="profile-option-{{ profile.slug }}-{{ k }}-other-choice">
+                    <label for="profile-option-{{ profile.slug }}-{{ k }}--other-choice">
                       {{ option['other_choice']['display_name'] }}
                     </label>
-                    <input data-name="profile-option-{{ profile.slug }}-{{ k }}-other-choice"
+                    <input data-name="profile-option-{{ profile.slug }}-{{ k }}--other-choice"
                            pattern="{{ option['other_choice']['validation_regex'] }}"
                            title="{{ option['other_choice']['validation_message'] }}"
                            class="form-control js-other-input" />

@@ -1542,7 +1542,7 @@ class KubeSpawner(Spawner):
             select "Other" as a choice:
             - `enabled`: Boolean, whether the free form input should be enabled
             - `display_name`: String, label for input field
-            - `validation_match_regex`: Optional, regex that the free form input should match - eg. ^pangeo/.*$
+            - `validation_regex`: Optional, regex that the free form input should match - eg. ^pangeo/.*$
             - `validation_message`: Optional, validation message for the regex. Should describe the required
                input format in a human-readable way.
             - `kubespawner_override`: Object specifying what key:values should be over-ridden
@@ -1587,7 +1587,7 @@ class KubeSpawner(Spawner):
                             'other_choice': {
                                 'enabled': true,
                                 'display_name': 'Image Location',
-                                'validation_match_regex': '^pangeo/.*$',
+                                'validation_regex': '^pangeo/.*$',
                                 'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
                                 'kubespawner_override': {
                                     'image': '{value}'
@@ -3074,24 +3074,24 @@ class KubeSpawner(Spawner):
                     # other_choice in Enabled:
                     if option.get('other_choice', {}).get('enabled', False):
                         if (
-                            f'{option_name}-other-choice'
+                            f'{option_name}--other-choice'
                             not in selected_profile_user_options
                         ):
                             raise ValueError(
-                                f'Expected option {option_name} for profile {profile["slug"]} or -other-choice, not found in posted form'
+                                f'Expected option {option_name} for profile {profile["slug"]} or --other-choice, not found in posted form'
                             )
                         other_choice = selected_profile_user_options[
-                            f'{option_name}-other-choice'
+                            f'{option_name}--other-choice'
                         ]
 
                         # Validate value of 'other-choice' against validation regex
                         other_choice_validation_regex = profile.get('profile_options')[
                             option_name
-                        ]['other_choice']['validation_match_regex']
+                        ]['other_choice']['validation_regex']
                         regex = re.compile(other_choice_validation_regex)
                         if not regex.match(other_choice):
                             raise ValueError(
-                                f'Value of {option_name}-other-choice does not match validation regex.'
+                                f'Value of {option_name}--other-choice does not match validation regex.'
                             )
                     # other_choice is Disabled
                     else:
@@ -3114,7 +3114,7 @@ class KubeSpawner(Spawner):
                 # Handle override for other-choice free text specified by user
                 if (
                     option.get('other_choice', {}).get('enabled', False)
-                    and f'{option_name}-other-choice' in selected_profile_user_options
+                    and f'{option_name}--other-choice' in selected_profile_user_options
                 ):
                     chosen_option_overrides = option['other_choice'][
                         'kubespawner_override'
@@ -3122,7 +3122,7 @@ class KubeSpawner(Spawner):
                     for k, v in chosen_option_overrides.items():
                         chosen_option_overrides[k] = v.format(
                             value=selected_profile_user_options[
-                                f'{option_name}-other-choice'
+                                f'{option_name}--other-choice'
                             ]
                         )
                 else:

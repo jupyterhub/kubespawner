@@ -890,7 +890,7 @@ _test_profiles = [
                 'other_choice': {
                     'enabled': True,
                     'display_name': 'Image Location',
-                    'validation_match_regex': '^pangeo/.*$',
+                    'validation_regex': '^pangeo/.*$',
                     'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
                     'kubespawner_override': {'image': '{value}'},
                 },
@@ -957,11 +957,11 @@ async def test_user_options_set_from_form_other_choice():
     spawner.user_options = spawner.options_from_form(
         {
             'profile': [_test_profiles[3]['slug']],
-            'profile-option-test-choices-image-other-choice': ['pangeo/test:latest'],
+            'profile-option-test-choices-image--other-choice': ['pangeo/test:latest'],
         }
     )
     assert spawner.user_options == {
-        'image-other-choice': 'pangeo/test:latest',
+        'image--other-choice': 'pangeo/test:latest',
         'profile': _test_profiles[3]['slug'],
     }
     assert spawner.cpu_limit is None
@@ -976,7 +976,7 @@ async def test_user_options_set_from_form_invalid_regex():
     spawner.user_options = spawner.options_from_form(
         {
             'profile': [_test_profiles[3]['slug']],
-            'profile-option-test-choices-image-other-choice': ['invalid/foo:latest'],
+            'profile-option-test-choices-image--other-choice': ['invalid/foo:latest'],
         }
     )
     assert spawner.user_options == {
