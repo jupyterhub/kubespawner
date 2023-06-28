@@ -27,7 +27,7 @@
                       <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
                     {%- endfor %}
                     {%- if option['other_choice'] and option['other_choice']['enabled'] %}
-                      <option value="other">Other...</option>
+                      <option value="other-choice">Other...</option>
                     {%- endif %}
                   </select>
                 </div>
@@ -63,7 +63,7 @@
     const selectionValue = $(this).val();
     const $otherInputContainer = $(this).parents('.js-options-container').find('.js-other-input-container');
     const $otherInput = $(this).parents('.js-options-container').find('.js-other-input');
-    if (selectionValue === 'other') {
+    if (selectionValue === 'other-choice') {
 
       // if the Select box is selected with a value that is not 'other',
       // we remove the "name" attribute for the other-choice input
