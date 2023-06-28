@@ -980,7 +980,7 @@ async def test_user_options_set_from_form_invalid_regex():
         }
     )
     assert spawner.user_options == {
-        'image-other-choice': 'invalid/foo:latest',
+        'image--other-choice': 'invalid/foo:latest',
         'profile': _test_profiles[3]['slug'],
     }
     assert spawner.cpu_limit is None
