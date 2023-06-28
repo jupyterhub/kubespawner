@@ -1542,7 +1542,7 @@ class KubeSpawner(Spawner):
             select "Other" as a choice:
             - `enabled`: Boolean, whether the free form input should be enabled
             - `display_name`: String, label for input field
-            - `validation_regex`: Optional, regex that the free form input should match - eg. ^pangeo/.*$
+            - `validation_regex`: Required if enabled is True, regex that the free form input should match - eg. ^pangeo/.*$
             - `validation_message`: Optional, validation message for the regex. Should describe the required
                input format in a human-readable way.
             - `kubespawner_override`: Object specifying what key:values should be over-ridden
