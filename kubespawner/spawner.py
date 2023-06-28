@@ -3078,7 +3078,7 @@ class KubeSpawner(Spawner):
                             not in selected_profile_user_options
                         ):
                             raise ValueError(
-                                f'Expected option {option_name} for profile {profile["slug"]} or --other-choice, not found in posted form'
+                                f'Expected option {option_name} for profile {profile["slug"]} or {option_name}--other-choice, not found in posted form'
                             )
                         other_choice = selected_profile_user_options[
                             f'{option_name}--other-choice'
