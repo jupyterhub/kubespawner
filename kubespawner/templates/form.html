@@ -65,7 +65,7 @@
     const $otherInput = $(this).parents('.js-options-container').find('.js-other-input');
     if (selectionValue === 'other-choice') {
 
-      // if the Select box is selected with a value that is not 'other',
+      // if the Select box is selected with a value that is not 'other-choice',
       // we remove the "name" attribute for the other-choice input
       // and vice-versa, so that we only submit valid form values
       // and don't leave the complexity of figuring out which value
@@ -84,5 +84,13 @@
     }
   });
 
+  // wrapping in a document.ready to make clear this is executed once
+  // on page load
+  $(document).ready(() => {
+    // trigger the `change` event on the select inputs,
+    // so that if "Other" is selected on page load, the corresponding
+    // free-text input shows
+    $('.js-profile-option-select').trigger('change');
+  });
 
 </script>
