@@ -431,6 +431,15 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    enable_service_links = Bool(
+        True,
+        config=True,
+        help="""
+        Enable service environment variables. If True environment variables for all
+        Kubernetes services in all namespaces will be injected into the pod.
+        """,
+    )
+
     # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     service_account = Unicode(
         None,
@@ -1994,6 +2003,7 @@ class KubeSpawner(Spawner):
             container_security_context=csc,
             pod_security_context=psc,
             env=self._expand_all(self.get_env()),
+            enable_service_links=self.enable_service_links,
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),
             working_dir=self.working_dir,

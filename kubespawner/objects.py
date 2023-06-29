@@ -92,6 +92,7 @@ def make_pod(
     container_security_context=None,
     pod_security_context=None,
     env=None,
+    enable_service_links=True,
     working_dir=None,
     volumes=None,
     volume_mounts=None,
@@ -200,6 +201,9 @@ def make_pod(
 
     env:
         Dictionary of environment variables.
+
+    enable_service_links:
+        Enable service environment variables.
 
     volumes:
         List of dictionaries containing the volumes of various types this pod
@@ -440,6 +444,8 @@ def make_pod(
     if not psc:
         psc = None
     pod.spec.security_context = psc
+
+    pod.spec.enableServiceLinks = enable_service_links
 
     csc = {}
     # populate with uid / gid / privileged / allow_privilege_escalation
