@@ -38,6 +38,7 @@ def test_make_simplest_pod():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -76,6 +77,7 @@ def test_make_labeled_pod():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -118,6 +120,7 @@ def test_make_annotated_pod():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -161,6 +164,7 @@ def test_make_pod_with_image_pull_secrets_simplified_format():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -204,6 +208,7 @@ def test_make_pod_with_image_pull_secrets_k8s_native_format():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -251,6 +256,7 @@ def test_set_container_uid_and_gid():
                     "resources": {"limits": {}, "requests": {}},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -297,6 +303,7 @@ def test_set_container_uid_and_pod_fs_gid():
                     "resources": {"limits": {}, "requests": {}},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'securityContext': {
                 'fsGroup': 0,
@@ -346,6 +353,7 @@ def test_set_pod_supplemental_gids():
                     "resources": {"limits": {}, "requests": {}},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'securityContext': {
                 'supplementalGroups': [100],
@@ -394,6 +402,7 @@ def test_privileged_container():
                     'volumeMounts': [],
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -436,6 +445,7 @@ def test_allow_privilege_escalation_container():
                     'volumeMounts': [],
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -493,6 +503,7 @@ def test_pod_security_context_container():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'securityContext': {
                 'supplementalGroups': [200],
@@ -577,6 +588,7 @@ def test_container_security_context_container():
                     },
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -669,6 +681,7 @@ def test_make_pod_resources_all():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -768,6 +781,7 @@ def test_make_pod_with_env():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -860,6 +874,7 @@ def test_make_pod_with_env_dependency_sorted():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -905,6 +920,7 @@ def test_make_pod_with_lifecycle():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -986,6 +1002,7 @@ def test_make_pod_with_init_containers():
                     ],
                 },
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -1031,6 +1048,7 @@ def test_make_pod_with_extra_container_config():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -1088,6 +1106,7 @@ def test_make_pod_with_extra_pod_config():
             ],
             'volumes': [],
             'dnsPolicy': 'ClusterFirstWithHostNet',
+            "enableServiceLinks": True,
             'restartPolicy': 'Always',
             'tolerations': [
                 {
@@ -1147,6 +1166,7 @@ def test_make_pod_with_extra_containers():
                     'command': ['/usr/local/bin/supercronic', '/etc/crontab'],
                 },
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -1208,6 +1228,7 @@ def test_make_pod_with_extra_resources():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -1327,6 +1348,7 @@ def test_make_pod_with_service_account():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
             'serviceAccountName': 'test',
@@ -1367,6 +1389,7 @@ def test_make_pod_with_service_account_and_with_automount_sa_token():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
             'serviceAccountName': 'test',
@@ -1407,6 +1430,7 @@ def test_make_pod_with_service_account_and_with_negative_automount_sa_token():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
             'serviceAccountName': 'test',
@@ -1446,6 +1470,7 @@ def test_make_pod_with_automount_service_account_token():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -1484,6 +1509,7 @@ def test_make_pod_with_negative_automount_service_account_token():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -1526,6 +1552,7 @@ def test_make_pod_with_scheduler_name():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
             'schedulerName': 'my-custom-scheduler',
@@ -1574,6 +1601,7 @@ def test_make_pod_with_tolerations():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
             'tolerations': tolerations,
@@ -1627,6 +1655,7 @@ def test_make_pod_with_node_affinity_preferred():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
@@ -1681,6 +1710,7 @@ def test_make_pod_with_node_affinity_required():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
@@ -1743,6 +1773,7 @@ def test_make_pod_with_pod_affinity_preferred():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
@@ -1800,6 +1831,7 @@ def test_make_pod_with_pod_affinity_required():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
@@ -1860,6 +1892,7 @@ def test_make_pod_with_pod_anti_affinity_preferred():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
@@ -1917,6 +1950,7 @@ def test_make_pod_with_pod_anti_affinity_required():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
@@ -1964,6 +1998,7 @@ def test_make_pod_with_priority_class_name():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [],
             'priorityClassName': 'my-custom-priority-class',
@@ -3034,6 +3069,7 @@ def test_make_pod_with_ssl():
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            "enableServiceLinks": True,
             'restartPolicy': 'OnFailure',
             'volumes': [
                 {
