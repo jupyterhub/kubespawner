@@ -445,7 +445,7 @@ def make_pod(
         psc = None
     pod.spec.security_context = psc
 
-    pod.spec.enableServiceLinks = enable_service_links
+    pod.spec.enable_service_links = enable_service_links
 
     csc = {}
     # populate with uid / gid / privileged / allow_privilege_escalation
