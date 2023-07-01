@@ -959,6 +959,11 @@ async def test_user_options_set_from_form():
 
 
 async def test_user_options_set_from_form_choices():
+    """
+    Test that the `choices` field in profile_options is processed correctly -
+    i.e. when a user sends a profile option choice, it is correctly processed
+    in user_options and the value on the spawner correctly over-ridden by the user choice.
+    """
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = _test_profiles
     await spawner.get_options_form()
@@ -978,6 +983,10 @@ async def test_user_options_set_from_form_choices():
 
 
 async def test_user_options_set_from_form_other_choice():
+    """
+    Test that when user sends an arbitrary text input in the `other_choice` field,
+    it is process correctly and the correct attribute over-ridden on the spawner.
+    """
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = _test_profiles
     await spawner.get_options_form()
@@ -997,6 +1006,10 @@ async def test_user_options_set_from_form_other_choice():
 
 
 async def test_user_options_set_from_form_invalid_regex():
+    """
+    Test that if the user input for the `other-choice` field does not match the regex
+    specified in the `validation_match_regex` option for the `other_choice`, a ValueError is raised.
+    """
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = _test_profiles
     await spawner.get_options_form()
@@ -1017,6 +1030,10 @@ async def test_user_options_set_from_form_invalid_regex():
 
 
 async def test_user_options_set_from_form_no_regex():
+    """
+    Test that if the `other_choice` object in the profile_options does not contain
+    a `validation_regex` key, no validation is done and the input is correctly processed - i.e. validation_regex is optional.
+    """
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = _test_profiles
     await spawner.get_options_form()

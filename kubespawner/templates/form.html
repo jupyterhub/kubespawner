@@ -32,7 +32,7 @@
                   </select>
                 </div>
                 {%- if option['other_choice'] and option['other_choice']['enabled'] %}
-                  <div class="option hide js-other-input-container">
+                  <div class="option hidden js-other-input-container">
                     <label for="profile-option-{{ profile.slug }}-{{ k }}--other-choice">
                       {{ option['other_choice']['display_name'] }}
                     </label>
@@ -78,11 +78,11 @@
       $(this).data('name', $(this).attr('name'));
       $(this).removeAttr('name');
       $otherInput.attr('name', $otherInput.data('name'));
-      $otherInputContainer.removeClass('hide');
+      $otherInputContainer.removeClass('hidden');
     } else {
       $otherInput.removeAttr('name');
       $(this).attr('name', $(this).data('name'));
-      $otherInputContainer.addClass('hide');
+      $otherInputContainer.addClass('hidden');
     }
   });
 

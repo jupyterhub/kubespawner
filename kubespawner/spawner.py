@@ -1546,7 +1546,8 @@ class KubeSpawner(Spawner):
             - `validation_message`: Optional, validation message for the regex. Should describe the required
                input format in a human-readable way.
             - `kubespawner_override`: Object specifying what key:values should be over-ridden
-               with the value of the free form input
+               with the value of the free form input, using `{value}` for the value to be substituted with
+               the user POSTed value in the `other-choice` input field. eg:
               - some_config_key: some_value-with-{value}-substituted-with-what-user-wrote 
           - `choices`: A dictionary containing list of choices for the user to choose from
             to set the value for this particular option. The key is an identifier for this
@@ -3071,7 +3072,7 @@ class KubeSpawner(Spawner):
 
             for option_name, option in profile.get('profile_options').items():
                 if option_name not in selected_profile_user_options:
-                    # other_choice in Enabled:
+                    # other_choice is enabled:
                     if option.get('other_choice', {}).get('enabled', False):
                         if (
                             f'{option_name}--other-choice'
@@ -3091,8 +3092,9 @@ class KubeSpawner(Spawner):
                             other_choice_validation_regex = profile.get(
                                 'profile_options'
                             )[option_name]['other_choice']['validation_regex']
-                            regex = re.compile(other_choice_validation_regex)
-                            if not regex.match(other_choice):
+                            if not re.match(
+                                other_choice_validation_regex, other_choice
+                            ):
                                 raise ValueError(
                                     f'Value of {option_name}--other-choice does not match validation regex.'
                                 )
