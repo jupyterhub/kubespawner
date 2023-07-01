@@ -3071,18 +3071,16 @@ class KubeSpawner(Spawner):
             # profiles
 
             for option_name, option in profile.get('profile_options').items():
+                other_choice_form_key = f'{option_name}--other-choice'
                 if option_name not in selected_profile_user_options:
                     # other_choice is enabled:
                     if option.get('other_choice', {}).get('enabled', False):
-                        if (
-                            f'{option_name}--other-choice'
-                            not in selected_profile_user_options
-                        ):
+                        if other_choice_form_key not in selected_profile_user_options:
                             raise ValueError(
-                                f'Expected option {option_name} for profile {profile["slug"]} or {option_name}--other-choice, not found in posted form'
+                                f'Expected option {option_name} for profile {profile["slug"]} or {other_choice_form_key}, not found in posted form'
                             )
                         other_choice = selected_profile_user_options[
-                            f'{option_name}--other-choice'
+                            other_choice_form_key
                         ]
 
                         # Validate value of 'other-choice' against validation regex
@@ -3096,7 +3094,7 @@ class KubeSpawner(Spawner):
                                 other_choice_validation_regex, other_choice
                             ):
                                 raise ValueError(
-                                    f'Value of {option_name}--other-choice does not match validation regex.'
+                                    f'Value of {other_choice_form_key} does not match validation regex.'
                                 )
                     # other_choice is Disabled
                     else:
@@ -3106,6 +3104,7 @@ class KubeSpawner(Spawner):
 
             # Get selected options or default to the first option if none is passed
             for option_name, option in profile.get('profile_options').items():
+                other_choice_form_key = f'{option_name}--other-choice'
                 chosen_option = selected_profile_user_options.get(option_name, None)
                 # If none was selected get the default
                 if not chosen_option:
@@ -3119,16 +3118,14 @@ class KubeSpawner(Spawner):
                 # Handle override for other-choice free text specified by user
                 if (
                     option.get('other_choice', {}).get('enabled', False)
-                    and f'{option_name}--other-choice' in selected_profile_user_options
+                    and other_choice_form_key in selected_profile_user_options
                 ):
                     chosen_option_overrides = option['other_choice'][
                         'kubespawner_override'
                     ]
                     for k, v in chosen_option_overrides.items():
                         chosen_option_overrides[k] = v.format(
-                            value=selected_profile_user_options[
-                                f'{option_name}--other-choice'
-                            ]
+                            value=selected_profile_user_options[other_choice_form_key]
                         )
                 else:
                     chosen_option_overrides = option['choices'][chosen_option][
