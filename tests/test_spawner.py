@@ -887,7 +887,7 @@ _test_profiles = [
         'profile_options': {
             'image': {
                 'display_name': 'Image',
-                'other_choice': {
+                'unlisted_choice': {
                     'enabled': True,
                     'display_name': 'Image Location',
                     'validation_regex': '^pangeo/.*$',
@@ -916,7 +916,7 @@ _test_profiles = [
         'profile_options': {
             'image': {
                 'display_name': 'Image',
-                'other_choice': {
+                'unlisted_choice': {
                     'enabled': True,
                     'display_name': 'Image Location',
                     'kubespawner_override': {'image': '{value}'},
@@ -982,9 +982,9 @@ async def test_user_options_set_from_form_choices():
     assert getattr(spawner, 'image') == 'pangeo/pytorch-notebook:master'
 
 
-async def test_user_options_set_from_form_other_choice():
+async def test_user_options_set_from_form_unlisted_choice():
     """
-    Test that when user sends an arbitrary text input in the `other_choice` field,
+    Test that when user sends an arbitrary text input in the `unlisted_choice` field,
     it is process correctly and the correct attribute over-ridden on the spawner.
     """
     spawner = KubeSpawner(_mock=True)
@@ -993,11 +993,11 @@ async def test_user_options_set_from_form_other_choice():
     spawner.user_options = spawner.options_from_form(
         {
             'profile': [_test_profiles[3]['slug']],
-            'profile-option-test-choices-image--other-choice': ['pangeo/test:latest'],
+            'profile-option-test-choices-image--unlisted-choice': ['pangeo/test:latest'],
         }
     )
     assert spawner.user_options == {
-        'image--other-choice': 'pangeo/test:latest',
+        'image--unlisted-choice': 'pangeo/test:latest',
         'profile': _test_profiles[3]['slug'],
     }
     assert spawner.cpu_limit is None
@@ -1007,8 +1007,8 @@ async def test_user_options_set_from_form_other_choice():
 
 async def test_user_options_set_from_form_invalid_regex():
     """
-    Test that if the user input for the `other-choice` field does not match the regex
-    specified in the `validation_match_regex` option for the `other_choice`, a ValueError is raised.
+    Test that if the user input for the `unlisted-choice` field does not match the regex
+    specified in the `validation_match_regex` option for the `unlisted_choice`, a ValueError is raised.
     """
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = _test_profiles
@@ -1016,11 +1016,11 @@ async def test_user_options_set_from_form_invalid_regex():
     spawner.user_options = spawner.options_from_form(
         {
             'profile': [_test_profiles[3]['slug']],
-            'profile-option-test-choices-image--other-choice': ['invalid/foo:latest'],
+            'profile-option-test-choices-image--unlisted-choice': ['invalid/foo:latest'],
         }
     )
     assert spawner.user_options == {
-        'image--other-choice': 'invalid/foo:latest',
+        'image--unlisted-choice': 'invalid/foo:latest',
         'profile': _test_profiles[3]['slug'],
     }
     assert spawner.cpu_limit is None
@@ -1031,7 +1031,7 @@ async def test_user_options_set_from_form_invalid_regex():
 
 async def test_user_options_set_from_form_no_regex():
     """
-    Test that if the `other_choice` object in the profile_options does not contain
+    Test that if the `unlisted_choice` object in the profile_options does not contain
     a `validation_regex` key, no validation is done and the input is correctly processed - i.e. validation_regex is optional.
     """
     spawner = KubeSpawner(_mock=True)
@@ -1041,11 +1041,11 @@ async def test_user_options_set_from_form_no_regex():
     spawner.user_options = spawner.options_from_form(
         {
             'profile': [_test_profiles[4]['slug']],
-            'profile-option-no-regex-image--other-choice': ['invalid/foo:latest'],
+            'profile-option-no-regex-image--unlisted-choice': ['invalid/foo:latest'],
         }
     )
     assert spawner.user_options == {
-        'image--other-choice': 'invalid/foo:latest',
+        'image--unlisted-choice': 'invalid/foo:latest',
         'profile': _test_profiles[4]['slug'],
     }
     assert spawner.cpu_limit is None

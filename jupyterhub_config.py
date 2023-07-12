@@ -46,7 +46,7 @@ c.KubeSpawner.profile_list = [
         'profile_options': {
             'image': {
                 'display_name': 'Image',
-                'other_choice': {
+                'unlisted_choice': {
                     'enabled': True,
                     'display_name': 'Image Location',
                     'validation_regex': '^pangeo/.*$',

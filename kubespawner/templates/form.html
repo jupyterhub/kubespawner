@@ -26,21 +26,21 @@
                     {%- for k, choice in option['choices'].items() %}
                       <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
                     {%- endfor %}
-                    {%- if option['other_choice'] and option['other_choice']['enabled'] %}
-                      <option value="other-choice">Other...</option>
+                    {%- if option['unlisted_choice'] and option['unlisted_choice']['enabled'] %}
+                      <option value="unlisted-choice">Other...</option>
                     {%- endif %}
                   </select>
                 </div>
-                {%- if option['other_choice'] and option['other_choice']['enabled'] %}
+                {%- if option['unlisted_choice'] and option['unlisted_choice']['enabled'] %}
                   <div class="option hidden js-other-input-container">
-                    <label for="profile-option-{{ profile.slug }}-{{ k }}--other-choice">
-                      {{ option['other_choice']['display_name'] }}
+                    <label for="profile-option-{{ profile.slug }}-{{ k }}--unlisted-choice">
+                      {{ option['unlisted_choice']['display_name'] }}
                     </label>
-                    <input data-name="profile-option-{{ profile.slug }}-{{ k }}--other-choice"
-                           {%- if option['other_choice']['validation_regex'] %}
-                           pattern="{{ option['other_choice']['validation_regex'] }}"
+                    <input data-name="profile-option-{{ profile.slug }}-{{ k }}--unlisted-choice"
+                           {%- if option['unlisted_choice']['validation_regex'] %}
+                           pattern="{{ option['unlisted_choice']['validation_regex'] }}"
                            {%- endif %}
-                           title="{{ option['other_choice']['validation_message'] }}"
+                           title="{{ option['unlisted_choice']['validation_message'] }}"
                            class="form-control js-other-input" />
                   </div>
                 {%- endif %}
@@ -65,10 +65,10 @@
     const selectionValue = $(this).val();
     const $otherInputContainer = $(this).parents('.js-options-container').find('.js-other-input-container');
     const $otherInput = $(this).parents('.js-options-container').find('.js-other-input');
-    if (selectionValue === 'other-choice') {
+    if (selectionValue === 'unlisted-choice') {
 
-      // if the Select box is selected with a value that is not 'other-choice',
-      // we remove the "name" attribute for the other-choice input
+      // if the Select box is selected with a value that is not 'unlisted-choice',
+      // we remove the "name" attribute for the unlisted-choice input
       // and vice-versa, so that we only submit valid form values
       // and don't leave the complexity of figuring out which value
       // to use to the back-end.

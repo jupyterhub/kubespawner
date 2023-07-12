@@ -1538,7 +1538,7 @@ class KubeSpawner(Spawner):
           and the value is a dictionary with the following keys:
 
           - `display_name`: Name used to identify this particular option
-          - `other_choice`: Object to specify if there should be a free-form field if the user
+          - `unlisted_choice`: Object to specify if there should be a free-form field if the user
             select "Other" as a choice:
             - `enabled`: Boolean, whether the free form input should be enabled
             - `display_name`: String, label for input field
@@ -1547,8 +1547,8 @@ class KubeSpawner(Spawner):
                input format in a human-readable way.
             - `kubespawner_override`: Object specifying what key:values should be over-ridden
                with the value of the free form input, using `{value}` for the value to be substituted with
-               the user POSTed value in the `other-choice` input field. eg:
-              - some_config_key: some_value-with-{value}-substituted-with-what-user-wrote 
+               the user POSTed value in the `unlisted_choice` input field. eg:
+              - some_config_key: some_value-with-{value}-substituted-with-what-user-wrote
           - `choices`: A dictionary containing list of choices for the user to choose from
             to set the value for this particular option. The key is an identifier for this
             choice, and the value is a dictionary with the following possible keys:
@@ -1585,7 +1585,7 @@ class KubeSpawner(Spawner):
                     'profile_options': {
                         'image': {
                             'display_name': 'Image',
-                            'other_choice': {
+                            'unlisted_choice': {
                                 'enabled': true,
                                 'display_name': 'Image Location',
                                 'validation_regex': '^pangeo/.*$',
@@ -3071,32 +3071,32 @@ class KubeSpawner(Spawner):
             # profiles
 
             for option_name, option in profile.get('profile_options').items():
-                other_choice_form_key = f'{option_name}--other-choice'
+                unlisted_choice_form_key = f'{option_name}--unlisted-choice'
                 if option_name not in selected_profile_user_options:
-                    # other_choice is enabled:
-                    if option.get('other_choice', {}).get('enabled', False):
-                        if other_choice_form_key not in selected_profile_user_options:
+                    # unlisted_choice is enabled:
+                    if option.get('unlisted_choice', {}).get('enabled', False):
+                        if unlisted_choice_form_key not in selected_profile_user_options:
                             raise ValueError(
-                                f'Expected option {option_name} for profile {profile["slug"]} or {other_choice_form_key}, not found in posted form'
+                                f'Expected option {option_name} for profile {profile["slug"]} or {unlisted_choice_form_key}, not found in posted form'
                             )
-                        other_choice = selected_profile_user_options[
-                            other_choice_form_key
+                        unlisted_choice = selected_profile_user_options[
+                            unlisted_choice_form_key
                         ]
 
-                        # Validate value of 'other-choice' against validation regex
+                        # Validate value of 'unlisted_choice' against validation regex
                         if profile.get('profile_options')[option_name][
-                            'other_choice'
+                            'unlisted_choice'
                         ].get('validation_regex', False):
-                            other_choice_validation_regex = profile.get(
+                            unlisted_choice_validation_regex = profile.get(
                                 'profile_options'
-                            )[option_name]['other_choice']['validation_regex']
+                            )[option_name]['unlisted_choice']['validation_regex']
                             if not re.match(
-                                other_choice_validation_regex, other_choice
+                                unlisted_choice_validation_regex, unlisted_choice
                             ):
                                 raise ValueError(
-                                    f'Value of {other_choice_form_key} does not match validation regex.'
+                                    f'Value of {unlisted_choice_form_key} does not match validation regex.'
                                 )
-                    # other_choice is Disabled
+                    # unlisted_choice is Disabled
                     else:
                         raise ValueError(
                             f'Expected option {option_name} for profile {profile["slug"]}, not found in posted form'
@@ -3104,7 +3104,7 @@ class KubeSpawner(Spawner):
 
             # Get selected options or default to the first option if none is passed
             for option_name, option in profile.get('profile_options').items():
-                other_choice_form_key = f'{option_name}--other-choice'
+                unlisted_choice_form_key = f'{option_name}--unlisted-choice'
                 chosen_option = selected_profile_user_options.get(option_name, None)
                 # If none was selected get the default
                 if not chosen_option:
@@ -3115,17 +3115,17 @@ class KubeSpawner(Spawner):
                             default_option = choice_name
                     chosen_option = default_option
 
-                # Handle override for other-choice free text specified by user
+                # Handle override for unlisted_choice free text specified by user
                 if (
-                    option.get('other_choice', {}).get('enabled', False)
-                    and other_choice_form_key in selected_profile_user_options
+                    option.get('unlisted_choice', {}).get('enabled', False)
+                    and unlisted_choice_form_key in selected_profile_user_options
                 ):
-                    chosen_option_overrides = option['other_choice'][
+                    chosen_option_overrides = option['unlisted_choice'][
                         'kubespawner_override'
                     ]
                     for k, v in chosen_option_overrides.items():
                         chosen_option_overrides[k] = v.format(
-                            value=selected_profile_user_options[other_choice_form_key]
+                            value=selected_profile_user_options[unlisted_choice_form_key]
                         )
                 else:
                     chosen_option_overrides = option['choices'][chosen_option][
