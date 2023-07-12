@@ -993,7 +993,9 @@ async def test_user_options_set_from_form_unlisted_choice():
     spawner.user_options = spawner.options_from_form(
         {
             'profile': [_test_profiles[3]['slug']],
-            'profile-option-test-choices-image--unlisted-choice': ['pangeo/test:latest'],
+            'profile-option-test-choices-image--unlisted-choice': [
+                'pangeo/test:latest'
+            ],
         }
     )
     assert spawner.user_options == {
@@ -1016,7 +1018,9 @@ async def test_user_options_set_from_form_invalid_regex():
     spawner.user_options = spawner.options_from_form(
         {
             'profile': [_test_profiles[3]['slug']],
-            'profile-option-test-choices-image--unlisted-choice': ['invalid/foo:latest'],
+            'profile-option-test-choices-image--unlisted-choice': [
+                'invalid/foo:latest'
+            ],
         }
     )
     assert spawner.user_options == {

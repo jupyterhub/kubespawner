@@ -3033,9 +3033,7 @@ class KubeSpawner(Spawner):
                         raise ValueError(
                             f'Expected option {option_name} for profile {profile["slug"]} or {unlisted_choice_form_key}, not found in posted form'
                         )
-                    unlisted_choice = selected_options[
-                        unlisted_choice_form_key
-                    ]
+                    unlisted_choice = selected_options[unlisted_choice_form_key]
 
                     # Validate value of 'unlisted_choice' against validation regex
                     if profile.get('profile_options')[option_name][
@@ -3055,6 +3053,7 @@ class KubeSpawner(Spawner):
                     raise ValueError(
                         f'Expected option {option_name} for profile {profile["slug"]}, not found in posted form'
                     )
+
     async def _load_profile(self, slug, selected_profile_user_options):
         """Load a profile by name
 
@@ -3105,7 +3104,9 @@ class KubeSpawner(Spawner):
                 setattr(self, k, v)
 
         if profile.get('profile_options'):
-            self._validate_posted_profile_options(profile, selected_profile_user_options)
+            self._validate_posted_profile_options(
+                profile, selected_profile_user_options
+            )
             # Get selected options or default to the first option if none is passed
             for option_name, option in profile.get('profile_options').items():
                 unlisted_choice_form_key = f'{option_name}--unlisted-choice'
@@ -3129,7 +3130,9 @@ class KubeSpawner(Spawner):
                     ]
                     for k, v in chosen_option_overrides.items():
                         chosen_option_overrides[k] = v.format(
-                            value=selected_profile_user_options[unlisted_choice_form_key]
+                            value=selected_profile_user_options[
+                                unlisted_choice_form_key
+                            ]
                         )
                 else:
                     chosen_option_overrides = option['choices'][chosen_option][
