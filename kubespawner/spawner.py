@@ -3012,6 +3012,49 @@ class KubeSpawner(Spawner):
 
         return options
 
+    def _validate_posted_profile_options(self, profile, selected_options):
+        """
+        Validate posted user options against the selected profile
+
+        The default form is rendered in such a way that each option specified in
+        the profile *must* have a value in the POST body. Extra options in the
+        POST body are ignored. We only honor options that are defined
+        in the selected profile *and* are in the form data
+        posted. This prevents users who may be authorized to only use
+        one profile from being able to access options set for other
+        profiles
+        """
+        for option_name, option in profile.get('profile_options').items():
+            unlisted_choice_form_key = f'{option_name}--unlisted-choice'
+            if option_name not in selected_options:
+                # unlisted_choice is enabled:
+                if option.get('unlisted_choice', {}).get('enabled', False):
+                    if unlisted_choice_form_key not in selected_options:
+                        raise ValueError(
+                            f'Expected option {option_name} for profile {profile["slug"]} or {unlisted_choice_form_key}, not found in posted form'
+                        )
+                    unlisted_choice = selected_options[
+                        unlisted_choice_form_key
+                    ]
+
+                    # Validate value of 'unlisted_choice' against validation regex
+                    if profile.get('profile_options')[option_name][
+                        'unlisted_choice'
+                    ].get('validation_regex', False):
+                        unlisted_choice_validation_regex = profile.get(
+                            'profile_options'
+                        )[option_name]['unlisted_choice']['validation_regex']
+                        if not re.match(
+                            unlisted_choice_validation_regex, unlisted_choice
+                        ):
+                            raise ValueError(
+                                f'Value of {unlisted_choice_form_key} does not match validation regex.'
+                            )
+                # unlisted_choice is Disabled
+                else:
+                    raise ValueError(
+                        f'Expected option {option_name} for profile {profile["slug"]}, not found in posted form'
+                    )
     async def _load_profile(self, slug, selected_profile_user_options):
         """Load a profile by name
 
@@ -3062,46 +3105,7 @@ class KubeSpawner(Spawner):
                 setattr(self, k, v)
 
         if profile.get('profile_options'):
-            # each option specified here *must* have a value in our POST, as we
-            # render our HTML such that there's always something selected.
-
-            # We only honor options that are defined in the selected profile *and*
-            # are in the form data posted. This prevents users who may be authorized
-            # to only use one profile from being able to access options set for other
-            # profiles
-
-            for option_name, option in profile.get('profile_options').items():
-                unlisted_choice_form_key = f'{option_name}--unlisted-choice'
-                if option_name not in selected_profile_user_options:
-                    # unlisted_choice is enabled:
-                    if option.get('unlisted_choice', {}).get('enabled', False):
-                        if unlisted_choice_form_key not in selected_profile_user_options:
-                            raise ValueError(
-                                f'Expected option {option_name} for profile {profile["slug"]} or {unlisted_choice_form_key}, not found in posted form'
-                            )
-                        unlisted_choice = selected_profile_user_options[
-                            unlisted_choice_form_key
-                        ]
-
-                        # Validate value of 'unlisted_choice' against validation regex
-                        if profile.get('profile_options')[option_name][
-                            'unlisted_choice'
-                        ].get('validation_regex', False):
-                            unlisted_choice_validation_regex = profile.get(
-                                'profile_options'
-                            )[option_name]['unlisted_choice']['validation_regex']
-                            if not re.match(
-                                unlisted_choice_validation_regex, unlisted_choice
-                            ):
-                                raise ValueError(
-                                    f'Value of {unlisted_choice_form_key} does not match validation regex.'
-                                )
-                    # unlisted_choice is Disabled
-                    else:
-                        raise ValueError(
-                            f'Expected option {option_name} for profile {profile["slug"]}, not found in posted form'
-                        )
-
+            self._validate_posted_profile_options(profile, selected_profile_user_options)
             # Get selected options or default to the first option if none is passed
             for option_name, option in profile.get('profile_options').items():
                 unlisted_choice_form_key = f'{option_name}--unlisted-choice'
