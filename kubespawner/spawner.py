@@ -1539,7 +1539,7 @@ class KubeSpawner(Spawner):
 
           - `display_name`: Name used to identify this particular option
           - `unlisted_choice`: Object to specify if there should be a free-form field if the user
-            select "Other" as a choice:
+            selected "Other" as a choice:
             - `enabled`: Boolean, whether the free form input should be enabled
             - `display_name`: String, label for input field
             - `validation_regex`: Optional, regex that the free form input should match - eg. ^pangeo/.*$
