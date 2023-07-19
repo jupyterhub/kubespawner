@@ -3054,15 +3054,15 @@ class KubeSpawner(Spawner):
                         f'Expected option {option_name} for profile {profile["slug"]}, not found in posted form'
                     )
 
-    def _get_profile(self, slug: str):
+    def _get_profile(self, slug: str, profile_list: list):
         """
         Get the configured profile for given profile slug
 
         Raises an error if no profile exists for the given slug.
 
         If slug is empty string, return the default profile
+        profile_list should already have all its defaults set.
         """
-        profile_list = self._populate_profile_list_defaults(self.profile_list)
         if slug != "":
             for profile in profile_list:
                 if profile['slug'] == slug:
@@ -3106,13 +3106,12 @@ class KubeSpawner(Spawner):
             else:
                 setattr(self, k, v)
 
-    async def _load_profile(self, slug, selected_profile_user_options):
+    async def _load_profile(self, slug, profile_list, selected_profile_user_options):
         """Load a profile by name
 
         Called by load_user_options
         """
-        # find the profile
-        profile = self._get_profile(slug)
+        profile = self._get_profile(slug, profile_list)
 
         self.log.debug(
             "Applying KubeSpawner override for profile '%s'", profile['display_name']
@@ -3230,7 +3229,9 @@ class KubeSpawner(Spawner):
             del selected_profile_user_options['profile']
 
         if profile_list:
-            await self._load_profile(selected_profile, selected_profile_user_options)
+            await self._load_profile(
+                selected_profile, profile_list, selected_profile_user_options
+            )
         elif selected_profile:
             self.log.warning(
                 "Profile %r requested, but profiles are not enabled", selected_profile

@@ -189,8 +189,8 @@ async def test_find_slug(profile_list, slug, selected_profile):
     Test that we can find the profile we expect given slugs
     """
     spawner = KubeSpawner(_mock=True)
-    spawner.profile_list = profile_list
-    assert spawner._get_profile(slug) == selected_profile
+    profile_list = spawner._populate_profile_list_defaults(profile_list)
+    assert spawner._get_profile(slug, profile_list) == selected_profile
 
 
 async def test_find_slug_exception():
@@ -198,7 +198,7 @@ async def test_find_slug_exception():
     Test that looking for a slug that doesn't exist gives us an exception
     """
     spawner = KubeSpawner(_mock=True)
-    spawner.profile_list = [
+    profile_list = [
         {
             'display_name': 'profile 1',
             'kubespawner_override': {},
@@ -208,5 +208,6 @@ async def test_find_slug_exception():
             'kubespawner_override': {},
         },
     ]
+    profile_list = spawner._populate_profile_list_defaults(profile_list)
     with pytest.raises(ValueError):
-        spawner._get_profile('does-not-exist')
+        spawner._get_profile('does-not-exist', profile_list)
