@@ -3054,31 +3054,38 @@ class KubeSpawner(Spawner):
                         f'Expected option {option_name} for profile {profile["slug"]}, not found in posted form'
                     )
 
+    def _get_profile(self, slug: str):
+        """
+        Get the configured profile for given profile slug
+
+        Raises an error if no profile exists for the given slug.
+
+        If slug is empty string, return the default profile
+        """
+        profile_list = self._populate_profile_list_defaults(self.profile_list)
+        if slug != "":
+            for profile in profile_list:
+                if profile['slug'] == slug:
+                    return profile
+
+            # A slug is specified, but not found
+            # name specified, but not found
+            raise ValueError(
+                "No such profile: %s. Options include: %s"
+                % (slug, ', '.join(p['slug'] for p in profile_list))
+            )
+        else:
+            # slug is not specified, let's find the default and return it
+            # default is guaranteed to be set in at least one profile
+            return next(p for p in profile_list if p.get('default'))
+
     async def _load_profile(self, slug, selected_profile_user_options):
         """Load a profile by name
 
         Called by load_user_options
         """
-
         # find the profile
-        default_profile = self._profile_list[0]
-        for profile in self._profile_list:
-            if profile.get('default', False):
-                # explicit default, not the first
-                default_profile = profile
-
-            if profile['slug'] == slug:
-                break
-        else:
-            if slug:
-                # name specified, but not found
-                raise ValueError(
-                    "No such profile: %s. Options include: %s"
-                    % (slug, ', '.join(p['slug'] for p in self._profile_list))
-                )
-            else:
-                # no name specified, use the default
-                profile = default_profile
+        profile = self._get_profile(slug)
 
         self.log.debug(
             "Applying KubeSpawner override for profile '%s'", profile['display_name']
@@ -3173,6 +3180,8 @@ class KubeSpawner(Spawner):
           from display_name
         - If profile_options are present with choices, but no choice is set
           as the default, set the first choice to be the default.
+        - If no default profile is set, the first profile is set to be the
+          default
 
         The profile_list passed in is mutated and returned.
         """
@@ -3190,6 +3199,11 @@ class KubeSpawner(Spawner):
                         # No explicit default is set
                         default_choice = list(option_config['choices'].keys())[0]
                         option_config['choices'][default_choice]["default"] = True
+
+
+        if not any(p.get("default") for p in profile_list):
+            # No profile has 'default' explicitly set, we set it for the first profile in the List
+            profile_list[0]["default"] = True
 
         return profile_list
 
