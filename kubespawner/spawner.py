@@ -2948,7 +2948,6 @@ class KubeSpawner(Spawner):
 
     async def _render_options_form_dynamically(self, current_spawner):
         profile_list = await maybe_future(self.profile_list(current_spawner))
-        profile_list = self._populate_profile_list_defaults(profile_list)
         return self._render_options_form(profile_list)
 
     @default('options_form')
