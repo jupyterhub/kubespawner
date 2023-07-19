@@ -3070,7 +3070,6 @@ class KubeSpawner(Spawner):
                     return profile
 
             # A slug is specified, but not found
-            # name specified, but not found
             raise ValueError(
                 "No such profile: %s. Options include: %s"
                 % (slug, ', '.join(p['slug'] for p in profile_list))
