@@ -3080,20 +3080,17 @@ class KubeSpawner(Spawner):
             # default is guaranteed to be set in at least one profile
             return next(p for p in profile_list if p.get('default'))
 
-    async def _load_profile(self, slug, selected_profile_user_options):
-        """Load a profile by name
-
-        Called by load_user_options
+    async def _apply_overrides(self, spawner_override: dict):
         """
-        # find the profile
-        profile = self._get_profile(slug)
+        Apply set of overrides onto the current spawner instance
 
-        self.log.debug(
-            "Applying KubeSpawner override for profile '%s'", profile['display_name']
-        )
-
-        kubespawner_override = profile.get('kubespawner_override', {})
-        for k, v in kubespawner_override.items():
+        spawner_overrides is a dict with key being the name of the traitlet
+        to override, and value is either a callable or the value for the
+        traitlet. If the value is a dictionary, it is *merged* with the
+        existing value (rather than replaced). Callables are called with
+        one parameter - the current spawner instance.
+        """
+        for k, v in spawner_override.items():
             if callable(v):
                 v = v(self)
                 self.log.debug(
@@ -3110,6 +3107,21 @@ class KubeSpawner(Spawner):
                 recursive_update(getattr(self, k), v)
             else:
                 setattr(self, k, v)
+
+
+    async def _load_profile(self, slug, selected_profile_user_options):
+        """Load a profile by name
+
+        Called by load_user_options
+        """
+        # find the profile
+        profile = self._get_profile(slug)
+
+        self.log.debug(
+            "Applying KubeSpawner override for profile '%s'", profile['display_name']
+        )
+
+        self._apply_overrides(profile.get('kubespawner_override', {}))
 
         if profile.get('profile_options'):
             self._validate_posted_profile_options(
@@ -3147,25 +3159,7 @@ class KubeSpawner(Spawner):
                         'kubespawner_override'
                     ]
 
-                for k, v in chosen_option_overrides.items():
-                    if callable(v):
-                        v = await maybe_future(v(self))
-                        self.log.debug(
-                            f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option} from callabale'
-                        )
-                    else:
-                        self.log.debug(
-                            f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option}'
-                        )
-
-                    # If v is a dict, *merge* it with existing values, rather than completely
-                    # resetting it. This allows *adding* things like environment variables rather
-                    # than completely replacing them. If value is set to None, the key
-                    # will be removed
-                    if isinstance(v, dict) and isinstance(getattr(self, k), dict):
-                        recursive_update(getattr(self, k), v)
-                    else:
-                        setattr(self, k, v)
+                self._apply_overrides(chosen_option_overrides)
 
     # set of recognised user option keys
     # used for warning about ignoring unrecognised options
