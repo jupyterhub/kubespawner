@@ -3118,7 +3118,7 @@ class KubeSpawner(Spawner):
             "Applying KubeSpawner override for profile '%s'", profile['display_name']
         )
 
-        self._apply_overrides(profile.get('kubespawner_override', {}))
+        await self._apply_overrides(profile.get('kubespawner_override', {}))
 
         if profile.get('profile_options'):
             self._validate_posted_profile_options(
@@ -3154,7 +3154,7 @@ class KubeSpawner(Spawner):
                         'kubespawner_override'
                     ]
 
-                self._apply_overrides(chosen_option_overrides)
+                await self._apply_overrides(chosen_option_overrides)
 
     # set of recognised user option keys
     # used for warning about ignoring unrecognised options
