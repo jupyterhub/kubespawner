@@ -3130,14 +3130,12 @@ class KubeSpawner(Spawner):
             for option_name, option in profile.get('profile_options').items():
                 unlisted_choice_form_key = f'{option_name}--unlisted-choice'
                 chosen_option = selected_profile_user_options.get(option_name, None)
-                # If none was selected get the default
+                # If none was selected get the default. At least one choice is
+                # guaranteed to have the default set
                 if not chosen_option:
-                    default_option = list(option['choices'].keys())[0]
                     for choice_name, choice in option['choices'].items():
                         if choice.get('default', False):
-                            # explicit default, not the first
-                            default_option = choice_name
-                    chosen_option = default_option
+                            chosen_option = choice_name
 
                 # Handle override for unlisted_choice free text specified by user
                 if (
