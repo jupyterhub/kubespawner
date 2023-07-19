@@ -3185,6 +3185,9 @@ class KubeSpawner(Spawner):
           default
 
         The profile_list passed in is mutated and returned.
+
+        This function is *idempotent*, you can pass the same profile_list
+        through it as many times without any problems.
         """
         for profile in profile_list:
             # generate missing slug fields from display_name
