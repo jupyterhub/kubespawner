@@ -174,6 +174,26 @@ async def test_profile_missing_defaults_populated(
                     'kubespawner_override': {},
                 },
             ],
+            None,
+            {
+                'display_name': 'profile 2',
+                'slug': 'profile-2',
+                'default': True,
+                'kubespawner_override': {},
+            },
+        ),
+        (
+            [
+                {
+                    'display_name': 'profile 1',
+                    'kubespawner_override': {},
+                },
+                {
+                    'display_name': 'profile 2',
+                    'default': True,
+                    'kubespawner_override': {},
+                },
+            ],
             '',
             {
                 'display_name': 'profile 2',

@@ -3054,16 +3054,16 @@ class KubeSpawner(Spawner):
                         f'Expected option {option_name} for profile {profile["slug"]}, not found in posted form'
                     )
 
-    def _get_profile(self, slug: str, profile_list: list):
+    def _get_profile(self, slug: Optional[str], profile_list: list):
         """
         Get the configured profile for given profile slug
 
         Raises an error if no profile exists for the given slug.
 
-        If slug is empty string, return the default profile
+        If slug is empty string or None, return the default profile
         profile_list should already have all its defaults set.
         """
-        if slug != "":
+        if slug:
             for profile in profile_list:
                 if profile['slug'] == slug:
                     return profile
