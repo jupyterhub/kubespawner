@@ -2963,8 +2963,11 @@ class KubeSpawner(Spawner):
         if not self.profile_list:
             return ''
         if callable(self.profile_list):
+            # Return the function dynamically, so JupyterHub will call this when the
+            # form needs rendering
             return self._render_options_form_dynamically
         else:
+            # Return the rendered string, as it does not change
             return self._render_options_form(self.profile_list)
 
     @default('options_from_form')
