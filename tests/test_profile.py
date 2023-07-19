@@ -1,5 +1,6 @@
-from kubespawner import KubeSpawner
 import pytest
+
+from kubespawner import KubeSpawner
 
 
 @pytest.mark.parametrize(
@@ -190,20 +191,21 @@ async def test_find_slug(profile_list, slug, selected_profile):
     spawner.profile_list = profile_list
     assert spawner._get_profile(slug) == selected_profile
 
+
 async def test_find_slug_exception():
     """
     Test that looking for a slug that doesn't exist gives us an exception
     """
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = [
-                {
-                    'display_name': 'profile 1',
-                    'kubespawner_override': {},
-                },
-                {
-                    'display_name': 'profile 2',
-                    'kubespawner_override': {},
-                },
-            ]
+        {
+            'display_name': 'profile 1',
+            'kubespawner_override': {},
+        },
+        {
+            'display_name': 'profile 2',
+            'kubespawner_override': {},
+        },
+    ]
     with pytest.raises(ValueError):
         spawner._get_profile('does-not-exist')

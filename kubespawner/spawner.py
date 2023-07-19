@@ -2926,7 +2926,6 @@ class KubeSpawner(Spawner):
     def _env_keep_default(self):
         return []
 
-
     def _render_options_form(self, profile_list):
         profile_list = self._populate_profile_list_defaults(profile_list)
 
@@ -3107,7 +3106,6 @@ class KubeSpawner(Spawner):
             else:
                 setattr(self, k, v)
 
-
     async def _load_profile(self, slug, selected_profile_user_options):
         """Load a profile by name
 
@@ -3162,7 +3160,6 @@ class KubeSpawner(Spawner):
     # used for warning about ignoring unrecognised options
     _user_option_keys = {'profile'}
 
-
     def _populate_profile_list_defaults(self, profile_list: list):
         """
         Return a fully realized profile_list
@@ -3191,11 +3188,12 @@ class KubeSpawner(Spawner):
                 if option_config.get('choices'):
                     # Don't do anything if choices are not present, and only unlisted_choice
                     # is used.
-                    if not any(c.get('default') for c in option_config['choices'].values()):
+                    if not any(
+                        c.get('default') for c in option_config['choices'].values()
+                    ):
                         # No explicit default is set
                         default_choice = list(option_config['choices'].keys())[0]
                         option_config['choices'][default_choice]["default"] = True
-
 
         if not any(p.get("default") for p in profile_list):
             # No profile has 'default' explicitly set, we set it for the first profile in the List
