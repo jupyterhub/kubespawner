@@ -125,6 +125,7 @@ from kubespawner import KubeSpawner
                 },
             ],
         ),
+        ([], []),
     ],
 )
 async def test_profile_missing_defaults_populated(

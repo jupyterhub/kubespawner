@@ -3177,6 +3177,10 @@ class KubeSpawner(Spawner):
         This function is *idempotent*, you can pass the same profile_list
         through it as many times without any problems.
         """
+        if not profile_list:
+            # empty profile lists are just returned unmodified
+            return profile_list
+
         for profile in profile_list:
             # generate missing slug fields from display_name
             if 'slug' not in profile:
