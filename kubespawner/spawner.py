@@ -3187,7 +3187,8 @@ class KubeSpawner(Spawner):
             if 'slug' not in profile:
                 profile['slug'] = slugify(profile['display_name'])
 
-            # If profile_options are present with choices, but no
+            # If profile_options are present with choices, but no default choice
+            # is specified, we make the first choice the default
             for option_config in profile.get('profile_options', {}).values():
                 if option_config.get('choices'):
                     # Don't do anything if choices are not present, and only unlisted_choice
