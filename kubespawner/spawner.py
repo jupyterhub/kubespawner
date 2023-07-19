@@ -2926,10 +2926,9 @@ class KubeSpawner(Spawner):
     def _env_keep_default(self):
         return []
 
-    _profile_list = None
 
     def _render_options_form(self, profile_list):
-        self._profile_list = self._populate_profile_list_defaults(profile_list)
+        profile_list = self._populate_profile_list_defaults(profile_list)
 
         loader = ChoiceLoader(
             [
@@ -2945,7 +2944,7 @@ class KubeSpawner(Spawner):
             profile_form_template = env.from_string(self.profile_form_template)
         else:
             profile_form_template = env.get_template("form.html")
-        return profile_form_template.render(profile_list=self._profile_list)
+        return profile_form_template.render(profile_list=profile_list)
 
     async def _render_options_form_dynamically(self, current_spawner):
         profile_list = await maybe_future(self.profile_list(current_spawner))
@@ -3218,13 +3217,12 @@ class KubeSpawner(Spawner):
         Override in subclasses to support other options.
         """
 
-        if self._profile_list is None:
-            if callable(self.profile_list):
-                profile_list = await maybe_future(self.profile_list(self))
-            else:
-                profile_list = self.profile_list
+        if callable(self.profile_list):
+            profile_list = await maybe_future(self.profile_list(self))
+        else:
+            profile_list = self.profile_list
 
-            self._profile_list = self._populate_profile_list_defaults(profile_list)
+        profile_list = self._populate_profile_list_defaults(profile_list)
 
         selected_profile = self.user_options.get('profile', None)
         selected_profile_user_options = dict(self.user_options)
@@ -3232,7 +3230,7 @@ class KubeSpawner(Spawner):
             # Remove the 'profile' key so we are left with only selected profile options
             del selected_profile_user_options['profile']
 
-        if self._profile_list:
+        if profile_list:
             await self._load_profile(selected_profile, selected_profile_user_options)
         elif selected_profile:
             self.log.warning(
