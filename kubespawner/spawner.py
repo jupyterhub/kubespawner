@@ -2929,7 +2929,7 @@ class KubeSpawner(Spawner):
     _profile_list = None
 
     def _render_options_form(self, profile_list):
-        self._profile_list = self._init_profile_list(profile_list)
+        self._profile_list = self._populate_profile_list_defaults(profile_list)
 
         loader = ChoiceLoader(
             [
@@ -2949,7 +2949,7 @@ class KubeSpawner(Spawner):
 
     async def _render_options_form_dynamically(self, current_spawner):
         profile_list = await maybe_future(self.profile_list(current_spawner))
-        profile_list = self._init_profile_list(profile_list)
+        profile_list = self._populate_profile_list_defaults(profile_list)
         return self._render_options_form(profile_list)
 
     @default('options_form')
@@ -3163,11 +3163,33 @@ class KubeSpawner(Spawner):
     # used for warning about ignoring unrecognised options
     _user_option_keys = {'profile'}
 
-    def _init_profile_list(self, profile_list):
-        # generate missing slug fields from display_name
+
+    def _populate_profile_list_defaults(self, profile_list: list):
+        """
+        Return a fully realized profile_list
+
+        This will augment any missing fields to appropriate values.
+        - If 'slug' is not set for profiles, generate it automatically
+          from display_name
+        - If profile_options are present with choices, but no choice is set
+          as the default, set the first choice to be the default.
+
+        The profile_list passed in is mutated and returned.
+        """
         for profile in profile_list:
+            # generate missing slug fields from display_name
             if 'slug' not in profile:
                 profile['slug'] = slugify(profile['display_name'])
+
+            # If profile_options are present with choices, but no
+            for option_config in profile.get('profile_options', {}).values():
+                if option_config.get('choices'):
+                    # Don't do anything if choices are not present, and only unlisted_choice
+                    # is used.
+                    if not any(c.get('default') for c in option_config['choices'].values()):
+                        # No explicit default is set
+                        default_choice = list(option_config['choices'].keys())[0]
+                        option_config['choices'][default_choice]["default"] = True
 
         return profile_list
 
@@ -3188,7 +3210,7 @@ class KubeSpawner(Spawner):
             else:
                 profile_list = self.profile_list
 
-            self._profile_list = self._init_profile_list(profile_list)
+            self._profile_list = self._populate_profile_list_defaults(profile_list)
 
         selected_profile = self.user_options.get('profile', None)
         selected_profile_user_options = dict(self.user_options)
