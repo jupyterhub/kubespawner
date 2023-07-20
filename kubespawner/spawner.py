@@ -7,6 +7,7 @@ implementation that should be used by JupyterHub.
 import asyncio
 import ipaddress
 import os
+import re
 import string
 import sys
 import warnings
@@ -1537,6 +1538,17 @@ class KubeSpawner(Spawner):
           and the value is a dictionary with the following keys:
 
           - `display_name`: Name used to identify this particular option
+          - `unlisted_choice`: Object to specify if there should be a free-form field if the user
+            selected "Other" as a choice:
+            - `enabled`: Boolean, whether the free form input should be enabled
+            - `display_name`: String, label for input field
+            - `validation_regex`: Optional, regex that the free form input should match - eg. ^pangeo/.*$
+            - `validation_message`: Optional, validation message for the regex. Should describe the required
+               input format in a human-readable way.
+            - `kubespawner_override`: Object specifying what key:values should be over-ridden
+               with the value of the free form input, using `{value}` for the value to be substituted with
+               the user POSTed value in the `unlisted_choice` input field. eg:
+              - some_config_key: some_value-with-{value}-substituted-with-what-user-wrote
           - `choices`: A dictionary containing list of choices for the user to choose from
             to set the value for this particular option. The key is an identifier for this
             choice, and the value is a dictionary with the following possible keys:
@@ -1573,6 +1585,15 @@ class KubeSpawner(Spawner):
                     'profile_options': {
                         'image': {
                             'display_name': 'Image',
+                            'unlisted_choice': {
+                                'enabled': true,
+                                'display_name': 'Image Location',
+                                'validation_regex': '^pangeo/.*$',
+                                'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
+                                'kubespawner_override': {
+                                    'image': '{value}'
+                                }
+                            },
                             'choices': {
                                 'pytorch': {
                                     'display_name': 'Python 3 Training Notebook',
@@ -2905,10 +2926,8 @@ class KubeSpawner(Spawner):
     def _env_keep_default(self):
         return []
 
-    _profile_list = None
-
     def _render_options_form(self, profile_list):
-        self._profile_list = self._init_profile_list(profile_list)
+        profile_list = self._populate_profile_list_defaults(profile_list)
 
         loader = ChoiceLoader(
             [
@@ -2924,11 +2943,10 @@ class KubeSpawner(Spawner):
             profile_form_template = env.from_string(self.profile_form_template)
         else:
             profile_form_template = env.get_template("form.html")
-        return profile_form_template.render(profile_list=self._profile_list)
+        return profile_form_template.render(profile_list=profile_list)
 
     async def _render_options_form_dynamically(self, current_spawner):
         profile_list = await maybe_future(self.profile_list(current_spawner))
-        profile_list = self._init_profile_list(profile_list)
         return self._render_options_form(profile_list)
 
     @default('options_form')
@@ -2943,8 +2961,11 @@ class KubeSpawner(Spawner):
         if not self.profile_list:
             return ''
         if callable(self.profile_list):
+            # Return the function dynamically, so JupyterHub will call this when the
+            # form needs rendering
             return self._render_options_form_dynamically
         else:
+            # Return the rendered string, as it does not change
             return self._render_options_form(self.profile_list)
 
     @default('options_from_form')
@@ -2991,38 +3012,83 @@ class KubeSpawner(Spawner):
 
         return options
 
-    async def _load_profile(self, slug, selected_profile_user_options):
-        """Load a profile by name
-
-        Called by load_user_options
+    def _validate_posted_profile_options(self, profile, selected_options):
         """
+        Validate posted user options against the selected profile
 
-        # find the profile
-        default_profile = self._profile_list[0]
-        for profile in self._profile_list:
-            if profile.get('default', False):
-                # explicit default, not the first
-                default_profile = profile
+        The default form is rendered in such a way that each option specified in
+        the profile *must* have a value in the POST body. Extra options in the
+        POST body are ignored. We only honor options that are defined
+        in the selected profile *and* are in the form data
+        posted. This prevents users who may be authorized to only use
+        one profile from being able to access options set for other
+        profiles
+        """
+        for option_name, option in profile.get('profile_options').items():
+            unlisted_choice_form_key = f'{option_name}--unlisted-choice'
+            if option_name not in selected_options:
+                # unlisted_choice is enabled:
+                if option.get('unlisted_choice', {}).get('enabled', False):
+                    if unlisted_choice_form_key not in selected_options:
+                        raise ValueError(
+                            f'Expected option {option_name} for profile {profile["slug"]} or {unlisted_choice_form_key}, not found in posted form'
+                        )
+                    unlisted_choice = selected_options[unlisted_choice_form_key]
 
-            if profile['slug'] == slug:
-                break
+                    # Validate value of 'unlisted_choice' against validation regex
+                    if profile.get('profile_options')[option_name][
+                        'unlisted_choice'
+                    ].get('validation_regex', False):
+                        unlisted_choice_validation_regex = profile.get(
+                            'profile_options'
+                        )[option_name]['unlisted_choice']['validation_regex']
+                        if not re.match(
+                            unlisted_choice_validation_regex, unlisted_choice
+                        ):
+                            raise ValueError(
+                                f'Value of {unlisted_choice_form_key} does not match validation regex.'
+                            )
+                # unlisted_choice is Disabled
+                else:
+                    raise ValueError(
+                        f'Expected option {option_name} for profile {profile["slug"]}, not found in posted form'
+                    )
+
+    def _get_profile(self, slug: Optional[str], profile_list: list):
+        """
+        Get the configured profile for given profile slug
+
+        Raises an error if no profile exists for the given slug.
+
+        If slug is empty string or None, return the default profile
+        profile_list should already have all its defaults set.
+        """
+        if slug:
+            for profile in profile_list:
+                if profile['slug'] == slug:
+                    return profile
+
+            # A slug is specified, but not found
+            raise ValueError(
+                "No such profile: %s. Options include: %s"
+                % (slug, ', '.join(p['slug'] for p in profile_list))
+            )
         else:
-            if slug:
-                # name specified, but not found
-                raise ValueError(
-                    "No such profile: %s. Options include: %s"
-                    % (slug, ', '.join(p['slug'] for p in self._profile_list))
-                )
-            else:
-                # no name specified, use the default
-                profile = default_profile
+            # slug is not specified, let's find the default and return it
+            # default is guaranteed to be set in at least one profile
+            return next(p for p in profile_list if p.get('default'))
 
-        self.log.debug(
-            "Applying KubeSpawner override for profile '%s'", profile['display_name']
-        )
+    async def _apply_overrides(self, spawner_override: dict):
+        """
+        Apply set of overrides onto the current spawner instance
 
-        kubespawner_override = profile.get('kubespawner_override', {})
-        for k, v in kubespawner_override.items():
+        spawner_overrides is a dict with key being the name of the traitlet
+        to override, and value is either a callable or the value for the
+        traitlet. If the value is a dictionary, it is *merged* with the
+        existing value (rather than replaced). Callables are called with
+        one parameter - the current spawner instance.
+        """
+        for k, v in spawner_override.items():
             if callable(v):
                 v = v(self)
                 self.log.debug(
@@ -3040,67 +3106,101 @@ class KubeSpawner(Spawner):
             else:
                 setattr(self, k, v)
 
+    async def _load_profile(self, slug, profile_list, selected_profile_user_options):
+        """Load a profile by name
+
+        Called by load_user_options
+        """
+        profile = self._get_profile(slug, profile_list)
+
+        self.log.debug(
+            "Applying KubeSpawner override for profile '%s'", profile['display_name']
+        )
+
+        await self._apply_overrides(profile.get('kubespawner_override', {}))
+
         if profile.get('profile_options'):
-            # each option specified here *must* have a value in our POST, as we
-            # render our HTML such that there's always something selected.
-
-            # We only honor options that are defined in the selected profile *and*
-            # are in the form data posted. This prevents users who may be authorized
-            # to only use one profile from being able to access options set for other
-            # profiles
-            for user_selected_option_name in selected_profile_user_options.keys():
-                if (
-                    user_selected_option_name
-                    not in profile.get('profile_options').keys()
-                ):
-                    raise ValueError(
-                        f'Expected option {user_selected_option_name} for profile {profile["slug"]}, not found in posted form'
-                    )
-
+            self._validate_posted_profile_options(
+                profile, selected_profile_user_options
+            )
             # Get selected options or default to the first option if none is passed
             for option_name, option in profile.get('profile_options').items():
+                unlisted_choice_form_key = f'{option_name}--unlisted-choice'
                 chosen_option = selected_profile_user_options.get(option_name, None)
-                # If none was selected get the default
+                # If none was selected get the default. At least one choice is
+                # guaranteed to have the default set
                 if not chosen_option:
-                    default_option = list(option['choices'].keys())[0]
                     for choice_name, choice in option['choices'].items():
                         if choice.get('default', False):
-                            # explicit default, not the first
-                            default_option = choice_name
-                    chosen_option = default_option
+                            chosen_option = choice_name
 
-                chosen_option_overrides = option['choices'][chosen_option][
-                    'kubespawner_override'
-                ]
-                for k, v in chosen_option_overrides.items():
-                    if callable(v):
-                        v = await maybe_future(v(self))
-                        self.log.debug(
-                            f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option} from callabale'
+                # Handle override for unlisted_choice free text specified by user
+                if (
+                    option.get('unlisted_choice', {}).get('enabled', False)
+                    and unlisted_choice_form_key in selected_profile_user_options
+                ):
+                    chosen_option_overrides = option['unlisted_choice'][
+                        'kubespawner_override'
+                    ]
+                    for k, v in chosen_option_overrides.items():
+                        chosen_option_overrides[k] = v.format(
+                            value=selected_profile_user_options[
+                                unlisted_choice_form_key
+                            ]
                         )
-                    else:
-                        self.log.debug(
-                            f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option}'
-                        )
+                else:
+                    chosen_option_overrides = option['choices'][chosen_option][
+                        'kubespawner_override'
+                    ]
 
-                    # If v is a dict, *merge* it with existing values, rather than completely
-                    # resetting it. This allows *adding* things like environment variables rather
-                    # than completely replacing them. If value is set to None, the key
-                    # will be removed
-                    if isinstance(v, dict) and isinstance(getattr(self, k), dict):
-                        recursive_update(getattr(self, k), v)
-                    else:
-                        setattr(self, k, v)
+                await self._apply_overrides(chosen_option_overrides)
 
     # set of recognised user option keys
     # used for warning about ignoring unrecognised options
     _user_option_keys = {'profile'}
 
-    def _init_profile_list(self, profile_list):
-        # generate missing slug fields from display_name
+    def _populate_profile_list_defaults(self, profile_list: list):
+        """
+        Return a fully realized profile_list
+
+        This will augment any missing fields to appropriate values.
+        - If 'slug' is not set for profiles, generate it automatically
+          from display_name
+        - If profile_options are present with choices, but no choice is set
+          as the default, set the first choice to be the default.
+        - If no default profile is set, the first profile is set to be the
+          default
+
+        The profile_list passed in is mutated and returned.
+
+        This function is *idempotent*, you can pass the same profile_list
+        through it as many times without any problems.
+        """
+        if not profile_list:
+            # empty profile lists are just returned unmodified
+            return profile_list
+
         for profile in profile_list:
+            # generate missing slug fields from display_name
             if 'slug' not in profile:
                 profile['slug'] = slugify(profile['display_name'])
+
+            # If profile_options are present with choices, but no default choice
+            # is specified, we make the first choice the default
+            for option_config in profile.get('profile_options', {}).values():
+                if option_config.get('choices'):
+                    # Don't do anything if choices are not present, and only unlisted_choice
+                    # is used.
+                    if not any(
+                        c.get('default') for c in option_config['choices'].values()
+                    ):
+                        # No explicit default is set
+                        default_choice = list(option_config['choices'].keys())[0]
+                        option_config['choices'][default_choice]["default"] = True
+
+        if not any(p.get("default") for p in profile_list):
+            # No profile has 'default' explicitly set, we set it for the first profile in the List
+            profile_list[0]["default"] = True
 
         return profile_list
 
@@ -3115,13 +3215,12 @@ class KubeSpawner(Spawner):
         Override in subclasses to support other options.
         """
 
-        if self._profile_list is None:
-            if callable(self.profile_list):
-                profile_list = await maybe_future(self.profile_list(self))
-            else:
-                profile_list = self.profile_list
+        if callable(self.profile_list):
+            profile_list = await maybe_future(self.profile_list(self))
+        else:
+            profile_list = self.profile_list
 
-            self._profile_list = self._init_profile_list(profile_list)
+        profile_list = self._populate_profile_list_defaults(profile_list)
 
         selected_profile = self.user_options.get('profile', None)
         selected_profile_user_options = dict(self.user_options)
@@ -3129,8 +3228,10 @@ class KubeSpawner(Spawner):
             # Remove the 'profile' key so we are left with only selected profile options
             del selected_profile_user_options['profile']
 
-        if self._profile_list:
-            await self._load_profile(selected_profile, selected_profile_user_options)
+        if profile_list:
+            await self._load_profile(
+                selected_profile, profile_list, selected_profile_user_options
+            )
         elif selected_profile:
             self.log.warning(
                 "Profile %r requested, but profiles are not enabled", selected_profile

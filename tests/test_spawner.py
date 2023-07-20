@@ -881,6 +881,62 @@ _test_profiles = [
             'environment': {'override': 'override-value', "to-remove": None},
         },
     },
+    {
+        'display_name': 'Test choices',
+        'slug': 'test-choices',
+        'profile_options': {
+            'image': {
+                'display_name': 'Image',
+                'unlisted_choice': {
+                    'enabled': True,
+                    'display_name': 'Image Location',
+                    'validation_regex': '^pangeo/.*$',
+                    'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
+                    'kubespawner_override': {'image': '{value}'},
+                },
+                'choices': {
+                    'pytorch': {
+                        'display_name': 'Python 3 Training Notebook',
+                        'kubespawner_override': {
+                            'image': 'pangeo/pytorch-notebook:master'
+                        },
+                    },
+                    'tf': {
+                        'display_name': 'R 4.2 Training Notebook',
+                        'default': True,
+                        'kubespawner_override': {'image': 'training/r:label'},
+                    },
+                },
+            },
+        },
+    },
+    {
+        'display_name': 'Test choices no regex',
+        'slug': 'no-regex',
+        'profile_options': {
+            'image': {
+                'display_name': 'Image',
+                'unlisted_choice': {
+                    'enabled': True,
+                    'display_name': 'Image Location',
+                    'kubespawner_override': {'image': '{value}'},
+                },
+                'choices': {
+                    'pytorch': {
+                        'display_name': 'Python 3 Training Notebook',
+                        'kubespawner_override': {
+                            'image': 'pangeo/pytorch-notebook:master'
+                        },
+                    },
+                    'tf': {
+                        'display_name': 'R 4.2 Training Notebook',
+                        'default': True,
+                        'kubespawner_override': {'image': 'training/r:label'},
+                    },
+                },
+            },
+        },
+    },
 ]
 
 
@@ -900,6 +956,105 @@ async def test_user_options_set_from_form():
     await spawner.load_user_options()
     for key, value in _test_profiles[1]['kubespawner_override'].items():
         assert getattr(spawner, key) == value
+
+
+async def test_user_options_set_from_form_choices():
+    """
+    Test that the `choices` field in profile_options is processed correctly -
+    i.e. when a user sends a profile option choice, it is correctly processed
+    in user_options and the value on the spawner correctly over-ridden by the user choice.
+    """
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    await spawner.get_options_form()
+    spawner.user_options = spawner.options_from_form(
+        {
+            'profile': [_test_profiles[3]['slug']],
+            'profile-option-test-choices-image': ['pytorch'],
+        }
+    )
+    assert spawner.user_options == {
+        'image': 'pytorch',
+        'profile': _test_profiles[3]['slug'],
+    }
+    assert spawner.cpu_limit is None
+    await spawner.load_user_options()
+    assert getattr(spawner, 'image') == 'pangeo/pytorch-notebook:master'
+
+
+async def test_user_options_set_from_form_unlisted_choice():
+    """
+    Test that when user sends an arbitrary text input in the `unlisted_choice` field,
+    it is process correctly and the correct attribute over-ridden on the spawner.
+    """
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    await spawner.get_options_form()
+    spawner.user_options = spawner.options_from_form(
+        {
+            'profile': [_test_profiles[3]['slug']],
+            'profile-option-test-choices-image--unlisted-choice': [
+                'pangeo/test:latest'
+            ],
+        }
+    )
+    assert spawner.user_options == {
+        'image--unlisted-choice': 'pangeo/test:latest',
+        'profile': _test_profiles[3]['slug'],
+    }
+    assert spawner.cpu_limit is None
+    await spawner.load_user_options()
+    assert getattr(spawner, 'image') == 'pangeo/test:latest'
+
+
+async def test_user_options_set_from_form_invalid_regex():
+    """
+    Test that if the user input for the `unlisted-choice` field does not match the regex
+    specified in the `validation_match_regex` option for the `unlisted_choice`, a ValueError is raised.
+    """
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    await spawner.get_options_form()
+    spawner.user_options = spawner.options_from_form(
+        {
+            'profile': [_test_profiles[3]['slug']],
+            'profile-option-test-choices-image--unlisted-choice': [
+                'invalid/foo:latest'
+            ],
+        }
+    )
+    assert spawner.user_options == {
+        'image--unlisted-choice': 'invalid/foo:latest',
+        'profile': _test_profiles[3]['slug'],
+    }
+    assert spawner.cpu_limit is None
+
+    with pytest.raises(ValueError):
+        await spawner.load_user_options()
+
+
+async def test_user_options_set_from_form_no_regex():
+    """
+    Test that if the `unlisted_choice` object in the profile_options does not contain
+    a `validation_regex` key, no validation is done and the input is correctly processed - i.e. validation_regex is optional.
+    """
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    await spawner.get_options_form()
+    # print(_test_profiles[4])
+    spawner.user_options = spawner.options_from_form(
+        {
+            'profile': [_test_profiles[4]['slug']],
+            'profile-option-no-regex-image--unlisted-choice': ['invalid/foo:latest'],
+        }
+    )
+    assert spawner.user_options == {
+        'image--unlisted-choice': 'invalid/foo:latest',
+        'profile': _test_profiles[4]['slug'],
+    }
+    assert spawner.cpu_limit is None
+    await spawner.load_user_options()
+    assert getattr(spawner, 'image') == 'invalid/foo:latest'
 
 
 async def test_kubespawner_override():

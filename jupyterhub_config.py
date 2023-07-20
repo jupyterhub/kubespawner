@@ -46,6 +46,13 @@ c.KubeSpawner.profile_list = [
         'profile_options': {
             'image': {
                 'display_name': 'Image',
+                'unlisted_choice': {
+                    'enabled': True,
+                    'display_name': 'Image Location',
+                    'validation_regex': '^pangeo/.*$',
+                    'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
+                    'kubespawner_override': {'image': '{value}'},
+                },
                 'choices': {
                     'pytorch': {
                         'display_name': 'Python 3 Training Notebook',
