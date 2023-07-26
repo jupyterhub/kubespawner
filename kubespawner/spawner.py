@@ -2014,7 +2014,7 @@ class KubeSpawner(Spawner):
             allow_privilege_escalation=self.allow_privilege_escalation,
             container_security_context=csc,
             pod_security_context=psc,
-            env=self._expand_all(self.get_env()),
+            env=self.get_env(),  # Expansion is handled by get_env
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),
             working_dir=self.working_dir,
@@ -2168,6 +2168,11 @@ class KubeSpawner(Spawner):
         # deprecate image
         env['JUPYTER_IMAGE_SPEC'] = self.image
         env['JUPYTER_IMAGE'] = self.image
+
+        # Explicitly expand *and* set all the admin specified variables only.
+        # This allows JSON-like strings set by JupyterHub itself to not be
+        # expanded. https://github.com/jupyterhub/kubespawner/issues/743
+        env.update(self._expand_all(self.environment))
 
         return env
 
