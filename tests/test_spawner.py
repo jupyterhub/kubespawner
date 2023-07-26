@@ -1290,6 +1290,17 @@ async def test_pod_name_no_named_servers():
     assert spawner.pod_name == "jupyter-user"
 
 
+async def test_jupyterhub_supplied_env():
+    cookie_options = {"samesite": "None", "secure": True}
+    c = Config()
+
+    c.KubeSpawner.environment = {"HELLO": "It's {username}"}
+    spawner = KubeSpawner(config=c, _mock=True, cookie_options=cookie_options)
+
+    assert spawner.get_env()["JUPYTERHUB_COOKIE_OPTIONS"] == json.dumps(cookie_options)
+    assert spawner.get_env()["HELLO"] == "It's mock-5fname"
+
+
 async def test_pod_name_named_servers():
     c = Config()
     c.JupyterHub.allow_named_servers = True
