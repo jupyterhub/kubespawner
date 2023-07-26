@@ -11,6 +11,7 @@ from jupyterhub.utils import exponential_backoff
 from kubernetes_asyncio.client.models import (
     V1Capabilities,
     V1Container,
+    V1EnvVar,
     V1PersistentVolumeClaim,
     V1Pod,
     V1SecurityContext,
@@ -1288,6 +1289,23 @@ async def test_pod_name_no_named_servers():
     spawner = KubeSpawner(config=c, user=user, orm_spawner=orm_spawner, _mock=True)
 
     assert spawner.pod_name == "jupyter-user"
+
+
+async def test_jupyterhub_supplied_env():
+    cookie_options = {"samesite": "None", "secure": True}
+    c = Config()
+
+    c.KubeSpawner.environment = {"HELLO": "It's {username}"}
+    spawner = KubeSpawner(config=c, _mock=True, cookie_options=cookie_options)
+
+    pod_manifest = await spawner.get_pod_manifest()
+
+    env = pod_manifest.spec.containers[0].env
+
+    # Set via .environment, must be expanded
+    assert V1EnvVar("HELLO", "It's mock-5fname") in env
+    # Set by JupyterHub itself, must not be expanded
+    assert V1EnvVar("JUPYTERHUB_COOKIE_OPTIONS", json.dumps(cookie_options)) in env
 
 
 async def test_pod_name_named_servers():
