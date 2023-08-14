@@ -2184,10 +2184,7 @@ class KubeSpawner(Spawner):
         necessary to check that the returned value is None, rather than
         just Falsy, to determine that the pod is still running.
         """
-
-        reflector = await self._start_watching_pods()
-        if not reflector.first_load_future.done():
-            await reflector.first_load_future
+        await self._start_watching_pods()
 
         ref_key = f"{self.namespace}/{self.pod_name}"
         pod = self.pod_reflector.pods.get(ref_key, None)
@@ -2358,6 +2355,10 @@ class KubeSpawner(Spawner):
 
         if previous_reflector and not replace:
             # fast path
+            if not previous_reflector.first_load_future.done():
+                # make sure it's loaded, so subsequent calls to start_reflector
+                # don't finish before the first
+                await previous_reflector.first_load_future
             return previous_reflector
 
         if self.enable_user_namespaces:
@@ -2405,6 +2406,9 @@ class KubeSpawner(Spawner):
         if previous_reflector:
             # we replaced the reflector, stop the old one
             asyncio.ensure_future(previous_reflector.stop())
+
+        # wait for first load
+        await current_reflector.first_load_future
 
         # return the current reflector
         return current_reflector
