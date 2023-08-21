@@ -3154,11 +3154,12 @@ class KubeSpawner(Spawner):
                         'kubespawner_override'
                     ]
                     for k, v in chosen_option_overrides.items():
-                        chosen_option_overrides[k] = v.format(
-                            value=selected_profile_user_options[
+                        # First time an unlisted choice is set, its default value is `{value}`.
+                        # Subsequent edits of the free form input, will hold the previous value
+                        # set by the user for the override
+                        chosen_option_overrides[k] = selected_profile_user_options[
                                 unlisted_choice_form_key
                             ]
-                        )
                 else:
                     chosen_option_overrides = option['choices'][chosen_option][
                         'kubespawner_override'
