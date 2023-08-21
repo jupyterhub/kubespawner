@@ -3158,8 +3158,8 @@ class KubeSpawner(Spawner):
                         # Subsequent edits of the free form input, will hold the previous value
                         # set by the user for the override
                         chosen_option_overrides[k] = selected_profile_user_options[
-                                unlisted_choice_form_key
-                            ]
+                            unlisted_choice_form_key
+                        ]
                 else:
                     chosen_option_overrides = option['choices'][chosen_option][
                         'kubespawner_override'
