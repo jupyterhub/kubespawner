@@ -1007,6 +1007,23 @@ async def test_user_options_set_from_form_unlisted_choice():
     await spawner.load_user_options()
     assert getattr(spawner, 'image') == 'pangeo/test:latest'
 
+    # Test choosing an unlisted choice a second time
+    spawner.user_options = spawner.options_from_form(
+        {
+            'profile': [_test_profiles[3]['slug']],
+            'profile-option-test-choices-image--unlisted-choice': [
+                'pangeo/test:1.2.3'
+            ],
+        }
+    )
+    assert spawner.user_options == {
+        'image--unlisted-choice': 'pangeo/test:1.2.3',
+        'profile': _test_profiles[3]['slug'],
+    }
+    assert spawner.cpu_limit is None
+    await spawner.load_user_options()
+    assert getattr(spawner, 'image') == 'pangeo/test:1.2.3'
+
 
 async def test_user_options_set_from_form_invalid_regex():
     """
