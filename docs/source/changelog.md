@@ -4,13 +4,62 @@
 
 ## [Unreleased]
 
-#### Breaking changes
+## 6.1
 
-- JupyterHub 4 is now required by KubeSpawner.
-  [#726](https://github.com/jupyterhub/kubespawner/pull/726)
-- Versions of K8s older than 1.24 are no longer supported, KubeSpawner may still
-  work but this is not guaranteed.
-  [#726](https://github.com/jupyterhub/kubespawner/pull/726)
+### [6.1.0] - 2023-09-28
+
+```{warning}
+If you have been using z2jh 3.0 or KubeSpawner 5.0-6.0, you may have _orphaned
+user server pods_ due to a now fixed bug, these are pods that are running but
+inaccessible by users because JupyterHub doesn't understand they are running.
+
+These should be cleaned up to avoid incurring pointless costs. For more
+information about this, see [this forum post].
+
+[this forum post]: https://discourse.jupyter.org/t/how-to-cleanup-orphaned-user-pods-after-bug-in-z2jh-3-0-and-kubespawner-6-0/21677
+```
+
+This release comes bugfixes, a performance improvement, and a new feature part
+of {attr}`.KubeSpawner.profile_list`. `profile_list`'s sub-config
+`profile_options` can now be include `unlisted_choice` that enables JupyterHub
+users to not just select a pre-defined choice, but to provide free text input.
+This can for example enable users to start any image they'd like, or any image
+matching a provided regular expression.
+
+#### New features added
+
+- Allow dropdown text for unlisted choice to be configurable [#777](https://github.com/jupyterhub/kubespawner/pull/777) ([@batpad](https://github.com/batpad), [@consideRatio](https://github.com/consideRatio))
+- Allow end user to select a choice different from list of available choices in profile_list [#735](https://github.com/jupyterhub/kubespawner/pull/735) ([@batpad](https://github.com/batpad), [@GeorgianaElena](https://github.com/GeorgianaElena), [@consideRatio](https://github.com/consideRatio), [@yuvipanda](https://github.com/yuvipanda), [@ranchodeluxe](https://github.com/ranchodeluxe), [@jbusecke](https://github.com/jbusecke), [@echarles](https://github.com/echarles))
+
+#### Enhancements made
+
+- improve efficiency of reflector [#755](https://github.com/jupyterhub/kubespawner/pull/755) ([@juliantaylor](https://github.com/juliantaylor), [@yuvipanda](https://github.com/yuvipanda), [@minrk](https://github.com/minrk))
+- only log pod names, not all pod contents when reflector has issues [#746](https://github.com/jupyterhub/kubespawner/pull/746) ([@minrk](https://github.com/minrk), [@consideRatio](https://github.com/consideRatio))
+
+#### Bugs fixed
+
+- Don't sort keys by default in tojson when rendering profile forms [#787](https://github.com/jupyterhub/kubespawner/pull/787) ([@yuvipanda](https://github.com/yuvipanda), [@minrk](https://github.com/minrk), [@consideRatio](https://github.com/consideRatio))
+- Support lists and dicts as values in `kubespawner_override` [#785](https://github.com/jupyterhub/kubespawner/pull/785) ([@yuvipanda](https://github.com/yuvipanda), [@consideRatio](https://github.com/consideRatio), [@minrk](https://github.com/minrk))
+- Fix for unlisted_choice, docstring updates, and misc refactoring [#773](https://github.com/jupyterhub/kubespawner/pull/773) ([@consideRatio](https://github.com/consideRatio), [@GeorgianaElena](https://github.com/GeorgianaElena))
+- only strip trailing '-' if it was added by a template variable [#770](https://github.com/jupyterhub/kubespawner/pull/770) ([@minrk](https://github.com/minrk), [@manics](https://github.com/manics))
+- [bufix] Allow POST requests without profile_options specified (defaults will be used) [#769](https://github.com/jupyterhub/kubespawner/pull/769) ([@GeorgianaElena](https://github.com/GeorgianaElena), [@consideRatio](https://github.com/consideRatio), [@yuvipanda](https://github.com/yuvipanda))
+- [bugfix] Using unlisted_choice a second time doesn't work [#766](https://github.com/jupyterhub/kubespawner/pull/766) ([@GeorgianaElena](https://github.com/GeorgianaElena), [@consideRatio](https://github.com/consideRatio), [@yuvipanda](https://github.com/yuvipanda))
+- Expand only environment variables set via Spawner.environment [#759](https://github.com/jupyterhub/kubespawner/pull/759) ([@yuvipanda](https://github.com/yuvipanda), [@consideRatio](https://github.com/consideRatio))
+- return poll status after first load finish [#742](https://github.com/jupyterhub/kubespawner/pull/742) ([@ivyxjc](https://github.com/ivyxjc), [@minrk](https://github.com/minrk), [@consideRatio](https://github.com/consideRatio), [@danilopeixoto](https://github.com/danilopeixoto))
+
+#### Maintenance and upkeep improvements
+
+- Rework of profile_list backend validation for readability and details [#774](https://github.com/jupyterhub/kubespawner/pull/774) ([@consideRatio](https://github.com/consideRatio), [@GeorgianaElena](https://github.com/GeorgianaElena))
+- Reword docstring to match new reality [#771](https://github.com/jupyterhub/kubespawner/pull/771) ([@yuvipanda](https://github.com/yuvipanda), [@consideRatio](https://github.com/consideRatio))
+
+#### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2023-05-31&to=2023-09-28&type=c))
+
+@batpad ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Abatpad+updated%3A2023-05-31..2023-09-28&type=Issues)) | @consideRatio ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2023-05-31..2023-09-28&type=Issues)) | @danilopeixoto ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adanilopeixoto+updated%3A2023-05-31..2023-09-28&type=Issues)) | @echarles ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aecharles+updated%3A2023-05-31..2023-09-28&type=Issues)) | @GeorgianaElena ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AGeorgianaElena+updated%3A2023-05-31..2023-09-28&type=Issues)) | @ivyxjc ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aivyxjc+updated%3A2023-05-31..2023-09-28&type=Issues)) | @jbusecke ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajbusecke+updated%3A2023-05-31..2023-09-28&type=Issues)) | @juliantaylor ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajuliantaylor+updated%3A2023-05-31..2023-09-28&type=Issues)) | @manics ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2023-05-31..2023-09-28&type=Issues)) | @minrk ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2023-05-31..2023-09-28&type=Issues)) | @ranchodeluxe ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aranchodeluxe+updated%3A2023-05-31..2023-09-28&type=Issues)) | @yuvipanda ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2023-05-31..2023-09-28&type=Issues))
 
 ## 6.0
 
@@ -777,7 +826,8 @@ Change highlights:
 - Update Kubernetes Python client to 6.0 (supporting Kubernetes 1.10 APIs)
 - Numerous bugfixes
 
-[unreleased]: https://github.com/jupyterhub/kubespawner/compare/6.0.0...HEAD
+[unreleased]: https://github.com/jupyterhub/kubespawner/compare/6.1.0...HEAD
+[6.1.0]: https://github.com/jupyterhub/kubespawner/compare/6.0.0...6.1.0
 [6.0.0]: https://github.com/jupyterhub/kubespawner/compare/5.0.0...6.0.0
 [5.0.0]: https://github.com/jupyterhub/kubespawner/compare/4.3.0...5.0.0
 [4.3.0]: https://github.com/jupyterhub/kubespawner/compare/4.2.0...4.3.0
