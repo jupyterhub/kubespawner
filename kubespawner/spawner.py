@@ -5,6 +5,7 @@ This module exports `KubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
 import asyncio
+import copy
 import ipaddress
 import os
 import re
@@ -3129,11 +3130,11 @@ class KubeSpawner(Spawner):
         )
 
         await self._apply_overrides(profile.get('kubespawner_override', {}))
-
         if profile.get('profile_options'):
             self._validate_posted_profile_options(
                 profile, selected_profile_user_options
             )
+
             # Get selected options or default to the first option if none is passed
             for option_name, option in profile.get('profile_options').items():
                 unlisted_choice_form_key = f'{option_name}--unlisted-choice'
@@ -3229,7 +3230,9 @@ class KubeSpawner(Spawner):
         if callable(self.profile_list):
             profile_list = await maybe_future(self.profile_list(self))
         else:
-            profile_list = self.profile_list
+            # Use a copy of the self.profile_list dict,
+            # otherwise we might unintentionally modify it
+            profile_list = copy.deepcopy(self.profile_list)
 
         profile_list = self._populate_profile_list_defaults(profile_list)
 
