@@ -231,3 +231,48 @@ async def test_find_slug_exception():
     profile_list = spawner._populate_profile_list_defaults(profile_list)
     with pytest.raises(ValueError):
         spawner._get_profile('does-not-exist', profile_list)
+
+
+async def test_empty_user_options_and_profile_options_api():
+    profiles = [
+        {
+            'display_name': 'CPU only',
+            'profile_options': {
+                'image': {
+                    'display_name': 'Image',
+                    'unlisted_choice': {
+                        'enabled': True,
+                        'display_name': 'Image Location',
+                        'validation_regex': '^pangeo/.*$',
+                        'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
+                        'kubespawner_override': {
+                            'image': '{value}'
+                        }
+                    },
+                    "choices": {
+                        'op-1': {
+                            'display_name': 'Option 1',
+                            'kubespawner_override': {
+                                'image': 'pangeo/pangeo-notebook:ebeb9dd'
+                            },
+                        },
+                        'op-2': {
+                            'display_name': 'Option 2',
+                            'kubespawner_override': {
+                                'image': 'pangeo/pangeo-notebook:latest'
+                            },
+                        },
+                    }
+                }
+            },
+        },
+
+    ]
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = profiles
+    # set user_options directly (e.g. via api)
+    spawner.user_options = {}
+
+    # nothing should be loaded yet
+    assert spawner.cpu_limit is None
+    await spawner.load_user_options()
