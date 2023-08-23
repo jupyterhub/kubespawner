@@ -245,9 +245,7 @@ async def test_empty_user_options_and_profile_options_api():
                         'display_name': 'Image Location',
                         'validation_regex': '^pangeo/.*$',
                         'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
-                        'kubespawner_override': {
-                            'image': '{value}'
-                        }
+                        'kubespawner_override': {'image': '{value}'},
                     },
                     "choices": {
                         'op-1': {
@@ -262,11 +260,10 @@ async def test_empty_user_options_and_profile_options_api():
                                 'image': 'pangeo/pangeo-notebook:latest'
                             },
                         },
-                    }
+                    },
                 }
             },
         },
-
     ]
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = profiles
