@@ -1841,8 +1841,11 @@ class KubeSpawner(Spawner):
             hubnamespace=hub_namespace,
         )
         # strip trailing - delimiter in case of empty servername.
-        # k8s object names cannot have trailing -
-        return rendered.rstrip("-")
+        # but only if trailing '-' is added by the template rendering,
+        # and not in the template itself
+        if not template.endswith("-"):
+            rendered = rendered.rstrip("-")
+        return rendered
 
     def _expand_all(self, src):
         if isinstance(src, list):

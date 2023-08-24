@@ -851,6 +851,40 @@ async def test_get_pod_manifest_tolerates_mixed_input():
     assert isinstance(manifest.spec.init_containers[1], V1Container)
 
 
+async def test_expansion_hyphens():
+    c = Config()
+
+    c.KubeSpawner.init_containers = [
+        {
+            'name': 'mock_name_1',
+            'image': 'mock_image_1',
+            'command': [
+                'mock_command_1',
+                '--',
+                '{unescaped_username}',
+                '{unescaped_username}-',
+                '-x',
+            ],
+        }
+    ]
+
+    spawner = KubeSpawner(config=c, _mock=True)
+
+    # this test ensures the following line doesn't raise an error
+    manifest = await spawner.get_pod_manifest()
+    assert isinstance(manifest, V1Pod)
+    container = manifest.spec.init_containers[0]
+    assert isinstance(container, V1Container)
+
+    assert container.command == [
+        'mock_command_1',
+        '--',
+        spawner.user.name,
+        spawner.user.name + "-",
+        '-x',
+    ]
+
+
 _test_profiles = [
     {
         'display_name': 'Training Env - Python',
