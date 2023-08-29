@@ -3039,6 +3039,11 @@ class KubeSpawner(Spawner):
         one profile from being able to access options set for other
         profiles
         """
+        # If the user didn't select anything, we don't have anything to validate
+        # as the implicit defaults will be used
+        if not selected_options:
+            return
+
         for option_name, option in profile.get('profile_options').items():
             unlisted_choice_form_key = f'{option_name}--unlisted-choice'
             if option_name not in selected_options:
@@ -3167,7 +3172,6 @@ class KubeSpawner(Spawner):
                     chosen_option_overrides = option['choices'][chosen_option][
                         'kubespawner_override'
                     ]
-
                 await self._apply_overrides(chosen_option_overrides)
 
     # set of recognised user option keys
