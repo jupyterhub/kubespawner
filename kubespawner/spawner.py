@@ -3028,13 +3028,10 @@ class KubeSpawner(Spawner):
         """
         Validate posted user options against the selected profile
 
-        The default form is rendered in such a way that each option specified in
-        the profile *must* have a value in the POST body. Extra options in the
-        POST body are ignored. We only honor options that are defined
-        in the selected profile *and* are in the form data
-        posted. This prevents users who may be authorized to only use
-        one profile from being able to access options set for other
-        profiles
+        The default form is rendered in such a way that each option specified
+        in the profile is guaranteed to have a POST body. If the default form
+        is surpassed (via an API request), and we receive an empty selected_options,
+        validation just succeeds and defaults are applied.
         """
         # If the user didn't select anything, we don't have anything to validate
         # as the implicit defaults will be used
