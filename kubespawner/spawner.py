@@ -3116,20 +3116,19 @@ class KubeSpawner(Spawner):
 
         Raises an error if no profile exists for the given slug.
         """
-        if slug:
-            for profile in profile_list:
-                if profile['slug'] == slug:
-                    return profile
-
-            # A slug is specified, but not found
-            raise ValueError(
-                "No such profile: %s. Options include: %s"
-                % (slug, ', '.join(p['slug'] for p in profile_list))
-            )
-        else:
-            # slug is not specified, let's find the default and return it
-            # default is guaranteed to be set in at least one profile
+        if not slug:
+            # return the default profile
             return next(p for p in profile_list if p.get('default'))
+
+        for profile in profile_list:
+            if profile['slug'] == slug:
+                # return matching profile
+                return profile
+
+        raise ValueError(
+            "No such profile: %s. Options include: %s"
+            % (slug, ', '.join(p['slug'] for p in profile_list))
+        )
 
     async def _apply_overrides(self, spawner_override: dict):
         """
