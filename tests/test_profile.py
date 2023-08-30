@@ -273,3 +273,61 @@ async def test_empty_user_options_and_profile_options_api():
     # nothing should be loaded yet
     assert spawner.cpu_limit is None
     await spawner.load_user_options()
+
+
+@pytest.mark.parametrize(
+    "profile_list, formdata",
+    [
+        (
+            [
+                {
+                    "display_name": "short",
+                    "slug": "short",
+                    "profile_options": {
+                        "relevant": {
+                            "choices": {
+                                "choice-a": {
+                                    "kubespawner_override": {},
+                                },
+                            },
+                        },
+                    },
+                },
+                {
+                    "display_name": "short-plus",
+                    "slug": "short-plus",
+                    "profile_options": {
+                        "irrelevant": {
+                            "choices": {
+                                "choice-b": {
+                                    "kubespawner_override": {},
+                                },
+                            },
+                        },
+                    },
+                },
+            ],
+            # What is below is hardcoded based on what is above and based on
+            # how the HTML form looks currently. If that changes, whats below needs
+            # to change as well.
+            {
+                'profile': ['short'],
+                'profile-option-short--relevant': ['choice-a'],
+                'profile-option-short-plus--irrelevant': ['choice-b'],
+            },
+        ),
+    ],
+)
+async def test_profile_slug_and_option_slug_mixup(profile_list, formdata):
+    """
+    If we have a profile list with two entries, their respective profile_options
+    should not be mixed up with each other. This has happened when one profile
+    list entry was named like another but shorter.
+    """
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = profile_list
+
+    user_options = spawner.options_from_form(formdata)
+    assert user_options.get("profile") == "short"
+    assert user_options.get("relevant") == "choice-a"
+    assert not user_options.get("plus-irrelevant")
