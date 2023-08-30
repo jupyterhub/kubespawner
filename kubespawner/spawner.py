@@ -3171,10 +3171,6 @@ class KubeSpawner(Spawner):
                     ]
                 await self._apply_overrides(chosen_option_overrides)
 
-    # set of recognised user option keys
-    # used for warning about ignoring unrecognised options
-    _user_option_keys = {'profile'}
-
     def _populate_profile_list_defaults(self, profile_list: list):
         """
         Return a fully realized profile_list
@@ -3219,6 +3215,10 @@ class KubeSpawner(Spawner):
             profile_list[0]["default"] = True
 
         return profile_list
+
+    # partial set of recognised user_option keys
+    # used for warning about ignoring unrecognised options
+    _user_option_keys = {'profile'}
 
     async def load_user_options(self):
         """Load user options from self.user_options dict
