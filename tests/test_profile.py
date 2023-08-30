@@ -136,7 +136,7 @@ async def test_profile_missing_defaults_populated(
     """
     spawner = KubeSpawner(_mock=True)
     assert (
-        spawner._populate_profile_list_defaults(unfilled_profile_list)
+        spawner._get_initialized_profile_list(unfilled_profile_list)
         == filled_profile_list
     )
 
@@ -209,7 +209,7 @@ async def test_find_slug(profile_list, slug, selected_profile):
     Test that we can find the profile we expect given slugs
     """
     spawner = KubeSpawner(_mock=True)
-    profile_list = spawner._populate_profile_list_defaults(profile_list)
+    profile_list = spawner._get_initialized_profile_list(profile_list)
     assert spawner._get_profile(slug, profile_list) == selected_profile
 
 
@@ -228,7 +228,7 @@ async def test_find_slug_exception():
             'kubespawner_override': {},
         },
     ]
-    profile_list = spawner._populate_profile_list_defaults(profile_list)
+    profile_list = spawner._get_initialized_profile_list(profile_list)
     with pytest.raises(ValueError):
         spawner._get_profile('does-not-exist', profile_list)
 

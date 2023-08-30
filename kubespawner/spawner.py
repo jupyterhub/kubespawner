@@ -2958,7 +2958,7 @@ class KubeSpawner(Spawner):
             https://github.com/jupyterhub/jupyterhub/blob/4.0.2/jupyterhub/handlers/pages.py#L94-L106
             https://github.com/jupyterhub/jupyterhub/blob/4.0.2/jupyterhub/handlers/base.py#L1272-L1308
         """
-        profile_list = self._populate_profile_list_defaults(profile_list)
+        profile_list = self._get_initialized_profile_list(profile_list)
 
         loader = ChoiceLoader(
             [
@@ -3215,21 +3215,20 @@ class KubeSpawner(Spawner):
                     ]
                 await self._apply_overrides(chosen_option_overrides)
 
-    def _populate_profile_list_defaults(self, profile_list: list):
+    def _get_initialized_profile_list(self, profile_list: list):
         """
-        Updates and returns the profile_list argument fully realized.
+        Returns a fully initialized copy of profile_list.
 
         - If 'slug' is not set for a profile, its generated from display_name.
         - If profile_options are present with choices, but no choice is set
           as the default, the first choice is set to be the default.
         - If no default profile is set, the first profile is set to be the
           default
-
-        This function is *idempotent*, you can pass the same profile_list
-        through it as many times without any problems.
         """
+        profile_list = copy.deepcopy(profile_list)
+
         if not profile_list:
-            # empty profile lists are just returned unmodified
+            # empty profile lists are just returned
             return profile_list
 
         for profile in profile_list:
@@ -3276,11 +3275,7 @@ class KubeSpawner(Spawner):
         profile_list = self.profile_list
         if callable(profile_list):
             profile_list = await maybe_future(profile_list(self))
-
-        # Work on a copy of the profile_list dict as we'll modify it
-        profile_list = copy.deepcopy(profile_list)
-
-        self._populate_profile_list_defaults(profile_list)
+        profile_list = self._get_initialized_profile_list(profile_list)
 
         selected_profile = self.user_options.get('profile', None)
         selected_profile_user_options = dict(self.user_options)
