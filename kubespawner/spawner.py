@@ -1580,84 +1580,48 @@ class KubeSpawner(Spawner):
 
             c.KubeSpawner.profile_list = [
                 {
-                    'display_name': 'Training Env',
-                    'slug': 'training-python',
+                    'display_name': 'Demo - profile_list entry 1',
+                    'description': 'Demo description for profile_list entry 1, and it should look good even though it is a bit lengthy.',
+                    'slug': 'demo-1',
                     'default': True,
                     'profile_options': {
                         'image': {
                             'display_name': 'Image',
-                            'unlisted_choice': {
-                                'enabled': true,
-                                'display_name': 'Image Location',
-                                'validation_regex': '^pangeo/.*$',
-                                'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
-                                'kubespawner_override': {
-                                    'image': '{value}'
-                                }
+                            'choices': {
+                                'base': {
+                                    'display_name': 'jupyter/base-notebook:latest',
+                                    'kubespawner_override': {
+                                        'image': 'jupyter/base-notebook:latest'
+                                    },
+                                },
+                                'minimal': {
+                                    'display_name': 'jupyter/minimal-notebook:latest',
+                                    'default': True,
+                                    'kubespawner_override': {
+                                        'image': 'jupyter/minimal-notebook:latest'
+                                    },
+                                },
                             },
-                            'choices': {
-                                'pytorch': {
-                                    'display_name': 'Python 3 Training Notebook',
-                                    'kubespawner_override': {
-                                        'image': 'training/python:2022.01.01'
-                                    }
-                                },
-                                'tf': {
-                                    'display_name': 'R 4.2 Training Notebook',
-                                    'kubespawner_override': {
-                                        'image': 'training/r:2021.12.03'
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    'kubespawner_override': {
-                        'cpu_limit': 1,
-                        'mem_limit': '512M',
-                    }
-                }, {
-                    'display_name': 'Python DataScience',
-                    'slug': 'datascience-small',
-                    'profile_options': {
-                        'memory': {
-                            'display_name': 'CPUs',
-                            'choices': {
-                                '2': {
-                                    'display_name': '2 CPUs',
-                                    'kubespawner_override': {
-                                        'cpu_limit': 2,
-                                        'cpu_guarantee': 1.8,
-                                        'node_selector': {
-                                            'node.kubernetes.io/instance-type': 'n1-standard-2'
-                                        }
-                                    }
-                                },
-                                '4': {
-                                    'display_name': '4 CPUs',
-                                    'kubespawner_override': {
-                                        'cpu_limit': 4,
-                                        'cpu_guarantee': 3.5,
-                                        'node_selector': {
-                                            'node.kubernetes.io/instance-type': 'n1-standard-4'
-                                        }
-                                    }
-                                }
-                            }
+                            'unlisted_choice': {
+                                'enabled': True,
+                                'display_name': 'Other image',
+                                'validation_regex': '^jupyter/.+:.+$',
+                                'validation_message': 'Must be an image matching ^jupyter/<name>:<tag>$',
+                                'kubespawner_override': {'image': '{value}'},
+                            },
                         },
                     },
                     'kubespawner_override': {
-                        'image': 'datascience/small:label',
-                    }
-                }, {
-                    'display_name': 'DataScience - Medium instance (GPUx2)',
-                    'slug': 'datascience-gpu2x',
+                        'default_url': '/lab',
+                    },
+                },
+                {
+                    'display_name': 'Demo - profile_list entry 2',
+                    'slug': 'demo-2',
                     'kubespawner_override': {
-                        'image': 'datascience/medium:label',
-                        'cpu_limit': 48,
-                        'mem_limit': '96G',
-                        'extra_resource_guarantees': {"nvidia.com/gpu": "2"},
-                    }
-                }
+                        'extra_resource_guarantees': {"nvidia.com/gpu": "1"},
+                    },
+                },
             ]
 
         Instead of a list of dictionaries, this could also be a callable that takes as one
