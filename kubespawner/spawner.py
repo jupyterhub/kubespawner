@@ -2942,6 +2942,22 @@ class KubeSpawner(Spawner):
         return []
 
     def _render_options_form(self, profile_list):
+        """
+        Renders a KubeSpawner specific jinja2 template, passing `profile_list` as a variable.
+
+        The template rendered is either:
+        - `profile_form_template` if configured
+        - a "form.html" file if found in `additional_profile_form_template_paths`
+        - a "form.html" file bundled with kubespawner
+
+        Note that the return value can either be plain HTML or a jinja2 template
+        that JupyterHub in turn will render with variables like `spawner`,
+        `for_user`, `user`, `auth_state`, `error_message`.
+
+        Reference
+            https://github.com/jupyterhub/jupyterhub/blob/4.0.2/jupyterhub/handlers/pages.py#L94-L106
+            https://github.com/jupyterhub/jupyterhub/blob/4.0.2/jupyterhub/handlers/base.py#L1272-L1308
+        """
         profile_list = self._populate_profile_list_defaults(profile_list)
 
         loader = ChoiceLoader(
@@ -2953,31 +2969,43 @@ class KubeSpawner(Spawner):
 
         env = Environment(loader=loader)
         if self.profile_form_template != "":
-            # Admin has custom set the profile_form_template as a templated string
-            # so we use that directly
             profile_form_template = env.from_string(self.profile_form_template)
         else:
             profile_form_template = env.get_template("form.html")
         return profile_form_template.render(profile_list=profile_list)
 
     async def _render_options_form_dynamically(self, current_spawner):
+        """
+        A function to enable delaying the evaluation of profile_list to when
+        jupyterhub is to render server options for a user.
+        """
         profile_list = await maybe_future(self.profile_list(current_spawner))
         return self._render_options_form(profile_list)
 
     @default('options_form')
     def _options_form_default(self):
         """
-        Build the form template according to the `profile_list` setting.
+        Returns a form template for JupyterHub to render, by rendering a
+        KubeSpawner specific template that is passed the `profile_list` config.
 
-        Returns:
-            '' when no `profile_list` has been defined
-            The rendered template (using jinja2) when `profile_list` is defined.
+        JupyterHub renders the returned form template when a user is to start a
+        server based on template variables like `spawner`, `for_user`, `user`,
+        `auth_state`, `error_message`.
+
+        JupyterHub parses submitted forms' data with `options_from_form`, saves
+        it to `user_options`, and then individual KubeSpawner instances
+        representing individual servers adjusts to it via `load_user_options` in
+        `start`.
+
+        Reference:
+            https://jupyterhub.readthedocs.io/en/stable/reference/spawners.html#spawner-options-form
         """
         if not self.profile_list:
             return ''
         if callable(self.profile_list):
-            # Return the function dynamically, so JupyterHub will call this when the
-            # form needs rendering
+            # Let jupyterhub evaluate the callable profile_list (and render a
+            # form template based on it) just in time by returning a function
+            # doing that
             return self._render_options_form_dynamically
         else:
             # Return the rendered string, as it does not change
@@ -2988,7 +3016,10 @@ class KubeSpawner(Spawner):
         return self._options_from_form
 
     def _options_from_form(self, formdata):
-        """get the option selected by the user on the form
+        """
+        Called by jupyterhub when processing a request to spawn a server, where
+        the user either have submitted a POST request via a form or submitted a
+        GET request with query parameters.
 
         This only constructs the user_options dict,
         it should not actually load any options.
@@ -3018,6 +3049,11 @@ class KubeSpawner(Spawner):
         # Load any options if they are set for this profile, and this profile only
         # In the default template we use, all form options for a particular profile
         # come through of the format 'profile-option-{profile}-{option-slug}'
+        #
+        # FIXME: Since we only return recognised formdata in user_options, we
+        #        shouldn't need later validation of this, and we need to emit
+        #        warnings here rather than later about unrecognised options.
+        #
         if profile:
             option_formdata_prefix = f'profile-option-{profile}-'
             for k, v in formdata.items():
@@ -3073,12 +3109,12 @@ class KubeSpawner(Spawner):
 
     def _get_profile(self, slug: Optional[str], profile_list: list):
         """
-        Get the configured profile for given profile slug
+        Returns the profile from profile_list matching given slug, or the
+        (first) default profile if slug is falsy.
+
+        profile_list is required to have a default profile.
 
         Raises an error if no profile exists for the given slug.
-
-        If slug is empty string or None, return the default profile
-        profile_list should already have all its defaults set.
         """
         if slug:
             for profile in profile_list:
@@ -3099,7 +3135,7 @@ class KubeSpawner(Spawner):
         """
         Apply set of overrides onto the current spawner instance
 
-        spawner_overrides is a dict with key being the name of the traitlet
+        spawner_override is a dict with key being the name of the traitlet
         to override, and value is either a callable or the value for the
         traitlet. If the value is a dictionary, it is *merged* with the
         existing value (rather than replaced). Callables are called with
@@ -3124,9 +3160,14 @@ class KubeSpawner(Spawner):
                 setattr(self, k, v)
 
     async def _load_profile(self, slug, profile_list, selected_profile_user_options):
-        """Load a profile by name
+        """
+        Apply a profile's overrides for the profile itself and for each of the
+        profile's `profile_options` based on what was selected or the default.
 
-        Called by load_user_options
+        Called by `load_user_options` with a `profile_list` argument with
+        populated default values.
+
+        profile_list is required to have a default profile.
         """
         profile = self._get_profile(slug, profile_list)
 
@@ -3134,13 +3175,17 @@ class KubeSpawner(Spawner):
             "Applying KubeSpawner override for profile '%s'", profile['display_name']
         )
 
+        # Apply overrides for the profile
         await self._apply_overrides(profile.get('kubespawner_override', {}))
+
+        # Apply overrides for the profile_options's choices or defaults
         if profile.get('profile_options'):
+            # FIXME: perform this validation before applying other overrides to
+            #        the spanwer instance
             self._validate_posted_profile_options(
                 profile, selected_profile_user_options
             )
 
-            # Get selected options or default to the first option if none is passed
             for option_name, option in profile.get('profile_options').items():
                 unlisted_choice_form_key = f'{option_name}--unlisted-choice'
                 chosen_option = selected_profile_user_options.get(option_name, None)
@@ -3173,17 +3218,13 @@ class KubeSpawner(Spawner):
 
     def _populate_profile_list_defaults(self, profile_list: list):
         """
-        Return a fully realized profile_list
+        Updates and returns the profile_list argument fully realized.
 
-        This will augment any missing fields to appropriate values.
-        - If 'slug' is not set for profiles, generate it automatically
-          from display_name
+        - If 'slug' is not set for a profile, its generated from display_name.
         - If profile_options are present with choices, but no choice is set
-          as the default, set the first choice to be the default.
+          as the default, the first choice is set to be the default.
         - If no default profile is set, the first profile is set to be the
           default
-
-        The profile_list passed in is mutated and returned.
 
         This function is *idempotent*, you can pass the same profile_list
         through it as many times without any problems.
@@ -3221,12 +3262,18 @@ class KubeSpawner(Spawner):
     _user_option_keys = {'profile'}
 
     async def load_user_options(self):
-        """Load user options from self.user_options dict
+        """
+        Applies profile_list defined overrides to the spawner instance based on
+        self.user_options that represents the choices made by a user.
 
-        This can be set via POST to the API or via options_from_form
+        self.user_options is set by jupyterhub when a server is to be spawned to
+        a POST request's body / a GET request's query parameters, the most
+        recently passed options for this user server, or an empty dictionary as
+        a final fallback.
 
-        The default supported arguments are 'profile', and options for the
-        selected profile defined as 'profile-option-{profile-slug}-{option-slug}'
+        KubeSpawner recognizes the option named 'profile' and options named like
+        'profile-option-{profile-slug}-{option-slug}'. These user_options will
+        be validated against the spawner's profile_list.
 
         Override in subclasses to support other options.
         """
