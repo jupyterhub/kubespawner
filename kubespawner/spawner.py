@@ -3273,15 +3273,14 @@ class KubeSpawner(Spawner):
 
         Override in subclasses to support other options.
         """
+        profile_list = self.profile_list
+        if callable(profile_list):
+            profile_list = await maybe_future(profile_list(self))
 
-        if callable(self.profile_list):
-            profile_list = await maybe_future(self.profile_list(self))
-        else:
-            # Use a copy of the self.profile_list dict,
-            # otherwise we might unintentionally modify it
-            profile_list = copy.deepcopy(self.profile_list)
+        # Work on a copy of the profile_list dict as we'll modify it
+        profile_list = copy.deepcopy(profile_list)
 
-        profile_list = self._populate_profile_list_defaults(profile_list)
+        self._populate_profile_list_defaults(profile_list)
 
         selected_profile = self.user_options.get('profile', None)
         selected_profile_user_options = dict(self.user_options)
