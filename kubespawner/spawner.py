@@ -2940,8 +2940,9 @@ class KubeSpawner(Spawner):
 
     async def _render_options_form_dynamically(self, current_spawner):
         """
-        A function to enable delaying the evaluation of profile_list to when
-        jupyterhub is to render server options for a user.
+        A function configured to be used by JupyterHub via
+        `_options_form_default` when `profile_list` is a callable, to render the
+        server options for a user after evaluating the `profile_list` function.
         """
         profile_list = await maybe_future(self.profile_list(current_spawner))
         return self._render_options_form(profile_list)
@@ -2950,7 +2951,7 @@ class KubeSpawner(Spawner):
     def _options_form_default(self):
         """
         Returns a form template for JupyterHub to render, by rendering a
-        KubeSpawner specific template that is passed the `profile_list` config.
+        KubeSpawner specific template that is passed through the `profile_list` config.
 
         JupyterHub renders the returned form template when a user is to start a
         server based on template variables like `spawner`, `for_user`, `user`,
