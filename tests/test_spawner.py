@@ -1005,7 +1005,7 @@ async def test_user_options_set_from_form_choices():
     spawner.user_options = spawner.options_from_form(
         {
             'profile': [_test_profiles[3]['slug']],
-            'profile-option-test-choices-image': ['pytorch'],
+            'profile-option-test-choices--image': ['pytorch'],
         }
     )
     assert spawner.user_options == {
@@ -1028,7 +1028,7 @@ async def test_user_options_set_from_form_unlisted_choice():
     spawner.user_options = spawner.options_from_form(
         {
             'profile': [_test_profiles[3]['slug']],
-            'profile-option-test-choices-image--unlisted-choice': [
+            'profile-option-test-choices--image--unlisted-choice': [
                 'pangeo/test:latest'
             ],
         }
@@ -1045,7 +1045,9 @@ async def test_user_options_set_from_form_unlisted_choice():
     spawner.user_options = spawner.options_from_form(
         {
             'profile': [_test_profiles[3]['slug']],
-            'profile-option-test-choices-image--unlisted-choice': ['pangeo/test:1.2.3'],
+            'profile-option-test-choices--image--unlisted-choice': [
+                'pangeo/test:1.2.3'
+            ],
         }
     )
     assert spawner.user_options == {
@@ -1068,7 +1070,7 @@ async def test_user_options_set_from_form_invalid_regex():
     spawner.user_options = spawner.options_from_form(
         {
             'profile': [_test_profiles[3]['slug']],
-            'profile-option-test-choices-image--unlisted-choice': [
+            'profile-option-test-choices--image--unlisted-choice': [
                 'invalid/foo:latest'
             ],
         }
@@ -1095,7 +1097,7 @@ async def test_user_options_set_from_form_no_regex():
     spawner.user_options = spawner.options_from_form(
         {
             'profile': [_test_profiles[4]['slug']],
-            'profile-option-no-regex-image--unlisted-choice': ['invalid/foo:latest'],
+            'profile-option-no-regex--image--unlisted-choice': ['invalid/foo:latest'],
         }
     )
     assert spawner.user_options == {

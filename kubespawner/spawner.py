@@ -2992,10 +2992,14 @@ class KubeSpawner(Spawner):
         Args:
             formdata: user selection returned by the form
 
+        As an example formdata could be set to::
+
+            {'profile': ['demo-1'], 'profile-option-demo-1--image': ['minimal']}
+
         To access to the value, you can use the `get` accessor and the name of the html element,
         for example::
 
-            formdata.get('profile',[0])
+            formdata.get('profile', [None])[0]
 
         to get the value of the form named "profile", as defined in `form_template`::
 
@@ -3019,7 +3023,7 @@ class KubeSpawner(Spawner):
         #        warnings here rather than later about unrecognised options.
         #
         if profile:
-            option_formdata_prefix = f'profile-option-{profile}-'
+            option_formdata_prefix = f'profile-option-{profile}--'
             for k, v in formdata.items():
                 if k.startswith(option_formdata_prefix):
                     stripped_key = k[len(option_formdata_prefix) :]
