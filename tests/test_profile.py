@@ -272,7 +272,12 @@ async def test_empty_user_options_and_profile_options_api():
 
     # nothing should be loaded yet
     assert spawner.cpu_limit is None
+
+    # this shouldn't error
     await spawner.load_user_options()
+
+    # implicit defaults should be used
+    assert spawner.image == "pangeo/pangeo-notebook:ebeb9dd"
 
 
 @pytest.mark.parametrize(

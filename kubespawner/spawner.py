@@ -3011,69 +3011,97 @@ class KubeSpawner(Spawner):
             user_options (dict): the selected profile in the user_options form,
                 e.g. ``{"profile": "cpus-8"}``
         """
-        profile = formdata.get('profile', [None])[0]
+        profile_slug = formdata.get('profile', [None])[0]
 
-        options = {'profile': profile}
+        # initialize a dictionary to return
+        user_options = {}
 
-        # Load any options if they are set for this profile, and this profile only
-        # In the default template we use, all form options for a particular profile
-        # come through of the format 'profile-option-{profile}-{option-slug}'
+        # if a profile is declared, add a dictionary key for the profile, and
+        # dictionary keys for the formdata related to the profile's
+        # profile_options, as recognized by being named like:
         #
-        # FIXME: Since we only return recognised formdata in user_options, we
-        #        shouldn't need later validation of this, and we need to emit
-        #        warnings here rather than later about unrecognised options.
+        #     profile-option-{profile_slug}--{profile_option_slug}
         #
-        if profile:
-            option_formdata_prefix = f'profile-option-{profile}--'
+        if profile_slug:
+            user_options["profile"] = profile_slug
+            prefix = f'profile-option-{profile_slug}--'
             for k, v in formdata.items():
-                if k.startswith(option_formdata_prefix):
-                    stripped_key = k[len(option_formdata_prefix) :]
-                    options[stripped_key] = v[0]
+                if k.startswith(prefix):
+                    profile_option_slug = k[len(prefix) :]
+                    user_options[profile_option_slug] = v[0]
 
-        return options
+        # warn about any unrecognized form data, which is anything besides
+        # "profile" and "profile-option-" prefixed keys
+        unrecognized_keys = set(formdata)
+        unrecognized_keys = unrecognized_keys.difference({"profile"})
+        unrecognized_keys = [
+            k for k in unrecognized_keys if not k.startswith("profile-option-")
+        ]
+        if unrecognized_keys:
+            self.log.warning(
+                "Ignoring unrecognized form data in spawn request: %s",
+                ", ".join(map(str, sorted(unrecognized_keys))),
+            )
 
-    def _validate_posted_profile_options(self, profile, selected_options):
+        return user_options
+
+    def _validate_user_options(self, profile_list):
         """
-        Validate posted user options against the selected profile
+        Validate `user_options` using an initialized `profile_list` by raising
+        an error if there are issues that can't be resolved.
 
-        The default form is rendered in such a way that each option specified
-        in the profile is guaranteed to have a POST body. If the default form
-        is surpassed (via an API request), and we receive an empty selected_options,
-        validation just succeeds and defaults are applied.
+        `user_options` is set via `_user_options_from_form` unless when the
+        JupyterHub REST API has been used to start a server, then `user_options`
+        are set directly via JSON data in the REST API request.
+
+        Some examples of `user_options` to validate are::
+
+            {"profile": "demo-1", "image": "minimal"}
+            {"profile": "demo-1", "image--unlisted-choice": "jupyter/datascience-notebook:latest"}
+            {}
+            {"garbage-arrived-via-rest-api": "anything"}
+            {"profile": "demo-1", "garbage-arrived-via-rest-api": "anything"}
+
+        The current implementation doesn't emit warnings about irrelevant
+        user_options that could have been passed when spawning via the REST API.
         """
-        # If the user didn't select anything, we don't have anything to validate
-        # as the implicit defaults will be used
-        if not selected_options:
+        # `user_options` is allowed to be falsy as it could be via a JupyterHub
+        # REST API request to spawn a server - then `user_options` can be
+        # anything.
+        if not self.user_options:
             return
 
-        for option_name, option in profile.get('profile_options').items():
-            unlisted_choice_form_key = f'{option_name}--unlisted-choice'
-            if option_name not in selected_options:
-                # unlisted_choice is enabled:
-                if option.get('unlisted_choice', {}).get('enabled', False):
-                    if unlisted_choice_form_key not in selected_options:
-                        raise ValueError(
-                            f'Expected option {option_name} for profile {profile["slug"]} or {unlisted_choice_form_key}, not found in posted form'
-                        )
-                    unlisted_choice = selected_options[unlisted_choice_form_key]
+        # If "profile" isn't declared or falsy, no further validation is done.
+        profile_slug = self.user_options.get("profile")
+        if not profile_slug:
+            return
 
-                    # Validate value of 'unlisted_choice' against validation regex
-                    if profile.get('profile_options')[option_name][
-                        'unlisted_choice'
-                    ].get('validation_regex', False):
-                        unlisted_choice_validation_regex = profile.get(
-                            'profile_options'
-                        )[option_name]['unlisted_choice']['validation_regex']
-                        if not re.match(
-                            unlisted_choice_validation_regex, unlisted_choice
-                        ):
-                            raise ValueError(
-                                f'Value of {unlisted_choice_form_key} does not match validation regex.'
-                            )
-                # unlisted_choice is Disabled
-                else:
+        # Ensure "profile" is defined in profile_list by calling _get_profile
+        # with a truthy profile_slug.
+        profile = self._get_profile(profile_slug, profile_list)
+
+        # Ensure user_options related to the profile's profile_options are valid
+        for option_name, option in profile.get('profile_options', {}).items():
+            unlisted_choice_key = f"{option_name}--unlisted-choice"
+            unlisted_choice = self.user_options.get(unlisted_choice_key)
+            choice = self.user_options.get(option_name)
+            if not (unlisted_choice or choice):
+                # no user_options was passed for this profile option, the
+                # profile option's default value can be used
+                continue
+            if unlisted_choice:
+                # we have been passed a value for the profile option's
+                # unlisted_choice, it must be enabled and the provided value
+                # must validate against the validation_regex if configured
+                if not option.get("unlisted_choice", {}).get("enabled"):
                     raise ValueError(
-                        f'Expected option {option_name} for profile {profile["slug"]}, not found in posted form'
+                        f"Received unlisted_choice for {option_name} without being enabled."
+                    )
+
+                validation_regex = option["unlisted_choice"].get("validation_regex")
+                if validation_regex and not re.match(validation_regex, unlisted_choice):
+                    raise ValueError(
+                        f"Received unlisted_choice for {option_name} that failed validation regex."
                     )
 
     def _get_profile(self, slug: Optional[str], profile_list: list):
@@ -3099,7 +3127,7 @@ class KubeSpawner(Spawner):
             % (slug, ', '.join(p['slug'] for p in profile_list))
         )
 
-    async def _apply_overrides(self, spawner_override: dict):
+    def _apply_overrides(self, spawner_override: dict):
         """
         Apply set of overrides onto the current spawner instance
 
@@ -3127,15 +3155,14 @@ class KubeSpawner(Spawner):
             else:
                 setattr(self, k, v)
 
-    async def _load_profile(self, slug, profile_list, selected_profile_user_options):
+    def _load_profile(self, slug, profile_list):
         """
-        Apply a profile's overrides for the profile itself and for each of the
-        profile's `profile_options` based on what was selected or the default.
+        Applies configured overrides for a selected or default profile,
+        including the selected or default overrides for the profile's
+        profile_options.
 
-        Called by `load_user_options` with a `profile_list` argument with
-        populated default values.
-
-        profile_list is required to have a default profile.
+        Called by `load_user_options` after validation of user_options has been
+        done with the initialized profile_list.
         """
         profile = self._get_profile(slug, profile_list)
 
@@ -3144,45 +3171,46 @@ class KubeSpawner(Spawner):
         )
 
         # Apply overrides for the profile
-        await self._apply_overrides(profile.get('kubespawner_override', {}))
+        self._apply_overrides(profile.get("kubespawner_override", {}))
 
         # Apply overrides for the profile_options's choices or defaults
-        if profile.get('profile_options'):
-            # FIXME: perform this validation before applying other overrides to
-            #        the spanwer instance
-            self._validate_posted_profile_options(
-                profile, selected_profile_user_options
-            )
+        profile_options = profile.get("profile_options", {})
+        for option_name, option in profile_options.items():
+            unlisted_choice_key = f"{option_name}--unlisted-choice"
+            unlisted_choice = self.user_options.get(unlisted_choice_key)
+            choice = self.user_options.get(option_name)
 
-            for option_name, option in profile.get('profile_options').items():
-                chosen_option = selected_profile_user_options.get(option_name, None)
-                # If none was selected get the default. At least one choice is
-                # guaranteed to have the default set
-                if not chosen_option:
-                    for choice_name, choice in option['choices'].items():
-                        if choice.get('default', False):
-                            chosen_option = choice_name
+            if unlisted_choice:
+                # An unlisted_choice value was passed, its kubespawner_override
+                # needs to be rendered using the value
+                option_overrides = option["unlisted_choice"].get(
+                    "kubespawner_override", {}
+                )
+                for k, v in option_overrides.items():
+                    # FIXME: This logic restricts unlisted_choice to define
+                    #        kubespawner_override dictionaries where all keys
+                    #        have string values.
+                    option_overrides[k] = v.format(value=unlisted_choice)
+            elif choice:
+                # A pre-defined choice was selected
+                option_overrides = option["choices"][choice].get(
+                    "kubespawner_override", {}
+                )
+            else:
+                # A default choice for the option needs to be determined
+                if not option.get("choices"):
+                    # if the option only defined unlisted_choice, we can't
+                    # determine a default choice or associated overrides
+                    raise ValueError(
+                        f"Unable to determine a default choice for {option_name}."
+                    )
 
-                # Handle override for unlisted_choice free text specified by user
-                unlisted_choice_form_key = f'{option_name}--unlisted-choice'
-                if (
-                    option.get('unlisted_choice', {}).get('enabled', False)
-                    and unlisted_choice_form_key in selected_profile_user_options
-                ):
-                    chosen_option_overrides = option['unlisted_choice'][
-                        'kubespawner_override'
-                    ]
-                    for k, v in chosen_option_overrides.items():
-                        chosen_option_overrides[k] = v.format(
-                            value=selected_profile_user_options[
-                                unlisted_choice_form_key
-                            ]
-                        )
-                else:
-                    chosen_option_overrides = option['choices'][chosen_option][
-                        'kubespawner_override'
-                    ]
-                await self._apply_overrides(chosen_option_overrides)
+                default_choice = next(
+                    c for c in option["choices"].values() if c.get("default")
+                )
+                option_overrides = default_choice.get("kubespawner_override", {})
+
+            self._apply_overrides(option_overrides)
 
     def _get_initialized_profile_list(self, profile_list: list):
         """
@@ -3221,10 +3249,6 @@ class KubeSpawner(Spawner):
 
         return profile_list
 
-    # partial set of recognised user_option keys
-    # used for warning about ignoring unrecognised options
-    _user_option_keys = {'profile'}
-
     async def load_user_options(self):
         """
         Applies profile_list defined overrides to the spawner instance based on
@@ -3236,44 +3260,27 @@ class KubeSpawner(Spawner):
         a final fallback.
 
         KubeSpawner recognizes the option named 'profile' and options named like
-        'profile-option-{profile-slug}-{option-slug}'. These user_options will
+        'profile-option-{profile_slug}--{option_slug}'. These user_options will
         be validated against the spawner's profile_list.
 
         Override in subclasses to support other options.
         """
+        # get an initialized profile list
         profile_list = self.profile_list
         if callable(profile_list):
             profile_list = await maybe_future(profile_list(self))
         profile_list = self._get_initialized_profile_list(profile_list)
 
-        selected_profile = self.user_options.get('profile', None)
-        selected_profile_user_options = dict(self.user_options)
-        if selected_profile:
-            # Remove the 'profile' key so we are left with only selected profile options
-            del selected_profile_user_options['profile']
+        # validate user_options against initialized profile_list
+        self._validate_user_options(profile_list)
 
+        selected_profile = self.user_options.get("profile")
         if profile_list:
-            await self._load_profile(
-                selected_profile, profile_list, selected_profile_user_options
-            )
+            self._load_profile(selected_profile, profile_list)
         elif selected_profile:
             self.log.warning(
-                "Profile %r requested, but profiles are not enabled", selected_profile
-            )
-
-        # help debugging by logging any option fields that are not recognized
-        option_keys = set(self.user_options)
-        unrecognized_keys = option_keys.difference(self._user_option_keys)
-        # Make sure any profile options are recognized
-        unrecognized_keys = [
-            k
-            for k in unrecognized_keys
-            if not k.startswith(f'profile-option-{selected_profile}-')
-        ]
-        if unrecognized_keys:
-            self.log.warning(
-                "Ignoring unrecognized KubeSpawner user_options: %s",
-                ", ".join(map(str, sorted(unrecognized_keys))),
+                "Profile %r requested, but no profile_lists are configured",
+                selected_profile,
             )
 
     async def _ensure_namespace(self):
