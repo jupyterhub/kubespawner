@@ -27,9 +27,7 @@
                       <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
                     {%- endfor %}
                     {%- if option['unlisted_choice'] and option['unlisted_choice']['enabled'] %}
-                      <option value="unlisted-choice">
-                        {{ option['unlisted_choice']['display_name_in_choices'] }}
-                      </option>
+                      <option value="unlisted-choice">{{ option['unlisted_choice']['display_name_in_choices'] }}</option>
                     {%- endif %}
                   </select>
                 </div>
