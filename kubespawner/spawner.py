@@ -3246,7 +3246,8 @@ class KubeSpawner(Spawner):
                     option_config['choices'][default_choice]["default"] = True
                 unlisted_choice = option_config.setdefault("unlisted_choice", {})
                 unlisted_choice.setdefault("enabled", False)
-                unlisted_choice.setdefault("display_name_in_choices", "Other...")
+                if unlisted_choice["enabled"]:
+                    unlisted_choice.setdefault("display_name_in_choices", "Other...")
         # ensure there is one default profile
         if not any(p.get("default") for p in profile_list):
             profile_list[0]["default"] = True
