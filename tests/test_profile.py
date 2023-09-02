@@ -105,7 +105,10 @@ from kubespawner import KubeSpawner
                         },
                         'only-unlisted': {
                             'display_name': 'Some option without any choices set',
-                            'unlisted_choice': {'enabled': True, 'display_name_in_choices': 'Other...'},
+                            'unlisted_choice': {
+                                'enabled': True,
+                                'display_name_in_choices': 'Other...',
+                            },
                         },
                         'explicit-defaults': {
                             'display_name': 'Some choice with a default set',
