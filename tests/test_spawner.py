@@ -982,7 +982,7 @@ _test_profiles = [
                     'enabled': True,
                     'display_name': 'Image Location',
                     'kubespawner_override': {'image': '{value}'},
-                }
+                },
             },
         },
     },
@@ -1121,6 +1121,7 @@ async def test_user_options_set_from_form_no_regex():
     assert spawner.cpu_limit is None
     await spawner.load_user_options()
     assert getattr(spawner, 'image') == 'invalid/foo:latest'
+
 
 async def test_user_options_unlisted_choice_without_choices():
     """
