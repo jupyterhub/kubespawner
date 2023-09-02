@@ -19,6 +19,7 @@
             {%- for k, option in profile.profile_options.items() %}
               <div class="js-options-container">
                 <div class="option">
+                  {%- if option['choices'] %}
                   <label for="profile-option-{{ profile.slug }}--{{ k }}"
                          class="js-profile-option-label">{{ option.display_name }}</label>
                   <select name="profile-option-{{ profile.slug }}--{{ k }}"
@@ -30,13 +31,21 @@
                       <option value="unlisted-choice">{{ option['unlisted_choice']['display_name_in_choices'] }}</option>
                     {%- endif %}
                   </select>
+                  {%- endif %}
                 </div>
                 {%- if option['unlisted_choice']['enabled'] %}
-                  <div class="option hidden js-other-input-container">
+                  <div class="option js-other-input-container {%- if option['choices'] %} hidden {%- endif %}">
                     <label for="profile-option-{{ profile.slug }}--{{ k }}--unlisted-choice">
                       {{ option['unlisted_choice']['display_name'] }}
                     </label>
-                    <input data-name="profile-option-{{ profile.slug }}--{{ k }}--unlisted-choice"
+                    <input 
+                          {#- FIXME: This has gotten a bit ugly, ideally we would handle a lot of this
+                            logic all in Javascript and not need this conditional attribute rendering #}
+                           {%- if option['choices'] %}
+                           data-name="profile-option-{{ profile.slug }}--{{ k }}--unlisted-choice"
+                           {%- else %}
+                           name="profile-option-{{ profile.slug }}--{{ k }}--unlisted-choice"
+                           {%- endif %}
                            {%- if option['unlisted_choice']['validation_regex'] %}
                            pattern="{{ option['unlisted_choice']['validation_regex'] }}"
                            {%- endif %}

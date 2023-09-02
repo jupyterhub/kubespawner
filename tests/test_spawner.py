@@ -1133,7 +1133,7 @@ async def test_user_options_unlisted_choice_without_choices():
     spawner.user_options = spawner.options_from_form(
         {
             'profile': [_test_profiles[5]['slug']],
-            'profile-options-no-choices--image--unlisted-choice': ['pangeo/test:1.2.3'],
+            'profile-option-no-choices--image--unlisted-choice': ['pangeo/test:1.2.3'],
         }
     )
     assert spawner.user_options == {
@@ -1141,7 +1141,7 @@ async def test_user_options_unlisted_choice_without_choices():
         'profile': _test_profiles[5]['slug'],
     }
     assert spawner.cpu_limit is None
-    await spawner.load_ser_options()
+    await spawner.load_user_options()
     assert getattr(spawner, 'image') == 'pangeo/test:1.2.3'
 
 
