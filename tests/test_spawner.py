@@ -972,6 +972,20 @@ _test_profiles = [
             },
         },
     },
+    {
+        'display_name': 'Test with unlisted_choice and no choices',
+        'slug': 'no-choices',
+        'profile_options': {
+            'image': {
+                'display_name': 'Image',
+                'unlisted_choice': {
+                    'enabled': True,
+                    'display_name': 'Image Location',
+                    'kubespawner_override': {'image': '{value}'},
+                }
+            },
+        },
+    },
 ]
 
 
@@ -1107,6 +1121,28 @@ async def test_user_options_set_from_form_no_regex():
     assert spawner.cpu_limit is None
     await spawner.load_user_options()
     assert getattr(spawner, 'image') == 'invalid/foo:latest'
+
+async def test_user_options_unlisted_choice_without_choices():
+    """
+    Test that if a profile does not have `choices` but has an unlisted_choice definition,
+    everything still works.
+    """
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    await spawner.get_options_form()
+    spawner.user_options = spawner.options_from_form(
+        {
+            'profile': [_test_profiles[5]['slug']],
+            'profile-options-no-choices--image--unlisted-choice': ['pangeo/test:1.2.3'],
+        }
+    )
+    assert spawner.user_options == {
+        'image--unlisted-choice': 'pangeo/test:1.2.3',
+        'profile': _test_profiles[5]['slug'],
+    }
+    assert spawner.cpu_limit is None
+    await spawner.load_ser_options()
+    assert getattr(spawner, 'image') == 'pangeo/test:1.2.3'
 
 
 async def test_kubespawner_override():
