@@ -28,11 +28,7 @@
                     {%- endfor %}
                     {%- if option['unlisted_choice'] and option['unlisted_choice']['enabled'] %}
                       <option value="unlisted-choice">
-                        {%- if option['unlisted_choice']['other_text'] %}
-                          {{ option['unlisted_choice']['other_text'] }}
-                        {%- else %}
-                          Other...
-                        {%- endif %}
+                        {{ option['unlisted_choice']['display_name_in_choices'] }}
                       </option>
                     {%- endif %}
                   </select>
