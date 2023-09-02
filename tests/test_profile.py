@@ -91,9 +91,7 @@ from kubespawner import KubeSpawner
                     'profile_options': {
                         'no-defaults': {
                             'display_name': 'Some choice without a default set',
-                            'unlisted_choice': {
-                                'enabled': False
-                            },
+                            'unlisted_choice': {'enabled': False},
                             'choices': {
                                 'option-1': {
                                     'display_name': 'Option 1',
@@ -115,9 +113,7 @@ from kubespawner import KubeSpawner
                         },
                         'explicit-defaults': {
                             'display_name': 'Some choice with a default set',
-                            'unlisted_choice': {
-                                'enabled': False
-                            },
+                            'unlisted_choice': {'enabled': False},
                             'choices': {
                                 'option-1': {
                                     'display_name': 'Option 1',
