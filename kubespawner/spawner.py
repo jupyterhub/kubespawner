@@ -3238,7 +3238,8 @@ class KubeSpawner(Spawner):
                 profile['slug'] = slugify(profile['display_name'])
 
             # ensure each option in profile_options has a default choice if
-            # pre-defined choices are available
+            # pre-defined choices are available, and initialize an
+            # unlisted_choice dictionary
             for option_config in profile.get('profile_options', {}).values():
                 if option_config.get('choices') and not any(
                     c.get('default') for c in option_config['choices'].values()
