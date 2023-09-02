@@ -31,7 +31,7 @@
                     {%- endif %}
                   </select>
                 </div>
-                {%- if option['unlisted_choice'] and option['unlisted_choice']['enabled'] %}
+                {%- if option['unlisted_choice']['enabled'] %}
                   <div class="option hidden js-other-input-container">
                     <label for="profile-option-{{ profile.slug }}--{{ k }}--unlisted-choice">
                       {{ option['unlisted_choice']['display_name'] }}
