@@ -20,19 +20,30 @@
               <div class="js-options-container">
                 <div class="option">
                   <label for="profile-option-{{ profile.slug }}-{{ k }}"
-                         class="js-profile-option-label">{{ option.display_name }}</label>
+                        class="js-profile-option-label {%- if not option['choices'] %} hidden {%- endif %}">
+                        {{ option.display_name }}
+                  </label>
                   <select name="profile-option-{{ profile.slug }}-{{ k }}"
-                          class="form-control js-profile-option-select">
-                    {%- for k, choice in option['choices'].items() %}
-                      <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
-                    {%- endfor %}
-                    {%- if option['unlisted_choice'] and option['unlisted_choice']['enabled'] %}
-                      <option value="unlisted-choice">Other...</option>
+                          class="form-control js-profile-option-select {%- if not option['choices'] %} hidden {%- endif %}">
+                    {%- if option['choices'] %}
+                      {%- for k, choice in option['choices'].items() %}
+                        <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
+                      {%- endfor %}
                     {%- endif %}
-                  </select>
+                    {%- if option['unlisted_choice'] and option['unlisted_choice']['enabled'] %}
+                      <option value="unlisted-choice">
+                        {%- if option['unlisted_choice']['other_text'] %}
+                          {{ option['unlisted_choice']['other_text'] }}
+                        {%- else %}
+                          Other...
+                        {%- endif %}
+                      </option>
+                    {%- endif %}
+                    </select>
                 </div>
                 {%- if option['unlisted_choice'] and option['unlisted_choice']['enabled'] %}
-                  <div class="option hidden js-other-input-container">
+                  <div class="option js-other-input-container
+                    {%- if option['choices'] %} hidden {%- endif %}">
                     <label for="profile-option-{{ profile.slug }}-{{ k }}--unlisted-choice">
                       {{ option['unlisted_choice']['display_name'] }}
                     </label>

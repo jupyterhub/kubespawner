@@ -3143,19 +3143,22 @@ class KubeSpawner(Spawner):
             # Get selected options or default to the first option if none is passed
             for option_name, option in profile.get('profile_options').items():
                 unlisted_choice_form_key = f'{option_name}--unlisted-choice'
+                has_unlisted_choice_key = (option.get('unlisted_choice', {}).get('enabled', False)
+                    and unlisted_choice_form_key in selected_profile_user_options)
+                has_unlisted_choice_value = (option.get('unlisted_choice', {}).get('enabled', False)
+                    and unlisted_choice_form_key in selected_profile_user_options
+                    and selected_profile_user_options[unlisted_choice_form_key] != '')
                 chosen_option = selected_profile_user_options.get(option_name, None)
                 # If none was selected get the default. At least one choice is
                 # guaranteed to have the default set
                 if not chosen_option:
-                    for choice_name, choice in option['choices'].items():
-                        if choice.get('default', False):
-                            chosen_option = choice_name
+                    if not has_unlisted_choice_value:
+                        for choice_name, choice in option['choices'].items():
+                            if choice.get('default', False):
+                                chosen_option = choice_name
 
                 # Handle override for unlisted_choice free text specified by user
-                if (
-                    option.get('unlisted_choice', {}).get('enabled', False)
-                    and unlisted_choice_form_key in selected_profile_user_options
-                ):
+                if has_unlisted_choice_key:
                     chosen_option_overrides = option['unlisted_choice'][
                         'kubespawner_override'
                     ]

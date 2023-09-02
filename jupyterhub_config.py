@@ -49,6 +49,7 @@ c.KubeSpawner.profile_list = [
                 'unlisted_choice': {
                     'enabled': True,
                     'display_name': 'Image Location',
+                    'other_text': 'Enter Image manually',
                     'validation_regex': '^pangeo/.*$',
                     'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
                     'kubespawner_override': {'image': '{value}'},
