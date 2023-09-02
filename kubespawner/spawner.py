@@ -1543,6 +1543,7 @@ class KubeSpawner(Spawner):
             selected "Other" as a choice:
             - `enabled`: Boolean, whether the free form input should be enabled
             - `display_name`: String, label for input field
+            - `other_text`: Optional, text to show in Select Dropdown for Other option
             - `validation_regex`: Optional, regex that the free form input should match - eg. ^pangeo/.*$
             - `validation_message`: Optional, validation message for the regex. Should describe the required
                input format in a human-readable way.
@@ -1604,6 +1605,7 @@ class KubeSpawner(Spawner):
                             },
                             'unlisted_choice': {
                                 'enabled': True,
+                                'other_text': 'Enter image manually',
                                 'display_name': 'Other image',
                                 'validation_regex': '^jupyter/.+:.+$',
                                 'validation_message': 'Must be an image matching ^jupyter/<name>:<tag>$',
