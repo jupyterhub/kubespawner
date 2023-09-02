@@ -1543,6 +1543,9 @@ class KubeSpawner(Spawner):
             selected "Other" as a choice:
             - `enabled`: Boolean, whether the free form input should be enabled
             - `display_name`: String, label for input field
+            - `display_name_in_choices`: Optional, display name for the choice
+              to specify an unlisted choice in the dropdown list of pre-defined
+              choices. Defaults to "Other...".
             - `validation_regex`: Optional, regex that the free form input should match - eg. ^pangeo/.*$
             - `validation_message`: Optional, validation message for the regex. Should describe the required
                input format in a human-readable way.
@@ -1605,6 +1608,7 @@ class KubeSpawner(Spawner):
                             'unlisted_choice': {
                                 'enabled': True,
                                 'display_name': 'Other image',
+                                'display_name_in_choices': 'Enter image manually',
                                 'validation_regex': '^jupyter/.+:.+$',
                                 'validation_message': 'Must be an image matching ^jupyter/<name>:<tag>$',
                                 'kubespawner_override': {'image': '{value}'},
@@ -3234,7 +3238,8 @@ class KubeSpawner(Spawner):
                 profile['slug'] = slugify(profile['display_name'])
 
             # ensure each option in profile_options has a default choice if
-            # pre-defined choices are available
+            # pre-defined choices are available, and initialize an
+            # unlisted_choice dictionary
             for option_config in profile.get('profile_options', {}).values():
                 if option_config.get('choices') and not any(
                     c.get('default') for c in option_config['choices'].values()
@@ -3242,7 +3247,10 @@ class KubeSpawner(Spawner):
                     # pre-defined choices were provided without a default choice
                     default_choice = list(option_config['choices'].keys())[0]
                     option_config['choices'][default_choice]["default"] = True
-
+                unlisted_choice = option_config.setdefault("unlisted_choice", {})
+                unlisted_choice.setdefault("enabled", False)
+                if unlisted_choice["enabled"]:
+                    unlisted_choice.setdefault("display_name_in_choices", "Other...")
         # ensure there is one default profile
         if not any(p.get("default") for p in profile_list):
             profile_list[0]["default"] = True
