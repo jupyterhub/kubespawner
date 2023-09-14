@@ -256,7 +256,15 @@ async def test_unlisted_choice_non_string_override():
                             'environment': {
                                 'CUSTOM_IMAGE_USED': 'yes',
                                 'CUSTOM_IMAGE': '{value}',
+                                # This should just be passed through, as JUPYTER_USER is not replaced
+                                'USER': '${JUPYTER_USER}',
+                                # This should render as ${JUPYTER_USER}, as the {{ and }} escape them.
+                                # this matches existing behavior for other replacements elsewhere
+                                'USER_TEST': '${{JUPYTER_USER}}',
                             },
+                            "init_containers": [
+                                {"name": "testing", "image": "{value}"}
+                            ],
                         },
                     },
                 }
@@ -274,7 +282,13 @@ async def test_unlisted_choice_non_string_override():
     await spawner.load_user_options()
 
     assert spawner.image == image
-    assert spawner.environment == {'CUSTOM_IMAGE_USED': 'yes', 'CUSTOM_IMAGE': image}
+    assert spawner.environment == {
+        'CUSTOM_IMAGE_USED': 'yes',
+        'CUSTOM_IMAGE': image,
+        'USER': '${JUPYTER_USER}',
+        'USER_TEST': '${JUPYTER_USER}',
+    }
+    assert spawner.init_containers == [{"name": "testing", "image": image}]
 
 
 async def test_empty_user_options_and_profile_options_api():

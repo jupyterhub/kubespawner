@@ -46,7 +46,7 @@ from .objects import (
     make_service,
 )
 from .reflector import ResourceReflector
-from .utils import recursive_update
+from .utils import recursive_format, recursive_update
 
 
 class PodReflector(ResourceReflector):
@@ -3191,10 +3191,7 @@ class KubeSpawner(Spawner):
                     "kubespawner_override", {}
                 )
                 for k, v in option_overrides.items():
-                    # FIXME: This logic restricts unlisted_choice to define
-                    #        kubespawner_override dictionaries where all keys
-                    #        have string values.
-                    option_overrides[k] = v.format(value=unlisted_choice)
+                    option_overrides[k] = recursive_format(v, value=unlisted_choice)
             elif choice:
                 # A pre-defined choice was selected
                 option_overrides = option["choices"][choice].get(
