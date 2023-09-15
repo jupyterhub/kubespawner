@@ -263,7 +263,11 @@ async def test_unlisted_choice_non_string_override():
                                 'USER_TEST': '${{JUPYTER_USER}}',
                             },
                             "init_containers": [
-                                {"name": "testing", "image": "{value}"}
+                                {
+                                    "name": "testing",
+                                    "image": "{value}",
+                                    "securityContext": {"runAsUser": 1000},
+                                }
                             ],
                         },
                     },
@@ -288,7 +292,9 @@ async def test_unlisted_choice_non_string_override():
         'USER': '${JUPYTER_USER}',
         'USER_TEST': '${JUPYTER_USER}',
     }
-    assert spawner.init_containers == [{"name": "testing", "image": image}]
+    assert spawner.init_containers == [
+        {"name": "testing", "image": image, 'securityContext': {'runAsUser': 1000}}
+    ]
 
 
 async def test_empty_user_options_and_profile_options_api():

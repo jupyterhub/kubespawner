@@ -3,7 +3,6 @@ Misc. general utility functions, not tied to KubeSpawner directly
 """
 import copy
 import hashlib
-from typing import Union
 
 
 def generate_hashed_slug(slug, limit=63, hash_length=6):
@@ -239,9 +238,7 @@ class IgnoreMissing(dict):
         return f"{{{key}}}"
 
 
-def recursive_format(
-    format_object: Union[str, dict, list], **kwargs
-) -> Union[str, dict, list]:
+def recursive_format(format_object, **kwargs):
     """
     Recursively format given object with values provided as keyword arguments.
 
@@ -262,6 +259,5 @@ def recursive_format(
             for k, v in format_object.items()
         }
     else:
-        raise ValueError(
-            f"Object of type {type(format_object)} can not be recursively formatted"
-        )
+        # Everything else just gets returned as is, unformatted
+        return format_object
