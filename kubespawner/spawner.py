@@ -2950,6 +2950,18 @@ class KubeSpawner(Spawner):
         )
 
         env = Environment(loader=loader)
+
+        # jinja2's tojson sorts keys in dicts by default. This was useful
+        # in the time when python's dicts were not ordered. However, now that
+        # dicts are ordered in python, this screws it up. Since profiles are
+        # dicts, ordering *does* matter - they should be displayed to the user
+        # in the order that the admin sets them. This allows template writers
+        # to use `|tojson` on the profile_list (to be read by JS)
+        # without worrying about ordering getting mangled. Template writers
+        # can still sort keys by explicitly using `|dictsort` in their
+        # template
+        env.policies['json.dumps_kwargs'] = {'sort_keys': False}
+
         if self.profile_form_template != "":
             profile_form_template = env.from_string(self.profile_form_template)
         else:
