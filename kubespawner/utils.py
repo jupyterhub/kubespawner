@@ -228,7 +228,7 @@ class IgnoreMissing(dict):
     """
     Dictionary subclass for use with format_map
 
-    Renders missing values as "{key}", so format strings with
+    Returns missing dictionary keys' values as "{key}", so format strings with
     missing values just get rendered as is.
 
     Stolen from https://docs.python.org/3/library/stdtypes.html#str.format_map
@@ -242,7 +242,7 @@ def recursive_format(format_object, **kwargs):
     """
     Recursively format given object with values provided as keyword arguments.
 
-    If the given object (string, list or dict) has items that do not have
+    If the given object (string, list, set, or dict) has items that do not have
     placeholders for passed in kwargs, no formatting is performed.
 
     recursive_format("{v}", v=5) -> Returns "5"
@@ -253,6 +253,8 @@ def recursive_format(format_object, **kwargs):
         return format_object.format_map(IgnoreMissing(kwargs))
     elif isinstance(format_object, list):
         return [recursive_format(i, **kwargs) for i in format_object]
+    elif isinstance(format_object, set):
+        return {recursive_format(i, **kwargs) for i in format_object}
     elif isinstance(format_object, dict):
         return {
             recursive_format(k, **kwargs): recursive_format(v, **kwargs)
