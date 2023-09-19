@@ -46,7 +46,7 @@ from .objects import (
     make_service,
 )
 from .reflector import ResourceReflector
-from .utils import recursive_update
+from .utils import recursive_format, recursive_update
 
 
 class PodReflector(ResourceReflector):
@@ -1523,9 +1523,10 @@ class KubeSpawner(Spawner):
         Signature is: `List(Dict())`, where each item is a dictionary that has two keys:
 
         - `display_name`: the human readable display name (should be HTML safe)
-        - `slug`: the machine readable slug to identify the profile
-          (missing slugs are generated from display_name)
+        - `default`: (Optional Bool) True if this is the default selected option
         - `description`: Optional description of this profile displayed to the user.
+        - `slug`: (Optional) the machine readable string to identify the
+          profile (missing slugs are generated from display_name)
         - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
           settings. Each value can be either the final value to change or a callable that
           take the `KubeSpawner` instance as parameter and return the final value. This can
@@ -1541,18 +1542,32 @@ class KubeSpawner(Spawner):
           - `display_name`: Name used to identify this particular option
           - `unlisted_choice`: Object to specify if there should be a free-form field if the user
             selected "Other" as a choice:
+
             - `enabled`: Boolean, whether the free form input should be enabled
             - `display_name`: String, label for input field
             - `display_name_in_choices`: Optional, display name for the choice
               to specify an unlisted choice in the dropdown list of pre-defined
               choices. Defaults to "Other...".
-            - `validation_regex`: Optional, regex that the free form input should match - eg. ^pangeo/.*$
-            - `validation_message`: Optional, validation message for the regex. Should describe the required
-               input format in a human-readable way.
-            - `kubespawner_override`: Object specifying what key:values should be over-ridden
-               with the value of the free form input, using `{value}` for the value to be substituted with
-               the user POSTed value in the `unlisted_choice` input field. eg:
-              - some_config_key: some_value-with-{value}-substituted-with-what-user-wrote
+            - `validation_regex`: Optional, regex that the free form input
+              should match, eg. `^pangeo/.*$`.
+            - `validation_message`: Optional, validation message for the regex.
+              Should describe the required input format in a human-readable way.
+            - `kubespawner_override`: a dictionary with overrides to apply to
+              the KubeSpawner settings, where the string `{value}` will be
+              substituted with what was filled in by the user if its found in
+              string values anywhere in the dictionary. As an example, if the
+              choice made is about an image tag for an image only to be used
+              with JupyterLab, it could look like this:
+
+              .. code-block:: python
+
+                 {
+                     "image_spec": "jupyter/datascience-notebook:{value}",
+                     "default_url": "/lab",
+                     "extra_labels: {
+                        "user-specified-image-tag": "{value}",
+                     },
+                 }
           - `choices`: A dictionary containing list of choices for the user to choose from
             to set the value for this particular option. The key is an identifier for this
             choice, and the value is a dictionary with the following possible keys:
@@ -1568,7 +1583,6 @@ class KubeSpawner(Spawner):
               If the traitlet being overriden is a *dictionary*, the dictionary
               will be *recursively updated*, rather than overriden. If you want to
               remove a key, set its value to `None`
-        - `default`: (optional Bool) True if this is the default selected option
 
         kubespawner setting overrides work in the following manner, with items further in the
         list *replacing* (not merging with) items earlier in the list:
@@ -3191,10 +3205,7 @@ class KubeSpawner(Spawner):
                     "kubespawner_override", {}
                 )
                 for k, v in option_overrides.items():
-                    # FIXME: This logic restricts unlisted_choice to define
-                    #        kubespawner_override dictionaries where all keys
-                    #        have string values.
-                    option_overrides[k] = v.format(value=unlisted_choice)
+                    option_overrides[k] = recursive_format(v, value=unlisted_choice)
             elif choice:
                 # A pre-defined choice was selected
                 option_overrides = option["choices"][choice].get(

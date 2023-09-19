@@ -238,6 +238,65 @@ async def test_find_slug_exception():
         spawner._get_profile('does-not-exist', profile_list)
 
 
+async def test_unlisted_choice_non_string_override():
+    profiles = [
+        {
+            'display_name': 'CPU only',
+            'slug': 'cpu',
+            'profile_options': {
+                'image': {
+                    'display_name': 'Image',
+                    'unlisted_choice': {
+                        'enabled': True,
+                        'display_name': 'Image Location',
+                        'validation_regex': '^pangeo/.*$',
+                        'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
+                        'kubespawner_override': {
+                            'image': '{value}',
+                            'environment': {
+                                'CUSTOM_IMAGE_USED': 'yes',
+                                'CUSTOM_IMAGE': '{value}',
+                                # This should just be passed through, as JUPYTER_USER is not replaced
+                                'USER': '${JUPYTER_USER}',
+                                # This should render as ${JUPYTER_USER}, as the {{ and }} escape them.
+                                # this matches existing behavior for other replacements elsewhere
+                                'USER_TEST': '${{JUPYTER_USER}}',
+                            },
+                            "init_containers": [
+                                {
+                                    "name": "testing",
+                                    "image": "{value}",
+                                    "securityContext": {"runAsUser": 1000},
+                                }
+                            ],
+                        },
+                    },
+                }
+            },
+        },
+    ]
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = profiles
+
+    image = "pangeo/pangeo-notebook:latest"
+    # Set user option for image directly
+    spawner.user_options = {"profile": "cpu", "image--unlisted-choice": image}
+
+    # this shouldn't error
+    await spawner.load_user_options()
+
+    assert spawner.image == image
+    assert spawner.environment == {
+        'CUSTOM_IMAGE_USED': 'yes',
+        'CUSTOM_IMAGE': image,
+        'USER': '${JUPYTER_USER}',
+        'USER_TEST': '${JUPYTER_USER}',
+    }
+    assert spawner.init_containers == [
+        {"name": "testing", "image": image, 'securityContext': {'runAsUser': 1000}}
+    ]
+
+
 async def test_empty_user_options_and_profile_options_api():
     profiles = [
         {
