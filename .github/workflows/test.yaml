@@ -61,7 +61,7 @@ jobs:
             test_dependencies: git+https://github.com/jupyterhub/jupyterhub
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
           python-version: "${{ matrix.python }}"
