@@ -122,9 +122,9 @@ class KubeSpawner(Spawner):
     # KubeSpawner objects.
     reflectors = {}
 
-    # Characters as defined by safe for DNS
+    # Characters defined as safe for DNS
     # Note: '-' is not in safe_chars, as it is being used as escape character
-    safe_chars = set(string.ascii_lowercase + string.digits)
+    dns_safe_chars = set(string.ascii_lowercase + string.digits)
 
     def _get_reflector_key(self, kind: str) -> Tuple[str, str, Optional[str]]:
         if self.enable_user_namespaces:
@@ -1795,12 +1795,11 @@ class KubeSpawner(Spawner):
 
     def _expand_user_properties(self, template):
         # Make sure username and servername match the restrictions for DNS labels
-        # Note: '-' is not in safe_chars, as it is being used as escape character
-        safe_chars = set(string.ascii_lowercase + string.digits)
+        # Note: '-' is not in self.dns_safe_chars, as it is being used as escape character
 
         raw_servername = self.name or ''
         safe_servername = escapism.escape(
-            raw_servername, safe=safe_chars, escape_char='-'
+            raw_servername, safe=self.dns_safe_chars, escape_char='-'
         ).lower()
 
         hub_namespace = self._namespace_default()
@@ -1808,10 +1807,10 @@ class KubeSpawner(Spawner):
             hub_namespace = "user"
 
         legacy_escaped_username = ''.join(
-            [s if s in safe_chars else '-' for s in self.user.name.lower()]
+            [s if s in self.dns_safe_chars else '-' for s in self.user.name.lower()]
         )
         safe_username = escapism.escape(
-            self.user.name, safe=safe_chars, escape_char='-'
+            self.user.name, safe=self.dns_safe_chars, escape_char='-'
         ).lower()
         rendered = template.format(
             userid=self.user.id,
@@ -1842,9 +1841,10 @@ class KubeSpawner(Spawner):
     def _build_common_labels(self, extra_labels):
         # Default set of labels, picked up from
         # https://github.com/helm/helm-www/blob/HEAD/content/en/docs/chart_best_practices/labels.md
+        safe_chars = set(string.ascii_letters + string.digits)
         labels = {
             'hub.jupyter.org/username': escapism.escape(
-                self.user.name, safe=self.safe_chars, escape_char='-'
+                self.user.name, safe=safe_chars, escape_char='-'
             ).lower()
         }
         labels.update(extra_labels)
@@ -1852,12 +1852,13 @@ class KubeSpawner(Spawner):
         return labels
 
     def _build_pod_labels(self, extra_labels):
+        safe_chars = set(string.ascii_letters + string.digits)
         labels = self._build_common_labels(extra_labels)
         labels.update(
             {
                 'component': self.component_label,
                 'hub.jupyter.org/servername': escapism.escape(
-                    self.name, safe=self.safe_chars, escape_char='-'
+                    self.name, safe=safe_chars, escape_char='-'
                 ).lower(),
             }
         )
