@@ -81,14 +81,14 @@ rules on your computer. We will now walk you through the steps to get going:
 
     ```bash
     # Linux
-    sudo ip route add 172.17.0.0/16 via $(minikube ip)
+    sudo ip route add $(kubectl get node minikube -o jsonpath="{.spec.podCIDR}") via $(minikube ip)
     # later on you can undo this with
-    sudo ip route del 172.17.0.0/16
+    sudo ip route del $(kubectl get node minikube -o jsonpath="{.spec.podCIDR}")
 
     # MACOS
-    sudo route -n add -net 172.17.0.0/16 $(minikube ip)
+    sudo route -n add -net $(kubectl get node minikube -o jsonpath="{.spec.podCIDR}") $(minikube ip)
     # later on you can undo this with
-    sudo route delete -net 172.17.0.0
+    sudo route delete -net $(kubectl get node minikube -o jsonpath="{.spec.podCIDR}")
     ```
 
     ### Troubleshooting
