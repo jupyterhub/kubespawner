@@ -2380,7 +2380,7 @@ class KubeSpawner(Spawner):
             def on_reflector_failure():
                 # If reflector cannot be started, halt the JH application.
                 self.log.critical(
-                    "Reflector with key %r reflector, halting Hub.",
+                    "Reflector with key %r failed, halting Hub.",
                     key,
                 )
                 sys.exit(1)
