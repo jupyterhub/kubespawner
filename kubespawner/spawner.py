@@ -2467,11 +2467,18 @@ class KubeSpawner(Spawner):
             reflector = cls.reflectors.pop(key)
             tasks.append(reflector.stop())
 
+        # make sure all tasks are Futures so we can cancel them later
+        # in case of error
+        futures = [asyncio.ensure_future(task) for task in tasks]
         try:
-            await asyncio.gather(*tasks)
+            await asyncio.gather(*futures)
         except Exception:
-            for task in tasks:
-                task.cancel()
+            # cancel any unfinished tasks before re-raising
+            # because gather doesn't cancel unfinished tasks.
+            # TaskGroup would do this cancel for us, but requires Python 3.11
+            for future in futures:
+                if not future.done():
+                    future.cancel()
             raise
 
     def start(self):
@@ -2659,14 +2666,21 @@ class KubeSpawner(Spawner):
 
         # namespace can be changed via kubespawner_override, start watching pods only after
         # load_user_options() is called
-        start_futures = [self._start_watching_pods()]
+        start_tasks = [self._start_watching_pods()]
         if self.events_enabled:
-            start_futures.append(self._start_watching_events())
+            start_tasks.append(self._start_watching_events())
+        # create Futures for coroutines so we can cancel them
+        # in case of an error
+        start_futures = [asyncio.ensure_future(task) for task in start_tasks]
         try:
             await asyncio.gather(*start_futures)
         except Exception:
+            # cancel any unfinished tasks before re-raising
+            # because gather doesn't cancel unfinished tasks.
+            # TaskGroup would do this cancel for us, but requires Python 3.11
             for future in start_futures:
-                future.cancel()
+                if not future.done():
+                    future.cancel()
             raise
 
         # record latest event so we don't include old
