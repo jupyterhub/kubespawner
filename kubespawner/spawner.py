@@ -693,12 +693,12 @@ class KubeSpawner(Spawner):
     )
 
     image = Unicode(
-        'jupyterhub/singleuser:latest',
+        'quay.io/jupyterhub/singleuser:latest',
         config=True,
         help="""
         Docker image to use for spawning user's containers.
 
-        Defaults to `jupyterhub/singleuser:latest`
+        Defaults to `quay.io/jupyterhub/singleuser:latest`
 
         Name of the container + a tag, same as would be used with
         a `docker pull` command. If tag is set to `latest`, kubernetes will
