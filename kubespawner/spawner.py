@@ -201,8 +201,22 @@ class KubeSpawner(Spawner):
         # The attribute needs to exist, even though it is unset to start with
         self._start_future = None
 
-        load_config(host=self.k8s_api_host, ssl_ca_cert=self.k8s_api_ssl_ca_cert)
+        load_config(
+            host=self.k8s_api_host,
+            ssl_ca_cert=self.k8s_api_ssl_ca_cert,
+            verify_ssl=self.k8s_api_verify_ssl,
+        )
         self.api = shared_client("CoreV1Api")
+
+    k8s_api_verify_ssl = Bool(
+        True,
+        config=True,
+        help="""
+        SSL/TLS verification
+        Set this to false to skip verifying SSL certificate when calling API
+        from https server.
+        """,
+    )
 
     k8s_api_ssl_ca_cert = Unicode(
         "",
