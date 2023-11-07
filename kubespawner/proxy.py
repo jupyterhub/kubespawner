@@ -298,7 +298,8 @@ class KubeIngressProxy(Proxy):
     )
 
     k8s_api_verify_ssl = Bool(
-        True,
+        None,
+        allow_none=True,
         config=True,
         help="""
         SSL/TLS verification

@@ -209,7 +209,8 @@ class KubeSpawner(Spawner):
         self.api = shared_client("CoreV1Api")
 
     k8s_api_verify_ssl = Bool(
-        True,
+        None,
+        allow_none=True,
         config=True,
         help="""
         SSL/TLS verification
