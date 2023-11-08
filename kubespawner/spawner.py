@@ -213,7 +213,8 @@ class KubeSpawner(Spawner):
         allow_none=True,
         config=True,
         help="""
-        SSL/TLS verification
+        Verify TLS certificates when connecting to the k8s master.
+        
         Set this to false to skip verifying SSL certificate when calling API
         from https server.
         """,
