@@ -297,9 +297,25 @@ class KubeIngressProxy(Proxy):
         """,
     )
 
+    k8s_api_verify_ssl = Bool(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        Verify TLS certificates when connecting to the k8s master.
+        
+        Set this to false to skip verifying SSL certificate when calling API
+        from https server.
+        """,
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        load_config(host=self.k8s_api_host, ssl_ca_cert=self.k8s_api_ssl_ca_cert)
+        load_config(
+            host=self.k8s_api_host,
+            ssl_ca_cert=self.k8s_api_ssl_ca_cert,
+            verify_ssl=self.k8s_api_verify_ssl,
+        )
         self.core_api = shared_client('CoreV1Api')
         self.networking_api = shared_client('NetworkingV1Api')
 

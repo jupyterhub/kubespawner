@@ -67,7 +67,7 @@ def shared_client(ClientType, *args, **kwargs):
 
 
 @lru_cache()
-def load_config(host=None, ssl_ca_cert=None):
+def load_config(host=None, ssl_ca_cert=None, verify_ssl=None):
     """
     Loads global configuration for the Python client we use to communicate with
     a Kubernetes API server, and optionally tweaks that configuration based on
@@ -97,4 +97,8 @@ def load_config(host=None, ssl_ca_cert=None):
     if host:
         global_conf = Configuration.get_default_copy()
         global_conf.host = host
+        Configuration.set_default(global_conf)
+    if verify_ssl is not None:
+        global_conf = Configuration.get_default_copy()
+        global_conf.verify_ssl = verify_ssl
         Configuration.set_default(global_conf)
