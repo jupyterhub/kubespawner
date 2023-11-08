@@ -2144,12 +2144,8 @@ class KubeSpawner(Spawner):
         """
         Save state required to reinstate this user's pod from scratch
 
-        We save the `pod_name`, even though we could easily compute it,
-        because JupyterHub requires you save *some* state! Otherwise
-        it assumes your server is dead. This works around that.
-
-        It's also useful for cases when the `pod_template` changes between
-        restarts - this keeps the old pods around.
+        `pod_name` is saved as `pod_template` can change between hub restarts,
+        and we do not want to lose track of the old pods when that happens.
 
         We also save the namespace and DNS name for use cases where the namespace is
         calculated dynamically, or it changes between restarts.
