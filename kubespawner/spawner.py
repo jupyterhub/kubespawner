@@ -730,7 +730,7 @@ class KubeSpawner(Spawner):
 
         Defaults to `None`, which means it is omitted. This leads to it behaving
         like 'Always' when a tag is absent or 'latest', and 'IfNotPresent' when
-        the tag is specified to be something else.
+        the tag is specified to be something else, per https://kubernetes.io/docs/concepts/containers/images/#imagepullpolicy-defaulting.
         """,
     )
 
