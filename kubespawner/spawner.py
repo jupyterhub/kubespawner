@@ -721,21 +721,16 @@ class KubeSpawner(Spawner):
     )
 
     image_pull_policy = Unicode(
-        'IfNotPresent',
+        None,
+        allow_none=True,
         config=True,
         help="""
         The image pull policy of the docker container specified in
         `image`.
 
-        Defaults to `IfNotPresent` which causes the Kubelet to NOT pull the image
-        specified in KubeSpawner.image if it already exists, except if the tag
-        is `:latest`. For more information on image pull policy,
-        refer to `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/>`__.
-
-
-        This configuration is primarily used in development if you are
-        actively changing the `image_spec` and would like to pull the image
-        whenever a user container is spawned.
+        Defaults to `None`, which means it is omitted. This leads to it behaving
+        like 'Always' when a tag is absent or 'latest', and 'IfNotPresent' when
+        the tag is specified to be something else.
         """,
     )
 
