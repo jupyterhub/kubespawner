@@ -19,7 +19,6 @@ def test_make_simplest_pod():
             image='jupyter/singleuser:latest',
             cmd=['jupyterhub-singleuser'],
             port=8888,
-            image_pull_policy='IfNotPresent',
         )
     ) == {
         "metadata": {"name": "test", "labels": {}, "annotations": {}},
@@ -30,7 +29,6 @@ def test_make_simplest_pod():
                     "env": [],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
-                    "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],

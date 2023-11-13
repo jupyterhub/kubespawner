@@ -80,7 +80,7 @@ def make_pod(
     cmd,
     port,
     image,
-    image_pull_policy,
+    image_pull_policy=None,
     image_pull_secrets=None,
     node_selector=None,
     uid=None,
@@ -138,9 +138,9 @@ def make_pod(
         arguments
 
     image_pull_policy:
-        Image pull policy - one of 'Always', 'IfNotPresent' or 'Never'. Decides
+        Image pull policy - one of None, 'Always', 'IfNotPresent' or 'Never'. Decides
         when kubernetes will check for a newer version of image and pull it when
-        running a pod.
+        running a pod. If set to None, it will be omitted from the spec.
 
     image_pull_secrets:
         Image pull secrets - a list of references to Kubernetes Secret resources
