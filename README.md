@@ -6,7 +6,7 @@
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/jupyterhub/kubespawner/test.yaml?logo=github&label=tests)](https://github.com/jupyterhub/kubespawner/actions)
 [![Code coverage](https://codecov.io/gh/jupyterhub/kubespawner/branch/main/graph/badge.svg)](https://codecov.io/gh/jupyterhub/kubespawner)
 
-The _kubespawner_ (also known as JupyterHub Kubernetes Spawner) enables JupyterHub to spawn
+The _kubespawner_ (also known as the JupyterHub Kubernetes Spawner) enables JupyterHub to spawn
 single-user notebook servers on a [Kubernetes](https://kubernetes.io/)
 cluster.
 
