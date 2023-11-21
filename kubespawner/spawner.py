@@ -66,7 +66,7 @@ class PodReflector(ResourceReflector):
         API. The dictionary keys are the pod ids and the values are
         dictionaries of the actual pod resource values.
 
-        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#pod-v1-core
+        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#pod-v1-core
         """
         return self.resources
 
@@ -87,7 +87,7 @@ class EventReflector(ResourceReflector):
         Returns list of dictionaries representing the k8s
         events within the namespace, sorted by the latest event.
 
-        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#event-v1-core
+        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
         """
 
         # NOTE:
@@ -882,7 +882,7 @@ class KubeSpawner(Spawner):
         upgrades to break.
 
         You'll *have* to set this if you are using auto-provisioned volumes with most
-        cloud providers. See `fsGroup <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core>`__
+        cloud providers. See `fsGroup <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podsecuritycontext-v1-core>`__
         for more details.
         """,
     )
@@ -955,7 +955,7 @@ class KubeSpawner(Spawner):
         `allow_privilege_escalation` will be overridden by this.
 
         Rely on `the Kubernetes reference
-        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core>`__
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core>`__
         for details on allowed configuration.
         """,
     )
@@ -978,7 +978,7 @@ class KubeSpawner(Spawner):
         containers, including init containers and sidecar containers.
 
         Rely on `the Kubernetes reference
-        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core>`__
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podsecuritycontext-v1-core>`__
         for details on allowed configuration.
         """,
     )
@@ -1239,7 +1239,7 @@ class KubeSpawner(Spawner):
 
         This list will be directly added under `initContainers` in the kubernetes pod spec,
         so you should use the same structure. Each item in the dict must a field
-        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#container-v1-core>`__
+        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#container-v1-core>`__
 
         One usage is disabling access to metadata service from single-user
         notebook server with configuration below::
@@ -1270,7 +1270,7 @@ class KubeSpawner(Spawner):
 
         This dict will be directly merge into `container` of notebook server,
         so you should use the same structure. Each item in the dict must a field
-        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#container-v1-core>`__.
+        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#container-v1-core>`__.
 
 
         One usage is set ``envFrom`` on notebook container with configuration below::
@@ -1296,7 +1296,7 @@ class KubeSpawner(Spawner):
 
         This dict will be directly merge into pod,so you should use the same structure.
         Each item in the dict is field of pod configuration
-        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podspec-v1-core
+        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podspec-v1-core
 
 
         One usage is set restartPolicy and dnsPolicy with configuration below::
@@ -1319,7 +1319,7 @@ class KubeSpawner(Spawner):
 
         This list will be directly appended under `containers` in the kubernetes pod spec,
         so you should use the same structure. Each item in the list is container configuration
-        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#container-v1-core
+        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#container-v1-core
 
 
         One usage is setting crontab in a container to clean sensitive data with configuration below::
@@ -1344,7 +1344,7 @@ class KubeSpawner(Spawner):
         allow_none=True,
         config=True,
         help="""
-        Set the pod's scheduler explicitly by name. See `the Kubernetes documentation <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podspec-v1-core>`__
+        Set the pod's scheduler explicitly by name. See `the Kubernetes documentation <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podspec-v1-core>`__
         for more information.
         """,
     )
@@ -1357,7 +1357,7 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
 
         Pass this field an array of "Toleration" objects
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#toleration-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#toleration-v1-core
 
         Example::
 
@@ -1387,7 +1387,7 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "PreferredSchedulingTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#preferredschedulingterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#preferredschedulingterm-v1-core
 
         """,
     )
@@ -1400,7 +1400,7 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "NodeSelectorTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#nodeselectorterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#nodeselectorterm-v1-core
 
         """,
     )
@@ -1413,7 +1413,7 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "WeightedPodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#weightedpodaffinityterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core
 
         """,
     )
@@ -1426,7 +1426,7 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "PodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podaffinityterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core
 
         """,
     )
@@ -1439,7 +1439,7 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "WeightedPodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#weightedpodaffinityterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core
         """,
     )
     pod_anti_affinity_required = List(
@@ -1451,7 +1451,7 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "PodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podaffinityterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core
         """,
     )
 
@@ -2292,7 +2292,7 @@ class KubeSpawner(Spawner):
 
         This is working with events parsed by the python kubernetes client,
         and here is the specification of events that is relevant to understand:
-        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#event-v1-core
+        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
         """
 
         if not self.events_enabled:
