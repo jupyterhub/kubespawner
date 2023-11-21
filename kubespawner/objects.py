@@ -264,7 +264,7 @@ def make_pod(
         https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/.
         Pass this field an array of "Toleration" objects.
 
-          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#toleration-v1-core
+          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#toleration-v1-core
 
     node_affinity_preferred:
         Affinities describe where pods prefer or require to be scheduled, they
@@ -274,7 +274,7 @@ def make_pod(
 
         Pass this field an array of "PreferredSchedulingTerm" objects.
 
-          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20#preferredschedulingterm-v1-core
+          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28#preferredschedulingterm-v1-core
 
     node_affinity_required:
         Affinities describe where pods prefer or require to be scheduled, they
@@ -284,7 +284,7 @@ def make_pod(
 
         Pass this field an array of "NodeSelectorTerm" objects.
 
-          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#nodeselectorterm-v1-core
+          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#nodeselectorterm-v1-core
 
     pod_affinity_preferred:
         Affinities describe where pods prefer or require to be scheduled, they
@@ -294,7 +294,7 @@ def make_pod(
 
         Pass this field an array of "WeightedPodAffinityTerm" objects.
 
-          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#weightedpodaffinityterm-v1-core
+          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core
 
     pod_affinity_required:
         Affinities describe where pods prefer or require to be scheduled, they
@@ -304,7 +304,7 @@ def make_pod(
 
         Pass this field an array of "PodAffinityTerm" objects.
 
-          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podaffinityterm-v1-core
+          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core
 
     pod_anti_affinity_preferred:
         Affinities describe where pods prefer or require to be scheduled, they
@@ -314,7 +314,7 @@ def make_pod(
 
         Pass this field an array of "WeightedPodAffinityTerm" objects.
 
-          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#weightedpodaffinityterm-v1-core
+          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core
 
     pod_anti_affinity_required:
         Affinities describe where pods prefer or require to be scheduled, they
@@ -323,7 +323,7 @@ def make_pod(
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "PodAffinityTerm" objects.
-          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podaffinityterm-v1-core
+          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core
 
     priority_class_name:
         The name of the PriorityClass to be assigned the pod. This feature is Beta available in K8s 1.11 and GA in 1.14.
@@ -421,8 +421,8 @@ def make_pod(
     # | -                          | windowsOptions           | Pod and Container |
     #
     # ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
-    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core (container)
-    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core (pod)
+    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core (container)
+    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podsecuritycontext-v1-core (pod)
     #
     psc = {}
     # populate with fs_gid / supplemental_gids

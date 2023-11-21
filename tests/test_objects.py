@@ -446,7 +446,7 @@ def test_pod_security_context_container():
     """
     Test specification of the container to run with a security context.
 
-    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podsecuritycontext-v1-core
     """
     assert api_client.sanitize_for_serialization(
         make_pod(
@@ -515,7 +515,7 @@ def test_container_security_context_container():
     """
     Test specification of the container to run with a security context.
 
-    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core
     """
     assert api_client.sanitize_for_serialization(
         make_pod(
@@ -587,7 +587,7 @@ def test_bad_pod_security_context_container():
     """
     Test specification of the container to run with a security context.
 
-    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core
     """
     with pytest.raises(ValueError):
         assert api_client.sanitize_for_serialization(
@@ -608,7 +608,7 @@ def test_bad_container_security_context_container():
     """
     Test specification of the container to run with a security context.
 
-    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core
     """
     with pytest.raises(ValueError):
         assert api_client.sanitize_for_serialization(
