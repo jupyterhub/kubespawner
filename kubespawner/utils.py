@@ -71,10 +71,10 @@ def update_k8s_model(target, changes, logger=None, target_name=None, changes_nam
         if isinstance(changes, dict) or value:
             if getattr(target, key):
                 if logger and changes_name:
-                    warning = "'{}.{}' current value: '{}' is overridden with '{}', which is the value of '{}.{}'.".format(
+                    msg = "'{}.{}' current value: '{}' is overridden with '{}', which is the value of '{}.{}'.".format(
                         target_name, key, getattr(target, key), value, changes_name, key
                     )
-                    logger.warning(warning)
+                    logger.info(msg)
             setattr(target, key, value)
 
     return target
