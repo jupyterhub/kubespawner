@@ -4,6 +4,43 @@
 
 ## [Unreleased]
 
+### [6.2.0] - 2023-11-23
+
+#### New features added
+
+- Add `k8s_api_verify_ssl` config [#801](https://github.com/jupyterhub/kubespawner/pull/801) ([@devenami](https://github.com/devenami), [@yuvipanda](https://github.com/yuvipanda))
+
+#### Bugs fixed
+
+- Omit ImagePullPolicy by default [#807](https://github.com/jupyterhub/kubespawner/pull/807) ([@yuvipanda](https://github.com/yuvipanda), [@GeorgianaElena](https://github.com/GeorgianaElena), [@minrk](https://github.com/minrk))
+- typo in reflector failure message [#798](https://github.com/jupyterhub/kubespawner/pull/798) ([@minrk](https://github.com/minrk), [@consideRatio](https://github.com/consideRatio))
+- make sure futures can be cancelled [#797](https://github.com/jupyterhub/kubespawner/pull/797) ([@minrk](https://github.com/minrk), [@consideRatio](https://github.com/consideRatio))
+
+#### Maintenance and upkeep improvements
+
+- update_k8s_model: log override at info not warn [#808](https://github.com/jupyterhub/kubespawner/pull/808) ([@manics](https://github.com/manics), [@consideRatio](https://github.com/consideRatio))
+- Update comment about why we save pod_name in db state [#806](https://github.com/jupyterhub/kubespawner/pull/806) ([@yuvipanda](https://github.com/yuvipanda), [@consideRatio](https://github.com/consideRatio))
+- Pull default image from quay.io, not dockerhub [#800](https://github.com/jupyterhub/kubespawner/pull/800) ([@yuvipanda](https://github.com/yuvipanda), [@consideRatio](https://github.com/consideRatio))
+
+#### Documentation improvements
+
+- docs: fix outdated k8s api reference links [#809](https://github.com/jupyterhub/kubespawner/pull/809) ([@consideRatio](https://github.com/consideRatio))
+- Dynamically retrieve podCIDR for routing in CONTRIBUTING [#793](https://github.com/jupyterhub/kubespawner/pull/793) ([@yuvipanda](https://github.com/yuvipanda), [@minrk](https://github.com/minrk), [@consideRatio](https://github.com/consideRatio))
+- docs: add detail to internal_ssl + fix typos [#790](https://github.com/jupyterhub/kubespawner/pull/790) ([@byteMuncher0x](https://github.com/byteMuncher0x), [@consideRatio](https://github.com/consideRatio), [@yuvipanda](https://github.com/yuvipanda))
+
+#### Continuous integration improvements
+
+- ci: update python and k8s versions to test with, include py312 [#810](https://github.com/jupyterhub/kubespawner/pull/810) ([@consideRatio](https://github.com/consideRatio))
+
+#### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2023-09-28&to=2023-11-23&type=c))
+
+@byteMuncher0x ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AbyteMuncher0x+updated%3A2023-09-28..2023-11-23&type=Issues)) | @consideRatio ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2023-09-28..2023-11-23&type=Issues)) | @devenami ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adevenami+updated%3A2023-09-28..2023-11-23&type=Issues)) | @GeorgianaElena ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AGeorgianaElena+updated%3A2023-09-28..2023-11-23&type=Issues)) | @manics ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2023-09-28..2023-11-23&type=Issues)) | @minrk ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2023-09-28..2023-11-23&type=Issues)) | @yuvipanda ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2023-09-28..2023-11-23&type=Issues))
+
 ## 6.1
 
 ### [6.1.0] - 2023-09-28
@@ -826,7 +863,8 @@ Change highlights:
 - Update Kubernetes Python client to 6.0 (supporting Kubernetes 1.10 APIs)
 - Numerous bugfixes
 
-[unreleased]: https://github.com/jupyterhub/kubespawner/compare/6.1.0...HEAD
+[unreleased]: https://github.com/jupyterhub/kubespawner/compare/6.2.0...HEAD
+[6.2.0]: https://github.com/jupyterhub/kubespawner/compare/6.1.0...6.2.0
 [6.1.0]: https://github.com/jupyterhub/kubespawner/compare/6.0.0...6.1.0
 [6.0.0]: https://github.com/jupyterhub/kubespawner/compare/5.0.0...6.0.0
 [5.0.0]: https://github.com/jupyterhub/kubespawner/compare/4.3.0...5.0.0
