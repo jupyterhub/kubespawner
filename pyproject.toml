@@ -59,6 +59,8 @@ Issues = "https://github.com/jupyterhub/kubespawner/issues"
 artifacts = [
     "kubespawner/templates/*"
 ]
+# include is required since the project name doesn't match the folder name
+include = ["kubespawner"]
 
 # black is used for autoformatting Python code
 #
