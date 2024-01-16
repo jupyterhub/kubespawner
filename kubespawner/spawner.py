@@ -192,7 +192,6 @@ class KubeSpawner(Spawner):
         )
         self.secret_name = self._expand_user_properties(self.secret_name_template)
 
-        self.pvc_name = self._expand_user_properties(self.pvc_name_template)
         if self.working_dir:
             self.working_dir = self._expand_user_properties(self.working_dir)
         if self.port == 0:
@@ -2085,7 +2084,7 @@ class KubeSpawner(Spawner):
             annotations=annotations,
         )
 
-    def get_pvc_manifest(self):
+    def get_pvc_manifest(self, pvc_name):
         """
         Make a pvc manifest that will spawn current user's pvc.
         """
@@ -2099,7 +2098,7 @@ class KubeSpawner(Spawner):
         storage_selector = self._expand_all(self.storage_selector)
 
         return make_pvc(
-            name=self.pvc_name,
+            name=pvc_name,
             storage_class=self.storage_class,
             access_modes=self.storage_access_modes,
             selector=storage_selector,
@@ -2581,7 +2580,7 @@ class KubeSpawner(Spawner):
 
                 self.log.info(
                     "PVC "
-                    + self.pvc_name
+                    + pvc_name
                     + " already exists, possibly have reached quota though."
                 )
                 return True
@@ -2662,6 +2661,7 @@ class KubeSpawner(Spawner):
 
     async def _start(self):
         """Start the user's pod"""
+        pvc_name = self._expand_user_properties(self.pvc_name_template)
 
         # load user options (including profile)
         await self.load_user_options()
@@ -2700,14 +2700,14 @@ class KubeSpawner(Spawner):
             self._last_event = events[-1]["metadata"]["uid"]
 
         if self.storage_pvc_ensure:
-            pvc = self.get_pvc_manifest()
+            pvc = self.get_pvc_manifest(pvc_name)
 
             # If there's a timeout, just let it propagate
             await exponential_backoff(
                 partial(
                     self._make_create_pvc_request, pvc, self.k8s_api_request_timeout
                 ),
-                f'Could not create PVC {self.pvc_name}',
+                f'Could not create PVC {pvc_name}',
                 # Each req should be given k8s_api_request_timeout seconds.
                 timeout=self.k8s_api_request_retry_timeout,
             )
@@ -3371,24 +3371,25 @@ class KubeSpawner(Spawner):
         if self.name:
             log_name = f"{log_name}/{self.name}"
 
+        pvc_name = self._expand_user_properties(self.pvc_name_template)
         if not self.delete_pvc:
-            self.log.info(f"Not deleting pvc for {log_name}: {self.pvc_name}")
+            self.log.info(f"Not deleting pvc for {log_name}: {pvc_name}")
             return
 
         if self.name and '{servername}' not in self.pvc_name_template:
             # named server has the same PVC as the default server
             # don't delete the default server's PVC!
             self.log.info(
-                f"Not deleting shared pvc for named server {log_name}: {self.pvc_name}"
+                f"Not deleting shared pvc for named server {log_name}: {pvc_name}"
             )
             return
 
         await exponential_backoff(
             partial(
                 self._make_delete_pvc_request,
-                self.pvc_name,
+                pvc_name,
                 self.k8s_api_request_timeout,
             ),
-            f'Could not delete pvc {self.pvc_name}',
+            f'Could not delete pvc {pvc_name}',
             timeout=self.k8s_api_request_retry_timeout,
         )
