@@ -2746,7 +2746,9 @@ class KubeSpawner(Spawner):
 
                 if self.internal_ssl:
                     # internal ssl, create secret object
-                    secret_manifest = self.get_secret_manifest(owner_reference, secret_name)
+                    secret_manifest = self.get_secret_manifest(
+                        owner_reference, secret_name
+                    )
                     await exponential_backoff(
                         partial(
                             self._ensure_not_exists,
