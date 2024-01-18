@@ -190,7 +190,6 @@ class KubeSpawner(Spawner):
         self.dns_name = self.dns_name_template.format(
             namespace=self.namespace, name=self.pod_name
         )
-        self.secret_name = self._expand_user_properties(self.secret_name_template)
 
         if self.working_dir:
             self.working_dir = self._expand_user_properties(self.working_dir)
@@ -1945,7 +1944,7 @@ class KubeSpawner(Spawner):
             self.port,
         )
 
-    async def get_pod_manifest(self):
+    async def get_pod_manifest(self, secret_name):
         """
         Make a pod manifest that will spawn current user's notebook pod.
         """
@@ -2038,12 +2037,12 @@ class KubeSpawner(Spawner):
             pod_anti_affinity_preferred=self.pod_anti_affinity_preferred,
             pod_anti_affinity_required=self.pod_anti_affinity_required,
             priority_class_name=self.priority_class_name,
-            ssl_secret_name=self.secret_name if self.internal_ssl else None,
+            ssl_secret_name=secret_name if self.internal_ssl else None,
             ssl_secret_mount_path=self.secret_mount_path,
             logger=self.log,
         )
 
-    def get_secret_manifest(self, owner_reference):
+    def get_secret_manifest(self, owner_reference, secret_name):
         """
         Make a secret manifest that contains the ssl certificates.
         """
@@ -2054,7 +2053,7 @@ class KubeSpawner(Spawner):
         )
 
         return make_secret(
-            name=self.secret_name,
+            name=secret_name,
             username=self.user.name,
             cert_paths=self.cert_paths,
             hub_ca=self.internal_trust_bundles['hub-ca'],
@@ -2662,6 +2661,7 @@ class KubeSpawner(Spawner):
     async def _start(self):
         """Start the user's pod"""
         pvc_name = self._expand_user_properties(self.pvc_name_template)
+        secret_name = self._expand_user_properties(self.secret_name_template)
 
         # load user options (including profile)
         await self.load_user_options()
@@ -2715,7 +2715,7 @@ class KubeSpawner(Spawner):
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
         # try again. We try 4 times, and if it still fails we give up.
-        pod = await self.get_pod_manifest()
+        pod = await self.get_pod_manifest(secret_name)
         if self.modify_pod_hook:
             self.log.info('Pod is being modified via modify_pod_hook')
             pod = await maybe_future(self.modify_pod_hook(self, pod))
@@ -2746,7 +2746,7 @@ class KubeSpawner(Spawner):
 
                 if self.internal_ssl:
                     # internal ssl, create secret object
-                    secret_manifest = self.get_secret_manifest(owner_reference)
+                    secret_manifest = self.get_secret_manifest(owner_reference, secret_name)
                     await exponential_backoff(
                         partial(
                             self._ensure_not_exists,
