@@ -76,7 +76,7 @@ jobs:
       # though.
       #
       # ref: https://github.com/jupyterhub/action-k3s-helm/
-      - uses: jupyterhub/action-k3s-helm@v3
+      - uses: jupyterhub/action-k3s-helm@v4
         with:
           k3s-channel: ${{ matrix.k3s }}
           metrics-enabled: false
