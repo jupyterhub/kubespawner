@@ -93,4 +93,4 @@ jobs:
         if: always()
 
       # ref: https://github.com/codecov/codecov-action
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
