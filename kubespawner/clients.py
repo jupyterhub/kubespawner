@@ -5,6 +5,7 @@ instantiated.
 The instances of these REST API clients are also patched to avoid the creation
 of unused threads.
 """
+
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache

@@ -1,4 +1,5 @@
 """pytest fixtures for kubespawner"""
+
 import asyncio
 import base64
 import inspect
