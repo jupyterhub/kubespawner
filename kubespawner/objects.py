@@ -1,6 +1,7 @@
 """
 Helper methods for generating k8s API objects.
 """
+
 import base64
 import ipaddress
 import json
@@ -353,9 +354,11 @@ def make_pod(
         # be a list, but it is allowed to have "a-string" elements or {"name":
         # "a-string"} elements.
         pod.spec.image_pull_secrets = [
-            V1LocalObjectReference(name=secret_ref)
-            if type(secret_ref) == str
-            else get_k8s_model(V1LocalObjectReference, secret_ref)
+            (
+                V1LocalObjectReference(name=secret_ref)
+                if type(secret_ref) == str
+                else get_k8s_model(V1LocalObjectReference, secret_ref)
+            )
             for secret_ref in image_pull_secrets
         ]
 

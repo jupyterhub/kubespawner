@@ -1,4 +1,5 @@
 """Minimal jupyterhub config for hub pod"""
+
 import json
 import os
 import socket
