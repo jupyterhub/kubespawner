@@ -191,9 +191,7 @@ class KubeSpawner(Spawner):
         self.dns_name = self.dns_name_template.format(
             namespace=self.namespace, name=self.pod_name
         )
-        self.secret_name = self._expand_user_properties(self.secret_name_template)
 
-        self.pvc_name = self._expand_user_properties(self.pvc_name_template)
         if self.working_dir:
             self.working_dir = self._expand_user_properties(self.working_dir)
         if self.port == 0:
@@ -1947,7 +1945,7 @@ class KubeSpawner(Spawner):
             self.port,
         )
 
-    async def get_pod_manifest(self):
+    async def get_pod_manifest(self, secret_name):
         """
         Make a pod manifest that will spawn current user's notebook pod.
         """
@@ -2040,12 +2038,12 @@ class KubeSpawner(Spawner):
             pod_anti_affinity_preferred=self.pod_anti_affinity_preferred,
             pod_anti_affinity_required=self.pod_anti_affinity_required,
             priority_class_name=self.priority_class_name,
-            ssl_secret_name=self.secret_name if self.internal_ssl else None,
+            ssl_secret_name=secret_name if self.internal_ssl else None,
             ssl_secret_mount_path=self.secret_mount_path,
             logger=self.log,
         )
 
-    def get_secret_manifest(self, owner_reference):
+    def get_secret_manifest(self, owner_reference, secret_name):
         """
         Make a secret manifest that contains the ssl certificates.
         """
@@ -2056,7 +2054,7 @@ class KubeSpawner(Spawner):
         )
 
         return make_secret(
-            name=self.secret_name,
+            name=secret_name,
             username=self.user.name,
             cert_paths=self.cert_paths,
             hub_ca=self.internal_trust_bundles['hub-ca'],
@@ -2086,7 +2084,7 @@ class KubeSpawner(Spawner):
             annotations=annotations,
         )
 
-    def get_pvc_manifest(self):
+    def get_pvc_manifest(self, pvc_name):
         """
         Make a pvc manifest that will spawn current user's pvc.
         """
@@ -2100,7 +2098,7 @@ class KubeSpawner(Spawner):
         storage_selector = self._expand_all(self.storage_selector)
 
         return make_pvc(
-            name=self.pvc_name,
+            name=pvc_name,
             storage_class=self.storage_class,
             access_modes=self.storage_access_modes,
             selector=storage_selector,
@@ -2582,7 +2580,7 @@ class KubeSpawner(Spawner):
 
                 self.log.info(
                     "PVC "
-                    + self.pvc_name
+                    + pvc_name
                     + " already exists, possibly have reached quota though."
                 )
                 return True
@@ -2663,6 +2661,8 @@ class KubeSpawner(Spawner):
 
     async def _start(self):
         """Start the user's pod"""
+        pvc_name = self._expand_user_properties(self.pvc_name_template)
+        secret_name = self._expand_user_properties(self.secret_name_template)
 
         # load user options (including profile)
         await self.load_user_options()
@@ -2701,14 +2701,14 @@ class KubeSpawner(Spawner):
             self._last_event = events[-1]["metadata"]["uid"]
 
         if self.storage_pvc_ensure:
-            pvc = self.get_pvc_manifest()
+            pvc = self.get_pvc_manifest(pvc_name)
 
             # If there's a timeout, just let it propagate
             await exponential_backoff(
                 partial(
                     self._make_create_pvc_request, pvc, self.k8s_api_request_timeout
                 ),
-                f'Could not create PVC {self.pvc_name}',
+                f'Could not create PVC {pvc_name}',
                 # Each req should be given k8s_api_request_timeout seconds.
                 timeout=self.k8s_api_request_retry_timeout,
             )
@@ -2716,7 +2716,7 @@ class KubeSpawner(Spawner):
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
         # try again. We try 4 times, and if it still fails we give up.
-        pod = await self.get_pod_manifest()
+        pod = await self.get_pod_manifest(secret_name)
         if self.modify_pod_hook:
             self.log.info('Pod is being modified via modify_pod_hook')
             pod = await maybe_future(self.modify_pod_hook(self, pod))
@@ -2747,7 +2747,9 @@ class KubeSpawner(Spawner):
 
                 if self.internal_ssl:
                     # internal ssl, create secret object
-                    secret_manifest = self.get_secret_manifest(owner_reference)
+                    secret_manifest = self.get_secret_manifest(
+                        owner_reference, secret_name
+                    )
                     await exponential_backoff(
                         partial(
                             self._ensure_not_exists,
@@ -3372,24 +3374,25 @@ class KubeSpawner(Spawner):
         if self.name:
             log_name = f"{log_name}/{self.name}"
 
+        pvc_name = self._expand_user_properties(self.pvc_name_template)
         if not self.delete_pvc:
-            self.log.info(f"Not deleting pvc for {log_name}: {self.pvc_name}")
+            self.log.info(f"Not deleting pvc for {log_name}: {pvc_name}")
             return
 
         if self.name and '{servername}' not in self.pvc_name_template:
             # named server has the same PVC as the default server
             # don't delete the default server's PVC!
             self.log.info(
-                f"Not deleting shared pvc for named server {log_name}: {self.pvc_name}"
+                f"Not deleting shared pvc for named server {log_name}: {pvc_name}"
             )
             return
 
         await exponential_backoff(
             partial(
                 self._make_delete_pvc_request,
-                self.pvc_name,
+                pvc_name,
                 self.k8s_api_request_timeout,
             ),
-            f'Could not delete pvc {self.pvc_name}',
+            f'Could not delete pvc {pvc_name}',
             timeout=self.k8s_api_request_retry_timeout,
         )
