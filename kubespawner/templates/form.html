@@ -19,40 +19,49 @@
             {%- for k, option in profile.profile_options.items() %}
               <div class="js-options-container">
                 <div class="option">
-                  <label for="profile-option-{{ profile.slug }}--{{ k }}"
-                         class="js-profile-option-label">{{ option.display_name }}</label>
-                  <select name="profile-option-{{ profile.slug }}--{{ k }}"
-                          class="form-control js-profile-option-select">
-                    {%- for k, choice in option['choices'].items() %}
-                      <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
-                    {%- endfor %}
-                    {%- if option['unlisted_choice']['enabled'] %}
-                      <option value="unlisted-choice">{{ option['unlisted_choice']['display_name_in_choices'] }}</option>
-                    {%- endif %}
-                  </select>
+                  {%- if option['choices'] %}
+                    <label for="profile-option-{{ profile.slug }}--{{ k }}"
+                           class="js-profile-option-label">{{ option.display_name }}</label>
+                    <select name="profile-option-{{ profile.slug }}--{{ k }}"
+                            class="form-control js-profile-option-select">
+                      {%- for k, choice in option['choices'].items() %}
+                        <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
+                      {%- endfor %}
+                      {%- if option['unlisted_choice']['enabled'] %}
+                        <option value="unlisted-choice">{{ option['unlisted_choice']['display_name_in_choices'] }}</option>
+                      {%- endif %}
+                    </select>
+                  {%- endif %}
                 </div>
                 {%- if option['unlisted_choice']['enabled'] %}
-                  <div class="option hidden js-other-input-container">
+                  <div class="option js-other-input-container {%- if option['choices'] %}hidden{%- endif %}">
                     <label for="profile-option-{{ profile.slug }}--{{ k }}--unlisted-choice">
                       {{ option['unlisted_choice']['display_name'] }}
                     </label>
-                    <input data-name="profile-option-{{ profile.slug }}--{{ k }}--unlisted-choice"
-                           {%- if option['unlisted_choice']['validation_regex'] %}
-                           pattern="{{ option['unlisted_choice']['validation_regex'] }}"
-                           {%- endif %}
-                           title="{{ option['unlisted_choice']['validation_message'] }}"
-                           class="form-control js-other-input" />
-                  </div>
-                {%- endif %}
-              </div>
-            {%- endfor %}
-          </div>
-        {%- endif %}
-      </div>
-    </label>
-  {%- endfor %}
-</div>
-<script>
+                    <input
+                      {#- FIXME: This has gotten a bit ugly, ideally we would handle a lot of this
+                            logic all in Javascript and not need this conditional attribute rendering #}
+                      {%- if option['choices'] %}
+                        data-name="profile-option-{{ profile.slug }}--{{ k }}--unlisted-choice"
+                      {%- else %}
+                        name="profile-option-{{ profile.slug }}--{{ k }}--unlisted-choice"
+                      {%- endif %}
+                      {%- if option['unlisted_choice']['validation_regex'] %}
+                        pattern="{{ option['unlisted_choice']['validation_regex'] }}"
+                      {%- endif %}
+                      title="{{ option['unlisted_choice']['validation_message'] }}"
+                      class="form-control js-other-input" />
+                    </div>
+                  {%- endif %}
+                </div>
+              {%- endfor %}
+            </div>
+          {%- endif %}
+        </div>
+      </label>
+    {%- endfor %}
+  </div>
+  <script>
   $('.js-profile-option-select, .js-profile-option-label').click(function() {
     // we need this bit of JS to select the profile when a <select> inside is clicked.
     $(this).parents('.js-profile-label')
@@ -95,4 +104,4 @@
     $('.js-profile-option-select').trigger('change');
   });
 
-</script>
+  </script>
