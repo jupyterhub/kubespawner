@@ -1694,7 +1694,7 @@ class KubeSpawner(Spawner):
         help="""
         Time in seconds to delay a single-user server launch, useful for debugging.
         If set to zero, no delay will take place.
-        """
+        """,
     )
 
     spawn_launcher_timer_enabled = Bool(
@@ -1702,7 +1702,7 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         Enable the spawn delay patience message.
-        """
+        """,
     )
 
     spawn_launcher_timer = Integer(
@@ -1711,7 +1711,7 @@ class KubeSpawner(Spawner):
         help="""
         Time in seconds to wait before injecting a 'please be patient' message to display
         to the user.
-        """
+        """,
     )
 
     spawn_launcher_timer_frequency = Integer(
@@ -1719,7 +1719,7 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         Display the patience message every 5 seconds.
-        """
+        """,
     )
 
     spawn_launcher_timer_message = Unicode(
@@ -1729,7 +1729,7 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         The injected 'please be patient' message to display to the user.
-        """
+        """,
     )
 
     # deprecate redundant and inconsistent singleuser_ and user_ prefixes:
@@ -2372,9 +2372,15 @@ class KubeSpawner(Spawner):
             if timer >= self.spawn_launcher_timer and self.spawn_launcher_timer_enabled:
                 # display only every X seconds
                 if timer % self.spawn_launcher_timer_frequency == 0:
-                    patience_message = textwrap.dedent(self.spawn_launcher_timer_message)
-                    patience_message += " Current time spent waiting: %i seconds" % timer
-                    yield { 'message': patience_message, }
+                    patience_message = textwrap.dedent(
+                        self.spawn_launcher_timer_message
+                    )
+                    patience_message += (
+                        " Current time spent waiting: %i seconds" % timer
+                    )
+                    yield {
+                        'message': patience_message,
+                    }
 
             events = self.events
             len_events = len(events)
