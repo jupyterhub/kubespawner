@@ -1724,9 +1724,7 @@ class KubeSpawner(Spawner):
     )
 
     spawn_launcher_timer_message = Unicode(
-        """
-        Server launch is taking longer than expected. Please be patient!
-        """,
+        "Server launch is taking longer than expected. Please be patient!",
         config=True,
         help="""
         The injected 'please be patient' message to display to the user.
