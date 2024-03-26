@@ -1342,6 +1342,22 @@ async def test_pod_name_no_named_servers():
     assert spawner.pod_name == "jupyter-user"
 
 
+async def test_spawner_env():
+    c = Config()
+    c.Spawner.environment = {
+        "STATIC": "static",
+        "EXPANDED": "{username} (expanded)",
+        "ESCAPED": "{{username}}",
+        "CALLABLE": lambda spawner: spawner.user.name + "(callable)",
+    }
+    spawner = KubeSpawner(config=c, _mock=True)
+    env = spawner.get_env()
+    assert env["STATIC"] == "static"
+    assert env["EXPANDED"] == "mock-5fname (expanded)"
+    assert env["ESCAPED"] == "{username}"
+    assert env["CALLABLE"] == "mock_name (callable)"
+
+
 async def test_jupyterhub_supplied_env():
     cookie_options = {"samesite": "None", "secure": True}
     c = Config()
