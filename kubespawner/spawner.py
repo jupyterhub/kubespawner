@@ -1841,6 +1841,17 @@ class KubeSpawner(Spawner):
             rendered = rendered.rstrip("-")
         return rendered
 
+    def _expand_env(self, env):
+        # environment expansion requires special handling because the parent class
+        # may have also modified it, e.g. by evaluating a callable
+        expanded_env = {}
+        for k, v in env.items():
+            if isinstance(v, (list, dict, str)):
+                expanded_env[k] = self._expand_all(v)
+            # else do nothing- this will be merged with the parent env
+            # by the caller so by omitting the key we keep the parent value
+        return expanded_env
+
     def _expand_all(self, src):
         if isinstance(src, list):
             return [self._expand_all(i) for i in src]
@@ -2166,7 +2177,7 @@ class KubeSpawner(Spawner):
         # Explicitly expand *and* set all the admin specified variables only.
         # This allows JSON-like strings set by JupyterHub itself to not be
         # expanded. https://github.com/jupyterhub/kubespawner/issues/743
-        env.update(self._expand_all(self.environment))
+        env.update(self._expand_env(self.environment))
 
         return env
 

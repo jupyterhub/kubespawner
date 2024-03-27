@@ -1348,7 +1348,7 @@ async def test_spawner_env():
         "STATIC": "static",
         "EXPANDED": "{username} (expanded)",
         "ESCAPED": "{{username}}",
-        "CALLABLE": lambda spawner: spawner.user.name + "(callable)",
+        "CALLABLE": lambda spawner: spawner.user.name + " (callable)",
     }
     spawner = KubeSpawner(config=c, _mock=True)
     env = spawner.get_env()
