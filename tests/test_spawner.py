@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import json
 import os
 from functools import partial
@@ -363,6 +364,29 @@ async def test_spawn_component_label(
 
     # stop the pod
     await spawner.stop()
+
+
+async def test_spawner_internal_ssl_secret(
+    ssl_app,
+    config,
+):
+    spawner = KubeSpawner(
+        config=config,
+        user=MockUser(name="ssl"),
+        internal_ssl=True,
+        internal_trust_bundles=ssl_app.internal_trust_bundles,
+        internal_certs_location=ssl_app.internal_certs_location,
+        _mock=True,
+    )
+    # initialize ssl config
+    hub_paths = await spawner.create_certs()
+
+    spawner.cert_paths = await spawner.move_certs(hub_paths)
+
+    # Validate that certificates were correctly encoded as base64
+    manifest = spawner.get_secret_manifest(None)
+    for _, secret in manifest.data.items():
+        base64.b64decode(secret, validate=True)
 
 
 async def test_spawn_internal_ssl(
