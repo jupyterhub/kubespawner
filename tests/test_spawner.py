@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import json
 import os
 from functools import partial
@@ -390,6 +391,12 @@ async def test_spawn_internal_ssl(
     hub_paths = await spawner.create_certs()
 
     spawner.cert_paths = await spawner.move_certs(hub_paths)
+
+    # Validate that certificates are correctly encoded
+    # https://github.com/jupyterhub/kubespawner/pull/828
+    manifest = spawner.get_secret_manifest(None)
+    for _, secret in manifest.data.items():
+        base64.b64decode(secret, validate=True)
 
     # start the spawner
     url = await spawner.start()
