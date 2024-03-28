@@ -366,32 +366,6 @@ async def test_spawn_component_label(
     await spawner.stop()
 
 
-async def test_spawner_internal_ssl_secret(
-    ssl_app,
-    config,
-):
-    """
-    Validate that certificates are correctly encoded as base64
-    https://github.com/jupyterhub/kubespawner/pull/828
-    """
-    spawner = KubeSpawner(
-        config=config,
-        user=MockUser(name="ssl"),
-        internal_ssl=True,
-        internal_trust_bundles=ssl_app.internal_trust_bundles,
-        internal_certs_location=ssl_app.internal_certs_location,
-        _mock=True,
-    )
-    # initialize ssl config
-    hub_paths = await spawner.create_certs()
-
-    spawner.cert_paths = await spawner.move_certs(hub_paths)
-
-    manifest = spawner.get_secret_manifest(None)
-    for _, secret in manifest.data.items():
-        base64.b64decode(secret, validate=True)
-
-
 async def test_spawn_internal_ssl(
     kube_ns,
     kube_client,
@@ -417,6 +391,12 @@ async def test_spawn_internal_ssl(
     hub_paths = await spawner.create_certs()
 
     spawner.cert_paths = await spawner.move_certs(hub_paths)
+
+    # Validate that certificates are correctly encoded
+    # https://github.com/jupyterhub/kubespawner/pull/828
+    manifest = spawner.get_secret_manifest(None)
+    for _, secret in manifest.data.items():
+        base64.b64decode(secret, validate=True)
 
     # start the spawner
     url = await spawner.start()
