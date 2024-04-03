@@ -2734,7 +2734,7 @@ class KubeSpawner(Spawner):
         if self.server_spawn_launch_delay:
             self.log.info(
                 "Delaying spawn launch for %s seconds.",
-                str(self.server_spawn_launch_delay)
+                str(self.server_spawn_launch_delay),
             )
             await asyncio.sleep(self.server_spawn_launch_delay)
 
