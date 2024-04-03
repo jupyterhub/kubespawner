@@ -2732,6 +2732,10 @@ class KubeSpawner(Spawner):
         """Start the user's pod"""
         # delay single user server spawn if testing
         if self.server_spawn_launch_delay:
+            self.log.info(
+                "Delaying spawn launch for %s seconds.",
+                str(self.server_spawn_launch_delay)
+            )
             await asyncio.sleep(self.server_spawn_launch_delay)
 
         # load user options (including profile)
