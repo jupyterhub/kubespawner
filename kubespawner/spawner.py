@@ -1689,45 +1689,48 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    spawn_launcher_delay = Integer(
+    server_spawn_launch_delay = Integer(
         0,
         config=True,
         help="""
-        Time in seconds to delay a single-user server launch, useful for debugging.
-        If set to zero, no delay will take place.
+        Time in seconds to delay a single-user server launch, which can be
+        useful for debugging.  If set to zero, no delay will take place.
         """,
     )
 
-    spawn_launcher_timer_enabled = Bool(
+    server_spawn_launch_timer_enabled = Bool(
         True,
         config=True,
         help="""
-        Enable the spawn delay patience message.
+        Enable the spawn progress counter message.
         """,
     )
 
-    spawn_launcher_timer = Integer(
+    server_spawn_launch_timer_threshold = Integer(
         60,
         config=True,
         help="""
-        Time in seconds to wait before injecting a 'please be patient' message to display
-        to the user.
+        Time in seconds to wait before injecting a 'please be patient' message
+        to display to the user.
         """,
     )
 
-    spawn_launcher_timer_frequency = Integer(
+    server_spawn_launch_timer_frequency = Integer(
         5,
         config=True,
         help="""
-        Display the patience message every 5 seconds.
+        Sets a delay of N seconds between updates to the message buffer, so
+        that we don't spam the user with too many messages.
         """,
     )
 
-    spawn_launcher_timer_message = Unicode(
-        "Server launch is taking longer than expected. Please be patient!",
+    server_spawn_launch_timer_message = Unicode(
+        "Server launch is taking longer than expected. Please be patient! Current time spent waiting: XXX seconds.",
         config=True,
         help="""
-        The injected 'please be patient' message to display to the user.
+        The injected timing message to display to the user. The string XXX
+        will be replaced by the number of seconds the spawn has taken in
+        self.progress().
         """,
     )
 
@@ -2348,6 +2351,8 @@ class KubeSpawner(Spawner):
         start_future = self._start_future
         progress = 0
         next_event = 0
+
+        # count in seconds to time single user server spawn duration
         timer = 0
 
         break_while_loop = False
@@ -2366,17 +2371,16 @@ class KubeSpawner(Spawner):
             if start_future and start_future.done():
                 break_while_loop = True
 
-            # check the timer, and if we're over self.spawn_launcher_timer ask the
-            # user to be patient
-            if timer >= self.spawn_launcher_timer and self.spawn_launcher_timer_enabled:
-                # display only every X seconds
-                if timer % self.spawn_launcher_timer_frequency == 0:
+            # if the timer is greater than self.server_spawn_launch_timer_threshold
+            # display a message to the user with an incrementing count in seconds
+            if timer >= self.server_spawn_launcher_timer_threshold and self.server_spawn_launch_timer_enabled:
+                # don't spam the user, so only update the timer message every few seconds
+                if timer % self.server_spawn_launch_timer_threshold == 0:
                     patience_message = textwrap.dedent(
-                        self.spawn_launcher_timer_message
+                        self.server_spawn_launch_timer_message
                     )
-                    patience_message += (
-                        " Current time spent waiting: %i seconds" % timer
-                    )
+                    patience_message.replace('XXX', str(timer))
+
                     yield {
                         'message': patience_message,
                     }
@@ -2723,9 +2727,9 @@ class KubeSpawner(Spawner):
 
     async def _start(self):
         """Start the user's pod"""
-        # delay spawn if testing
-        if self.spawn_launcher_delay:
-            await asyncio.sleep(self.spawn_launcher_delay)
+        # delay single user server spawn if testing
+        if self.server_spawn_launch_delay:
+            await asyncio.sleep(self.server_spawn_launch_delay)
 
         # load user options (including profile)
         await self.load_user_options()
