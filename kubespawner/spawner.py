@@ -2374,7 +2374,7 @@ class KubeSpawner(Spawner):
             # if the timer is greater than self.server_spawn_launch_timer_threshold
             # display a message to the user with an incrementing count in seconds
             if (
-                timer >= self.server_spawn_launcher_timer_threshold
+                timer >= self.server_spawn_launch_timer_threshold
                 and self.server_spawn_launch_timer_enabled
             ):
                 # don't spam the user, so only update the timer message every few seconds
