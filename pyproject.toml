@@ -62,6 +62,11 @@ artifacts = [
 # include is required since the project name doesn't match the folder name
 include = ["kubespawner"]
 
+[tool.hatch.build.targets.wheel]
+# packages is required when building wheels since the project name doesn't match
+# the folder name.
+packages = ["kubespawner"]
+
 # black is used for autoformatting Python code
 #
 # ref: https://black.readthedocs.io/en/stable/
