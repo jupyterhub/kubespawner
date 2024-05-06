@@ -229,16 +229,18 @@ class ResourceReflector(LoggingConfigurable):
 
         list_method = getattr(self.api, self.list_method_name)
 
-        initial_resources_raw = await list_method(**kwargs)
-        if not initial_resources_raw.ok:
-            self.log.error(
-                f'Error when calling Kubernetes API.'
+        try:
+            initial_resources_raw = await list_method(**kwargs)
+            if not initial_resources_raw.ok:
+                raise client.ApiException(
+                    status=initial_resources_raw.status,
+                    reason=initial_resources_raw.reason
+                )
+        except client.ApiException:
+            self.log.exception(f'An error occurred when calling Kubernetes API.'
                 f' Status: {initial_resources_raw.status} {initial_resources_raw.reason}.'
-                f' Message: {(await initial_resources_raw.json())["message"]}'
-            )
-            raise client.ApiException(
-                status=initial_resources_raw.status, reason=initial_resources_raw.reason
-            )
+                f' Message: {(await initial_resources_raw.json())["message"]}')
+            raise
 
         # This is an atomic operation on the dictionary!
         initial_resources = json.loads(await initial_resources_raw.read())
