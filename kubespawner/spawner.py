@@ -596,9 +596,12 @@ class KubeSpawner(Spawner):
         'singleuser-server',
         config=True,
         help="""
-        The component label used to tag the user pods. This can be used to override
-        the spawner behavior when dealing with multiple hub instances in the same
-        namespace. Usually helpful for CI workflows.
+        The value of the labels app.kubernetes.io/component and component, used
+        to identify user pods kubespawner is to manage.
+
+        This can be used to override the spawner behavior when dealing with
+        multiple hub instances in the same namespace. Usually helpful for CI
+        workflows.
         """,
     )
 
@@ -655,6 +658,10 @@ class KubeSpawner(Spawner):
 
     common_labels = Dict(
         {
+            'app.kubernetes.io/name': 'jupyterhub',
+            'app.kubernetes.io/managed-by': 'kubespawner',
+            # app and heritage are older variants of the modern
+            # app.kubernetes.io labels
             'app': 'jupyterhub',
             'heritage': 'jupyterhub',
         },
@@ -1878,6 +1885,7 @@ class KubeSpawner(Spawner):
         labels = self._build_common_labels(extra_labels)
         labels.update(
             {
+                'app.kubernetes.io/component': self.component_label,
                 'component': self.component_label,
                 'hub.jupyter.org/servername': escapism.escape(
                     self.name, safe=self.safe_chars, escape_char='-'
@@ -2102,7 +2110,17 @@ class KubeSpawner(Spawner):
         Make a pvc manifest that will spawn current user's pvc.
         """
         labels = self._build_common_labels(self._expand_all(self.storage_extra_labels))
-        labels.update({'component': 'singleuser-storage'})
+        labels.update(
+            {
+                # The component label has been set to singleuser-storage, but should
+                # probably have been set to singleuser-server (self.component_label)
+                # as that ties it to the user pods kubespawner creates. Due to that,
+                # the newly introduced label app.kubernetes.io/component gets
+                # singleuser-server (self.component_label) as a value instead.
+                'app.kubernetes.io/component': self.component_label,
+                'component': 'singleuser-storage',
+            }
+        )
 
         annotations = self._build_common_annotations(
             self._expand_all(self.storage_extra_annotations)
@@ -2473,6 +2491,16 @@ class KubeSpawner(Spawner):
         return await self._start_reflector(
             kind="pods",
             reflector_class=PodReflector,
+            # NOTE: We monitor resources with the old component label instead of
+            #       the modern app.kubernetes.io/component label. A change here
+            #       is only non-breaking if we can assume the running resources
+            #       monitored can be detected by either old or new labels.
+            #
+            #       The modern labels were added to resources created by
+            #       KubeSpawner 6.3 first adopted in z2jh 4.0.
+            #
+            #       Related to https://github.com/jupyterhub/kubespawner/issues/834
+            #
             labels={"component": self.component_label},
             omit_namespace=self.enable_user_namespaces,
             replace=replace,

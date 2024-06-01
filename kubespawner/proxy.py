@@ -156,14 +156,21 @@ class KubeIngressProxy(Proxy):
         'singleuser-server',
         config=True,
         help="""
-        The component label used to tag the user pods. This can be used to override
-        the spawner behavior when dealing with multiple hub instances in the same
-        namespace. Usually helpful for CI workflows.
+        The value of the labels app.kubernetes.io/component and component, used
+        to identify user pods kubespawner is to manage.
+
+        This can be used to override the spawner behavior when dealing with
+        multiple hub instances in the same namespace. Usually helpful for CI
+        workflows.
         """,
     )
 
     common_labels = Dict(
         {
+            'app.kubernetes.io/name': 'jupyterhub',
+            'app.kubernetes.io/managed-by': 'kubespawner',
+            # app and heritage are older variants of the modern
+            # app.kubernetes.io labels
             'app': 'jupyterhub',
             'heritage': 'jupyterhub',
         },
@@ -320,6 +327,16 @@ class KubeIngressProxy(Proxy):
         self.networking_api = shared_client('NetworkingV1Api')
 
         labels = {
+            # NOTE: We monitor resources with the old component label instead of
+            #       the modern app.kubernetes.io/component label. A change here
+            #       is only non-breaking if we can assume the running resources
+            #       monitored can be detected by either old or new labels.
+            #
+            #       The modern labels were added to resources created by
+            #       KubeSpawner 6.3 first adopted in z2jh 4.0.
+            #
+            #       Related to https://github.com/jupyterhub/kubespawner/issues/834
+            #
             'component': self.component_label,
             'hub.jupyter.org/proxy-route': 'true',
         }
@@ -421,7 +438,12 @@ class KubeIngressProxy(Proxy):
         full_name = f'{self.namespace}/{safe_name}'
 
         common_labels = self._expand_all(self.common_labels, routespec, data)
-        common_labels.update({'component': self.component_label})
+        common_labels.update(
+            {
+                'app.kubernetes.io/component': self.component_label,
+                'component': self.component_label,
+            }
+        )
 
         ingress_extra_labels = self._expand_all(
             self.ingress_extra_labels, routespec, data
