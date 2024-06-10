@@ -5,7 +5,7 @@ import json
 import time
 from functools import partial
 
-from kubernetes_asyncio import watch
+from kubernetes_asyncio import client, watch
 from traitlets import Any, Bool, Dict, Int, Unicode
 from traitlets.config import LoggingConfigurable
 from urllib3.exceptions import ReadTimeoutError
@@ -228,7 +228,22 @@ class ResourceReflector(LoggingConfigurable):
             kwargs["namespace"] = self.namespace
 
         list_method = getattr(self.api, self.list_method_name)
-        initial_resources_raw = await list_method(**kwargs)
+
+        try:
+            initial_resources_raw = await list_method(**kwargs)
+            if not initial_resources_raw.ok:
+                raise client.ApiException(
+                    status=initial_resources_raw.status,
+                    reason=initial_resources_raw.reason,
+                )
+        except client.ApiException:
+            self.log.exception(
+                f'An error occurred when calling Kubernetes API.'
+                f' Status: {initial_resources_raw.status} {initial_resources_raw.reason}.'
+                f' Message: {(await initial_resources_raw.json())["message"]}'
+            )
+            raise
+
         # This is an atomic operation on the dictionary!
         initial_resources = json.loads(await initial_resources_raw.read())
         self.resources = {
