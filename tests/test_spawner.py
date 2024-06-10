@@ -332,7 +332,7 @@ async def test_spawn_start_enable_user_namespaces(
     assert isinstance(status, int)
 
 
-async def test_spawn_component_label_and_other_labels(
+async def test_spawn_component_label(
     kube_ns,
     kube_client,
     config,
@@ -360,15 +360,7 @@ async def test_spawn_component_label_and_other_labels(
 
     # component label is same as expected
     pod = pods[0]
-    assert pod.metadata.labels["app.kubernetes.io/component"] == "something"
     assert pod.metadata.labels["component"] == "something"
-
-    # other labels are the same as expected
-    assert pod.metadata.labels["app.kubernetes.io/name"] == "jupyterhub"
-    assert pod.metadata.labels["app.kubernetes.io/managed-by"] == "kubespawner"
-    assert pod.metadata.labels["heritage"] == "jupyterhub"
-    assert pod.metadata.labels["app"] == "jupyterhub"
-    assert pod.metadata.labels["heritage"] == "jupyterhub"
 
     # stop the pod
     await spawner.stop()
@@ -518,7 +510,6 @@ async def test_spawn_services_enabled(
     # verify selector contains component_label, common_labels and extra_labels
     # as well as user and server name
     selector = services[0].spec.selector
-    assert selector["app.kubernetes.io/component"] == "something"
     assert selector["component"] == "something"
     assert selector["some/label"] == "value1"
     assert selector["extra/label"] == "value2"
@@ -1522,12 +1513,9 @@ async def test_get_pvc_manifest():
     assert manifest.metadata.labels == {
         "user": "mock-5fname",
         "hub.jupyter.org/username": "mock-5fname",
-        "app.kubernetes.io/name": "jupyterhub",
-        "app.kubernetes.io/managed-by": "kubespawner",
-        "app.kubernetes.io/component": "singleuser-server",
         "app": "jupyterhub",
-        "heritage": "jupyterhub",
         "component": "singleuser-storage",
+        "heritage": "jupyterhub",
     }
     assert manifest.metadata.annotations == {
         "user": "mock-5fname",
