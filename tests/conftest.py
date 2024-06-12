@@ -420,7 +420,7 @@ async def create_hub_pod(kube_client, kube_ns, pod_name="hub", ssl=False):
             volumes=volumes,
             containers=[
                 {
-                    "image": "quay.io/jupyterhub/jupyterhub:5.0",
+                    "image": "quay.io/jupyterhub/jupyterhub:latest",
                     "name": "hub",
                     "volumeMounts": volume_mounts,
                     "args": [
