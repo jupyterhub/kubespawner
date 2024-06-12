@@ -5,6 +5,7 @@ Requirements:
 - always valid for arbitary strings
 - no collisions
 """
+
 import hashlib
 import re
 import string
