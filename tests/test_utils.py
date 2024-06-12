@@ -17,12 +17,10 @@ class MockLogger:
     """Trivial class to store logs for inspection after a test run."""
 
     def __init__(self):
-        self.warning_count = 0
+        self.info_logs = []
 
-    def warning(self, message):
-        """Remembers the most recent warning."""
-        self.most_recent_warning = message
-        self.warning_count += 1
+    def info(self, message):
+        self.info_logs.append(message)
 
 
 def print_hello():
@@ -74,27 +72,26 @@ def test_update_k8s_model():
     assert target == manually_updated_target
 
 
-def test_update_k8s_models_logger_warning():
+def test_update_k8s_models_logger_message():
     """Ensure that the update_k8s_model function uses the logger to warn about
     overwriting previous values."""
     target = V1Container(name="mock_name")
     source = {"name": "new_mock_name", "image_pull_policy": "Always"}
-    mock_locker = MockLogger()
+    mock_logger = MockLogger()
     update_k8s_model(
         target,
         source,
-        logger=mock_locker,
+        logger=mock_logger,
         target_name="notebook_container",
         changes_name="extra_container_config",
     )
 
     assert (
-        mock_locker.most_recent_warning.find(
+        mock_logger.info_logs[-1].find(
             "'notebook_container.name' current value: 'mock_name' is overridden with 'new_mock_name', which is the value of 'extra_container_config.name'"
         )
         != -1
     )
-    assert mock_locker.warning_count == 1
 
 
 def test_get_k8s_model():

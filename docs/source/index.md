@@ -2,7 +2,7 @@
 
 # Kubespawner
 
-The _kubespawner_ (also known as JupyterHub Kubernetes Spawner) enables JupyterHub to spawn
+The _kubespawner_ (also known as the JupyterHub Kubernetes Spawner) enables JupyterHub to spawn
 single-user notebook servers on a [Kubernetes](https://kubernetes.io/)
 cluster.
 

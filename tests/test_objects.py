@@ -1,6 +1,7 @@
 """
 Test functions used to create k8s objects
 """
+
 import pytest
 from kubernetes_asyncio.client import ApiClient
 
@@ -19,7 +20,6 @@ def test_make_simplest_pod():
             image='jupyter/singleuser:latest',
             cmd=['jupyterhub-singleuser'],
             port=8888,
-            image_pull_policy='IfNotPresent',
         )
     ) == {
         "metadata": {"name": "test", "labels": {}, "annotations": {}},
@@ -30,7 +30,6 @@ def test_make_simplest_pod():
                     "env": [],
                     "name": "notebook",
                     "image": "jupyter/singleuser:latest",
-                    "imagePullPolicy": "IfNotPresent",
                     "args": ["jupyterhub-singleuser"],
                     "ports": [{"name": "notebook-port", "containerPort": 8888}],
                     'volumeMounts': [],
@@ -448,7 +447,7 @@ def test_pod_security_context_container():
     """
     Test specification of the container to run with a security context.
 
-    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podsecuritycontext-v1-core
     """
     assert api_client.sanitize_for_serialization(
         make_pod(
@@ -517,7 +516,7 @@ def test_container_security_context_container():
     """
     Test specification of the container to run with a security context.
 
-    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core
     """
     assert api_client.sanitize_for_serialization(
         make_pod(
@@ -589,7 +588,7 @@ def test_bad_pod_security_context_container():
     """
     Test specification of the container to run with a security context.
 
-    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core
     """
     with pytest.raises(ValueError):
         assert api_client.sanitize_for_serialization(
@@ -610,7 +609,7 @@ def test_bad_container_security_context_container():
     """
     Test specification of the container to run with a security context.
 
-    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core
+    ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core
     """
     with pytest.raises(ValueError):
         assert api_client.sanitize_for_serialization(
@@ -1987,9 +1986,7 @@ def test_make_ingress_for_ip(reuse_existing_services, target, ip):
     Test specification of the ingress objects
     """
     common_labels = {
-        'app': 'jupyterhub',
-        'heritage': 'jupyterhub',
-        'component': 'singleuser-server',
+        'common/label': 'value0',
     }
     ingress_extra_labels = {
         'extra/label': 'value1',
@@ -2021,9 +2018,7 @@ def test_make_ingress_for_ip(reuse_existing_services, target, ip):
                 'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
-                'app': 'jupyterhub',
-                'heritage': 'jupyterhub',
-                'component': 'singleuser-server',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2040,9 +2035,7 @@ def test_make_ingress_for_ip(reuse_existing_services, target, ip):
                 'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
-                'app': 'jupyterhub',
-                'heritage': 'jupyterhub',
-                'component': 'singleuser-server',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2063,9 +2056,7 @@ def test_make_ingress_for_ip(reuse_existing_services, target, ip):
                 'extra/annotation': 'value2',
             },
             'labels': {
-                'app': 'jupyterhub',
-                'heritage': 'jupyterhub',
-                'component': 'singleuser-server',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
                 'extra/label': 'value1',
             },
@@ -2113,8 +2104,7 @@ def test_make_ingress_for_service_reuse_existing_services_enabled(target):
     leads to reusing the same service which was created by KubeSpawner
     """
     common_labels = {
-        'heritage': 'jupyterhub',
-        'component': 'singleuser-server',
+        'common/label': 'value0',
     }
     endpoint, service, ingress = api_client.sanitize_for_serialization(
         make_ingress(
@@ -2140,8 +2130,7 @@ def test_make_ingress_for_service_reuse_existing_services_enabled(target):
                 'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
-                'component': 'singleuser-server',
-                'heritage': 'jupyterhub',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2202,8 +2191,7 @@ def test_make_ingress_for_service_reuse_existing_services_disabled(
     leads to creating service with type External name pointing to the pod's service
     """
     common_labels = {
-        'heritage': 'jupyterhub',
-        'component': 'singleuser-server',
+        'common/label': 'value0',
     }
     endpoint, service, ingress = api_client.sanitize_for_serialization(
         make_ingress(
@@ -2228,8 +2216,7 @@ def test_make_ingress_for_service_reuse_existing_services_disabled(
                 'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
-                'component': 'singleuser-server',
-                'heritage': 'jupyterhub',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2251,8 +2238,7 @@ def test_make_ingress_for_service_reuse_existing_services_disabled(
                 'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
-                'component': 'singleuser-server',
-                'heritage': 'jupyterhub',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2316,9 +2302,7 @@ def test_make_ingress_for_service_reuse_existing_services_ignored(
     or `KubeSpawner.enable_user_namespaces=True`
     """
     common_labels = {
-        'app': 'jupyterhub',
-        'heritage': 'jupyterhub',
-        'component': 'singleuser-server',
+        'common/label': 'value0',
     }
     endpoint, service, ingress = api_client.sanitize_for_serialization(
         make_ingress(
@@ -2343,9 +2327,7 @@ def test_make_ingress_for_service_reuse_existing_services_ignored(
                 'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
-                'app': 'jupyterhub',
-                'heritage': 'jupyterhub',
-                'component': 'singleuser-server',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2367,9 +2349,7 @@ def test_make_ingress_for_service_reuse_existing_services_ignored(
                 'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
-                'app': 'jupyterhub',
-                'heritage': 'jupyterhub',
-                'component': 'singleuser-server',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2413,9 +2393,7 @@ def test_make_ingress_with_subdomain_host(target):
     Test specification of the ingress objects
     """
     common_labels = {
-        'app': 'jupyterhub',
-        'heritage': 'jupyterhub',
-        'component': 'singleuser-server',
+        'common/label': 'value0',
     }
     _endpoint, _service, ingress = api_client.sanitize_for_serialization(
         make_ingress(
@@ -2437,9 +2415,7 @@ def test_make_ingress_with_subdomain_host(target):
                 'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
-                'app': 'jupyterhub',
-                'heritage': 'jupyterhub',
-                'component': 'singleuser-server',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2484,9 +2460,7 @@ def test_make_ingress_with_specifications(target, ip):
     Test specification of the ingress objects
     """
     common_labels = {
-        'app': 'jupyterhub',
-        'heritage': 'jupyterhub',
-        'component': 'singleuser-server',
+        'common/label': 'value0',
     }
     ingress_specifications = [
         {
@@ -2518,9 +2492,7 @@ def test_make_ingress_with_specifications(target, ip):
                 'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
-                'app': 'jupyterhub',
-                'heritage': 'jupyterhub',
-                'component': 'singleuser-server',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2537,9 +2509,7 @@ def test_make_ingress_with_specifications(target, ip):
                 'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
-                'app': 'jupyterhub',
-                'heritage': 'jupyterhub',
-                'component': 'singleuser-server',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2559,9 +2529,7 @@ def test_make_ingress_with_specifications(target, ip):
                 'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
-                'app': 'jupyterhub',
-                'heritage': 'jupyterhub',
-                'component': 'singleuser-server',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2622,9 +2590,7 @@ def test_make_ingress_external_name_with_specifications():
     Test specification of the ingress objects
     """
     common_labels = {
-        'app': 'jupyterhub',
-        'heritage': 'jupyterhub',
-        'component': 'singleuser-server',
+        'common/label': 'value0',
     }
     ingress_specifications = [
         {
@@ -2658,9 +2624,7 @@ def test_make_ingress_external_name_with_specifications():
                 'hub.jupyter.org/proxy-target': 'http://my-pod-name:9000',
             },
             'labels': {
-                'app': 'jupyterhub',
-                'heritage': 'jupyterhub',
-                'component': 'singleuser-server',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2681,9 +2645,7 @@ def test_make_ingress_external_name_with_specifications():
                 'hub.jupyter.org/proxy-target': 'http://my-pod-name:9000',
             },
             'labels': {
-                'app': 'jupyterhub',
-                'heritage': 'jupyterhub',
-                'component': 'singleuser-server',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2763,9 +2725,7 @@ def test_make_ingress_with_specifications_and_matching_subdomain_host(target, ho
     Test specification of the ingress objects
     """
     common_labels = {
-        'app': 'jupyterhub',
-        'heritage': 'jupyterhub',
-        'component': 'singleuser-server',
+        'common/label': 'value0',
     }
     ingress_specifications = [
         {
@@ -2795,9 +2755,7 @@ def test_make_ingress_with_specifications_and_matching_subdomain_host(target, ho
                 'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
-                'app': 'jupyterhub',
-                'heritage': 'jupyterhub',
-                'component': 'singleuser-server',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2862,9 +2820,7 @@ def test_make_ingress_with_specifications_and_not_matching_subdomain_host(target
     Test specification of the ingress objects
     """
     common_labels = {
-        'app': 'jupyterhub',
-        'heritage': 'jupyterhub',
-        'component': 'singleuser-server',
+        'common/label': 'value0',
     }
     ingress_specifications = [
         {
@@ -2894,9 +2850,7 @@ def test_make_ingress_with_specifications_and_not_matching_subdomain_host(target
                 'hub.jupyter.org/proxy-target': target,
             },
             'labels': {
-                'app': 'jupyterhub',
-                'heritage': 'jupyterhub',
-                'component': 'singleuser-server',
+                'common/label': 'value0',
                 'hub.jupyter.org/proxy-route': 'true',
             },
             'name': 'jupyter-test',
@@ -2955,8 +2909,7 @@ def test_make_ingress_with_specifications_and_not_matching_subdomain_host(target
 
 def test_make_namespace():
     labels = {
-        'heritage': 'jupyterhub',
-        'component': 'singleuser-server',
+        'some/label': 'value0',
     }
     namespace = api_client.sanitize_for_serialization(
         make_namespace(name='test-namespace', labels=labels)
@@ -2965,8 +2918,7 @@ def test_make_namespace():
         'metadata': {
             'annotations': {},
             'labels': {
-                'component': 'singleuser-server',
-                'heritage': 'jupyterhub',
+                'some/label': 'value0',
             },
             'name': 'test-namespace',
         },

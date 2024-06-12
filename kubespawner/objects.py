@@ -1,6 +1,7 @@
 """
 Helper methods for generating k8s API objects.
 """
+
 import base64
 import ipaddress
 import json
@@ -80,7 +81,7 @@ def make_pod(
     cmd,
     port,
     image,
-    image_pull_policy,
+    image_pull_policy=None,
     image_pull_secrets=None,
     node_selector=None,
     uid=None,
@@ -138,9 +139,9 @@ def make_pod(
         arguments
 
     image_pull_policy:
-        Image pull policy - one of 'Always', 'IfNotPresent' or 'Never'. Decides
+        Image pull policy - one of None, 'Always', 'IfNotPresent' or 'Never'. Decides
         when kubernetes will check for a newer version of image and pull it when
-        running a pod.
+        running a pod. If set to None, it will be omitted from the spec.
 
     image_pull_secrets:
         Image pull secrets - a list of references to Kubernetes Secret resources
@@ -264,7 +265,7 @@ def make_pod(
         https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/.
         Pass this field an array of "Toleration" objects.
 
-          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#toleration-v1-core
+          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#toleration-v1-core
 
     node_affinity_preferred:
         Affinities describe where pods prefer or require to be scheduled, they
@@ -274,7 +275,7 @@ def make_pod(
 
         Pass this field an array of "PreferredSchedulingTerm" objects.
 
-          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20#preferredschedulingterm-v1-core
+          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28#preferredschedulingterm-v1-core
 
     node_affinity_required:
         Affinities describe where pods prefer or require to be scheduled, they
@@ -284,7 +285,7 @@ def make_pod(
 
         Pass this field an array of "NodeSelectorTerm" objects.
 
-          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#nodeselectorterm-v1-core
+          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#nodeselectorterm-v1-core
 
     pod_affinity_preferred:
         Affinities describe where pods prefer or require to be scheduled, they
@@ -294,7 +295,7 @@ def make_pod(
 
         Pass this field an array of "WeightedPodAffinityTerm" objects.
 
-          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#weightedpodaffinityterm-v1-core
+          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core
 
     pod_affinity_required:
         Affinities describe where pods prefer or require to be scheduled, they
@@ -304,7 +305,7 @@ def make_pod(
 
         Pass this field an array of "PodAffinityTerm" objects.
 
-          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podaffinityterm-v1-core
+          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core
 
     pod_anti_affinity_preferred:
         Affinities describe where pods prefer or require to be scheduled, they
@@ -314,7 +315,7 @@ def make_pod(
 
         Pass this field an array of "WeightedPodAffinityTerm" objects.
 
-          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#weightedpodaffinityterm-v1-core
+          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core
 
     pod_anti_affinity_required:
         Affinities describe where pods prefer or require to be scheduled, they
@@ -323,7 +324,7 @@ def make_pod(
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "PodAffinityTerm" objects.
-          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podaffinityterm-v1-core
+          * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core
 
     priority_class_name:
         The name of the PriorityClass to be assigned the pod. This feature is Beta available in K8s 1.11 and GA in 1.14.
@@ -353,9 +354,11 @@ def make_pod(
         # be a list, but it is allowed to have "a-string" elements or {"name":
         # "a-string"} elements.
         pod.spec.image_pull_secrets = [
-            V1LocalObjectReference(name=secret_ref)
-            if type(secret_ref) == str
-            else get_k8s_model(V1LocalObjectReference, secret_ref)
+            (
+                V1LocalObjectReference(name=secret_ref)
+                if type(secret_ref) == str
+                else get_k8s_model(V1LocalObjectReference, secret_ref)
+            )
             for secret_ref in image_pull_secrets
         ]
 
@@ -421,8 +424,8 @@ def make_pod(
     # | -                          | windowsOptions           | Pod and Container |
     #
     # ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
-    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core (container)
-    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core (pod)
+    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core (container)
+    # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podsecuritycontext-v1-core (pod)
     #
     psc = {}
     # populate with fs_gid / supplemental_gids
@@ -1011,15 +1014,10 @@ def make_secret(
         encoded = base64.b64encode(file.read().encode("utf-8"))
         secret.data['ssl.crt'] = encoded.decode("utf-8")
 
-    with open(cert_paths['cafile']) as file:
-        encoded = base64.b64encode(file.read().encode("utf-8"))
+    with open(cert_paths['cafile']) as ca_file, open(hub_ca) as hub_ca_file:
+        cas = ca_file.read().strip("\n") + "\n" + hub_ca_file.read()
+        encoded = base64.b64encode(cas.encode("utf-8"))
         secret.data["notebooks-ca_trust.crt"] = encoded.decode("utf-8")
-
-    with open(hub_ca) as file:
-        encoded = base64.b64encode(file.read().encode("utf-8"))
-        secret.data["notebooks-ca_trust.crt"] = secret.data[
-            "notebooks-ca_trust.crt"
-        ] + encoded.decode("utf-8")
 
     return secret
 

@@ -5,7 +5,7 @@ import json
 import time
 from functools import partial
 
-from kubernetes_asyncio import watch
+from kubernetes_asyncio import client, watch
 from traitlets import Any, Bool, Dict, Int, Unicode
 from traitlets.config import LoggingConfigurable
 from urllib3.exceptions import ReadTimeoutError
@@ -208,7 +208,7 @@ class ResourceReflector(LoggingConfigurable):
 
         self.watch_task = None
 
-    async def _list_and_update(self):
+    async def _list_and_update(self, resource_version=None):
         """
         Update current list of resources by doing a full fetch.
 
@@ -221,11 +221,29 @@ class ResourceReflector(LoggingConfigurable):
             _request_timeout=self.request_timeout,
             _preload_content=False,
         )
+        if resource_version is not None:
+            kwargs["resource_version"] = resource_version
+            kwargs["resource_version_match"] = "NotOlderThan"
         if not self.omit_namespace:
             kwargs["namespace"] = self.namespace
 
         list_method = getattr(self.api, self.list_method_name)
-        initial_resources_raw = await list_method(**kwargs)
+
+        try:
+            initial_resources_raw = await list_method(**kwargs)
+            if not initial_resources_raw.ok:
+                raise client.ApiException(
+                    status=initial_resources_raw.status,
+                    reason=initial_resources_raw.reason,
+                )
+        except client.ApiException:
+            self.log.exception(
+                f'An error occurred when calling Kubernetes API.'
+                f' Status: {initial_resources_raw.status} {initial_resources_raw.reason}.'
+                f' Message: {(await initial_resources_raw.json())["message"]}'
+            )
+            raise
+
         # This is an atomic operation on the dictionary!
         initial_resources = json.loads(await initial_resources_raw.read())
         self.resources = {
@@ -264,6 +282,11 @@ class ResourceReflector(LoggingConfigurable):
             selectors.append("field selector=%r" % self.field_selector)
         log_selector = ', '.join(selectors)
 
+        # fetch Any (=api-server cached) data from apiserver on initial fetch
+        # see https://kubernetes.io/docs/reference/using-api/api-concepts/#resource-versions
+        # for more information
+        resource_version = "0"
+
         cur_delay = 0.1
 
         if self.omit_namespace:
@@ -282,7 +305,7 @@ class ResourceReflector(LoggingConfigurable):
             start = time.monotonic()
             w = watch.Watch()
             try:
-                resource_version = await self._list_and_update()
+                resource_version = await self._list_and_update(resource_version)
                 watch_args = {
                     "label_selector": self.label_selector,
                     "field_selector": self.field_selector,
@@ -311,8 +334,8 @@ class ResourceReflector(LoggingConfigurable):
                         # reside in the WatchEvent's object field depending on what
                         # kind of resource is watched.
                         #
-                        # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#watchevent-v1-meta
-                        # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#event-v1-core
+                        # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#watchevent-v1-meta
+                        # ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
                         cur_delay = 0.1
                         resource = watch_event['raw_object']
                         ref_key = "{}/{}".format(
@@ -325,6 +348,7 @@ class ResourceReflector(LoggingConfigurable):
                         else:
                             # This is an atomic operation on the dictionary!
                             self.resources[ref_key] = resource
+                            resource_version = resource["metadata"]["resourceVersion"]
                         if self._stopping:
                             self.log.info("%s watcher stopped: inner", self.kind)
                             break
@@ -346,6 +370,9 @@ class ResourceReflector(LoggingConfigurable):
                 self.log.debug("Cancelled watching %s", self.kind)
                 raise
             except Exception:
+                # ensure we request a valid resource version on retry,
+                # needed on 410 Gone errors
+                resource_version = "0"
                 cur_delay = cur_delay * 2
                 if cur_delay > 30:
                     self.log.exception("Watching resources never recovered, giving up")

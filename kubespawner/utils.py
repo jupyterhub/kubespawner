@@ -1,6 +1,7 @@
 """
 Misc. general utility functions, not tied to KubeSpawner directly
 """
+
 import copy
 import hashlib
 
@@ -71,10 +72,10 @@ def update_k8s_model(target, changes, logger=None, target_name=None, changes_nam
         if isinstance(changes, dict) or value:
             if getattr(target, key):
                 if logger and changes_name:
-                    warning = "'{}.{}' current value: '{}' is overridden with '{}', which is the value of '{}.{}'.".format(
+                    msg = "'{}.{}' current value: '{}' is overridden with '{}', which is the value of '{}.{}'.".format(
                         target_name, key, getattr(target, key), value, changes_name, key
                     )
-                    logger.warning(warning)
+                    logger.info(msg)
             setattr(target, key, value)
 
     return target
@@ -222,3 +223,44 @@ def recursive_update(target, new):
 
         else:
             target[k] = v
+
+
+class IgnoreMissing(dict):
+    """
+    Dictionary subclass for use with format_map
+
+    Returns missing dictionary keys' values as "{key}", so format strings with
+    missing values just get rendered as is.
+
+    Stolen from https://docs.python.org/3/library/stdtypes.html#str.format_map
+    """
+
+    def __missing__(self, key):
+        return f"{{{key}}}"
+
+
+def recursive_format(format_object, **kwargs):
+    """
+    Recursively format given object with values provided as keyword arguments.
+
+    If the given object (string, list, set, or dict) has items that do not have
+    placeholders for passed in kwargs, no formatting is performed.
+
+    recursive_format("{v}", v=5) -> Returns "5"
+    recrusive_format("{a}") -> Returns "{a}" rather than erroring, as is
+    the behavior of "format"
+    """
+    if isinstance(format_object, str):
+        return format_object.format_map(IgnoreMissing(kwargs))
+    elif isinstance(format_object, list):
+        return [recursive_format(i, **kwargs) for i in format_object]
+    elif isinstance(format_object, set):
+        return {recursive_format(i, **kwargs) for i in format_object}
+    elif isinstance(format_object, dict):
+        return {
+            recursive_format(k, **kwargs): recursive_format(v, **kwargs)
+            for k, v in format_object.items()
+        }
+    else:
+        # Everything else just gets returned as is, unformatted
+        return format_object

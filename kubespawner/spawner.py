@@ -4,9 +4,12 @@ JupyterHub Spawner to spawn user notebooks on a Kubernetes cluster.
 This module exports `KubeSpawner` class, which is the actual spawner
 implementation that should be used by JupyterHub.
 """
+
 import asyncio
+import copy
 import ipaddress
 import os
+import re
 import string
 import sys
 import warnings
@@ -46,7 +49,7 @@ from .objects import (
 )
 from .reflector import ResourceReflector
 from .slugs import is_valid_label, safe_slug
-from .utils import recursive_update
+from .utils import recursive_format, recursive_update
 
 
 class PodReflector(ResourceReflector):
@@ -66,7 +69,7 @@ class PodReflector(ResourceReflector):
         API. The dictionary keys are the pod ids and the values are
         dictionaries of the actual pod resource values.
 
-        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#pod-v1-core
+        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#pod-v1-core
         """
         return self.resources
 
@@ -87,7 +90,7 @@ class EventReflector(ResourceReflector):
         Returns list of dictionaries representing the k8s
         events within the namespace, sorted by the latest event.
 
-        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#event-v1-core
+        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
         """
 
         # NOTE:
@@ -201,8 +204,24 @@ class KubeSpawner(Spawner):
         # The attribute needs to exist, even though it is unset to start with
         self._start_future = None
 
-        load_config(host=self.k8s_api_host, ssl_ca_cert=self.k8s_api_ssl_ca_cert)
+        load_config(
+            host=self.k8s_api_host,
+            ssl_ca_cert=self.k8s_api_ssl_ca_cert,
+            verify_ssl=self.k8s_api_verify_ssl,
+        )
         self.api = shared_client("CoreV1Api")
+
+    k8s_api_verify_ssl = Bool(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        Verify TLS certificates when connecting to the k8s master.
+        
+        Set this to false to skip verifying SSL certificate when calling API
+        from https server.
+        """,
+    )
 
     k8s_api_ssl_ca_cert = Unicode(
         "",
@@ -604,9 +623,12 @@ class KubeSpawner(Spawner):
         'singleuser-server',
         config=True,
         help="""
-        The component label used to tag the user pods. This can be used to override
-        the spawner behavior when dealing with multiple hub instances in the same
-        namespace. Usually helpful for CI workflows.
+        The value of the labels app.kubernetes.io/component and component, used
+        to identify user pods kubespawner is to manage.
+
+        This can be used to override the spawner behavior when dealing with
+        multiple hub instances in the same namespace. Usually helpful for CI
+        workflows.
         """,
     )
 
@@ -663,6 +685,10 @@ class KubeSpawner(Spawner):
 
     common_labels = Dict(
         {
+            'app.kubernetes.io/name': 'jupyterhub',
+            'app.kubernetes.io/managed-by': 'kubespawner',
+            # app and heritage are older variants of the modern
+            # app.kubernetes.io labels
             'app': 'jupyterhub',
             'heritage': 'jupyterhub',
         },
@@ -718,12 +744,12 @@ class KubeSpawner(Spawner):
     )
 
     image = Unicode(
-        'jupyterhub/singleuser:latest',
+        'quay.io/jupyterhub/singleuser:latest',
         config=True,
         help="""
         Docker image to use for spawning user's containers.
 
-        Defaults to `jupyterhub/singleuser:latest`
+        Defaults to `quay.io/jupyterhub/singleuser:latest`
 
         Name of the container + a tag, same as would be used with
         a `docker pull` command. If tag is set to `latest`, kubernetes will
@@ -746,21 +772,16 @@ class KubeSpawner(Spawner):
     )
 
     image_pull_policy = Unicode(
-        'IfNotPresent',
+        None,
+        allow_none=True,
         config=True,
         help="""
         The image pull policy of the docker container specified in
         `image`.
 
-        Defaults to `IfNotPresent` which causes the Kubelet to NOT pull the image
-        specified in KubeSpawner.image if it already exists, except if the tag
-        is `:latest`. For more information on image pull policy,
-        refer to `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/>`__.
-
-
-        This configuration is primarily used in development if you are
-        actively changing the `image_spec` and would like to pull the image
-        whenever a user container is spawned.
+        Defaults to `None`, which means it is omitted. This leads to it behaving
+        like 'Always' when a tag is absent or 'latest', and 'IfNotPresent' when
+        the tag is specified to be something else, per https://kubernetes.io/docs/concepts/containers/images/#imagepullpolicy-defaulting.
         """,
     )
 
@@ -896,7 +917,7 @@ class KubeSpawner(Spawner):
         upgrades to break.
 
         You'll *have* to set this if you are using auto-provisioned volumes with most
-        cloud providers. See `fsGroup <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core>`__
+        cloud providers. See `fsGroup <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podsecuritycontext-v1-core>`__
         for more details.
         """,
     )
@@ -969,7 +990,7 @@ class KubeSpawner(Spawner):
         `allow_privilege_escalation` will be overridden by this.
 
         Rely on `the Kubernetes reference
-        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#securitycontext-v1-core>`__
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core>`__
         for details on allowed configuration.
         """,
     )
@@ -992,7 +1013,7 @@ class KubeSpawner(Spawner):
         containers, including init containers and sidecar containers.
 
         Rely on `the Kubernetes reference
-        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podsecuritycontext-v1-core>`__
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podsecuritycontext-v1-core>`__
         for details on allowed configuration.
         """,
     )
@@ -1253,7 +1274,7 @@ class KubeSpawner(Spawner):
 
         This list will be directly added under `initContainers` in the kubernetes pod spec,
         so you should use the same structure. Each item in the dict must a field
-        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#container-v1-core>`__
+        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#container-v1-core>`__
 
         One usage is disabling access to metadata service from single-user
         notebook server with configuration below::
@@ -1284,7 +1305,7 @@ class KubeSpawner(Spawner):
 
         This dict will be directly merge into `container` of notebook server,
         so you should use the same structure. Each item in the dict must a field
-        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#container-v1-core>`__.
+        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#container-v1-core>`__.
 
 
         One usage is set ``envFrom`` on notebook container with configuration below::
@@ -1310,7 +1331,7 @@ class KubeSpawner(Spawner):
 
         This dict will be directly merge into pod,so you should use the same structure.
         Each item in the dict is field of pod configuration
-        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podspec-v1-core
+        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podspec-v1-core
 
 
         One usage is set restartPolicy and dnsPolicy with configuration below::
@@ -1333,7 +1354,7 @@ class KubeSpawner(Spawner):
 
         This list will be directly appended under `containers` in the kubernetes pod spec,
         so you should use the same structure. Each item in the list is container configuration
-        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#container-v1-core
+        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#container-v1-core
 
 
         One usage is setting crontab in a container to clean sensitive data with configuration below::
@@ -1358,7 +1379,7 @@ class KubeSpawner(Spawner):
         allow_none=True,
         config=True,
         help="""
-        Set the pod's scheduler explicitly by name. See `the Kubernetes documentation <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podspec-v1-core>`__
+        Set the pod's scheduler explicitly by name. See `the Kubernetes documentation <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podspec-v1-core>`__
         for more information.
         """,
     )
@@ -1371,7 +1392,7 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
 
         Pass this field an array of "Toleration" objects
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#toleration-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#toleration-v1-core
 
         Example::
 
@@ -1401,7 +1422,7 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "PreferredSchedulingTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#preferredschedulingterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#preferredschedulingterm-v1-core
 
         """,
     )
@@ -1414,7 +1435,7 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "NodeSelectorTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#nodeselectorterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#nodeselectorterm-v1-core
 
         """,
     )
@@ -1427,7 +1448,7 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "WeightedPodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#weightedpodaffinityterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core
 
         """,
     )
@@ -1440,7 +1461,7 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "PodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podaffinityterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core
 
         """,
     )
@@ -1453,7 +1474,7 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "WeightedPodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#weightedpodaffinityterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core
         """,
     )
     pod_anti_affinity_required = List(
@@ -1465,7 +1486,7 @@ class KubeSpawner(Spawner):
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
         Pass this field an array of "PodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#podaffinityterm-v1-core
+        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core
         """,
     )
 
@@ -1548,9 +1569,10 @@ class KubeSpawner(Spawner):
         Signature is: `List(Dict())`, where each item is a dictionary that has two keys:
 
         - `display_name`: the human readable display name (should be HTML safe)
-        - `slug`: the machine readable slug to identify the profile
-          (missing slugs are generated from display_name)
+        - `default`: (Optional Bool) True if this is the default selected option
         - `description`: Optional description of this profile displayed to the user.
+        - `slug`: (Optional) the machine readable string to identify the
+          profile (missing slugs are generated from display_name)
         - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
           settings. Each value can be either the final value to change or a callable that
           take the `KubeSpawner` instance as parameter and return the final value. This can
@@ -1564,6 +1586,34 @@ class KubeSpawner(Spawner):
           and the value is a dictionary with the following keys:
 
           - `display_name`: Name used to identify this particular option
+          - `unlisted_choice`: Object to specify if there should be a free-form field if the user
+            selected "Other" as a choice:
+
+            - `enabled`: Boolean, whether the free form input should be enabled
+            - `display_name`: String, label for input field
+            - `display_name_in_choices`: Optional, display name for the choice
+              to specify an unlisted choice in the dropdown list of pre-defined
+              choices. Defaults to "Other...".
+            - `validation_regex`: Optional, regex that the free form input
+              should match, eg. `^pangeo/.*$`.
+            - `validation_message`: Optional, validation message for the regex.
+              Should describe the required input format in a human-readable way.
+            - `kubespawner_override`: a dictionary with overrides to apply to
+              the KubeSpawner settings, where the string `{value}` will be
+              substituted with what was filled in by the user if its found in
+              string values anywhere in the dictionary. As an example, if the
+              choice made is about an image tag for an image only to be used
+              with JupyterLab, it could look like this:
+
+              .. code-block:: python
+
+                 {
+                     "image_spec": "jupyter/datascience-notebook:{value}",
+                     "default_url": "/lab",
+                     "extra_labels: {
+                        "user-specified-image-tag": "{value}",
+                     },
+                 }
           - `choices`: A dictionary containing list of choices for the user to choose from
             to set the value for this particular option. The key is an identifier for this
             choice, and the value is a dictionary with the following possible keys:
@@ -1579,7 +1629,6 @@ class KubeSpawner(Spawner):
               If the traitlet being overriden is a *dictionary*, the dictionary
               will be *recursively updated*, rather than overriden. If you want to
               remove a key, set its value to `None`
-        - `default`: (optional Bool) True if this is the default selected option
 
         kubespawner setting overrides work in the following manner, with items further in the
         list *replacing* (not merging with) items earlier in the list:
@@ -1594,75 +1643,49 @@ class KubeSpawner(Spawner):
 
             c.KubeSpawner.profile_list = [
                 {
-                    'display_name': 'Training Env',
-                    'slug': 'training-python',
+                    'display_name': 'Demo - profile_list entry 1',
+                    'description': 'Demo description for profile_list entry 1, and it should look good even though it is a bit lengthy.',
+                    'slug': 'demo-1',
                     'default': True,
                     'profile_options': {
                         'image': {
                             'display_name': 'Image',
                             'choices': {
-                                'pytorch': {
-                                    'display_name': 'Python 3 Training Notebook',
+                                'base': {
+                                    'display_name': 'jupyter/base-notebook:latest',
                                     'kubespawner_override': {
-                                        'image': 'training/python:2022.01.01'
-                                    }
+                                        'image': 'jupyter/base-notebook:latest'
+                                    },
                                 },
-                                'tf': {
-                                    'display_name': 'R 4.2 Training Notebook',
+                                'minimal': {
+                                    'display_name': 'jupyter/minimal-notebook:latest',
+                                    'default': True,
                                     'kubespawner_override': {
-                                        'image': 'training/r:2021.12.03'
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    'kubespawner_override': {
-                        'cpu_limit': 1,
-                        'mem_limit': '512M',
-                    }
-                }, {
-                    'display_name': 'Python DataScience',
-                    'slug': 'datascience-small',
-                    'profile_options': {
-                        'memory': {
-                            'display_name': 'CPUs',
-                            'choices': {
-                                '2': {
-                                    'display_name': '2 CPUs',
-                                    'kubespawner_override': {
-                                        'cpu_limit': 2,
-                                        'cpu_guarantee': 1.8,
-                                        'node_selector': {
-                                            'node.kubernetes.io/instance-type': 'n1-standard-2'
-                                        }
-                                    }
+                                        'image': 'jupyter/minimal-notebook:latest'
+                                    },
                                 },
-                                '4': {
-                                    'display_name': '4 CPUs',
-                                    'kubespawner_override': {
-                                        'cpu_limit': 4,
-                                        'cpu_guarantee': 3.5,
-                                        'node_selector': {
-                                            'node.kubernetes.io/instance-type': 'n1-standard-4'
-                                        }
-                                    }
-                                }
-                            }
+                            },
+                            'unlisted_choice': {
+                                'enabled': True,
+                                'display_name': 'Other image',
+                                'display_name_in_choices': 'Enter image manually',
+                                'validation_regex': '^jupyter/.+:.+$',
+                                'validation_message': 'Must be an image matching ^jupyter/<name>:<tag>$',
+                                'kubespawner_override': {'image': '{value}'},
+                            },
                         },
                     },
                     'kubespawner_override': {
-                        'image': 'datascience/small:label',
-                    }
-                }, {
-                    'display_name': 'DataScience - Medium instance (GPUx2)',
-                    'slug': 'datascience-gpu2x',
+                        'default_url': '/lab',
+                    },
+                },
+                {
+                    'display_name': 'Demo - profile_list entry 2',
+                    'slug': 'demo-2',
                     'kubespawner_override': {
-                        'image': 'datascience/medium:label',
-                        'cpu_limit': 48,
-                        'mem_limit': '96G',
-                        'extra_resource_guarantees': {"nvidia.com/gpu": "2"},
-                    }
-                }
+                        'extra_resource_guarantees': {"nvidia.com/gpu": "1"},
+                    },
+                },
             ]
 
         Instead of a list of dictionaries, this could also be a callable that takes as one
@@ -1863,6 +1886,17 @@ class KubeSpawner(Spawner):
             rendered = safe_slug(rendered)
         return rendered
 
+    def _expand_env(self, env):
+        # environment expansion requires special handling because the parent class
+        # may have also modified it, e.g. by evaluating a callable
+        expanded_env = {}
+        for k, v in env.items():
+            if isinstance(v, (list, dict, str)):
+                expanded_env[k] = self._expand_all(v)
+            # else do nothing- this will be merged with the parent env
+            # by the caller so by omitting the key we keep the parent value
+        return expanded_env
+
     def _expand_all(self, src):
         if isinstance(src, list):
             return [self._expand_all(i) for i in src]
@@ -1889,6 +1923,7 @@ class KubeSpawner(Spawner):
         labels = self._build_common_labels(extra_labels)
         labels.update(
             {
+                'app.kubernetes.io/component': self.component_label,
                 'component': self.component_label,
                 'hub.jupyter.org/servername': escapism.escape(
                     self.name, safe=self.safe_chars, escape_char='-'
@@ -2034,7 +2069,7 @@ class KubeSpawner(Spawner):
             allow_privilege_escalation=self.allow_privilege_escalation,
             container_security_context=csc,
             pod_security_context=psc,
-            env=self._expand_all(self.get_env()),
+            env=self.get_env(),  # Expansion is handled by get_env
             volumes=self._expand_all(self.volumes),
             volume_mounts=self._expand_all(self.volume_mounts),
             working_dir=self.working_dir,
@@ -2113,7 +2148,17 @@ class KubeSpawner(Spawner):
         Make a pvc manifest that will spawn current user's pvc.
         """
         labels = self._build_common_labels(self._expand_all(self.storage_extra_labels))
-        labels.update({'component': 'singleuser-storage'})
+        labels.update(
+            {
+                # The component label has been set to singleuser-storage, but should
+                # probably have been set to singleuser-server (self.component_label)
+                # as that ties it to the user pods kubespawner creates. Due to that,
+                # the newly introduced label app.kubernetes.io/component gets
+                # singleuser-server (self.component_label) as a value instead.
+                'app.kubernetes.io/component': self.component_label,
+                'component': 'singleuser-storage',
+            }
+        )
 
         annotations = self._build_common_annotations(
             self._expand_all(self.storage_extra_annotations)
@@ -2162,12 +2207,8 @@ class KubeSpawner(Spawner):
         """
         Save state required to reinstate this user's pod from scratch
 
-        We save the `pod_name`, even though we could easily compute it,
-        because JupyterHub requires you save *some* state! Otherwise
-        it assumes your server is dead. This works around that.
-
-        It's also useful for cases when the `pod_template` changes between
-        restarts - this keeps the old pods around.
+        `pod_name` is saved as `pod_template` can change between hub restarts,
+        and we do not want to lose track of the old pods when that happens.
 
         We also save the namespace and DNS name for use cases where the namespace is
         calculated dynamically, or it changes between restarts.
@@ -2188,6 +2229,11 @@ class KubeSpawner(Spawner):
         # deprecate image
         env['JUPYTER_IMAGE_SPEC'] = self.image
         env['JUPYTER_IMAGE'] = self.image
+
+        # Explicitly expand *and* set all the admin specified variables only.
+        # This allows JSON-like strings set by JupyterHub itself to not be
+        # expanded. https://github.com/jupyterhub/kubespawner/issues/743
+        env.update(self._expand_env(self.environment))
 
         return env
 
@@ -2225,7 +2271,6 @@ class KubeSpawner(Spawner):
         necessary to check that the returned value is None, rather than
         just Falsy, to determine that the pod is still running.
         """
-
         await self._start_watching_pods()
 
         ref_key = f"{self.namespace}/{self.pod_name}"
@@ -2315,7 +2360,7 @@ class KubeSpawner(Spawner):
 
         This is working with events parsed by the python kubernetes client,
         and here is the specification of events that is relevant to understand:
-        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#event-v1-core
+        ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
         """
 
         if not self.events_enabled:
@@ -2397,6 +2442,10 @@ class KubeSpawner(Spawner):
 
         if previous_reflector and not replace:
             # fast path
+            if not previous_reflector.first_load_future.done():
+                # make sure it's loaded, so subsequent calls to start_reflector
+                # don't finish before the first
+                await previous_reflector.first_load_future
             return previous_reflector
 
         if self.enable_user_namespaces:
@@ -2406,7 +2455,7 @@ class KubeSpawner(Spawner):
             def on_reflector_failure():
                 # If reflector cannot be started, halt the JH application.
                 self.log.critical(
-                    "Reflector with key %r reflector, halting Hub.",
+                    "Reflector with key %r failed, halting Hub.",
                     key,
                 )
                 sys.exit(1)
@@ -2445,6 +2494,9 @@ class KubeSpawner(Spawner):
             # we replaced the reflector, stop the old one
             asyncio.ensure_future(previous_reflector.stop())
 
+        # wait for first load
+        await current_reflector.first_load_future
+
         # return the current reflector
         return current_reflector
 
@@ -2477,6 +2529,16 @@ class KubeSpawner(Spawner):
         return await self._start_reflector(
             kind="pods",
             reflector_class=PodReflector,
+            # NOTE: We monitor resources with the old component label instead of
+            #       the modern app.kubernetes.io/component label. A change here
+            #       is only non-breaking if we can assume the running resources
+            #       monitored can be detected by either old or new labels.
+            #
+            #       The modern labels were added to resources created by
+            #       KubeSpawner 6.3 first adopted in z2jh 4.0.
+            #
+            #       Related to https://github.com/jupyterhub/kubespawner/issues/834
+            #
             labels={"component": self.component_label},
             omit_namespace=self.enable_user_namespaces,
             replace=replace,
@@ -2490,11 +2552,18 @@ class KubeSpawner(Spawner):
             reflector = cls.reflectors.pop(key)
             tasks.append(reflector.stop())
 
+        # make sure all tasks are Futures so we can cancel them later
+        # in case of error
+        futures = [asyncio.ensure_future(task) for task in tasks]
         try:
-            await asyncio.gather(*tasks)
+            await asyncio.gather(*futures)
         except Exception:
-            for task in tasks:
-                task.cancel()
+            # cancel any unfinished tasks before re-raising
+            # because gather doesn't cancel unfinished tasks.
+            # TaskGroup would do this cancel for us, but requires Python 3.11
+            for future in futures:
+                if not future.done():
+                    future.cancel()
             raise
 
     def start(self):
@@ -2682,14 +2751,21 @@ class KubeSpawner(Spawner):
 
         # namespace can be changed via kubespawner_override, start watching pods only after
         # load_user_options() is called
-        start_futures = [self._start_watching_pods()]
+        start_tasks = [self._start_watching_pods()]
         if self.events_enabled:
-            start_futures.append(self._start_watching_events())
+            start_tasks.append(self._start_watching_events())
+        # create Futures for coroutines so we can cancel them
+        # in case of an error
+        start_futures = [asyncio.ensure_future(task) for task in start_tasks]
         try:
             await asyncio.gather(*start_futures)
         except Exception:
+            # cancel any unfinished tasks before re-raising
+            # because gather doesn't cancel unfinished tasks.
+            # TaskGroup would do this cancel for us, but requires Python 3.11
             for future in start_futures:
-                future.cancel()
+                if not future.done():
+                    future.cancel()
             raise
 
         # record latest event so we don't include old
@@ -2813,7 +2889,7 @@ class KubeSpawner(Spawner):
                     "Pod %s never showed up in reflector, restarting pod reflector",
                     ref_key,
                 )
-                self.log.error(f"Pods: {self.pod_reflector.pods}")
+                self.log.error("Pods: %s", sorted(self.pod_reflector.pods.keys()))
                 asyncio.ensure_future(self._start_watching_pods(replace=True))
             raise
 
@@ -2946,10 +3022,24 @@ class KubeSpawner(Spawner):
     def _env_keep_default(self):
         return []
 
-    _profile_list = None
-
     def _render_options_form(self, profile_list):
-        self._profile_list = self._init_profile_list(profile_list)
+        """
+        Renders a KubeSpawner specific jinja2 template, passing `profile_list` as a variable.
+
+        The template rendered is either:
+        - `profile_form_template` if configured
+        - a "form.html" file if found in `additional_profile_form_template_paths`
+        - a "form.html" file bundled with kubespawner
+
+        Note that the return value can either be plain HTML or a jinja2 template
+        that JupyterHub in turn will render with variables like `spawner`,
+        `for_user`, `user`, `auth_state`, `error_message`.
+
+        Reference
+            https://github.com/jupyterhub/jupyterhub/blob/4.0.2/jupyterhub/handlers/pages.py#L94-L106
+            https://github.com/jupyterhub/jupyterhub/blob/4.0.2/jupyterhub/handlers/base.py#L1272-L1308
+        """
+        profile_list = self._get_initialized_profile_list(profile_list)
 
         loader = ChoiceLoader(
             [
@@ -2959,33 +3049,60 @@ class KubeSpawner(Spawner):
         )
 
         env = Environment(loader=loader)
+
+        # jinja2's tojson sorts keys in dicts by default. This was useful
+        # in the time when python's dicts were not ordered. However, now that
+        # dicts are ordered in python, this screws it up. Since profiles are
+        # dicts, ordering *does* matter - they should be displayed to the user
+        # in the order that the admin sets them. This allows template writers
+        # to use `|tojson` on the profile_list (to be read by JS)
+        # without worrying about ordering getting mangled. Template writers
+        # can still sort keys by explicitly using `|dictsort` in their
+        # template
+        env.policies['json.dumps_kwargs'] = {'sort_keys': False}
+
         if self.profile_form_template != "":
-            # Admin has custom set the profile_form_template as a templated string
-            # so we use that directly
             profile_form_template = env.from_string(self.profile_form_template)
         else:
             profile_form_template = env.get_template("form.html")
-        return profile_form_template.render(profile_list=self._profile_list)
+        return profile_form_template.render(profile_list=profile_list)
 
     async def _render_options_form_dynamically(self, current_spawner):
+        """
+        A function configured to be used by JupyterHub via
+        `_options_form_default` when `profile_list` is a callable, to render the
+        server options for a user after evaluating the `profile_list` function.
+        """
         profile_list = await maybe_future(self.profile_list(current_spawner))
-        profile_list = self._init_profile_list(profile_list)
         return self._render_options_form(profile_list)
 
     @default('options_form')
     def _options_form_default(self):
         """
-        Build the form template according to the `profile_list` setting.
+        Returns a form template for JupyterHub to render, by rendering a
+        KubeSpawner specific template that is passed through the `profile_list` config.
 
-        Returns:
-            '' when no `profile_list` has been defined
-            The rendered template (using jinja2) when `profile_list` is defined.
+        JupyterHub renders the returned form template when a user is to start a
+        server based on template variables like `spawner`, `for_user`, `user`,
+        `auth_state`, `error_message`.
+
+        JupyterHub parses submitted forms' data with `options_from_form`, saves
+        it to `user_options`, and then individual KubeSpawner instances
+        representing individual servers adjusts to it via `load_user_options` in
+        `start`.
+
+        Reference:
+            https://jupyterhub.readthedocs.io/en/stable/reference/spawners.html#spawner-options-form
         """
         if not self.profile_list:
             return ''
         if callable(self.profile_list):
+            # Let jupyterhub evaluate the callable profile_list (and render a
+            # form template based on it) just in time by returning a function
+            # doing that
             return self._render_options_form_dynamically
         else:
+            # Return the rendered string, as it does not change
             return self._render_options_form(self.profile_list)
 
     @default('options_from_form')
@@ -2993,7 +3110,10 @@ class KubeSpawner(Spawner):
         return self._options_from_form
 
     def _options_from_form(self, formdata):
-        """get the option selected by the user on the form
+        """
+        Called by jupyterhub when processing a request to spawn a server, where
+        the user either have submitted a POST request via a form or submitted a
+        GET request with query parameters.
 
         This only constructs the user_options dict,
         it should not actually load any options.
@@ -3002,10 +3122,14 @@ class KubeSpawner(Spawner):
         Args:
             formdata: user selection returned by the form
 
+        As an example formdata could be set to::
+
+            {'profile': ['demo-1'], 'profile-option-demo-1--image': ['minimal']}
+
         To access to the value, you can use the `get` accessor and the name of the html element,
         for example::
 
-            formdata.get('profile',[0])
+            formdata.get('profile', [None])[0]
 
         to get the value of the form named "profile", as defined in `form_template`::
 
@@ -3016,54 +3140,133 @@ class KubeSpawner(Spawner):
             user_options (dict): the selected profile in the user_options form,
                 e.g. ``{"profile": "cpus-8"}``
         """
-        profile = formdata.get('profile', [None])[0]
+        profile_slug = formdata.get('profile', [None])[0]
 
-        options = {'profile': profile}
+        # initialize a dictionary to return
+        user_options = {}
 
-        # Load any options if they are set for this profile, and this profile only
-        # In the default template we use, all form options for a particular profile
-        # come through of the format 'profile-option-{profile}-{option-slug}'
-        if profile:
-            option_formdata_prefix = f'profile-option-{profile}-'
+        # if a profile is declared, add a dictionary key for the profile, and
+        # dictionary keys for the formdata related to the profile's
+        # profile_options, as recognized by being named like:
+        #
+        #     profile-option-{profile_slug}--{profile_option_slug}
+        #
+        if profile_slug:
+            user_options["profile"] = profile_slug
+            prefix = f'profile-option-{profile_slug}--'
             for k, v in formdata.items():
-                if k.startswith(option_formdata_prefix):
-                    stripped_key = k[len(option_formdata_prefix) :]
-                    options[stripped_key] = v[0]
+                if k.startswith(prefix):
+                    profile_option_slug = k[len(prefix) :]
+                    user_options[profile_option_slug] = v[0]
 
-        return options
+        # warn about any unrecognized form data, which is anything besides
+        # "profile" and "profile-option-" prefixed keys
+        unrecognized_keys = set(formdata)
+        unrecognized_keys = unrecognized_keys.difference({"profile"})
+        unrecognized_keys = [
+            k for k in unrecognized_keys if not k.startswith("profile-option-")
+        ]
+        if unrecognized_keys:
+            self.log.warning(
+                "Ignoring unrecognized form data in spawn request: %s",
+                ", ".join(map(str, sorted(unrecognized_keys))),
+            )
 
-    async def _load_profile(self, slug, selected_profile_user_options):
-        """Load a profile by name
+        return user_options
 
-        Called by load_user_options
+    def _validate_user_options(self, profile_list):
         """
+        Validate `user_options` using an initialized `profile_list` by raising
+        an error if there are issues that can't be resolved.
 
-        # find the profile
-        default_profile = self._profile_list[0]
-        for profile in self._profile_list:
-            if profile.get('default', False):
-                # explicit default, not the first
-                default_profile = profile
+        `user_options` is set via `_user_options_from_form` unless when the
+        JupyterHub REST API has been used to start a server, then `user_options`
+        are set directly via JSON data in the REST API request.
 
+        Some examples of `user_options` to validate are::
+
+            {"profile": "demo-1", "image": "minimal"}
+            {"profile": "demo-1", "image--unlisted-choice": "jupyter/datascience-notebook:latest"}
+            {}
+            {"garbage-arrived-via-rest-api": "anything"}
+            {"profile": "demo-1", "garbage-arrived-via-rest-api": "anything"}
+
+        The current implementation doesn't emit warnings about irrelevant
+        user_options that could have been passed when spawning via the REST API.
+        """
+        # `user_options` is allowed to be falsy as it could be via a JupyterHub
+        # REST API request to spawn a server - then `user_options` can be
+        # anything.
+        if not self.user_options:
+            return
+
+        # If "profile" isn't declared or falsy, no further validation is done.
+        profile_slug = self.user_options.get("profile")
+        if not profile_slug:
+            return
+
+        # Ensure "profile" is defined in profile_list by calling _get_profile
+        # with a truthy profile_slug.
+        profile = self._get_profile(profile_slug, profile_list)
+
+        # Ensure user_options related to the profile's profile_options are valid
+        for option_name, option in profile.get('profile_options', {}).items():
+            unlisted_choice_key = f"{option_name}--unlisted-choice"
+            unlisted_choice = self.user_options.get(unlisted_choice_key)
+            choice = self.user_options.get(option_name)
+            if not (unlisted_choice or choice):
+                # no user_options was passed for this profile option, the
+                # profile option's default value can be used
+                continue
+            if unlisted_choice:
+                # we have been passed a value for the profile option's
+                # unlisted_choice, it must be enabled and the provided value
+                # must validate against the validation_regex if configured
+                if not option.get("unlisted_choice", {}).get("enabled"):
+                    raise ValueError(
+                        f"Received unlisted_choice for {option_name} without being enabled."
+                    )
+
+                validation_regex = option["unlisted_choice"].get("validation_regex")
+                if validation_regex and not re.match(validation_regex, unlisted_choice):
+                    raise ValueError(
+                        f"Received unlisted_choice for {option_name} that failed validation regex."
+                    )
+
+    def _get_profile(self, slug: Optional[str], profile_list: list):
+        """
+        Returns the profile from profile_list matching given slug, or the
+        (first) default profile if slug is falsy.
+
+        profile_list is required to have a default profile.
+
+        Raises an error if no profile exists for the given slug.
+        """
+        if not slug:
+            # return the default profile
+            return next(p for p in profile_list if p.get('default'))
+
+        for profile in profile_list:
             if profile['slug'] == slug:
-                break
-        else:
-            if slug:
-                # name specified, but not found
-                raise ValueError(
-                    "No such profile: %s. Options include: %s"
-                    % (slug, ', '.join(p['slug'] for p in self._profile_list))
-                )
-            else:
-                # no name specified, use the default
-                profile = default_profile
+                # return matching profile
+                return profile
 
-        self.log.debug(
-            "Applying KubeSpawner override for profile '%s'", profile['display_name']
+        raise ValueError(
+            "No such profile: %s. Options include: %s"
+            % (slug, ', '.join(p['slug'] for p in profile_list))
         )
 
-        kubespawner_override = profile.get('kubespawner_override', {})
-        for k, v in kubespawner_override.items():
+    def _apply_overrides(self, spawner_override: dict):
+        """
+        Apply set of overrides onto the current spawner instance
+
+        spawner_override is a dict with key being the name of the traitlet
+        to override, and value is either a callable or the value for the
+        traitlet. If the value is a dictionary, it is *merged* with the
+        existing value (rather than replaced). Callables are called with
+        one parameter - the current spawner instance.
+        """
+        for k, v in spawner_override.items():
             if callable(v):
                 v = v(self)
                 self.log.debug(
@@ -3081,115 +3284,133 @@ class KubeSpawner(Spawner):
             else:
                 setattr(self, k, v)
 
-        if profile.get('profile_options'):
-            # each option specified here *must* have a value in our POST, as we
-            # render our HTML such that there's always something selected.
+    def _load_profile(self, slug, profile_list):
+        """
+        Applies configured overrides for a selected or default profile,
+        including the selected or default overrides for the profile's
+        profile_options.
 
-            # We only honor options that are defined in the selected profile *and*
-            # are in the form data posted. This prevents users who may be authorized
-            # to only use one profile from being able to access options set for other
-            # profiles
-            for user_selected_option_name in selected_profile_user_options.keys():
-                if (
-                    user_selected_option_name
-                    not in profile.get('profile_options').keys()
-                ):
+        Called by `load_user_options` after validation of user_options has been
+        done with the initialized profile_list.
+        """
+        profile = self._get_profile(slug, profile_list)
+
+        self.log.debug(
+            "Applying KubeSpawner override for profile '%s'", profile['display_name']
+        )
+
+        # Apply overrides for the profile
+        self._apply_overrides(profile.get("kubespawner_override", {}))
+
+        # Apply overrides for the profile_options's choices or defaults
+        profile_options = profile.get("profile_options", {})
+        for option_name, option in profile_options.items():
+            unlisted_choice_key = f"{option_name}--unlisted-choice"
+            unlisted_choice = self.user_options.get(unlisted_choice_key)
+            choice = self.user_options.get(option_name)
+
+            if unlisted_choice:
+                # An unlisted_choice value was passed, its kubespawner_override
+                # needs to be rendered using the value
+                option_overrides = option["unlisted_choice"].get(
+                    "kubespawner_override", {}
+                )
+                for k, v in option_overrides.items():
+                    option_overrides[k] = recursive_format(v, value=unlisted_choice)
+            elif choice:
+                # A pre-defined choice was selected
+                option_overrides = option["choices"][choice].get(
+                    "kubespawner_override", {}
+                )
+            else:
+                # A default choice for the option needs to be determined
+                if not option.get("choices"):
+                    # if the option only defined unlisted_choice, we can't
+                    # determine a default choice or associated overrides
                     raise ValueError(
-                        f'Expected option {user_selected_option_name} for profile {profile["slug"]}, not found in posted form'
+                        f"Unable to determine a default choice for {option_name}."
                     )
 
-            # Get selected options or default to the first option if none is passed
-            for option_name, option in profile.get('profile_options').items():
-                chosen_option = selected_profile_user_options.get(option_name, None)
-                # If none was selected get the default
-                if not chosen_option:
-                    default_option = list(option['choices'].keys())[0]
-                    for choice_name, choice in option['choices'].items():
-                        if choice.get('default', False):
-                            # explicit default, not the first
-                            default_option = choice_name
-                    chosen_option = default_option
+                default_choice = next(
+                    c for c in option["choices"].values() if c.get("default")
+                )
+                option_overrides = default_choice.get("kubespawner_override", {})
 
-                chosen_option_overrides = option['choices'][chosen_option][
-                    'kubespawner_override'
-                ]
-                for k, v in chosen_option_overrides.items():
-                    if callable(v):
-                        v = await maybe_future(v(self))
-                        self.log.debug(
-                            f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option} from callabale'
-                        )
-                    else:
-                        self.log.debug(
-                            f'.. overriding traitlet {k}={v} for option {option_name}={chosen_option}'
-                        )
+            self._apply_overrides(option_overrides)
 
-                    # If v is a dict, *merge* it with existing values, rather than completely
-                    # resetting it. This allows *adding* things like environment variables rather
-                    # than completely replacing them. If value is set to None, the key
-                    # will be removed
-                    if isinstance(v, dict) and isinstance(getattr(self, k), dict):
-                        recursive_update(getattr(self, k), v)
-                    else:
-                        setattr(self, k, v)
+    def _get_initialized_profile_list(self, profile_list: list):
+        """
+        Returns a fully initialized copy of profile_list.
 
-    # set of recognised user option keys
-    # used for warning about ignoring unrecognised options
-    _user_option_keys = {'profile'}
+        - If 'slug' is not set for a profile, its generated from display_name.
+        - If profile_options are present with choices, but no choice is set
+          as the default, the first choice is set to be the default.
+        - If no default profile is set, the first profile is set to be the
+          default
+        """
+        profile_list = copy.deepcopy(profile_list)
 
-    def _init_profile_list(self, profile_list):
-        # generate missing slug fields from display_name
+        if not profile_list:
+            # empty profile lists are just returned
+            return profile_list
+
         for profile in profile_list:
+            # generate missing slug fields from display_name
             if 'slug' not in profile:
                 profile['slug'] = slugify(profile['display_name'])
+
+            # ensure each option in profile_options has a default choice if
+            # pre-defined choices are available, and initialize an
+            # unlisted_choice dictionary
+            for option_config in profile.get('profile_options', {}).values():
+                if option_config.get('choices') and not any(
+                    c.get('default') for c in option_config['choices'].values()
+                ):
+                    # pre-defined choices were provided without a default choice
+                    default_choice = list(option_config['choices'].keys())[0]
+                    option_config['choices'][default_choice]["default"] = True
+                unlisted_choice = option_config.setdefault("unlisted_choice", {})
+                unlisted_choice.setdefault("enabled", False)
+                if unlisted_choice["enabled"]:
+                    unlisted_choice.setdefault("display_name_in_choices", "Other...")
+        # ensure there is one default profile
+        if not any(p.get("default") for p in profile_list):
+            profile_list[0]["default"] = True
 
         return profile_list
 
     async def load_user_options(self):
-        """Load user options from self.user_options dict
+        """
+        Applies profile_list defined overrides to the spawner instance based on
+        self.user_options that represents the choices made by a user.
 
-        This can be set via POST to the API or via options_from_form
+        self.user_options is set by jupyterhub when a server is to be spawned to
+        a POST request's body / a GET request's query parameters, the most
+        recently passed options for this user server, or an empty dictionary as
+        a final fallback.
 
-        The default supported arguments are 'profile', and options for the
-        selected profile defined as 'profile-option-{profile-slug}-{option-slug}'
+        KubeSpawner recognizes the option named 'profile' and options named like
+        'profile-option-{profile_slug}--{option_slug}'. These user_options will
+        be validated against the spawner's profile_list.
 
         Override in subclasses to support other options.
         """
+        # get an initialized profile list
+        profile_list = self.profile_list
+        if callable(profile_list):
+            profile_list = await maybe_future(profile_list(self))
+        profile_list = self._get_initialized_profile_list(profile_list)
 
-        if self._profile_list is None:
-            if callable(self.profile_list):
-                profile_list = await maybe_future(self.profile_list(self))
-            else:
-                profile_list = self.profile_list
+        # validate user_options against initialized profile_list
+        self._validate_user_options(profile_list)
 
-            self._profile_list = self._init_profile_list(profile_list)
-
-        selected_profile = self.user_options.get('profile', None)
-        selected_profile_user_options = dict(self.user_options)
-        if selected_profile:
-            # Remove the 'profile' key so we are left with only selected profile options
-            del selected_profile_user_options['profile']
-
-        if self._profile_list:
-            await self._load_profile(selected_profile, selected_profile_user_options)
+        selected_profile = self.user_options.get("profile")
+        if profile_list:
+            self._load_profile(selected_profile, profile_list)
         elif selected_profile:
             self.log.warning(
-                "Profile %r requested, but profiles are not enabled", selected_profile
-            )
-
-        # help debugging by logging any option fields that are not recognized
-        option_keys = set(self.user_options)
-        unrecognized_keys = option_keys.difference(self._user_option_keys)
-        # Make sure any profile options are recognized
-        unrecognized_keys = [
-            k
-            for k in unrecognized_keys
-            if not k.startswith(f'profile-option-{selected_profile}-')
-        ]
-        if unrecognized_keys:
-            self.log.warning(
-                "Ignoring unrecognized KubeSpawner user_options: %s",
-                ", ".join(map(str, sorted(unrecognized_keys))),
+                "Profile %r requested, but no profile_lists are configured",
+                selected_profile,
             )
 
     async def _ensure_namespace(self):

@@ -43,7 +43,8 @@ test = [
     "kubernetes>=11",
     "pytest>=5.4",
     "pytest-cov",
-    "pytest-asyncio>=0.17",
+    # FIXME: unpin pytest-asyncio
+    "pytest-asyncio>=0.17,<0.23",
 ]
 
 [project.urls]
@@ -58,6 +59,13 @@ Issues = "https://github.com/jupyterhub/kubespawner/issues"
 artifacts = [
     "kubespawner/templates/*"
 ]
+# include is required since the project name doesn't match the folder name
+include = ["kubespawner"]
+
+[tool.hatch.build.targets.wheel]
+# packages is required when building wheels since the project name doesn't match
+# the folder name.
+packages = ["kubespawner"]
 
 # black is used for autoformatting Python code
 #
@@ -110,7 +118,7 @@ norecursedirs = "lib lib64"
 github_url = "https://github.com/jupyterhub/kubespawner"
 
 [tool.tbump.version]
-current = "6.0.1.dev0"
+current = "6.2.1.dev"
 regex = '''
     (?P<major>\d+)
     \.

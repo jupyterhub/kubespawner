@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import json
 import os
 from functools import partial
@@ -11,6 +12,7 @@ from jupyterhub.utils import exponential_backoff
 from kubernetes_asyncio.client.models import (
     V1Capabilities,
     V1Container,
+    V1EnvVar,
     V1PersistentVolumeClaim,
     V1Pod,
     V1SecurityContext,
@@ -330,7 +332,7 @@ async def test_spawn_start_enable_user_namespaces(
     assert isinstance(status, int)
 
 
-async def test_spawn_component_label(
+async def test_spawn_component_label_and_other_labels(
     kube_ns,
     kube_client,
     config,
@@ -358,7 +360,15 @@ async def test_spawn_component_label(
 
     # component label is same as expected
     pod = pods[0]
+    assert pod.metadata.labels["app.kubernetes.io/component"] == "something"
     assert pod.metadata.labels["component"] == "something"
+
+    # other labels are the same as expected
+    assert pod.metadata.labels["app.kubernetes.io/name"] == "jupyterhub"
+    assert pod.metadata.labels["app.kubernetes.io/managed-by"] == "kubespawner"
+    assert pod.metadata.labels["heritage"] == "jupyterhub"
+    assert pod.metadata.labels["app"] == "jupyterhub"
+    assert pod.metadata.labels["heritage"] == "jupyterhub"
 
     # stop the pod
     await spawner.stop()
@@ -389,6 +399,12 @@ async def test_spawn_internal_ssl(
     hub_paths = await spawner.create_certs()
 
     spawner.cert_paths = await spawner.move_certs(hub_paths)
+
+    # Validate that certificates are correctly encoded
+    # https://github.com/jupyterhub/kubespawner/pull/828
+    manifest = spawner.get_secret_manifest(None)
+    for _, secret in manifest.data.items():
+        base64.b64decode(secret, validate=True)
 
     # start the spawner
     url = await spawner.start()
@@ -502,6 +518,7 @@ async def test_spawn_services_enabled(
     # verify selector contains component_label, common_labels and extra_labels
     # as well as user and server name
     selector = services[0].spec.selector
+    assert selector["app.kubernetes.io/component"] == "something"
     assert selector["component"] == "something"
     assert selector["some/label"] == "value1"
     assert selector["extra/label"] == "value2"
@@ -850,6 +867,40 @@ async def test_get_pod_manifest_tolerates_mixed_input():
     assert isinstance(manifest.spec.init_containers[1], V1Container)
 
 
+async def test_expansion_hyphens():
+    c = Config()
+
+    c.KubeSpawner.init_containers = [
+        {
+            'name': 'mock_name_1',
+            'image': 'mock_image_1',
+            'command': [
+                'mock_command_1',
+                '--',
+                '{unescaped_username}',
+                '{unescaped_username}-',
+                '-x',
+            ],
+        }
+    ]
+
+    spawner = KubeSpawner(config=c, _mock=True)
+
+    # this test ensures the following line doesn't raise an error
+    manifest = await spawner.get_pod_manifest()
+    assert isinstance(manifest, V1Pod)
+    container = manifest.spec.init_containers[0]
+    assert isinstance(container, V1Container)
+
+    assert container.command == [
+        'mock_command_1',
+        '--',
+        spawner.user.name,
+        spawner.user.name + "-",
+        '-x',
+    ]
+
+
 _test_profiles = [
     {
         'display_name': 'Training Env - Python',
@@ -881,6 +932,62 @@ _test_profiles = [
             'environment': {'override': 'override-value', "to-remove": None},
         },
     },
+    {
+        'display_name': 'Test choices',
+        'slug': 'test-choices',
+        'profile_options': {
+            'image': {
+                'display_name': 'Image',
+                'unlisted_choice': {
+                    'enabled': True,
+                    'display_name': 'Image Location',
+                    'validation_regex': '^pangeo/.*$',
+                    'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
+                    'kubespawner_override': {'image': '{value}'},
+                },
+                'choices': {
+                    'pytorch': {
+                        'display_name': 'Python 3 Training Notebook',
+                        'kubespawner_override': {
+                            'image': 'pangeo/pytorch-notebook:master'
+                        },
+                    },
+                    'tf': {
+                        'display_name': 'R 4.2 Training Notebook',
+                        'default': True,
+                        'kubespawner_override': {'image': 'training/r:label'},
+                    },
+                },
+            },
+        },
+    },
+    {
+        'display_name': 'Test choices no regex',
+        'slug': 'no-regex',
+        'profile_options': {
+            'image': {
+                'display_name': 'Image',
+                'unlisted_choice': {
+                    'enabled': True,
+                    'display_name': 'Image Location',
+                    'kubespawner_override': {'image': '{value}'},
+                },
+                'choices': {
+                    'pytorch': {
+                        'display_name': 'Python 3 Training Notebook',
+                        'kubespawner_override': {
+                            'image': 'pangeo/pytorch-notebook:master'
+                        },
+                    },
+                    'tf': {
+                        'display_name': 'R 4.2 Training Notebook',
+                        'default': True,
+                        'kubespawner_override': {'image': 'training/r:label'},
+                    },
+                },
+            },
+        },
+    },
 ]
 
 
@@ -900,6 +1007,122 @@ async def test_user_options_set_from_form():
     await spawner.load_user_options()
     for key, value in _test_profiles[1]['kubespawner_override'].items():
         assert getattr(spawner, key) == value
+
+
+async def test_user_options_set_from_form_choices():
+    """
+    Test that the `choices` field in profile_options is processed correctly -
+    i.e. when a user sends a profile option choice, it is correctly processed
+    in user_options and the value on the spawner correctly over-ridden by the user choice.
+    """
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    await spawner.get_options_form()
+    spawner.user_options = spawner.options_from_form(
+        {
+            'profile': [_test_profiles[3]['slug']],
+            'profile-option-test-choices--image': ['pytorch'],
+        }
+    )
+    assert spawner.user_options == {
+        'image': 'pytorch',
+        'profile': _test_profiles[3]['slug'],
+    }
+    assert spawner.cpu_limit is None
+    await spawner.load_user_options()
+    assert getattr(spawner, 'image') == 'pangeo/pytorch-notebook:master'
+
+
+async def test_user_options_set_from_form_unlisted_choice():
+    """
+    Test that when user sends an arbitrary text input in the `unlisted_choice` field,
+    it is process correctly and the correct attribute over-ridden on the spawner.
+    """
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    await spawner.get_options_form()
+    spawner.user_options = spawner.options_from_form(
+        {
+            'profile': [_test_profiles[3]['slug']],
+            'profile-option-test-choices--image--unlisted-choice': [
+                'pangeo/test:latest'
+            ],
+        }
+    )
+    assert spawner.user_options == {
+        'image--unlisted-choice': 'pangeo/test:latest',
+        'profile': _test_profiles[3]['slug'],
+    }
+    assert spawner.cpu_limit is None
+    await spawner.load_user_options()
+    assert getattr(spawner, 'image') == 'pangeo/test:latest'
+
+    # Test choosing an unlisted choice a second time
+    spawner.user_options = spawner.options_from_form(
+        {
+            'profile': [_test_profiles[3]['slug']],
+            'profile-option-test-choices--image--unlisted-choice': [
+                'pangeo/test:1.2.3'
+            ],
+        }
+    )
+    assert spawner.user_options == {
+        'image--unlisted-choice': 'pangeo/test:1.2.3',
+        'profile': _test_profiles[3]['slug'],
+    }
+    assert spawner.cpu_limit is None
+    await spawner.load_user_options()
+    assert getattr(spawner, 'image') == 'pangeo/test:1.2.3'
+
+
+async def test_user_options_set_from_form_invalid_regex():
+    """
+    Test that if the user input for the `unlisted-choice` field does not match the regex
+    specified in the `validation_match_regex` option for the `unlisted_choice`, a ValueError is raised.
+    """
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    await spawner.get_options_form()
+    spawner.user_options = spawner.options_from_form(
+        {
+            'profile': [_test_profiles[3]['slug']],
+            'profile-option-test-choices--image--unlisted-choice': [
+                'invalid/foo:latest'
+            ],
+        }
+    )
+    assert spawner.user_options == {
+        'image--unlisted-choice': 'invalid/foo:latest',
+        'profile': _test_profiles[3]['slug'],
+    }
+    assert spawner.cpu_limit is None
+
+    with pytest.raises(ValueError):
+        await spawner.load_user_options()
+
+
+async def test_user_options_set_from_form_no_regex():
+    """
+    Test that if the `unlisted_choice` object in the profile_options does not contain
+    a `validation_regex` key, no validation is done and the input is correctly processed - i.e. validation_regex is optional.
+    """
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = _test_profiles
+    await spawner.get_options_form()
+    # print(_test_profiles[4])
+    spawner.user_options = spawner.options_from_form(
+        {
+            'profile': [_test_profiles[4]['slug']],
+            'profile-option-no-regex--image--unlisted-choice': ['invalid/foo:latest'],
+        }
+    )
+    assert spawner.user_options == {
+        'image--unlisted-choice': 'invalid/foo:latest',
+        'profile': _test_profiles[4]['slug'],
+    }
+    assert spawner.cpu_limit is None
+    await spawner.load_user_options()
+    assert getattr(spawner, 'image') == 'invalid/foo:latest'
 
 
 async def test_kubespawner_override():
@@ -1135,6 +1358,39 @@ async def test_pod_name_no_named_servers():
     assert spawner.pod_name == "jupyter-user"
 
 
+async def test_spawner_env():
+    c = Config()
+    c.Spawner.environment = {
+        "STATIC": "static",
+        "EXPANDED": "{username} (expanded)",
+        "ESCAPED": "{{username}}",
+        "CALLABLE": lambda spawner: spawner.user.name + " (callable)",
+    }
+    spawner = KubeSpawner(config=c, _mock=True)
+    env = spawner.get_env()
+    assert env["STATIC"] == "static"
+    assert env["EXPANDED"] == "mock-5fname (expanded)"
+    assert env["ESCAPED"] == "{username}"
+    assert env["CALLABLE"] == "mock_name (callable)"
+
+
+async def test_jupyterhub_supplied_env():
+    cookie_options = {"samesite": "None", "secure": True}
+    c = Config()
+
+    c.KubeSpawner.environment = {"HELLO": "It's {username}"}
+    spawner = KubeSpawner(config=c, _mock=True, cookie_options=cookie_options)
+
+    pod_manifest = await spawner.get_pod_manifest()
+
+    env = pod_manifest.spec.containers[0].env
+
+    # Set via .environment, must be expanded
+    assert V1EnvVar("HELLO", "It's mock-5fname") in env
+    # Set by JupyterHub itself, must not be expanded
+    assert V1EnvVar("JUPYTERHUB_COOKIE_OPTIONS", json.dumps(cookie_options)) in env
+
+
 async def test_pod_name_named_servers():
     c = Config()
     c.JupyterHub.allow_named_servers = True
@@ -1266,9 +1522,12 @@ async def test_get_pvc_manifest():
     assert manifest.metadata.labels == {
         "user": "mock-5fname",
         "hub.jupyter.org/username": "mock-5fname",
+        "app.kubernetes.io/name": "jupyterhub",
+        "app.kubernetes.io/managed-by": "kubespawner",
+        "app.kubernetes.io/component": "singleuser-server",
         "app": "jupyterhub",
-        "component": "singleuser-storage",
         "heritage": "jupyterhub",
+        "component": "singleuser-storage",
     }
     assert manifest.metadata.annotations == {
         "user": "mock-5fname",

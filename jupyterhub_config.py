@@ -10,11 +10,10 @@ c.JupyterHub.hub_ip = '127.0.0.1'
 # the hub to be able to restart without losing user containers
 c.JupyterHub.cleanup_servers = False
 
-# First pulls can be really slow, so let's give it a big timeout
-c.KubeSpawner.start_timeout = 60 * 5
-
-# Our simplest user image! Optimized to just... start, and be small!
-c.KubeSpawner.image = 'jupyterhub/singleuser:1.0'
+# A small user image with jupyterlab that is easy to test against, assumed to be
+# downloadable in less than 60 seconds.
+c.KubeSpawner.image = 'jupyter/base-notebook:latest'
+c.KubeSpawner.start_timeout = 60
 
 if os.environ.get("CI"):
     # In the CI system we use k3s which will be accessible on localhost.
@@ -29,96 +28,55 @@ else:
 
     c.JupyterHub.hub_connect_ip = host_ip
 
-c.KubeSpawner.service_account = 'default'
-# Do not use any authentication at all - any username / password will work.
+# Simplify testing by using a dummy authenticator class where any username
+# password combination will work and where we don't provide persistent storage.
 c.JupyterHub.authenticator_class = 'dummy'
-
 c.KubeSpawner.storage_pvc_ensure = False
 
 c.JupyterHub.allow_named_servers = True
 
 c.KubeSpawner.profile_list = [
     {
-        'display_name': 'Training Env',
-        'description': 'This is the description for the training env profile list choice. This should look good even though it is a bit lengthy.',
-        'slug': 'training-python',
+        'display_name': 'Demo - profile_list entry 1',
+        'description': 'Demo description for profile_list entry 1, and it should look good even though it is a bit lengthy.',
+        'slug': 'demo-1',
         'default': True,
         'profile_options': {
             'image': {
                 'display_name': 'Image',
                 'choices': {
-                    'pytorch': {
-                        'display_name': 'Python 3 Training Notebook',
-                        'kubespawner_override': {'image': 'training/python:2022.01.01'},
+                    'base': {
+                        'display_name': 'jupyter/base-notebook:latest',
+                        'kubespawner_override': {
+                            'image': 'jupyter/base-notebook:latest'
+                        },
                     },
-                    'tf': {
-                        'display_name': 'R 4.2 Training Notebook',
+                    'minimal': {
+                        'display_name': 'jupyter/minimal-notebook:latest',
                         'default': True,
-                        'kubespawner_override': {'image': 'training/r:2021.12.03'},
-                    },
-                },
-            },
-        },
-        'kubespawner_override': {
-            'cpu_limit': 1,
-            'mem_limit': '512M',
-        },
-    },
-    {
-        'display_name': 'Python DataScience',
-        'slug': 'datascience-small',
-        'profile_options': {
-            'memory': {
-                'display_name': 'Memory',
-                'choices': {
-                    '1Gi': {
-                        'display_name': '1GB',
-                        'kubespawner_override': {'mem_limit': '1G'},
-                    },
-                    '2Gi': {
-                        'display_name': '2GB',
-                        'kubespawner_override': {'mem_limit': '2G'},
-                    },
-                },
-            },
-            'cpu': {
-                'display_name': 'CPUs',
-                'choices': {
-                    '2': {
-                        'display_name': '2 CPUs',
                         'kubespawner_override': {
-                            'cpu_limit': 2,
-                            'cpu_guarantee': 1.8,
-                            'node_selectors': {
-                                'node.kubernetes.io/instance-type': 'n1-standard-2'
-                            },
-                        },
-                    },
-                    '4': {
-                        'display_name': '4 CPUs',
-                        'kubespawner_override': {
-                            'cpu_limit': 4,
-                            'cpu_guarantee': 3.5,
-                            'node_selectors': {
-                                'node.kubernetes.io/instance-type': 'n1-standard-4'
-                            },
+                            'image': 'jupyter/minimal-notebook:latest'
                         },
                     },
                 },
+                'unlisted_choice': {
+                    'enabled': True,
+                    'display_name': 'Other image',
+                    'validation_regex': '^jupyter/.+:.+$',
+                    'validation_message': 'Must be an image matching ^jupyter/<name>:<tag>$',
+                    'kubespawner_override': {'image': '{value}'},
+                },
             },
         },
         'kubespawner_override': {
-            'image': 'datascience/small:label',
+            'default_url': '/lab',
         },
     },
     {
-        'display_name': 'DataScience - Medium instance (GPUx2)',
-        'slug': 'datascience-gpu2x',
+        'display_name': 'Demo - profile_list entry 2',
+        'slug': 'demo-2',
         'kubespawner_override': {
-            'image': 'datascience/medium:label',
-            'cpu_limit': 48,
-            'mem_limit': '96G',
-            'extra_resource_guarantees': {"nvidia.com/gpu": "2"},
+            'extra_resource_guarantees': {"nvidia.com/gpu": "1"},
         },
     },
 ]
