@@ -420,7 +420,7 @@ async def create_hub_pod(kube_client, kube_ns, pod_name="hub", ssl=False):
             volumes=volumes,
             containers=[
                 {
-                    "image": "jupyterhub/jupyterhub:1.3",
+                    "image": "quay.io/jupyterhub/jupyterhub:5.0",
                     "name": "hub",
                     "volumeMounts": volume_mounts,
                     "args": [
@@ -625,7 +625,7 @@ async def exec_python(kube_client, kube_ns):
         spec=V1PodSpec(
             containers=[
                 {
-                    "image": "python:3.8",
+                    "image": "python:3.12-slim",
                     "name": "python",
                     "args": ["/bin/sh", "-c", "while true; do sleep 5; done"],
                 }
