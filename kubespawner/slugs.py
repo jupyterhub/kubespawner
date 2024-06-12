@@ -1,4 +1,4 @@
-"""Tools for generating
+"""Tools for generating slugs like k8s object names and labels
 
 Requirements:
 
@@ -10,9 +10,9 @@ import hashlib
 import re
 import string
 
-_alphanum = set(string.ascii_letters + string.digits)
-_alphanum_lower = set(string.ascii_lowercase + string.digits)
-_lower_plus_hyphen = _alphanum_lower | {'-'}
+_alphanum = tuple(string.ascii_letters + string.digits)
+_alphanum_lower = tuple(string.ascii_lowercase + string.digits)
+_lower_plus_hyphen = _alphanum_lower + ('-',)
 
 # patterns _do not_ need to cover length or start/end conditions,
 # which are handled separately
@@ -85,7 +85,7 @@ def strip_and_hash(name):
     """Generate an always-safe, unique string for any input"""
     # make sure we start with a prefix
     # quick, short hash to avoid name collsions
-    name_hash = hashlib.sha256(name).hexdigest()[:8]
+    name_hash = hashlib.sha256(name.encode("utf8")).hexdigest()[:8]
     safe_chars = [c for c in name.lower() if c in _lower_plus_hyphen]
     safe_name = ''.join(safe_chars[:24])
     if not safe_name:

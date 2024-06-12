@@ -185,6 +185,8 @@ class KubeSpawner(Spawner):
         # By now, all the traitlets have been set, so we can use them to
         # compute other attributes
 
+        # namespace, pod_name, dns_name are persisted in state
+        # thse same assignments should match clear_state
         if self.enable_user_namespaces:
             self.namespace = self._expand_user_properties(self.user_namespace_template)
             self.log.info(f"Using user namespace: {self.namespace}")
@@ -193,9 +195,13 @@ class KubeSpawner(Spawner):
         self.dns_name = self.dns_name_template.format(
             namespace=self.namespace, name=self.pod_name
         )
+
         self.secret_name = self._expand_user_properties(self.secret_name_template)
 
         self.pvc_name = self._expand_user_properties(self.pvc_name_template)
+        # _pvc_exists indicates whether we've checked at least once that our pvc name is right
+        # only persist pvc name in state if pvc exists
+        self._pvc_exists = False  # initialized from load_state or start
         if self.working_dir:
             self.working_dir = self._expand_user_properties(self.working_dir)
         if self.port == 0:
@@ -316,27 +322,44 @@ class KubeSpawner(Spawner):
     )
 
     slug_scheme = Enum(
-        "escape",
-        choices=["escape", "safe"],
+        default_value="safe",
+        values=["safe", "escape"],
         config=True,
-        help="""Select the scheme for producing slugs.
+        help="""Select the scheme for producing slugs such as pod names, etc.
 
-        Can be 'escape' or 'safe'.
+        Can be 'safe' or 'escape'.
 
-        'escape' is the default for backward-compatibility,
-        escaping strings for safety.
+        'escape' is the legacy scheme, used in kubespawner < 7.
+        Pick this to minimize changes when upgrading from kubespawner 6.
+        
+        The way templates are computed is different between the two schemes:
+        
+        'escape' scheme:
+        
+        - does not guarantee correct names, e.g. does not handle capital letters or length
+        - escapes fields one at a time in templates:
+          - `{username}` is the _escaped_ username
+          - `{servername}` is the _escaped_ server name
+        
+        'safe' scheme:
+        
+        - should guarantee correct names
+        - escapes the whole string at once
+        - escapes only if needed
+        - in templates:
+          - `{username}` is the user's actual name
+          - `{escaped_username}` is the escaped username, used in the previous scheme
+          - `{servername}` is the user's actual name
+          - `{escaped_servername}` is the escaped server name, used in the previous scheme
 
-        but 'safe' is preferred as it produces both:
+        'safe' is the default and preferred as it produces both:
 
         - better values, where possible (no `-2d` inserted to escape hyphens)
-        - always valid names, avoiding issues where escaping produces invalid names,
+        - always valid names, avoiding issues where escaping produced invalid names,
           stripping characters and appending hashes where needed for names
           that are not already valid.
 
-
-
-
-        .. versionadded:: 6.1
+        .. versionadded:: 7
         """,
     )
 
@@ -687,10 +710,6 @@ class KubeSpawner(Spawner):
         {
             'app.kubernetes.io/name': 'jupyterhub',
             'app.kubernetes.io/managed-by': 'kubespawner',
-            # app and heritage are older variants of the modern
-            # app.kubernetes.io labels
-            'app': 'jupyterhub',
-            'heritage': 'jupyterhub',
         },
         config=True,
         help="""
@@ -701,6 +720,23 @@ class KubeSpawner(Spawner):
         later when this setting is updated.
         """,
     )
+
+    @default("common_labels")
+    def _common_labels_default(self):
+        labels = {
+            'app.kubernetes.io/name': 'jupyterhub',
+            'app.kubernetes.io/managed-by': 'kubespawner',
+        }
+        if self.use_legacy_labels:
+            labels.update(
+                {
+                    # app and heritage are older variants of the modern
+                    # app.kubernetes.io labels
+                    'app': 'jupyterhub',
+                    'heritage': 'jupyterhub',
+                }
+            )
+        return labels
 
     extra_labels = Dict(
         config=True,
@@ -1373,6 +1409,31 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    handle_legacy_names = Bool(
+        True,
+        config=True,
+        help="""handle legacy names and labels
+        
+        kubespawner 7 changed the scheme for computing names and labels to be more reliably valid.
+        In order to preserve backward compatibility, the old names must be handled in some places.
+
+        You can safely disable this if no PVCs were created or running servers were started
+        before upgrading to kubespawner 7.
+        """,
+    )
+
+    use_legacy_labels = Bool(
+        True,
+        config=True,
+        help="""Apply legacy labels
+        
+        Kubespawner 7 adopted standard labels.
+        These can be disabled if no running Spawners were started before upgrading to kubespawner 7.
+        
+        use_legacy_labels MUST be True if handle_legacy_names is True.
+        """,
+    )
+
     # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     scheduler_name = Unicode(
         None,
@@ -1839,9 +1900,12 @@ class KubeSpawner(Spawner):
         )
     del _deprecated_name
 
-    def _expand_user_properties(self, template):
+    def _expand_user_properties(self, template, slug_scheme=None):
         # Make sure username and servername match the restrictions for DNS labels
         # Note: '-' is not in safe_chars, as it is being used as escape character
+        if slug_scheme is None:
+            slug_scheme = self.slug_scheme
+
         safe_chars = set(string.ascii_lowercase + string.digits)
 
         raw_servername = self.name or ''
@@ -1860,13 +1924,33 @@ class KubeSpawner(Spawner):
             self.user.name, safe=safe_chars, escape_char='-'
         ).lower()
 
-        if self.slug_scheme == "safe":
+        if slug_scheme == "safe":
             # safe slug scheme escapes _after_ rendering the template
             username = self.user.name
             servername = raw_servername
-        else:
+            # but not escaping before joining {username}--{servername}
+            # reintroduces the possibility of collision
+            # e.g. {user--name}--{server} == {user}--{name--server}
+            # and {user-}--{server} == {user}--{-server}
+            # in that case, double-escape username and server name.
+            # double-escape will not collide,
+            # because it will match always match this condition and be escaped again
+            if (
+                '--' in username
+                or '--' in servername
+                or username.endswith("-")
+                or servername.startswith("-")
+            ):
+                username = safe_slug(username)
+                if servername:
+                    servername = safe_slug(servername)
+        elif slug_scheme == "escape":
             username = safe_username
             servername = safe_servername
+        else:
+            raise ValueError(
+                f"slug scheme must be 'safe' or 'escape', not '{slug_scheme}'"
+            )
 
         rendered = template.format(
             userid=self.user.id,
@@ -1880,10 +1964,16 @@ class KubeSpawner(Spawner):
             hubnamespace=hub_namespace,
         )
         # strip trailing - delimiter in case of empty servername.
-        # k8s object names cannot have trailing -
-        rendered = rendered.rstrip("-")
-        if self.slug_scheme == "safe":
+        # k8s object names cannot have trailing '-'
+        if slug_scheme == "safe":
+            if not (username.endswith("-") or self.name.endswith("-")):
+                # strip trailing - delimiter _unless_ it's actually the end of the user or server name
+                rendered = rendered.rstrip("-")
+            # 'safe' slug scheme does processing after
             rendered = safe_slug(rendered)
+        else:
+            # safe to strip trailing - in escape scheme because escaped username/servername will never end in '-'
+            rendered = rendered.rstrip("-")
         return rendered
 
     def _expand_env(self, env):
@@ -1924,12 +2014,17 @@ class KubeSpawner(Spawner):
         labels.update(
             {
                 'app.kubernetes.io/component': self.component_label,
-                'component': self.component_label,
-                'hub.jupyter.org/servername': escapism.escape(
-                    self.name, safe=self.safe_chars, escape_char='-'
-                ).lower(),
+                'hub.jupyter.org/servername': safe_slug(
+                    self.name, is_valid=is_valid_label
+                ),
             }
         )
+        if self.use_legacy_labels:
+            labels.update(
+                {
+                    'component': self.component_label,
+                }
+            )
         return labels
 
     def _build_common_annotations(self, extra_annotations):
@@ -2150,15 +2245,20 @@ class KubeSpawner(Spawner):
         labels = self._build_common_labels(self._expand_all(self.storage_extra_labels))
         labels.update(
             {
-                # The component label has been set to singleuser-storage, but should
-                # probably have been set to singleuser-server (self.component_label)
-                # as that ties it to the user pods kubespawner creates. Due to that,
-                # the newly introduced label app.kubernetes.io/component gets
-                # singleuser-server (self.component_label) as a value instead.
                 'app.kubernetes.io/component': self.component_label,
-                'component': 'singleuser-storage',
             }
         )
+        if self.use_legacy_labels:
+            labels.update(
+                {
+                    # The component label has been set to singleuser-storage, but should
+                    # probably have been set to singleuser-server (self.component_label)
+                    # as that ties it to the user pods kubespawner creates. Due to that,
+                    # the newly introduced label app.kubernetes.io/component gets
+                    # singleuser-server (self.component_label) as a value instead.
+                    'component': 'singleuser-storage',
+                }
+            )
 
         annotations = self._build_common_annotations(
             self._expand_all(self.storage_extra_annotations)
@@ -2214,9 +2314,15 @@ class KubeSpawner(Spawner):
         calculated dynamically, or it changes between restarts.
         """
         state = super().get_state()
+        # these should only be persisted if our pod is running
+        # but we don't have a sync check for that
         state['pod_name'] = self.pod_name
         state['namespace'] = self.namespace
         state['dns_name'] = self.dns_name
+
+        # persist pvc name only if it's established that it exists
+        if self._pvc_exists:
+            state['pvc_name'] = self.pvc_name
         return state
 
     def get_env(self):
@@ -2247,7 +2353,9 @@ class KubeSpawner(Spawner):
         be the case. This allows us to continue serving from the old pods with
         the old names.
 
-        For a similar reason, we also save the namespace.
+        For a similar reason, we also save the namespace, dns name, pvc name.
+        Anything where changing a template may break something after Hub restart
+        should be persisted here.
         """
         if 'pod_name' in state:
             self.pod_name = state['pod_name']
@@ -2257,6 +2365,29 @@ class KubeSpawner(Spawner):
 
         if 'dns_name' in state:
             self.dns_name = state['dns_name']
+
+        if 'pvc_name' in state:
+            self.pvc_name = state['pvc_name']
+            # indicate that we've already checked that self.pvc_name is correct
+            # and we don't need to check for legacy names anymore
+            self._pvc_exists = True
+
+    def clear_state(self):
+        """Reset state for a stopped server
+
+        This should reset all state values to new values,
+        except those that should persist across Spawner restarts (e.g. pvc_name)
+        """
+        super().clear_state()
+        # this should be the same initialization as __init__ / trait defaults
+        # this allows changing config to take effect after a server restart
+        if self.enable_user_namespaces:
+            self.namespace = self._expand_user_properties(self.user_namespace_template)
+
+        self.pod_name = self._expand_user_properties(self.pod_name_template)
+        self.dns_name = self.dns_name_template.format(
+            namespace=self.namespace, name=self.pod_name
+        )
 
     async def poll(self):
         """
@@ -2526,20 +2657,18 @@ class KubeSpawner(Spawner):
         If replace=True, a running pod reflector will be stopped
         and a new one started (for recovering from possible errors).
         """
+        if self.use_legacy_labels:
+            # For safe upgrades to new labels, monitor on old labels
+            # it is safe to disable this as soon as the last server _started_
+            # was started after upgrading to kubespawner 7
+            # Related to https://github.com/jupyterhub/kubespawner/issues/834
+            labels = {"component": self.component_label}
+        else:
+            labels = {"app.kubernetes.io/component": self.component_label}
         return await self._start_reflector(
             kind="pods",
             reflector_class=PodReflector,
-            # NOTE: We monitor resources with the old component label instead of
-            #       the modern app.kubernetes.io/component label. A change here
-            #       is only non-breaking if we can assume the running resources
-            #       monitored can be detected by either old or new labels.
-            #
-            #       The modern labels were added to resources created by
-            #       KubeSpawner 6.3 first adopted in z2jh 4.0.
-            #
-            #       Related to https://github.com/jupyterhub/kubespawner/issues/834
-            #
-            labels={"component": self.component_label},
+            labels=labels,
             omit_namespace=self.enable_user_namespaces,
             replace=replace,
         )
@@ -2624,6 +2753,7 @@ class KubeSpawner(Spawner):
         # error for quota being exceeded. This is because quota is
         # checked before determining if the PVC needed to be
         # created.
+
         pvc_name = pvc.metadata.name
         try:
             self.log.info(
@@ -2738,6 +2868,25 @@ class KubeSpawner(Spawner):
         else:
             return True
 
+    async def _check_pvc_exists(self, pvc_name, namespace):
+        """Return True/False if a pvc exists"""
+        try:
+            await exponential_backoff(
+                partial(
+                    self.api.read_namespaced_persistent_volume_claim,
+                    name=pvc_name,
+                    namespace=self.namespace,
+                ),
+                f"Could not check if PVC {pvc_name} exists",
+                timeout=self.k8s_api_request_retry_timeout,
+            )
+        except ApiException as e:
+            if e.status == 404:
+                return False
+            else:
+                raise
+        return True
+
     async def _start(self):
         """Start the user's pod"""
 
@@ -2778,8 +2927,34 @@ class KubeSpawner(Spawner):
             self._last_event = events[-1]["metadata"]["uid"]
 
         if self.storage_pvc_ensure:
-            pvc = self.get_pvc_manifest()
+            if self.handle_legacy_names and not self._pvc_exists:
+                # pvc name wasn't reliably persisted before kubespawner 17, so if the name changed,
+                # check if a pvc with the legacy name exists and use it
+                # this will be persisted in state on next launch in the future,
+                # so the comparison below will be False for launches after the first.
+                legacy_pvc_name = self._expand_user_properties(
+                    self.pvc_name_template, slug_scheme="escape"
+                )
+                if legacy_pvc_name != self.pvc_name:
+                    self.log.debug(
+                        f"Checking for legacy-named pvc {legacy_pvc_name} for {self.user.name}"
+                    )
+                    if await self._check_pvc_exists(self.pvc_name, self.namespace):
+                        # if current name exists: use it
+                        self._pvc_exists = True
+                    else:
+                        # current name doesn't exist, check if legacy name exists
+                        if await self._check_pvc_exists(
+                            legacy_pvc_name, self.namespace
+                        ):
+                            # legacy name exists, use it to avoid data loss
+                            self.log.warning(
+                                f"Using legacy pvc {legacy_pvc_name} for {self.user.name}"
+                            )
+                            self.pvc_name = legacy_pvc_name
+                            self._pvc_exists = True
 
+            pvc = self.get_pvc_manifest()
             # If there's a timeout, just let it propagate
             await exponential_backoff(
                 partial(
@@ -2789,6 +2964,8 @@ class KubeSpawner(Spawner):
                 # Each req should be given k8s_api_request_timeout seconds.
                 timeout=self.k8s_api_request_retry_timeout,
             )
+            # indicate that pvc name is known and should be persisted
+            self._pvc_exists = True
 
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
