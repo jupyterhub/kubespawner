@@ -2378,7 +2378,7 @@ class KubeSpawner(Spawner):
                 and self.server_spawn_launch_timer_enabled
             ):
                 # don't spam the user, so only update the timer message every few seconds
-                if timer % self.server_spawn_launch_timer_threshold == 0:
+                if timer % self.server_spawn_launch_timer_frequency == 0:
                     patience_message = textwrap.dedent(
                         self.server_spawn_launch_timer_message
                     )
