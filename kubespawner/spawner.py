@@ -710,6 +710,10 @@ class KubeSpawner(Spawner):
         {
             'app.kubernetes.io/name': 'jupyterhub',
             'app.kubernetes.io/managed-by': 'kubespawner',
+            # app and heritage are older variants of the modern
+            # app.kubernetes.io labels
+            'app': 'jupyterhub',
+            'heritage': 'jupyterhub',
         },
         config=True,
         help="""
@@ -720,23 +724,6 @@ class KubeSpawner(Spawner):
         later when this setting is updated.
         """,
     )
-
-    @default("common_labels")
-    def _common_labels_default(self):
-        labels = {
-            'app.kubernetes.io/name': 'jupyterhub',
-            'app.kubernetes.io/managed-by': 'kubespawner',
-        }
-        if self.use_legacy_labels:
-            labels.update(
-                {
-                    # app and heritage are older variants of the modern
-                    # app.kubernetes.io labels
-                    'app': 'jupyterhub',
-                    'heritage': 'jupyterhub',
-                }
-            )
-        return labels
 
     extra_labels = Dict(
         config=True,
@@ -1422,18 +1409,6 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    use_legacy_labels = Bool(
-        True,
-        config=True,
-        help="""Apply legacy labels
-        
-        Kubespawner 7 adopted standard labels.
-        These can be disabled if no running Spawners were started before upgrading to kubespawner 7.
-        
-        use_legacy_labels MUST be True if handle_legacy_names is True.
-        """,
-    )
-
     # FIXME: Don't override 'default_value' ("") or 'allow_none' (False) (Breaking change)
     scheduler_name = Unicode(
         None,
@@ -2014,17 +1989,12 @@ class KubeSpawner(Spawner):
         labels.update(
             {
                 'app.kubernetes.io/component': self.component_label,
+                'component': self.component_label,
                 'hub.jupyter.org/servername': safe_slug(
                     self.name, is_valid=is_valid_label
                 ),
             }
         )
-        if self.use_legacy_labels:
-            labels.update(
-                {
-                    'component': self.component_label,
-                }
-            )
         return labels
 
     def _build_common_annotations(self, extra_annotations):
@@ -2245,20 +2215,15 @@ class KubeSpawner(Spawner):
         labels = self._build_common_labels(self._expand_all(self.storage_extra_labels))
         labels.update(
             {
+                # The component label has been set to singleuser-storage, but should
+                # probably have been set to singleuser-server (self.component_label)
+                # as that ties it to the user pods kubespawner creates. Due to that,
+                # the newly introduced label app.kubernetes.io/component gets
+                # singleuser-server (self.component_label) as a value instead.
                 'app.kubernetes.io/component': self.component_label,
+                'component': 'singleuser-storage',
             }
         )
-        if self.use_legacy_labels:
-            labels.update(
-                {
-                    # The component label has been set to singleuser-storage, but should
-                    # probably have been set to singleuser-server (self.component_label)
-                    # as that ties it to the user pods kubespawner creates. Due to that,
-                    # the newly introduced label app.kubernetes.io/component gets
-                    # singleuser-server (self.component_label) as a value instead.
-                    'component': 'singleuser-storage',
-                }
-            )
 
         annotations = self._build_common_annotations(
             self._expand_all(self.storage_extra_annotations)
@@ -2657,18 +2622,20 @@ class KubeSpawner(Spawner):
         If replace=True, a running pod reflector will be stopped
         and a new one started (for recovering from possible errors).
         """
-        if self.use_legacy_labels:
-            # For safe upgrades to new labels, monitor on old labels
-            # it is safe to disable this as soon as the last server _started_
-            # was started after upgrading to kubespawner 7
-            # Related to https://github.com/jupyterhub/kubespawner/issues/834
-            labels = {"component": self.component_label}
-        else:
-            labels = {"app.kubernetes.io/component": self.component_label}
         return await self._start_reflector(
             kind="pods",
             reflector_class=PodReflector,
-            labels=labels,
+            # NOTE: We monitor resources with the old component label instead of
+            #       the modern app.kubernetes.io/component label. A change here
+            #       is only non-breaking if we can assume the running resources
+            #       monitored can be detected by either old or new labels.
+            #
+            #       The modern labels were added to resources created by
+            #       KubeSpawner 7 first adopted in z2jh 4.0.
+            #
+            #       Related to https://github.com/jupyterhub/kubespawner/issues/834
+            #
+            labels={"component": self.component_label},
             omit_namespace=self.enable_user_namespaces,
             replace=replace,
         )
