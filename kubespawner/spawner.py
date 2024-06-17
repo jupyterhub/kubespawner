@@ -186,9 +186,11 @@ class KubeSpawner(Spawner):
         # compute other attributes
 
         # namespace, pod_name, dns_name are persisted in state
-        # thse same assignments should match clear_state
+        # these same assignments should match clear_state
         if self.enable_user_namespaces:
-            self.namespace = self._expand_user_properties(self.user_namespace_template)
+            self.namespace = self._expand_user_properties(
+                self.user_namespace_template, scheme="slug"
+            )
             self.log.info(f"Using user namespace: {self.namespace}")
 
         self.pod_name = self._expand_user_properties(self.pod_name_template)
@@ -542,7 +544,7 @@ class KubeSpawner(Spawner):
     )
 
     pod_name_template = Unicode(
-        'jupyter-{username}--{servername}',
+        'jupyter-{user_server}',
         config=True,
         help="""
         Template to use to form the name of user's pods.
@@ -573,7 +575,7 @@ class KubeSpawner(Spawner):
         The IP address (or hostname) of user's pods which KubeSpawner connects to.
         If you do not specify the value, KubeSpawner will use the pod IP.
 
-        e.g. `jupyter-{username}--{servername}.notebooks.jupyterhub.svc.cluster.local`,
+        e.g. `{pod_name}.notebooks.jupyterhub.svc.cluster.local`,
 
         `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
         `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
@@ -617,7 +619,7 @@ class KubeSpawner(Spawner):
         """,
     )
     pvc_name_template = Unicode(
-        'claim-{username}--{servername}',
+        'claim-{user_server}',
         config=True,
         help="""
         Template to use to form the name of user's pvc.
@@ -1884,71 +1886,100 @@ class KubeSpawner(Spawner):
         safe_chars = set(string.ascii_lowercase + string.digits)
 
         raw_servername = self.name or ''
-        safe_servername = escapism.escape(
+        escaped_servername = escapism.escape(
             raw_servername, safe=safe_chars, escape_char='-'
         ).lower()
+
+        # TODO: measure string template?
+        # for object names, max is 255, so very unlikely to exceed
+        # but labels are only 64, so adding a few fields together could easily exceed length limit
+        # if the per-field limit is more than half the whole budget
+        # for now, recommend {user_server} anywhere both username and servername are desired
+        _slug_max_length = 48
+
+        if raw_servername:
+            safe_servername = safe_slug(raw_servername, max_length=_slug_max_length)
+        else:
+            safe_servername = ""
+
+        username = raw_username = self.user.name
+        safe_username = safe_slug(raw_username, max_length=_slug_max_length)
+
+        # compute safe_user_server = {username}--{servername}
+        if (
+            # escaping after joining means
+            # possible collision with `--` delimiter
+            '--' in username
+            or '--' in raw_servername
+            or username.endswith("-")
+            or raw_servername.startswith("-")
+            # length exceeded
+            or len(safe_username) + len(safe_username) + 2 > _slug_max_length
+        ):
+            # need double-escape if there's a chance of collision
+            safe_user_server = safe_slug(
+                f"{safe_username}--{safe_servername}", max_length=_slug_max_length
+            )
+        else:
+            if raw_servername:
+                safe_user_server = safe_slug(
+                    f"{username}--{raw_servername}", max_length=_slug_max_length
+                )
+            else:
+                safe_user_server = safe_username
 
         hub_namespace = self._namespace_default()
         if hub_namespace == "default":
             hub_namespace = "user"
 
-        legacy_escaped_username = ''.join(
-            [s if s in safe_chars else '-' for s in self.user.name.lower()]
-        )
-        safe_username = escapism.escape(
+        escaped_username = escapism.escape(
             self.user.name, safe=safe_chars, escape_char='-'
         ).lower()
 
         if slug_scheme == "safe":
-            # safe slug scheme escapes _after_ rendering the template
-            username = self.user.name
-            servername = raw_servername
-            # but not escaping before joining {username}--{servername}
-            # reintroduces the possibility of collision
-            # e.g. {user--name}--{server} == {user}--{name--server}
-            # and {user-}--{server} == {user}--{-server}
-            # in that case, double-escape username and server name.
-            # double-escape will not collide,
-            # because it will match always match this condition and be escaped again
-            if (
-                '--' in username
-                or '--' in servername
-                or username.endswith("-")
-                or servername.startswith("-")
-            ):
-                username = safe_slug(username)
-                if servername:
-                    servername = safe_slug(servername)
-        elif slug_scheme == "escape":
             username = safe_username
             servername = safe_servername
+            user_server = safe_user_server
+        elif slug_scheme == "escape":
+            # backward-compatible 'escape' scheme is not safe
+            username = escaped_username
+            servername = escaped_servername
+            if servername:
+                user_server = f"{escaped_username}--{escaped_servername}"
+            else:
+                user_server = escaped_username
         else:
             raise ValueError(
                 f"slug scheme must be 'safe' or 'escape', not '{slug_scheme}'"
             )
 
-        rendered = template.format(
+        ns = dict(
+            # raw values, always consistent
             userid=self.user.id,
-            username=username,
-            escaped_username=safe_username,
             unescaped_username=self.user.name,
-            legacy_escape_username=legacy_escaped_username,
-            servername=servername,
             unescaped_servername=raw_servername,
-            escaped_servername=safe_servername,
             hubnamespace=hub_namespace,
+            # scheme-dependent
+            username=username,
+            servername=servername,
+            user_server=user_server,
+            # safe values (new 'safe' scheme)
+            safe_username=safe_username,
+            safe_servername=safe_servername,
+            safe_user_server=safe_user_server,
+            # legacy values (old 'escape' scheme)
+            escaped_username=escaped_username,
+            escaped_servername=escaped_servername,
+            escaped_user_server=f"{escaped_username}--{escaped_servername}",
         )
-        # strip trailing - delimiter in case of empty servername.
-        # k8s object names cannot have trailing '-'
-        if slug_scheme == "safe":
-            if not (username.endswith("-") or self.name.endswith("-")):
-                # strip trailing - delimiter _unless_ it's actually the end of the user or server name
-                rendered = rendered.rstrip("-")
-            # 'safe' slug scheme does processing after
-            rendered = safe_slug(rendered)
-        else:
-            # safe to strip trailing - in escape scheme because escaped username/servername will never end in '-'
-            rendered = rendered.rstrip("-")
+        # add some resolved values so they can be referred to.
+        # these may not be defined yet (i.e. when computing the values themselves).
+        for attr_name in ("pod_name", "pvc_name", "namespace"):
+            ns[attr_name] = getattr(self, attr_name, f"{attr_name}_unavailable!")
+
+        rendered = template.format(**ns)
+        # strip trailing '-' in case of old '{username}--{servername}' template
+        rendered = rendered.rstrip("-")
         return rendered
 
     def _expand_env(self, env):
@@ -2054,12 +2085,11 @@ class KubeSpawner(Spawner):
                 hostname = f"[{hostname}]"
 
         if self.pod_connect_ip:
+            # pod_connect_ip is not a slug
             hostname = ".".join(
                 [
-                    s.rstrip("-")
-                    for s in self._expand_user_properties(self.pod_connect_ip).split(
-                        "."
-                    )
+                    self._expand_user_properties(s) if '{' in s else s
+                    for s in self.pod_connect_ip.split(".")
                 ]
             )
 
@@ -2277,6 +2307,8 @@ class KubeSpawner(Spawner):
 
         We also save the namespace and DNS name for use cases where the namespace is
         calculated dynamically, or it changes between restarts.
+
+        `pvc_name` is also saved, to prevent data loss if template changes across restarts.
         """
         state = super().get_state()
         # these should only be persisted if our pod is running
