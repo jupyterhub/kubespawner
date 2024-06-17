@@ -94,6 +94,31 @@ def is_valid_default(s):
     )
 
 
+def _extract_safe_name(name, max_length):
+    """Generate safe substring of a name
+
+    Guarantees:
+
+    - always starts and ends with a lowercase letter or number
+    - never more than one hyphen in a row (no '--')
+    - only contains lowercase letters, numbers, and hyphens
+    - length at least 1 ('x' if other rules strips down to empty string)
+    - max length not exceeded
+    """
+    # compute safe slug from name (don't worry about collisions, hash handles that)
+    # cast to lowercase, exclude all but lower & hyphen
+    # we could keep numbers, but it must not _start_ with a number
+    safe_name = ''.join([c for c in name.lower() if c in _lower_plus_hyphen])
+    # strip leading '-', squash repeated '--' to '-'
+    safe_name = _hyphen_plus_pattern.sub("-", safe_name.lstrip("-"))
+    # truncate to max_length chars, strip trailing '-'
+    safe_name = safe_name[:max_length].rstrip("-")
+    if not safe_name:
+        # make sure it's non-empty
+        safe_name = 'x'
+    return safe_name
+
+
 def strip_and_hash(name, max_length=32):
     """Generate an always-safe, unique string for any input
 
@@ -105,18 +130,8 @@ def strip_and_hash(name, max_length=32):
         raise ValueError(f"Cannot make safe names shorter than {_hash_length + 4}")
     # quick, short hash to avoid name collisions
     name_hash = hashlib.sha256(name.encode("utf8")).hexdigest()[:_hash_length]
-    # compute safe slug from name (don't worry about collisions, hash handles that)
-    # cast to lowercase, exclude all but lower & hyphen
-    safe_name = ''.join([c for c in name.lower() if c in _lower_plus_hyphen])
-    # strip leading '-'
-    # squash repeated '--' to one
-    safe_name = _hyphen_plus_pattern.sub("-", safe_name.lstrip("-"))
-    # truncate to 24 chars, strip trailing '-'
-    safe_name = safe_name[:name_length].rstrip("-")
-    if not safe_name:
-        # make sure it's non-empty
-        safe_name = 'x'
-    # due to stripping of '-' above,
+    safe_name = _extract_safe_name(name, name_length)
+    # due to stripping of '-' in _extract_safe_name,
     # the result will always have _exactly_ '---', never '--' nor '----'
     # use '---' to avoid colliding with `{username}--{servername}` template join
     return f"{safe_name}---{name_hash}"
@@ -142,3 +157,38 @@ def safe_slug(name, is_valid=is_valid_default, max_length=None):
         return name
     else:
         return strip_and_hash(name, max_length=max_length or 32)
+
+
+def multi_slug(names, max_length=48):
+    """multi-component slug with single hash on the end
+
+    same as strip_and_hash, but name components are joined with '--',
+    so it looks like:
+
+    {name1}--{name2}---{hash}
+
+    In order to avoid hash collisions on boundaries, use `\\xFF` as delimiter
+    """
+    hasher = hashlib.sha256()
+    hasher.update(names[0].encode("utf8"))
+    for name in names[1:]:
+        # \xFF can't occur as a start byte in UTF8
+        # so use it as a word delimiter to make sure overlapping words don't collide
+        hasher.update(b"\xFF")
+        hasher.update(name.encode("utf8"))
+    hash = hasher.hexdigest()[:_hash_length]
+
+    name_slugs = []
+    available_chars = max_length - (_hash_length + 1)
+    # allocate equal space per name
+    # per_name accounts for '{name}--', so really two less
+    per_name = available_chars // len(names)
+    name_max_length = per_name - 2
+    if name_max_length < 2:
+        raise ValueError(f"Not enough characters for {len(names)} names: {max_length}")
+    for name in names:
+        name_slugs.append(_extract_safe_name(name, name_max_length))
+
+    # by joining names with '--', this cannot collide with single-hashed names,
+    # which can only contain '-' and the '---' hash delimiter once
+    return f"{'--'.join(name_slugs)}---{hash}"

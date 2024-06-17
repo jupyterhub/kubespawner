@@ -48,7 +48,7 @@ from .objects import (
     make_service,
 )
 from .reflector import ResourceReflector
-from .slugs import is_valid_label, safe_slug
+from .slugs import is_valid_label, multi_slug, safe_slug
 from .utils import recursive_format, recursive_update
 
 
@@ -189,7 +189,7 @@ class KubeSpawner(Spawner):
         # these same assignments should match clear_state
         if self.enable_user_namespaces:
             self.namespace = self._expand_user_properties(
-                self.user_namespace_template, scheme="slug"
+                self.user_namespace_template, slug_scheme="safe"
             )
             self.log.info(f"Using user namespace: {self.namespace}")
 
@@ -1907,24 +1907,21 @@ class KubeSpawner(Spawner):
 
         # compute safe_user_server = {username}--{servername}
         if (
-            # escaping after joining means
-            # possible collision with `--` delimiter
-            '--' in username
-            or '--' in raw_servername
-            or username.endswith("-")
-            or raw_servername.startswith("-")
-            # length exceeded
-            or len(safe_username) + len(safe_username) + 2 > _slug_max_length
+            # double-escape if safe names are too long after join
+            len(safe_username) + len(safe_servername) + 2
+            > _slug_max_length
         ):
             # need double-escape if there's a chance of collision
-            safe_user_server = safe_slug(
-                f"{safe_username}--{safe_servername}", max_length=_slug_max_length
+            safe_user_server = multi_slug(
+                [username, raw_servername], max_length=_slug_max_length
             )
         else:
             if raw_servername:
-                safe_user_server = safe_slug(
-                    f"{username}--{raw_servername}", max_length=_slug_max_length
-                )
+                # choices:
+                # - {safe_username}--{safe_servername}  # could get 2 hashes
+                # - always {multi_slug}  # always a hash for named servers
+                # - safe_slug({username}--{servername})  # lots of possible collisions to handle specially
+                safe_user_server = f"{safe_username}--{safe_servername}"
             else:
                 safe_user_server = safe_username
 

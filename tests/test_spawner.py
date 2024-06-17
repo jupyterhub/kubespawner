@@ -1418,7 +1418,7 @@ async def test_pod_name_escaping():
 
     spawner = KubeSpawner(config=c, user=user, orm_spawner=orm_spawner, _mock=True)
 
-    assert spawner.pod_name == "jupyter-some-5fuser--test-2dserver-21"
+    assert spawner.pod_name == "jupyter-someuser---7d3a4d4e--test-server---cb54a9af"
 
 
 async def test_pod_name_custom_template():
@@ -1442,15 +1442,15 @@ async def test_pod_name_collision():
     user2 = MockUser()
     user2.name = "user-has"
     orm_spawner2 = Spawner()
-    orm_spawner2.name = "2ddash"
+    orm_spawner2.name = "dash"
 
     spawner = KubeSpawner(user=user1, orm_spawner=orm_spawner1, _mock=True)
-    assert spawner.pod_name == "jupyter-user-2dhas-2ddash"
-    assert spawner.pvc_name == "claim-user-2dhas-2ddash"
+    assert spawner.pod_name == "jupyter-user-has-dash"
+    assert spawner.pvc_name == "claim-user-has-dash"
     named_spawner = KubeSpawner(user=user2, orm_spawner=orm_spawner2, _mock=True)
-    assert named_spawner.pod_name == "jupyter-user-2dhas--2ddash"
+    assert named_spawner.pod_name == "jupyter-user-has--dash"
     assert spawner.pod_name != named_spawner.pod_name
-    assert named_spawner.pvc_name == "claim-user-2dhas--2ddash"
+    assert named_spawner.pvc_name == "claim-user-has--dash"
     assert spawner.pvc_name != named_spawner.pvc_name
 
 
