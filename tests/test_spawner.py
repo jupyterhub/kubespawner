@@ -17,6 +17,7 @@ from kubernetes_asyncio.client.models import (
     V1Pod,
     V1SecurityContext,
 )
+from kubernetes_asyncio.client.rest import ApiException
 from traitlets.config import Config
 
 from kubespawner import KubeSpawner
