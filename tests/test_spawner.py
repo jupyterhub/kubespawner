@@ -1812,7 +1812,7 @@ async def test_spawn_pending_pods(kube_ns, kube_client):
     c.KubeSpawner.start_timeout = 5  # Do not wait very long.
     spawner = KubeSpawner(hub=Hub(), user=MockUser(), config=c)
     with pytest.raises(TimeoutError) as te:
-      await spawner.start()
+        await spawner.start()
     assert 'pod/jupyter-fake did not start' in str(te.value)
 
     pods = kube_client.list_namespaced_pod(kube_ns).items
@@ -1838,7 +1838,7 @@ async def test_spawn_watcher_reflector_started_twice(config):
 
     with pytest.raises(ValueError) as ve:
         spawner.pod_reflector.start()
-    assert ('Thread watching for resources is already running' in str(ve.value))
+    assert 'Thread watching for resources is already running' in str(ve.value)
     await spawner.stop()
 
 
