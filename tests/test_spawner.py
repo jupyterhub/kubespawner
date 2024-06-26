@@ -834,6 +834,84 @@ async def test_spawn_start_restore_namespace(
     assert isinstance(status, int)
 
 
+@pytest.mark.parametrize("handle_legacy_names", [True, False])
+async def test_spawn_start_upgrade_pvc_name(
+    config,
+    hub,
+    handle_legacy_names,
+):
+    # Emulate stopping JupyterHub and starting with different settings while some pods still exist
+    user = MockUser(name="needs-Escape")
+    spawner_args = dict(
+        hub=hub,
+        user=user,
+        orm_spawner=MockOrmSpawner(),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+    )
+    config.KubeSpawner.storage_pvc_ensure = True
+    config.KubeSpawner.storage_capacity = "100M"
+    config.KubeSpawner.slug_scheme = "escape"
+    config.KubeSpawner.handle_legacy_names = handle_legacy_names
+
+    # Save state with old config
+    old_spawner = KubeSpawner(
+        **spawner_args, pvc_name_template="claim-{username}--{servername}"
+    )
+    old_spawner.load_state({})
+    assert old_spawner._state_kubespawner_version is None
+
+    old_spawner_pvc_name = old_spawner.pvc_name
+
+    # launch old pod
+    await old_spawner.start()
+    assert old_spawner._pvc_exists
+    old_state = old_spawner.get_state()
+    # subset keys to what's actually stored in earlier versions of kubespawner
+    old_state = {key: old_state[key] for key in ("namespace", "pod_name", "dns_name")}
+
+    await old_spawner.stop()
+
+    # Change config
+    config.KubeSpawner.slug_scheme = "safe"
+
+    # Load old state
+    spawner = KubeSpawner(**spawner_args)
+    spawner.load_state(old_state)
+    assert spawner._state_kubespawner_version == "unknown"
+    # value changed from config
+    new_spawner_pvc_name = spawner.pvc_name
+    assert spawner.pvc_name != old_spawner_pvc_name
+    # start checks for old name and uses it if it exists
+    await spawner.start()
+    if handle_legacy_names:
+        assert spawner.pvc_name == old_spawner_pvc_name
+    else:
+        assert spawner.pvc_name == new_spawner_pvc_name
+    assert spawner._pvc_exists
+    await spawner.stop()
+    new_state = spawner.get_state()
+    assert new_state["pvc_name"] == spawner.pvc_name
+
+    # one more time, this time shouldn't need to call _check_pvc_exists
+    config.KubeSpawner.pvc_name_template = "shouldnt-be-used"
+    spawner = KubeSpawner(**spawner_args)
+
+    def _shouldnt_check():
+        pytest.fail("shouldn't have called _check_pvc_exists")
+
+    spawner._check_pvc_exists = _shouldnt_check
+    spawner.load_state(new_state)
+    assert spawner._pvc_exists
+    assert spawner._state_kubespawner_version == kubespawner.__version__
+
+    await spawner.start()
+    assert spawner.pvc_name == new_state["pvc_name"]
+    assert spawner._pvc_exists
+    await spawner.stop()
+
+
 async def test_get_pod_manifest_tolerates_mixed_input():
     """
     Test that the get_pod_manifest function can handle a either a dictionary or
