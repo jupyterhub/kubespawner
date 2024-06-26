@@ -646,6 +646,20 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    remember_pvc_name = Bool(
+        True,
+        config=True,
+        help="""
+        Remember the PVC name across restarts and configuration changes.
+
+        If True, once the PVC has been created, its name will be remembered and reused
+        and changing pvc_name_template will have no effect on servers that have previously mounted PVCs.
+        If False, changing pvc_name_template or slug_scheme may detatch servers from their PVCs.
+
+        `False` is the behavior of kubespawner prior to version 7.
+        """,
+    )
+
     component_label = Unicode(
         'singleuser-server',
         config=True,
@@ -2323,6 +2337,8 @@ class KubeSpawner(Spawner):
         state['dns_name'] = self.dns_name
 
         # persist pvc name only if it's established that it exists
+        # ignore 'remember_pvc_name' config here so the info is available
+        # so future calls to load_state can decide whether to use it or not
         if self._pvc_exists:
             state['pvc_name'] = self.pvc_name
         return state
@@ -2371,7 +2387,7 @@ class KubeSpawner(Spawner):
         if 'dns_name' in state:
             self.dns_name = state['dns_name']
 
-        if 'pvc_name' in state:
+        if 'pvc_name' in state and self.remember_pvc_name:
             self.pvc_name = state['pvc_name']
             # indicate that we've already checked that self.pvc_name is correct
             # and we don't need to check for legacy names anymore
