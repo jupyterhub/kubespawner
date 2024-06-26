@@ -18,6 +18,7 @@ from typing import Optional, Tuple, Type
 from urllib.parse import urlparse
 
 import escapism
+import jupyterhub
 from jinja2 import ChoiceLoader, Environment, FileSystemLoader, PackageLoader
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Callable, Command
@@ -38,6 +39,7 @@ from traitlets import (
     validate,
 )
 
+from . import __version__
 from .clients import load_config, shared_client
 from .objects import (
     make_namespace,
@@ -2033,6 +2035,8 @@ class KubeSpawner(Spawner):
         annotations = {'hub.jupyter.org/username': self.user.name}
         if self.name:
             annotations['hub.jupyter.org/servername'] = self.name
+        annotations["hub.jupyter.org/kubespawner-version"] = __version__
+        annotations["hub.jupyter.org/jupyterhub-version"] = jupyterhub.__version__
 
         annotations.update(extra_annotations)
         return annotations
@@ -2311,6 +2315,7 @@ class KubeSpawner(Spawner):
         `pvc_name` is also saved, to prevent data loss if template changes across restarts.
         """
         state = super().get_state()
+        state["kubespawner_version"] = __version__
         # these should only be persisted if our pod is running
         # but we don't have a sync check for that
         state['pod_name'] = self.pod_name
@@ -2340,6 +2345,9 @@ class KubeSpawner(Spawner):
 
         return env
 
+    # remember version of kubespawner that state was loaded from
+    _state_kubespawner_version = None
+
     def load_state(self, state):
         """
         Load state from storage required to reinstate this user's pod
@@ -2368,6 +2376,19 @@ class KubeSpawner(Spawner):
             # indicate that we've already checked that self.pvc_name is correct
             # and we don't need to check for legacy names anymore
             self._pvc_exists = True
+
+        if 'kubespawner_version' in state:
+            self._state_kubespawner_version = state["kubespawner_version"]
+        elif state:
+            self.log.warning(
+                f"Loading state for {self.user.name}/{self.name} from unknown prior version of kubespawner (likely 6.x), will attempt to upgrade."
+            )
+            # if there was any state to load, we assume 'unknown' version
+            # (most likely 6.x, prior to 'safe' slug scheme)
+            self._state_kubespawner_version = "unknown"
+        else:
+            # None means no state loaded (i.e. fresh launch)
+            self._state_kubespawner_version = None
 
     def clear_state(self):
         """Reset state for a stopped server
@@ -2926,11 +2947,16 @@ class KubeSpawner(Spawner):
             self._last_event = events[-1]["metadata"]["uid"]
 
         if self.storage_pvc_ensure:
-            if self.handle_legacy_names and not self._pvc_exists:
-                # pvc name wasn't reliably persisted before kubespawner 17, so if the name changed,
-                # check if a pvc with the legacy name exists and use it
-                # this will be persisted in state on next launch in the future,
+            if (
+                self.handle_legacy_names
+                and not self._pvc_exists
+                and self._state_kubespawner_version == "unknown"
+            ):
+                # pvc name wasn't reliably persisted before kubespawner 7,
+                # so if the name changed check if a pvc with the legacy name exists and use it.
+                # This will be persisted in state on next launch in the future,
                 # so the comparison below will be False for launches after the first.
+                # this check will only work if pvc_name_template itself has not changed across the upgrade.
                 legacy_pvc_name = self._expand_user_properties(
                     self.pvc_name_template, slug_scheme="escape"
                 )
