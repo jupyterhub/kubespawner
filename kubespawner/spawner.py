@@ -1975,8 +1975,11 @@ class KubeSpawner(Spawner):
             ns[attr_name] = getattr(self, attr_name, f"{attr_name}_unavailable!")
 
         rendered = template.format(**ns)
-        # strip trailing '-' in case of old '{username}--{servername}' template
-        rendered = rendered.rstrip("-")
+        # strip trailing - delimiter in case of empty servername and old {username}--{servername} template
+        # but only if trailing '-' is added by the template rendering,
+        # and not in the template itself
+        if not template.endswith("-"):
+            rendered = rendered.rstrip("-")
         return rendered
 
     def _expand_env(self, env):
