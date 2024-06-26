@@ -53,7 +53,7 @@ def test_safe_slug_max_length(max_length, length, expected):
         ("x", "x"),
         ("-x", "x---a4209624"),
         ("x-", "x---c8b60efc"),
-        pytest.param("x" * 63, "x" * 63, id="x64"),
+        pytest.param("x" * 63, "x" * 63, id="x63"),
         pytest.param("x" * 64, "xxxxxxxxxxxxxxxxxxxxx---7ce10097", id="x64"),
         pytest.param("x" * 65, "xxxxxxxxxxxxxxxxxxxxx---9537c5fd", id="x65"),
     ],

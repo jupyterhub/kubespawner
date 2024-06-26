@@ -341,20 +341,13 @@ class KubeSpawner(Spawner):
         'escape' scheme:
         
         - does not guarantee correct names, e.g. does not handle capital letters or length
-        - escapes fields one at a time in templates:
-          - `{username}` is the _escaped_ username
-          - `{servername}` is the _escaped_ server name
         
         'safe' scheme:
         
         - should guarantee correct names
-        - escapes the whole string at once
         - escapes only if needed
-        - in templates:
-          - `{username}` is the user's actual name
-          - `{escaped_username}` is the escaped username, used in the previous scheme
-          - `{servername}` is the user's actual name
-          - `{escaped_servername}` is the escaped server name, used in the previous scheme
+        - enforces length requirements
+        - uses hash to avoid collisions when escaping is required
 
         'safe' is the default and preferred as it produces both:
 
@@ -376,11 +369,10 @@ class KubeSpawner(Spawner):
         Note that these are only set when the namespaces are created, not
         later when this setting is updated.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -393,11 +385,10 @@ class KubeSpawner(Spawner):
         Note that these are only set when the namespaces are created, not
         later when this setting is updated.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -408,11 +399,10 @@ class KubeSpawner(Spawner):
         Template to use to form the namespace of user's pods (only if
         enable_user_namespaces is True).
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -496,11 +486,10 @@ class KubeSpawner(Spawner):
         The working directory where the Notebook server will be started inside the container.
         Defaults to `None` so the working directory will be the one defined in the Dockerfile.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -551,17 +540,13 @@ class KubeSpawner(Spawner):
         help="""
         Template to use to form the name of user's pods.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
-
-        Trailing `-` characters are stripped for safe handling of empty server names (user default servers).
-
         This must be unique within the namespace the pods are being spawned
         in, so if you are running multiple jupyterhubs spawning in the
         same namespace, consider setting this to be something more unique.
+
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
 
         .. versionchanged:: 0.12
             `--` delimiter added to the template,
@@ -579,11 +564,9 @@ class KubeSpawner(Spawner):
 
         e.g. `{pod_name}.notebooks.jupyterhub.svc.cluster.local`,
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
 
         Trailing `-` characters in each domain level are stripped for safe handling of empty server names (user default servers).
 
@@ -626,17 +609,16 @@ class KubeSpawner(Spawner):
         help="""
         Template to use to form the name of user's pvc.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
 
         Trailing `-` characters are stripped for safe handling of empty server names (user default servers).
 
         This must be unique within the namespace the pvc are being spawned
         in, so if you are running multiple jupyterhubs spawning in the
         same namespace, consider setting this to be something more unique.
+
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
 
         .. versionchanged:: 0.12
             `--` delimiter added to the template,
@@ -674,20 +656,12 @@ class KubeSpawner(Spawner):
     )
 
     secret_name_template = Unicode(
-        'jupyter-{username}{servername}',
+        '{pod_name}',
         config=True,
         help="""
         Template to use to form the name of user's secret.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
-
-        This must be unique within the namespace the pvc are being spawned
-        in, so if you are running multiple jupyterhubs spawning in the
-        same namespace, consider setting this to be something more unique.
+        Default: same as `pod_name`. It is unlikely that this should be changed.
         """,
     )
 
@@ -757,11 +731,9 @@ class KubeSpawner(Spawner):
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
         for more info on what labels are and why you might want to use them!
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
         """,
     )
 
@@ -778,9 +750,10 @@ class KubeSpawner(Spawner):
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>`__
         for more info on what annotations are and why you might want to use them!
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -1123,11 +1096,10 @@ class KubeSpawner(Spawner):
         for more information on the various kinds of volumes available and their options.
         Your kubernetes cluster must already be configured to support the volume types you want to use.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -1146,11 +1118,10 @@ class KubeSpawner(Spawner):
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/volumes>`__
         for more information on how the `volumeMount` item works.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -1190,9 +1161,10 @@ class KubeSpawner(Spawner):
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>`__
         for more info on what annotations are and why you might want to use them!
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -1208,11 +1180,10 @@ class KubeSpawner(Spawner):
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
         for more info on what labels are and why you might want to use them!
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -1270,11 +1241,10 @@ class KubeSpawner(Spawner):
 
            c.KubeSpawner.storage_selector = {'matchLabels':{'content': 'jupyter'}}
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -1406,11 +1376,10 @@ class KubeSpawner(Spawner):
                 "command": ["/usr/local/bin/supercronic", "/etc/crontab"]
             }]
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -2330,8 +2299,9 @@ class KubeSpawner(Spawner):
         """
         state = super().get_state()
         state["kubespawner_version"] = __version__
-        # these should only be persisted if our pod is running
+        # pod_name, dns_name should only be persisted if our pod is running
         # but we don't have a sync check for that
+        # is that true for namespace as well? (namespace affects pvc)
         state['pod_name'] = self.pod_name
         state['namespace'] = self.namespace
         state['dns_name'] = self.dns_name
@@ -2415,13 +2385,11 @@ class KubeSpawner(Spawner):
         super().clear_state()
         # this should be the same initialization as __init__ / trait defaults
         # this allows changing config to take effect after a server restart
-        if self.enable_user_namespaces:
-            self.namespace = self._expand_user_properties(self.user_namespace_template)
-
         self.pod_name = self._expand_user_properties(self.pod_name_template)
         self.dns_name = self.dns_name_template.format(
             namespace=self.namespace, name=self.pod_name
         )
+        # reset namespace as well?
 
     async def poll(self):
         """
