@@ -5,6 +5,7 @@ import os
 from functools import partial
 from unittest.mock import Mock
 
+import jupyterhub
 import pytest
 from jupyterhub.objects import Hub, Server
 from jupyterhub.orm import Spawner
@@ -19,8 +20,10 @@ from kubernetes_asyncio.client.models import (
 )
 from traitlets.config import Config
 
+import kubespawner
 from kubespawner import KubeSpawner
 from kubespawner.objects import make_owner_reference, make_service
+from kubespawner.slugs import safe_slug
 
 
 class MockUser(Mock):
@@ -1367,9 +1370,10 @@ async def test_spawner_env():
         "CALLABLE": lambda spawner: spawner.user.name + " (callable)",
     }
     spawner = KubeSpawner(config=c, _mock=True)
+    slug = safe_slug(spawner.user.name)
     env = spawner.get_env()
     assert env["STATIC"] == "static"
-    assert env["EXPANDED"] == "mock-5fname (expanded)"
+    assert env["EXPANDED"] == f"{slug} (expanded)"
     assert env["ESCAPED"] == "{username}"
     assert env["CALLABLE"] == "mock_name (callable)"
 
@@ -1378,7 +1382,7 @@ async def test_jupyterhub_supplied_env():
     cookie_options = {"samesite": "None", "secure": True}
     c = Config()
 
-    c.KubeSpawner.environment = {"HELLO": "It's {username}"}
+    c.KubeSpawner.environment = {"HELLO": "It's {unescaped_username}"}
     spawner = KubeSpawner(config=c, _mock=True, cookie_options=cookie_options)
 
     pod_manifest = await spawner.get_pod_manifest()
@@ -1386,7 +1390,7 @@ async def test_jupyterhub_supplied_env():
     env = pod_manifest.spec.containers[0].env
 
     # Set via .environment, must be expanded
-    assert V1EnvVar("HELLO", "It's mock-5fname") in env
+    assert V1EnvVar("HELLO", "It's mock_name") in env
     # Set by JupyterHub itself, must not be expanded
     assert V1EnvVar("JUPYTERHUB_COOKIE_OPTIONS", json.dumps(cookie_options)) in env
 
@@ -1418,18 +1422,18 @@ async def test_pod_name_escaping():
 
     spawner = KubeSpawner(config=c, user=user, orm_spawner=orm_spawner, _mock=True)
 
-    assert spawner.pod_name == "jupyter-someuser---7d3a4d4e--test-server---cb54a9af"
+    assert spawner.pod_name == "jupyter-some-user---7d3a4d4e--test-server---cb54a9af"
 
 
 async def test_pod_name_custom_template():
     user = MockUser()
     user.name = "some_user"
 
-    pod_name_template = "prefix-{username}-suffix"
+    pod_name_template = "prefix-{user_server}-suffix"
 
     spawner = KubeSpawner(user=user, pod_name_template=pod_name_template, _mock=True)
 
-    assert spawner.pod_name == "prefix-some-5fuser-suffix"
+    assert spawner.pod_name == "prefix-some-user---7d3a4d4e-suffix"
 
 
 async def test_pod_name_collision():
@@ -1508,6 +1512,8 @@ async def test_pod_connect_ip(kube_ns, kube_client, config, hub_pod, hub):
 async def test_get_pvc_manifest():
     c = Config()
 
+    username = "mock_name"
+    slug = safe_slug(username)
     c.KubeSpawner.pvc_name_template = "user-{username}"
     c.KubeSpawner.storage_extra_labels = {"user": "{username}"}
     c.KubeSpawner.storage_extra_annotations = {"user": "{username}"}
@@ -1518,10 +1524,10 @@ async def test_get_pvc_manifest():
     manifest = spawner.get_pvc_manifest()
 
     assert isinstance(manifest, V1PersistentVolumeClaim)
-    assert manifest.metadata.name == "user-mock-5fname"
+    assert manifest.metadata.name == f"user-{slug}"
     assert manifest.metadata.labels == {
-        "user": "mock-5fname",
-        "hub.jupyter.org/username": "mock-5fname",
+        "user": slug,
+        "hub.jupyter.org/username": username,
         "app.kubernetes.io/name": "jupyterhub",
         "app.kubernetes.io/managed-by": "kubespawner",
         "app.kubernetes.io/component": "singleuser-server",
@@ -1530,10 +1536,12 @@ async def test_get_pvc_manifest():
         "component": "singleuser-storage",
     }
     assert manifest.metadata.annotations == {
-        "user": "mock-5fname",
-        "hub.jupyter.org/username": "mock_name",
+        "user": slug,
+        "hub.jupyter.org/username": username,
+        "hub.jupyter.org/jupyterhub-version": jupyterhub.__version__,
+        "hub.jupyter.org/kubespawner-version": kubespawner.__version__,
     }
-    assert manifest.spec.selector == {"matchLabels": {"user": "mock-5fname"}}
+    assert manifest.spec.selector == {"matchLabels": {"user": slug}}
 
 
 async def test_variable_expansion(ssl_app):
