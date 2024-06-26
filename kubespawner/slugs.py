@@ -19,8 +19,8 @@ _lower_plus_hyphen = _alphanum_lower + ('-',)
 _object_pattern = re.compile(r'^[a-z0-9\.-]+$')
 _label_pattern = re.compile(r'^[a-z0-9\.-_]+$', flags=re.IGNORECASE)
 
-# match two or more hyphens
-_hyphen_plus_pattern = re.compile('--+')
+# match anything that's not lowercase alphanumeric (will be stripped, replaced with '-')
+_non_alphanum_pattern = re.compile(r'[^a-z0-9]+')
 
 # length of hash suffix
 _hash_length = 8
@@ -106,13 +106,11 @@ def _extract_safe_name(name, max_length):
     - max length not exceeded
     """
     # compute safe slug from name (don't worry about collisions, hash handles that)
-    # cast to lowercase, exclude all but lower & hyphen
-    # we could keep numbers, but it must not _start_ with a number
-    safe_name = ''.join([c for c in name.lower() if c in _lower_plus_hyphen])
-    # strip leading '-', squash repeated '--' to '-'
-    safe_name = _hyphen_plus_pattern.sub("-", safe_name.lstrip("-"))
-    # truncate to max_length chars, strip trailing '-'
-    safe_name = safe_name[:max_length].rstrip("-")
+    # cast to lowercase
+    # replace any sequence of non-alphanumeric characters with a single '-'
+    safe_name = _non_alphanum_pattern.sub("-", name.lower())
+    # truncate to max_length chars, strip '-' off ends
+    safe_name = safe_name.lstrip("-")[:max_length].rstrip("-")
     if not safe_name:
         # make sure it's non-empty
         safe_name = 'x'

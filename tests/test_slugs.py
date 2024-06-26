@@ -10,6 +10,8 @@ from kubespawner.slugs import is_valid_label, safe_slug
         ("jupyter-Alex", "jupyter-alex---3a1c285c"),
         ("jupyter-üni", "jupyter-ni---a5aaf5dd"),
         ("endswith-", "endswith---165f1166"),
+        ("user@email.com", "user-email-com---0925f997"),
+        ("user-_@_emailß.com", "user-email-com---7e3a7efd"),
         ("-start", "start---f587e2dc"),
         ("username--servername", "username-servername---d957f1de"),
         ("start---f587e2dc", "start-f587e2dc---cc5bb9c9"),
