@@ -1798,3 +1798,115 @@ async def test_ipv6_addr():
     )
     url = spawner._get_pod_url({"status": {"podIP": "cafe:f00d::"}})
     assert "[" in url and "]" in url
+
+
+async def test_volume_mount_dictionary():
+    """
+    Test that volume_mounts can be a dictionary of dictionaries.
+    The output list should be lexicographically sorted by key.
+    """
+    c = Config()
+
+    c.KubeSpawner.volume_mounts = {
+        "02-group-beta": {
+            'name': 'volume-mounts-beta',
+            'mountPath': '/beta/',
+        },
+        "01-group-alpha": {
+            'name': 'volume-mounts-alpha',
+            'mountPath': '/alpha/',
+        },
+    }
+
+    spawner = KubeSpawner(config=c, _mock=True)
+
+    manifest = await spawner.get_pod_manifest()
+
+    assert isinstance(manifest.spec.containers[0].volume_mounts, list)
+    assert manifest.spec.containers[0].volume_mounts[0].name == 'volume-mounts-alpha'
+    assert manifest.spec.containers[0].volume_mounts[0].mount_path == '/alpha/'
+    assert manifest.spec.containers[0].volume_mounts[1].name == 'volume-mounts-beta'
+    assert manifest.spec.containers[0].volume_mounts[1].mount_path == '/beta/'
+
+
+async def test_volume_mount_list():
+    """
+    Test that volume_mounts can be a list of dictionaries for backwards compatibility.
+    """
+    c = Config()
+
+    c.KubeSpawner.volume_mounts = [
+        {
+            'name': 'volume-mounts-alpha',
+            'mountPath': '/alpha/',
+        },
+        {
+            'name': 'volume-mounts-beta',
+            'mountPath': '/beta/',
+        },
+    ]
+    spawner = KubeSpawner(config=c, _mock=True)
+
+    manifest = await spawner.get_pod_manifest()
+
+    assert isinstance(manifest.spec.containers[0].volume_mounts, list)
+    assert manifest.spec.containers[0].volume_mounts[0].name == 'volume-mounts-alpha'
+    assert manifest.spec.containers[0].volume_mounts[0].mount_path == '/alpha/'
+    assert manifest.spec.containers[0].volume_mounts[1].name == 'volume-mounts-beta'
+    assert manifest.spec.containers[0].volume_mounts[1].mount_path == '/beta/'
+
+
+async def test_volume_dict():
+    """
+    Test that volumes can be a dictionary of dictionaries.
+    The output list should be lexicographically sorted by key.
+    """
+    c = Config()
+
+    c.KubeSpawner.volumes = {
+        "02-group-beta": {
+            'name': 'volumes-beta',
+            'persistentVolumeClaim': {'claimName': 'beta-claim'},
+        },
+        "01-group-alpha": {
+            'name': 'volumes-alpha',
+            'persistentVolumeClaim': {'claimName': 'alpha-claim'},
+        },
+    }
+
+    spawner = KubeSpawner(config=c, _mock=True)
+
+    manifest = await spawner.get_pod_manifest()
+
+    assert isinstance(manifest.spec.volumes, list)
+    assert manifest.spec.volumes[0].name == 'volumes-alpha'
+    assert manifest.spec.volumes[0].persistent_volume_claim["claimName"] == 'alpha-claim'
+    assert manifest.spec.volumes[1].name == 'volumes-beta'
+    assert manifest.spec.volumes[1].persistent_volume_claim["claimName"] == 'beta-claim'
+
+
+async def test_volume_list():
+    """
+    Test that volumes can be a list of dictionaries for backwards compatibility.
+    """
+    c = Config()
+
+    c.KubeSpawner.volumes = [
+        {
+            'name': 'volumes-alpha',
+            'persistentVolumeClaim': {'claimName': 'alpha-claim'},
+        },
+        {
+            'name': 'volumes-beta',
+            'persistentVolumeClaim': {'claimName': 'beta-claim'},
+        },
+    ]
+    spawner = KubeSpawner(config=c, _mock=True)
+
+    manifest = await spawner.get_pod_manifest()
+
+    assert isinstance(manifest.spec.volumes, list)
+    assert manifest.spec.volumes[0].name == 'volumes-alpha'
+    assert manifest.spec.volumes[0].persistent_volume_claim["claimName"] == 'alpha-claim'
+    assert manifest.spec.volumes[1].name == 'volumes-beta'
+    assert manifest.spec.volumes[1].persistent_volume_claim["claimName"] == 'beta-claim'
