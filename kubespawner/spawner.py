@@ -2061,7 +2061,9 @@ class KubeSpawner(Spawner):
             pod_security_context=psc,
             env=self.get_env(),  # Expansion is handled by get_env
             volumes=self._expand_all(self._sorted_dict_values(self.volumes)),
-            volume_mounts=self._expand_all(self._sorted_dict_values(self.volume_mounts)),
+            volume_mounts=self._expand_all(
+                self._sorted_dict_values(self.volume_mounts)
+            ),
             working_dir=self.working_dir,
             labels=labels,
             annotations=annotations,

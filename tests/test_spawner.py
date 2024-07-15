@@ -1880,7 +1880,9 @@ async def test_volume_dict():
 
     assert isinstance(manifest.spec.volumes, list)
     assert manifest.spec.volumes[0].name == 'volumes-alpha'
-    assert manifest.spec.volumes[0].persistent_volume_claim["claimName"] == 'alpha-claim'
+    assert (
+        manifest.spec.volumes[0].persistent_volume_claim["claimName"] == 'alpha-claim'
+    )
     assert manifest.spec.volumes[1].name == 'volumes-beta'
     assert manifest.spec.volumes[1].persistent_volume_claim["claimName"] == 'beta-claim'
 
@@ -1907,6 +1909,8 @@ async def test_volume_list():
 
     assert isinstance(manifest.spec.volumes, list)
     assert manifest.spec.volumes[0].name == 'volumes-alpha'
-    assert manifest.spec.volumes[0].persistent_volume_claim["claimName"] == 'alpha-claim'
+    assert (
+        manifest.spec.volumes[0].persistent_volume_claim["claimName"] == 'alpha-claim'
+    )
     assert manifest.spec.volumes[1].name == 'volumes-beta'
     assert manifest.spec.volumes[1].persistent_volume_claim["claimName"] == 'beta-claim'
