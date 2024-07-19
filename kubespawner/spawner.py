@@ -1033,14 +1033,25 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    volumes = List(
+    volumes = Union(
+        trait_types=[
+            List(),
+            Dict(),
+        ],
         config=True,
         help="""
-        List of Kubernetes Volume specifications that will be mounted in the user pod.
+        List of Kubernetes Volume specifications that will be mounted in the user pod,
+        or a dictionary where the values specify the volume specifications.
 
-        This list will be directly added under `volumes` in the kubernetes pod spec,
-        so you should use the same structure. Each item in the list must have the
-        following two keys:
+        If provided as a list, this list will be directly added under `volumes` in
+        the kubernetes pod spec
+
+        If provided as a dictionary, the items will be sorted lexicographically by the dictionary keys
+        and then the sorted values will be added to the `volumes` key. The keys of the
+        dictionary can be any descriptive name for the volume specification.
+
+        Each item (whether in the list or dictionary values) must be a dictionary with
+        the following two keys:
 
           - `name`
             Name that'll be later used in the `volume_mounts` config to mount this
@@ -1063,14 +1074,25 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    volume_mounts = List(
+    volume_mounts = Union(
+        trait_types=[
+            List(),
+            Dict(),
+        ],
         config=True,
         help="""
-        List of paths on which to mount volumes in the user notebook's pod.
+        List of paths on which to mount volumes in the user notebook's pod, or a dictionary
+        where the values specify the paths to mount the volumes.
 
-        This list will be added to the values of the `volumeMounts` key under the user's
-        container in the kubernetes pod spec, so you should use the same structure as that.
-        Each item in the list should be a dictionary with at least these two keys:
+        If provided as a list, this list will be added directly to the values of the
+        `volumeMounts` key under the user's container in the kubernetes pod spec.
+
+        If provided as a dictionary, the items will be sorted lexicographically by the dictionary keys and
+        then the sorted values will be added to the `volumeMounts` key. The keys of the
+        dictionary can be any descriptive name for the volume mount.
+
+        Each item (whether in the list or dictionary values) should be a dictionary with
+        at least these two keys:
 
            - `mountPath` The path on the container in which we want to mount the volume.
            - `name` The name of the volume we want to mount, as specified in the `volumes` config.
@@ -1869,6 +1891,15 @@ class KubeSpawner(Spawner):
         else:
             return src
 
+    def _sorted_dict_values(self, src):
+        """
+        Return a list of dict values sorted by keys if src is a dict, otherwise return src as-is.
+        """
+        if isinstance(src, dict):
+            return [src[key] for key in sorted(src.keys())]
+        else:
+            return src
+
     def _build_common_labels(self, extra_labels):
         # Default set of labels, picked up from
         # https://github.com/helm/helm-www/blob/HEAD/content/en/docs/chart_best_practices/labels.md
@@ -2032,8 +2063,10 @@ class KubeSpawner(Spawner):
             container_security_context=csc,
             pod_security_context=psc,
             env=self.get_env(),  # Expansion is handled by get_env
-            volumes=self._expand_all(self.volumes),
-            volume_mounts=self._expand_all(self.volume_mounts),
+            volumes=self._expand_all(self._sorted_dict_values(self.volumes)),
+            volume_mounts=self._expand_all(
+                self._sorted_dict_values(self.volume_mounts)
+            ),
             working_dir=self.working_dir,
             labels=labels,
             annotations=annotations,
