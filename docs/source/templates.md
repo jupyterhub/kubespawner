@@ -42,8 +42,8 @@ Because there are two escaping schemes for `username`, `servername`, and `user_s
 
 | field                   | description                                                                                                                                         |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `{escaped_username}`    | the username passed through the old 'escape' slug scheme                                                                                            |
-| `{escaped_servername}`  | the server name passed through the 'escape' slug scheme                                                                                             |
+| `{escaped_username}`    | the username passed through the old 'escape' slug scheme (new in kubespawner 7)                                                                     |
+| `{escaped_servername}`  | the server name passed through the 'escape' slug scheme (new in kubespawner 7)                                                                      |
 | `{escaped_user_server}` | the username and servername together as a single slug, identical to `"{escaped_username}--{escaped_servername}".rstrip("-")` (new in kubespawner 7) |
 | `{safe_username}`       | the username passed through the 'safe' slug scheme (new in kubespawner 7)                                                                           |
 | `{safe_servername}`     | the server name passed through the 'safe' slug scheme (new in kubespawner 7)                                                                        |
