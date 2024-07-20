@@ -135,13 +135,14 @@ Probably the most common case where the two differ is in the presence of single 
 
 Examples:
 
-| name | escape scheme | safe scheme |
-| username | username | username |
-| has-hyphen | has-2dhyphen | has-hyphen |
-| Capital | `-43apital` (error) | `capital---1a1cf792` |
-| user@email.com | 'user-40email-2ecom' | 'user-email-com---0925f997' |
-| 'a-very-long-name-that-is-too-long-for-sixty-four-character-labels' | 'a-2dvery-2dlong-2dname-2dthat-2dis-2dtoo-2dlong-2dfor-2dsixty-2dfour-2dcharacter-2dlabels' (error) | 'a-very-long-name-that-is-too-long-for---29ac5fd2' |
-| ALLCAPS | '-41-4c-4c-43-41-50-53' (error) | 'allcaps---27c6794c'|
+| name                                                                | escape scheme                                                                                       | safe scheme                                        |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `username`                                                          | `username`                                                                                          | `username`                                         |
+| `has-hyphen`                                                        | `has-2dhyphen`                                                                                      | `has-hyphen`                                       |
+| `Capital`                                                           | `-43apital` (error)                                                                                 | `capital---1a1cf792`                               |
+| `user@email.com`                                                    | `user-40email-2ecom`                                                                                | `user-email-com---0925f997`                        |
+| `a-very-long-name-that-is-too-long-for-sixty-four-character-labels` | `a-2dvery-2dlong-2dname-2dthat-2dis-2dtoo-2dlong-2dfor-2dsixty-2dfour-2dcharacter-2dlabels` (error) | `a-very-long-name-that-is-too-long-for---29ac5fd2` |
+| `ALLCAPS`                                                           | `-41-4c-4c-43-41-50-53` (error)                                                                     | `allcaps---27c6794c`                               |
 
 Most changed names won't have a practical effect.
 However, to avoid `pvc_name` changing even though KubeSpawner 6 didn't persist it,
