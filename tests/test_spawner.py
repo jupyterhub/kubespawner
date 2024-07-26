@@ -901,6 +901,41 @@ async def test_expansion_hyphens():
     ]
 
 
+async def test_init_containers_as_dict():
+    """
+    Test that the init_containers config option can be a dictionary of lists
+    and the values are sorted by key before being added to the pod manifest.
+    """
+    c = Config()
+
+    c.KubeSpawner.init_containers = {
+        '02-beta': {
+            'name': 'mock_name_2',
+            'image': 'mock_image_2',
+            'command': ['mock_command_2'],
+        },
+        '01-alpha': {
+            'name': 'mock_name_1',
+            'image': 'mock_image_1',
+            'command': ['mock_command_1'],
+        },
+    }
+
+    spawner = KubeSpawner(config=c, _mock=True)
+
+    manifest = await spawner.get_pod_manifest()
+    assert isinstance(manifest, V1Pod)
+    init_containers = manifest.spec.init_containers
+    assert len(init_containers) == 2
+    for container in init_containers:
+        assert isinstance(container, V1Container)
+
+    assert init_containers[0].name == 'mock_name_1'
+    assert init_containers[1].name == 'mock_name_2'
+    assert init_containers[0].image == 'mock_image_1'
+    assert init_containers[1].image == 'mock_image_2'
+
+
 _test_profiles = [
     {
         'display_name': 'Training Env - Python',
@@ -1914,3 +1949,606 @@ async def test_volume_list():
     )
     assert manifest.spec.volumes[1].name == 'volumes-beta'
     assert manifest.spec.volumes[1].persistent_volume_claim["claimName"] == 'beta-claim'
+
+
+async def test_extra_containers_dictionary():
+    """
+    Test that extra_containers can be a dictionary of dictionaries.
+    The output list should be lexicographically sorted by key.
+    """
+    c = Config()
+
+    c.KubeSpawner.extra_containers = {
+        "02-group-beta": {
+            'name': 'extra-containers-beta',
+            'image': 'busybox',
+        },
+        "01-group-alpha": {
+            'name': 'extra-containers-alpha',
+            'image': 'busybox',
+        },
+    }
+
+    spawner = KubeSpawner(config=c, _mock=True)
+
+    manifest = await spawner.get_pod_manifest()
+
+    assert isinstance(manifest.spec.containers, list)
+    assert (
+        len(manifest.spec.containers) == 3
+    )  # 1 for the notebook container, 2 for extra_containers
+    assert manifest.spec.containers[1].name == 'extra-containers-alpha'
+    assert manifest.spec.containers[2].name == 'extra-containers-beta'
+
+
+async def test_extra_containers_list():
+    """
+    Test that extra_containers can be a list of dictionaries.
+    """
+    c = Config()
+
+    c.KubeSpawner.extra_containers = [
+        {
+            'name': 'extra-containers-alpha',
+            'image': 'busybox',
+        },
+        {
+            'name': 'extra-containers-beta',
+            'image': 'busybox',
+        },
+    ]
+    spawner = KubeSpawner(config=c, _mock=True)
+
+    manifest = await spawner.get_pod_manifest()
+
+    assert isinstance(manifest.spec.containers, list)
+    assert (
+        len(manifest.spec.containers) == 3
+    )  # 1 for the notebook container, 2 for extra_containers
+    assert manifest.spec.containers[1].name == 'extra-containers-alpha'
+    assert manifest.spec.containers[2].name == 'extra-containers-beta'
+
+
+async def test_tolerations_list():
+    """
+    Test that tolerations can be a list.
+    """
+    c = Config()
+
+    tolerations = [
+        {
+            'key': 'key1',
+            'operator': 'Equal',
+            'value': 'value1',
+            'effect': 'NoSchedule',
+        },
+        {
+            'key': 'key2',
+            'operator': 'Exists',
+            'effect': 'NoExecute',
+        },
+    ]
+    c.KubeSpawner.tolerations = tolerations
+    spawner = KubeSpawner(config=c, _mock=True)
+
+    manifest = await spawner.get_pod_manifest()
+
+    assert isinstance(manifest.spec.tolerations, list)
+    assert len(manifest.spec.tolerations) == 2
+    assert manifest.spec.tolerations[0].key == 'key1'
+    assert manifest.spec.tolerations[0].operator == 'Equal'
+    assert manifest.spec.tolerations[0].value == 'value1'
+    assert manifest.spec.tolerations[0].effect == 'NoSchedule'
+    assert manifest.spec.tolerations[1].key == 'key2'
+    assert manifest.spec.tolerations[1].operator == 'Exists'
+    assert manifest.spec.tolerations[1].effect == 'NoExecute'
+
+
+async def test_tolerations_dict():
+    """
+    Test that tolerations can be a dictionary.
+    The output list should be lexicographically sorted by key.
+    """
+    c = Config()
+
+    tolerations = {
+        '01-group-alpha': {
+            'key': 'key1',
+            'operator': 'Equal',
+            'value': 'value1',
+            'effect': 'NoSchedule',
+        },
+        '02-group-beta': {
+            'key': 'key2',
+            'operator': 'Exists',
+            'effect': 'NoExecute',
+        },
+    }
+    c.KubeSpawner.tolerations = tolerations
+    spawner = KubeSpawner(config=c, _mock=True)
+
+    manifest = await spawner.get_pod_manifest()
+
+    assert isinstance(manifest.spec.tolerations, list)
+    assert len(manifest.spec.tolerations) == 2
+    assert manifest.spec.tolerations[0].key == 'key1'
+    assert manifest.spec.tolerations[0].operator == 'Equal'
+    assert manifest.spec.tolerations[0].value == 'value1'
+    assert manifest.spec.tolerations[0].effect == 'NoSchedule'
+    assert manifest.spec.tolerations[1].key == 'key2'
+    assert manifest.spec.tolerations[1].operator == 'Exists'
+    assert manifest.spec.tolerations[1].effect == 'NoExecute'
+
+
+async def test_node_affinity_preferred():
+    """
+    Test that node_affinity_preferred can be a list or dictionary of dictionaries.
+    The output list should be lexicographically sorted by key when a dictionary is used.
+    """
+    c = Config()
+    node_affinity_preferred = [
+        {
+            'weight': 1,
+            'preference': {
+                'matchExpressions': [
+                    {'key': 'key1', 'operator': 'In', 'values': ['value1', 'value2']}
+                ]
+            },
+        },
+        {
+            'weight': 2,
+            'preference': {'matchExpressions': [{'key': 'key2', 'operator': 'Exists'}]},
+        },
+    ]
+    c.KubeSpawner.node_affinity_preferred = node_affinity_preferred
+    spawner = KubeSpawner(config=c, _mock=True)
+    manifest = await spawner.get_pod_manifest()
+    spec = (
+        manifest.spec.affinity.node_affinity.preferred_during_scheduling_ignored_during_execution
+    )
+
+    assert isinstance(spec, list)
+    assert len(spec) == 2
+    assert spec[0].weight == 1
+    assert spec[0].preference == node_affinity_preferred[0]["preference"]
+    assert spec[1].weight == 2
+    assert spec[1].preference == node_affinity_preferred[1]["preference"]
+
+    node_affinity_preferred_dict = {
+        "02-group-beta": {
+            "weight": 2,
+            "preference": {
+                "matchExpressions": [
+                    {
+                        "key": "security",
+                        "operator": "In",
+                        "values": ["S2"],
+                    }
+                ]
+            },
+        },
+        "01-group-alpha": {
+            "weight": 1,
+            "preference": {
+                "matchExpressions": [
+                    {
+                        "key": "security",
+                        "operator": "In",
+                        "values": ["S1"],
+                    }
+                ]
+            },
+        },
+    }
+    c.KubeSpawner.node_affinity_preferred = node_affinity_preferred_dict
+    spawner = KubeSpawner(config=c, _mock=True)
+    manifest = await spawner.get_pod_manifest()
+    spec = (
+        manifest.spec.affinity.node_affinity.preferred_during_scheduling_ignored_during_execution
+    )
+
+    assert len(spec) == 2
+    assert spec[0].weight == 1
+    assert (
+        spec[0].preference
+        == node_affinity_preferred_dict["01-group-alpha"]["preference"]
+    )
+    assert spec[1].weight == 2
+    assert (
+        spec[1].preference
+        == node_affinity_preferred_dict["02-group-beta"]["preference"]
+    )
+
+
+async def test_node_affinity_required():
+    """
+    Test that node_affinity_required can be a list or dictionary of dictionaries.
+    The output list should be lexicographically sorted by key when a dictionary is used.
+    """
+    c = Config()
+    node_affinity_required = [
+        {
+            'matchExpressions': [
+                {'key': 'key1', 'operator': 'In', 'values': ['value1', 'value2']}
+            ]
+        }
+    ]
+    c.KubeSpawner.node_affinity_required = node_affinity_required
+    spawner = KubeSpawner(config=c, _mock=True)
+    manifest = await spawner.get_pod_manifest()
+    spec = (
+        manifest.spec.affinity.node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms
+    )
+
+    assert isinstance(spec, list)
+    assert len(spec) == 1
+    assert spec[0].match_expressions == node_affinity_required[0]["matchExpressions"]
+
+    node_affinity_required_dict = {
+        "02-group-beta": {
+            "matchExpressions": [
+                {
+                    "key": "security",
+                    "operator": "In",
+                    "values": ["S2"],
+                }
+            ]
+        },
+        "01-group-alpha": {
+            "matchExpressions": [
+                {
+                    "key": "security",
+                    "operator": "In",
+                    "values": ["S1"],
+                }
+            ]
+        },
+    }
+    c.KubeSpawner.node_affinity_required = node_affinity_required_dict
+    spawner = KubeSpawner(config=c, _mock=True)
+    manifest = await spawner.get_pod_manifest()
+    spec = (
+        manifest.spec.affinity.node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms
+    )
+
+    assert len(spec) == 2
+    assert (
+        spec[0].match_expressions
+        == node_affinity_required_dict["01-group-alpha"]["matchExpressions"]
+    )
+    assert (
+        spec[1].match_expressions
+        == node_affinity_required_dict["02-group-beta"]["matchExpressions"]
+    )
+
+
+async def test_pod_affinity_preferred():
+    """
+    Test that pod_affinity_preferred can be a list or dictionary of dictionaries.
+    The output list should be lexicographically sorted by key when a dictionary is used.
+    """
+    c = Config()
+    pod_affinity_preferred = [
+        {
+            'weight': 1,
+            'podAffinityTerm': {
+                'labelSelector': {
+                    'matchExpressions': [
+                        {'key': 'key1', 'operator': 'In', 'values': ['value1']}
+                    ]
+                },
+                'topologyKey': 'topology.kubernetes.io/zone',
+            },
+        }
+    ]
+    c.KubeSpawner.pod_affinity_preferred = pod_affinity_preferred
+    spawner = KubeSpawner(config=c, _mock=True)
+    manifest = await spawner.get_pod_manifest()
+    spec = (
+        manifest.spec.affinity.pod_affinity.preferred_during_scheduling_ignored_during_execution
+    )
+
+    assert isinstance(spec, list)
+    assert len(spec) == 1
+    assert spec[0].weight == 1
+    assert spec[0].pod_affinity_term == pod_affinity_preferred[0]["podAffinityTerm"]
+
+    pod_affinity_preferred_dict = {
+        "02-group-beta": {
+            "weight": 2,
+            "podAffinityTerm": {
+                "labelSelector": {
+                    "matchExpressions": [
+                        {
+                            "key": "security",
+                            "operator": "In",
+                            "values": ["S2"],
+                        }
+                    ]
+                },
+                "topologyKey": "topology.kubernetes.io/zone",
+            },
+        },
+        "01-group-alpha": {
+            "weight": 1,
+            "podAffinityTerm": {
+                "labelSelector": {
+                    "matchExpressions": [
+                        {
+                            "key": "security",
+                            "operator": "In",
+                            "values": ["S1"],
+                        }
+                    ]
+                },
+                "topologyKey": "topology.kubernetes.io/zone",
+            },
+        },
+    }
+    c.KubeSpawner.pod_affinity_preferred = pod_affinity_preferred_dict
+    spawner = KubeSpawner(config=c, _mock=True)
+    manifest = await spawner.get_pod_manifest()
+    spec = (
+        manifest.spec.affinity.pod_affinity.preferred_during_scheduling_ignored_during_execution
+    )
+
+    assert len(spec) == 2
+    assert spec[0].weight == 1
+    assert (
+        spec[0].pod_affinity_term
+        == pod_affinity_preferred_dict["01-group-alpha"]["podAffinityTerm"]
+    )
+    assert spec[1].weight == 2
+    assert (
+        spec[1].pod_affinity_term
+        == pod_affinity_preferred_dict["02-group-beta"]["podAffinityTerm"]
+    )
+
+
+async def test_pod_affinity_required():
+    """
+    Test that pod_affinity_required can be a list or dictionary of dictionaries.
+    The output list should be lexicographically sorted by key when a dictionary is used.
+    """
+    c = Config()
+    pod_affinity_required = [
+        {
+            'labelSelector': {
+                'matchExpressions': [
+                    {'key': 'key1', 'operator': 'In', 'values': ['value1']}
+                ]
+            },
+            'topologyKey': 'topology.kubernetes.io/zone',
+        }
+    ]
+    c.KubeSpawner.pod_affinity_required = pod_affinity_required
+    spawner = KubeSpawner(config=c, _mock=True)
+    manifest = await spawner.get_pod_manifest()
+    spec = (
+        manifest.spec.affinity.pod_affinity.required_during_scheduling_ignored_during_execution
+    )
+
+    assert isinstance(spec, list)
+    assert len(spec) == 1
+    assert spec[0].label_selector == pod_affinity_required[0]["labelSelector"]
+    assert spec[0].topology_key == pod_affinity_required[0]["topologyKey"]
+
+    pod_affinity_required_dict = {
+        "02-group-beta": {
+            "labelSelector": {
+                "matchExpressions": [
+                    {
+                        "key": "security",
+                        "operator": "In",
+                        "values": ["S2"],
+                    }
+                ]
+            },
+            "topologyKey": "topology.kubernetes.io/zone",
+        },
+        "01-group-alpha": {
+            "labelSelector": {
+                "matchExpressions": [
+                    {
+                        "key": "security",
+                        "operator": "In",
+                        "values": ["S1"],
+                    }
+                ]
+            },
+            "topologyKey": "topology.kubernetes.io/zone",
+        },
+    }
+    c.KubeSpawner.pod_affinity_required = pod_affinity_required_dict
+    spawner = KubeSpawner(config=c, _mock=True)
+    manifest = await spawner.get_pod_manifest()
+    spec = (
+        manifest.spec.affinity.pod_affinity.required_during_scheduling_ignored_during_execution
+    )
+
+    assert len(spec) == 2
+    assert (
+        spec[0].label_selector
+        == pod_affinity_required_dict["01-group-alpha"]["labelSelector"]
+    )
+    assert (
+        spec[0].topology_key
+        == pod_affinity_required_dict["01-group-alpha"]["topologyKey"]
+    )
+    assert (
+        spec[1].label_selector
+        == pod_affinity_required_dict["02-group-beta"]["labelSelector"]
+    )
+    assert (
+        spec[1].topology_key
+        == pod_affinity_required_dict["02-group-beta"]["topologyKey"]
+    )
+
+
+async def test_pod_anti_affinity_preferred():
+    """
+    Test that pod_anti_affinity_preferred can be a list or dictionary of dictionaries.
+    The output list should be lexicographically sorted by key when a dictionary is used.
+    """
+    c = Config()
+    pod_anti_affinity_preferred = [
+        {
+            'weight': 1,
+            'podAffinityTerm': {
+                'labelSelector': {
+                    'matchExpressions': [
+                        {'key': 'key1', 'operator': 'In', 'values': ['value1']}
+                    ]
+                },
+                'topologyKey': 'topology.kubernetes.io/zone',
+            },
+        }
+    ]
+    c.KubeSpawner.pod_anti_affinity_preferred = pod_anti_affinity_preferred
+    spawner = KubeSpawner(config=c, _mock=True)
+    manifest = await spawner.get_pod_manifest()
+
+    spec = (
+        manifest.spec.affinity.pod_anti_affinity.preferred_during_scheduling_ignored_during_execution
+    )
+
+    assert isinstance(spec, list)
+    assert len(spec) == 1
+    assert spec[0].weight == 1
+    assert (
+        spec[0].pod_affinity_term == pod_anti_affinity_preferred[0]["podAffinityTerm"]
+    )
+
+    pod_anti_affinity_preferred_dict = {
+        "02-group-beta": {
+            "weight": 2,
+            "podAffinityTerm": {
+                "labelSelector": {
+                    "matchExpressions": [
+                        {
+                            "key": "security",
+                            "operator": "In",
+                            "values": ["S2"],
+                        }
+                    ]
+                },
+                "topologyKey": "topology.kubernetes.io/zone",
+            },
+        },
+        "01-group-alpha": {
+            "weight": 1,
+            "podAffinityTerm": {
+                "labelSelector": {
+                    "matchExpressions": [
+                        {
+                            "key": "security",
+                            "operator": "In",
+                            "values": ["S1"],
+                        }
+                    ]
+                },
+                "topologyKey": "topology.kubernetes.io/region",
+            },
+        },
+    }
+    c.KubeSpawner.pod_anti_affinity_preferred = pod_anti_affinity_preferred_dict
+    spawner = KubeSpawner(config=c, _mock=True)
+    manifest = await spawner.get_pod_manifest()
+    spec = (
+        manifest.spec.affinity.pod_anti_affinity.preferred_during_scheduling_ignored_during_execution
+    )
+
+    assert len(spec) == 2
+    assert spec[0].weight == 1
+    assert (
+        spec[0].pod_affinity_term
+        == pod_anti_affinity_preferred_dict["01-group-alpha"]["podAffinityTerm"]
+    )
+    assert spec[1].weight == 2
+    assert (
+        spec[1].pod_affinity_term
+        == pod_anti_affinity_preferred_dict["02-group-beta"]["podAffinityTerm"]
+    )
+
+
+async def test_pod_anti_affinity_required():
+    """
+    Test that pod_anti_affinity_required can be a list or dictionary of dictionaries.
+    The output list should be lexicographically sorted by key when a dictionary is used.
+    """
+    c = Config()
+    pod_anti_affinity_required = [
+        {
+            "labelSelector": {
+                "matchExpressions": [
+                    {
+                        "key": "security",
+                        "operator": "In",
+                        "values": ["S1"],
+                    }
+                ]
+            },
+            "topologyKey": "failure-domain.beta.kubernetes.io/zone",
+        }
+    ]
+    c.KubeSpawner.pod_anti_affinity_required = pod_anti_affinity_required
+    spawner = KubeSpawner(config=c, _mock=True)
+    manifest = await spawner.get_pod_manifest()
+
+    spec = (
+        manifest.spec.affinity.pod_anti_affinity.required_during_scheduling_ignored_during_execution
+    )
+
+    assert spec[0].label_selector == pod_anti_affinity_required[0]["labelSelector"]
+    assert spec[0].topology_key == pod_anti_affinity_required[0]["topologyKey"]
+
+    pod_anti_affinity_required_dict = {
+        "02-group-beta": {
+            "labelSelector": {
+                "matchExpressions": [
+                    {
+                        "key": "security",
+                        "operator": "In",
+                        "values": ["S2"],
+                    }
+                ]
+            },
+            "topologyKey": "failure-domain.beta.kubernetes.io/region",
+        },
+        "01-group-alpha": {
+            "labelSelector": {
+                "matchExpressions": [
+                    {
+                        "key": "security",
+                        "operator": "In",
+                        "values": ["S1"],
+                    }
+                ]
+            },
+            "topologyKey": "failure-domain.beta.kubernetes.io/zone",
+        },
+    }
+    c.KubeSpawner.pod_anti_affinity_required = pod_anti_affinity_required_dict
+    spawner = KubeSpawner(config=c, _mock=True)
+    manifest = await spawner.get_pod_manifest()
+    spec = (
+        manifest.spec.affinity.pod_anti_affinity.required_during_scheduling_ignored_during_execution
+    )
+
+    assert len(spec) == 2
+    assert (
+        spec[0].label_selector
+        == pod_anti_affinity_required_dict["01-group-alpha"]["labelSelector"]
+    )
+    assert (
+        spec[0].topology_key
+        == pod_anti_affinity_required_dict["01-group-alpha"]["topologyKey"]
+    )
+    assert (
+        spec[1].label_selector
+        == pod_anti_affinity_required_dict["02-group-beta"]["labelSelector"]
+    )
+    assert (
+        spec[1].topology_key
+        == pod_anti_affinity_required_dict["02-group-beta"]["topologyKey"]
+    )
