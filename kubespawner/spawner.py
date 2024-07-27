@@ -1275,8 +1275,8 @@ class KubeSpawner(Spawner):
         If provided as a dictionary, the items will be sorted lexicographically by the dictionary keys and
         then the sorted values will be added to the `initContainers` key.
 
-        Each item (whether in the list or dictionary values) must be a field
-        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#container-v1-core>`__
+        Each item (whether in the list or dictionary values) must be a dictionary which follows the spec at
+        `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#container-v1-core>`__
 
         One usage is disabling access to metadata service from single-user
         notebook server with configuration below::
@@ -1430,7 +1430,7 @@ class KubeSpawner(Spawner):
 
         If provided as a list, each item should be a "Toleration" object.
         If provided as a dictionary, the keys can be any descriptive name and the values should be "Toleration" objects.
-        The items will be sorted lexicographically by the dictionary keys before being added to the pod spec.
+        The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
         Each "Toleration" object should follow the specification at:
         https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#toleration-v1-core
@@ -1486,7 +1486,7 @@ class KubeSpawner(Spawner):
 
         If provided as a list, each item should be a "PreferredSchedulingTerm" object.
         If provided as a dictionary, the keys can be any descriptive name and the values should be "PreferredSchedulingTerm" objects.
-        The items will be sorted lexicographically by the dictionary keys before being added to the pod spec.
+        The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
         Each item should follow the "PreferredSchedulingTerm" specification:
         https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#preferredschedulingterm-v1-core
@@ -1509,7 +1509,7 @@ class KubeSpawner(Spawner):
 
         If provided as a list, each item should be a "NodeSelectorTerm" object.
         If provided as a dictionary, the keys can be any descriptive name and the values should be "NodeSelectorTerm" objects.
-        The items will be sorted lexicographically by the dictionary keys before being added to the pod spec.
+        The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
         Each item should follow the "NodeSelectorTerm" specification:
         https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#nodeselectorterm-v1-core
@@ -1532,7 +1532,7 @@ class KubeSpawner(Spawner):
 
         If provided as a list, each item should be a "WeightedPodAffinityTerm" object.
         If provided as a dictionary, the keys can be any descriptive name and the values should be "WeightedPodAffinityTerm" objects.
-        The items will be sorted lexicographically by the dictionary keys before being added to the pod spec.
+        The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
         Each item should follow the "WeightedPodAffinityTerm" specification:
         https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core
@@ -1555,7 +1555,7 @@ class KubeSpawner(Spawner):
 
         If provided as a list, each item should be a "PodAffinityTerm" object.
         If provided as a dictionary, the keys can be any descriptive name and the values should be "PodAffinityTerm" objects.
-        The items will be sorted lexicographically by the dictionary keys before being added to the pod spec.
+        The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
         Each item should follow the "PodAffinityTerm" specification:
         https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core
@@ -1578,7 +1578,7 @@ class KubeSpawner(Spawner):
 
         If provided as a list, each item should be a "WeightedPodAffinityTerm" object.
         If provided as a dictionary, the keys can be any descriptive name and the values should be "WeightedPodAffinityTerm" objects.
-        The items will be sorted lexicographically by the dictionary keys before being added to the pod spec.
+        The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
         Each item should follow the "WeightedPodAffinityTerm" specification:
         https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core
@@ -1601,7 +1601,7 @@ class KubeSpawner(Spawner):
 
         If provided as a list, each item should be a "PodAffinityTerm" object.
         If provided as a dictionary, the keys can be any descriptive name and the values should be "PodAffinityTerm" objects.
-        The items will be sorted lexicographically by the dictionary keys before being added to the pod spec.
+        The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
         Each item should follow the "PodAffinityTerm" specification:
         https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core
