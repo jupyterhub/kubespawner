@@ -1488,8 +1488,8 @@ class KubeSpawner(Spawner):
         If provided as a dictionary, the keys can be any descriptive name and the values should be "PreferredSchedulingTerm" objects.
         The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
-        Each item should follow the "PreferredSchedulingTerm" specification:
-        https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#preferredschedulingterm-v1-core
+        Each item should follow the `"PreferredSchedulingTerm" specification
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#preferredschedulingterm-v1-core>`__.
         """,
     )
 
@@ -1511,8 +1511,8 @@ class KubeSpawner(Spawner):
         If provided as a dictionary, the keys can be any descriptive name and the values should be "NodeSelectorTerm" objects.
         The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
-        Each item should follow the "NodeSelectorTerm" specification:
-        https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#nodeselectorterm-v1-core
+        Each item should follow the `"NodeSelectorTerm" specification
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#nodeselectorterm-v1-core>`__.
         """,
     )
 
@@ -1534,8 +1534,8 @@ class KubeSpawner(Spawner):
         If provided as a dictionary, the keys can be any descriptive name and the values should be "WeightedPodAffinityTerm" objects.
         The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
-        Each item should follow the "WeightedPodAffinityTerm" specification:
-        https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core
+        Each item should follow the `"WeightedPodAffinityTerm" specification
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core>`__.
         """,
     )
 
@@ -1557,8 +1557,8 @@ class KubeSpawner(Spawner):
         If provided as a dictionary, the keys can be any descriptive name and the values should be "PodAffinityTerm" objects.
         The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
-        Each item should follow the "PodAffinityTerm" specification:
-        https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core
+        Each item should follow the `"PodAffinityTerm" specification
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core>`__.
         """,
     )
 
@@ -1580,8 +1580,8 @@ class KubeSpawner(Spawner):
         If provided as a dictionary, the keys can be any descriptive name and the values should be "WeightedPodAffinityTerm" objects.
         The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
-        Each item should follow the "WeightedPodAffinityTerm" specification:
-        https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core
+        Each item should follow the `"WeightedPodAffinityTerm" specification
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core>`__.
         """,
     )
 
@@ -1603,8 +1603,8 @@ class KubeSpawner(Spawner):
         If provided as a dictionary, the keys can be any descriptive name and the values should be "PodAffinityTerm" objects.
         The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
-        Each item should follow the "PodAffinityTerm" specification:
-        https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core
+        Each item should follow the `"PodAffinityTerm" specification
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core>`__.
         """,
     )
 
