@@ -781,7 +781,7 @@ class KubeSpawner(Spawner):
 
     @validate('image_pull_secrets')
     def _validate_image_pull_secrets(self, proposal):
-        if type(proposal['value']) == str:
+        if isinstance(proposal['value'], str):
             warnings.warn(
                 """Passing KubeSpawner.image_pull_secrets string values is
                 deprecated since KubeSpawner 0.14.0. The recommended
