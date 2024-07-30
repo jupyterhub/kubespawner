@@ -187,8 +187,14 @@ class KubeSpawner(Spawner):
         # By now, all the traitlets have been set, so we can use them to
         # compute other attributes
 
-        # namespace, pod_name, dns_name are persisted in state
+        # namespace, pod_name, etc. are persisted in state
+        # so values set here are only _default_ values.
+        # If this Spawner has ever launched before,
+        # these values will be be overridden in `get_state()`
+        #
         # these same assignments should match clear_state
+        # for transitive values (pod_name, dns_name)
+        # but not persistent values (namespace, pvc_name)
         if self.enable_user_namespaces:
             self.namespace = self._expand_user_properties(
                 self.user_namespace_template, slug_scheme="safe"
