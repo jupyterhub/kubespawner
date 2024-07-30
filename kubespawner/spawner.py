@@ -479,7 +479,7 @@ class KubeSpawner(Spawner):
           - a list of the command and arguments
           - `None` (default) to use the Docker image's `CMD`
 
-        If `cmd` is set, it will be augmented with `spawner.get_args(). This will override the `CMD` specified in the Docker image.
+        If `cmd` is set, it will be augmented with `spawner.get_args()`. This will override the `CMD` specified in the Docker image.
         """,
     )
 
@@ -828,7 +828,7 @@ class KubeSpawner(Spawner):
 
     @validate('image_pull_secrets')
     def _validate_image_pull_secrets(self, proposal):
-        if type(proposal['value']) == str:
+        if isinstance(proposal['value'], str):
             warnings.warn(
                 """Passing KubeSpawner.image_pull_secrets string values is
                 deprecated since KubeSpawner 0.14.0. The recommended
@@ -1080,14 +1080,25 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    volumes = List(
+    volumes = Union(
+        trait_types=[
+            List(),
+            Dict(),
+        ],
         config=True,
         help="""
-        List of Kubernetes Volume specifications that will be mounted in the user pod.
+        List of Kubernetes Volume specifications that will be mounted in the user pod,
+        or a dictionary where the values specify the volume specifications.
 
-        This list will be directly added under `volumes` in the kubernetes pod spec,
-        so you should use the same structure. Each item in the list must have the
-        following two keys:
+        If provided as a list, this list will be directly added under `volumes` in
+        the kubernetes pod spec
+
+        If provided as a dictionary, the items will be sorted lexicographically by the dictionary keys
+        and then the sorted values will be added to the `volumes` key. The keys of the
+        dictionary can be any descriptive name for the volume specification.
+
+        Each item (whether in the list or dictionary values) must be a dictionary with
+        the following two keys:
 
           - `name`
             Name that'll be later used in the `volume_mounts` config to mount this
@@ -1109,14 +1120,25 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    volume_mounts = List(
+    volume_mounts = Union(
+        trait_types=[
+            List(),
+            Dict(),
+        ],
         config=True,
         help="""
-        List of paths on which to mount volumes in the user notebook's pod.
+        List of paths on which to mount volumes in the user notebook's pod, or a dictionary
+        where the values specify the paths to mount the volumes.
 
-        This list will be added to the values of the `volumeMounts` key under the user's
-        container in the kubernetes pod spec, so you should use the same structure as that.
-        Each item in the list should be a dictionary with at least these two keys:
+        If provided as a list, this list will be added directly to the values of the
+        `volumeMounts` key under the user's container in the kubernetes pod spec.
+
+        If provided as a dictionary, the items will be sorted lexicographically by the dictionary keys and
+        then the sorted values will be added to the `volumeMounts` key. The keys of the
+        dictionary can be any descriptive name for the volume mount.
+
+        Each item (whether in the list or dictionary values) should be a dictionary with
+        at least these two keys:
 
            - `mountPath` The path on the container in which we want to mount the volume.
            - `name` The name of the volume we want to mount, as specified in the `volumes` config.
@@ -1284,14 +1306,21 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    init_containers = List(
+    init_containers = Union(
+        trait_types=[
+            List(),
+            Dict(),
+        ],
         config=True,
         help="""
-        List of initialization containers belonging to the pod.
+        List or dictionary of initialization containers belonging to the pod.
 
-        This list will be directly added under `initContainers` in the kubernetes pod spec,
-        so you should use the same structure. Each item in the dict must a field
-        of the `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#container-v1-core>`__
+        If provided as a list, this list will be directly added under `initContainers` in the kubernetes pod spec.
+        If provided as a dictionary, the items will be sorted lexicographically by the dictionary keys and
+        then the sorted values will be added to the `initContainers` key.
+
+        Each item (whether in the list or dictionary values) must be a dictionary which follows the spec at
+        `V1Container specification <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#container-v1-core>`__
 
         One usage is disabling access to metadata service from single-user
         notebook server with configuration below::
@@ -1307,11 +1336,25 @@ class KubeSpawner(Spawner):
                 }
             }]
 
+        Or as a dictionary::
+
+            c.KubeSpawner.init_containers = {
+                "01-iptables": {
+                    "name": "init-iptables",
+                    "image": "<image with iptables installed>",
+                    "command": ["iptables", "-A", "OUTPUT", "-p", "tcp", "--dport", "80", "-d", "169.254.169.254", "-j", "DROP"],
+                    "securityContext": {
+                        "capabilities": {
+                            "add": ["NET_ADMIN"]
+                        }
+                    }
+                }
+            }
 
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/workloads/pods/init-containers/>`__
         for more info on what init containers are and why you might want to use them!
 
-        To user this feature, Kubernetes version must greater than 1.6.
+        To use this feature, Kubernetes version must be greater than 1.6.
         """,
     )
 
@@ -1364,15 +1407,22 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    extra_containers = List(
+    extra_containers = Union(
+        trait_types=[
+            List(),
+            Dict(),
+        ],
         config=True,
         help="""
-        List of containers belonging to the pod which besides to the container generated for notebook server.
+        List or dictionary of containers belonging to the pod in addition to
+        the container generated for the notebook server.
 
-        This list will be directly appended under `containers` in the kubernetes pod spec,
-        so you should use the same structure. Each item in the list is container configuration
-        which follows spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#container-v1-core
+        If provided as a list, this list will be directly appended under `containers` in the kubernetes pod spec.
+        If provided as a dictionary, the items will be sorted lexicographically by the dictionary keys and
+        then the sorted values will be appended to the `containers` key.
 
+        Each item (whether in the list or dictionary values) is container configuration
+        which follows the spec at https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#container-v1-core
 
         One usage is setting crontab in a container to clean sensitive data with configuration below::
 
@@ -1381,6 +1431,16 @@ class KubeSpawner(Spawner):
                 "image": "supercronic",
                 "command": ["/usr/local/bin/supercronic", "/etc/crontab"]
             }]
+
+        or as a dictionary::
+
+            c.KubeSpawner.extra_containers = {
+                "01-crontab": {
+                    "name": "crontab",
+                    "image": "supercronic",
+                    "command": ["/usr/local/bin/supercronic", "/etc/crontab"]
+                }
+            }
 
         .. seealso::
 
@@ -1413,19 +1473,27 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    tolerations = List(
+    tolerations = Union(
+        trait_types=[
+            List(),
+            Dict(),
+        ],
         config=True,
         help="""
-        List of tolerations that are to be assigned to the pod in order to be able to schedule the pod
+        List or dictionary of tolerations that are to be assigned to the pod in order to be able to schedule the pod
         on a node with the corresponding taints. See the official Kubernetes documentation for additional details
         https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
 
-        Pass this field an array of "Toleration" objects
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#toleration-v1-core
+        If provided as a list, each item should be a "Toleration" object.
+        If provided as a dictionary, the keys can be any descriptive name and the values should be "Toleration" objects.
+        The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
-        Example::
+        Each "Toleration" object should follow the specification at:
+        https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#toleration-v1-core
 
-            [
+        Example as a list::
+
+            c.KubeSpawner.tolerations = [
                 {
                     'key': 'key',
                     'operator': 'Equal',
@@ -1439,83 +1507,160 @@ class KubeSpawner(Spawner):
                 }
             ]
 
+        Example as a dictionary::
+
+            c.KubeSpawner.tolerations = {
+                "01-gpu-toleration": {
+                    'key': 'gpu',
+                    'operator': 'Equal',
+                    'value': 'true',
+                    'effect': 'NoSchedule'
+                },
+                "02-general-toleration": {
+                    'key': 'key',
+                    'operator': 'Exists',
+                    'effect': 'NoSchedule'
+                }
+            }
+
         """,
     )
 
-    node_affinity_preferred = List(
+    node_affinity_preferred = Union(
+        trait_types=[
+            List(),
+            Dict(),
+        ],
         config=True,
         help="""
+        List or dictionary of preferred node affinities.
+
         Affinities describe where pods prefer or require to be scheduled, they
         may prefer or require a node to have a certain label or be in proximity
         / remoteness to another pod. To learn more visit
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
-        Pass this field an array of "PreferredSchedulingTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#preferredschedulingterm-v1-core
+        If provided as a list, each item should be a "PreferredSchedulingTerm" object.
+        If provided as a dictionary, the keys can be any descriptive name and the values should be "PreferredSchedulingTerm" objects.
+        The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
+        Each item should follow the `"PreferredSchedulingTerm" specification
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#preferredschedulingterm-v1-core>`__.
         """,
     )
-    node_affinity_required = List(
+
+    node_affinity_required = Union(
+        trait_types=[
+            List(),
+            Dict(),
+        ],
         config=True,
         help="""
+        List or dictionary of required node affinities.
+
         Affinities describe where pods prefer or require to be scheduled, they
         may prefer or require a node to have a certain label or be in proximity
         / remoteness to another pod. To learn more visit
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
-        Pass this field an array of "NodeSelectorTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#nodeselectorterm-v1-core
+        If provided as a list, each item should be a "NodeSelectorTerm" object.
+        If provided as a dictionary, the keys can be any descriptive name and the values should be "NodeSelectorTerm" objects.
+        The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
+        Each item should follow the `"NodeSelectorTerm" specification
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#nodeselectorterm-v1-core>`__.
         """,
     )
-    pod_affinity_preferred = List(
+
+    pod_affinity_preferred = Union(
+        trait_types=[
+            List(),
+            Dict(),
+        ],
         config=True,
         help="""
+        List or dictionary of preferred pod affinities.
+
         Affinities describe where pods prefer or require to be scheduled, they
         may prefer or require a node to have a certain label or be in proximity
         / remoteness to another pod. To learn more visit
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
-        Pass this field an array of "WeightedPodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core
+        If provided as a list, each item should be a "WeightedPodAffinityTerm" object.
+        If provided as a dictionary, the keys can be any descriptive name and the values should be "WeightedPodAffinityTerm" objects.
+        The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
+        Each item should follow the `"WeightedPodAffinityTerm" specification
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core>`__.
         """,
     )
-    pod_affinity_required = List(
+
+    pod_affinity_required = Union(
+        trait_types=[
+            List(),
+            Dict(),
+        ],
         config=True,
         help="""
+        List or dictionary of required pod affinities.
+
         Affinities describe where pods prefer or require to be scheduled, they
         may prefer or require a node to have a certain label or be in proximity
         / remoteness to another pod. To learn more visit
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
-        Pass this field an array of "PodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core
+        If provided as a list, each item should be a "PodAffinityTerm" object.
+        If provided as a dictionary, the keys can be any descriptive name and the values should be "PodAffinityTerm" objects.
+        The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
 
+        Each item should follow the `"PodAffinityTerm" specification
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core>`__.
         """,
     )
-    pod_anti_affinity_preferred = List(
+
+    pod_anti_affinity_preferred = Union(
+        trait_types=[
+            List(),
+            Dict(),
+        ],
         config=True,
         help="""
+        List or dictionary of preferred pod anti-affinities.
+
         Affinities describe where pods prefer or require to be scheduled, they
         may prefer or require a node to have a certain label or be in proximity
         / remoteness to another pod. To learn more visit
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
-        Pass this field an array of "WeightedPodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core
+        If provided as a list, each item should be a "WeightedPodAffinityTerm" object.
+        If provided as a dictionary, the keys can be any descriptive name and the values should be "WeightedPodAffinityTerm" objects.
+        The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
+
+        Each item should follow the `"WeightedPodAffinityTerm" specification
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#weightedpodaffinityterm-v1-core>`__.
         """,
     )
-    pod_anti_affinity_required = List(
+
+    pod_anti_affinity_required = Union(
+        trait_types=[
+            List(),
+            Dict(),
+        ],
         config=True,
         help="""
+        List or dictionary of required pod anti-affinities.
+
         Affinities describe where pods prefer or require to be scheduled, they
         may prefer or require a node to have a certain label or be in proximity
         / remoteness to another pod. To learn more visit
         https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 
-        Pass this field an array of "PodAffinityTerm" objects.*
-        * https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core
+        If provided as a list, each item should be a "PodAffinityTerm" object.
+        If provided as a dictionary, the keys can be any descriptive name and the values should be "PodAffinityTerm" objects.
+        The items will be sorted lexicographically by the dictionary keys and the sorted values will be added to the pod spec.
+
+        Each item should follow the `"PodAffinityTerm" specification
+        <https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podaffinityterm-v1-core>`__.
         """,
     )
 
@@ -1994,6 +2139,15 @@ class KubeSpawner(Spawner):
         else:
             return src
 
+    def _sorted_dict_values(self, src):
+        """
+        Return a list of dict values sorted by keys if src is a dict, otherwise return src as-is.
+        """
+        if isinstance(src, dict):
+            return [src[key] for key in sorted(src.keys())]
+        else:
+            return src
+
     def _build_common_labels(self, extra_labels):
         # Default set of labels, picked up from
         # https://github.com/helm/helm-www/blob/HEAD/content/en/docs/chart_best_practices/labels.md
@@ -2158,8 +2312,10 @@ class KubeSpawner(Spawner):
             container_security_context=csc,
             pod_security_context=psc,
             env=self.get_env(),  # Expansion is handled by get_env
-            volumes=self._expand_all(self.volumes),
-            volume_mounts=self._expand_all(self.volume_mounts),
+            volumes=self._expand_all(self._sorted_dict_values(self.volumes)),
+            volume_mounts=self._expand_all(
+                self._sorted_dict_values(self.volume_mounts)
+            ),
             working_dir=self.working_dir,
             labels=labels,
             annotations=annotations,
@@ -2170,20 +2326,34 @@ class KubeSpawner(Spawner):
             extra_resource_limits=self.extra_resource_limits,
             extra_resource_guarantees=self.extra_resource_guarantees,
             lifecycle_hooks=self.lifecycle_hooks,
-            init_containers=self._expand_all(self.init_containers),
+            init_containers=self._expand_all(
+                self._sorted_dict_values(self.init_containers)
+            ),
             service_account=self._expand_all(self.service_account),
             automount_service_account_token=self.automount_service_account_token,
             extra_container_config=self.extra_container_config,
             extra_pod_config=self._expand_all(self.extra_pod_config),
-            extra_containers=self._expand_all(self.extra_containers),
+            extra_containers=self._expand_all(
+                self._sorted_dict_values(self.extra_containers)
+            ),
             scheduler_name=self.scheduler_name,
-            tolerations=self.tolerations,
-            node_affinity_preferred=self.node_affinity_preferred,
-            node_affinity_required=self.node_affinity_required,
-            pod_affinity_preferred=self.pod_affinity_preferred,
-            pod_affinity_required=self.pod_affinity_required,
-            pod_anti_affinity_preferred=self.pod_anti_affinity_preferred,
-            pod_anti_affinity_required=self.pod_anti_affinity_required,
+            tolerations=self._sorted_dict_values(self.tolerations),
+            node_affinity_preferred=self._sorted_dict_values(
+                self.node_affinity_preferred
+            ),
+            node_affinity_required=self._sorted_dict_values(
+                self.node_affinity_required
+            ),
+            pod_affinity_preferred=self._sorted_dict_values(
+                self.pod_affinity_preferred
+            ),
+            pod_affinity_required=self._sorted_dict_values(self.pod_affinity_required),
+            pod_anti_affinity_preferred=self._sorted_dict_values(
+                self.pod_anti_affinity_preferred
+            ),
+            pod_anti_affinity_required=self._sorted_dict_values(
+                self.pod_anti_affinity_required
+            ),
             priority_class_name=self.priority_class_name,
             ssl_secret_name=self.secret_name if self.internal_ssl else None,
             ssl_secret_mount_path=self.secret_mount_path,
