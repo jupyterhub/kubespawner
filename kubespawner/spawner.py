@@ -196,9 +196,7 @@ class KubeSpawner(Spawner):
         # for transitive values (pod_name, dns_name)
         # but not persistent values (namespace, pvc_name)
         if self.enable_user_namespaces:
-            self.namespace = self._expand_user_properties(
-                self.user_namespace_template, slug_scheme="safe"
-            )
+            self.namespace = self._expand_user_properties(self.user_namespace_template)
             self.log.info(f"Using user namespace: {self.namespace}")
 
         self.pod_name = self._expand_user_properties(self.pod_name_template)
