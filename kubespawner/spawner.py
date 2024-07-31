@@ -1455,6 +1455,9 @@ class KubeSpawner(Spawner):
         kubespawner 7 changed the scheme for computing names and labels to be more reliably valid.
         In order to preserve backward compatibility, the old names must be handled in some places.
 
+        Currently, this only affects `pvc_name`
+        and has no effect when `remember_pvc_name` is False.
+
         You can safely disable this if no PVCs were created or running servers were started
         before upgrading to kubespawner 7.
         """,
@@ -3107,6 +3110,7 @@ class KubeSpawner(Spawner):
         if self.storage_pvc_ensure:
             if (
                 self.handle_legacy_names
+                and self.remember_pvc_name
                 and not self._pvc_exists
                 and self._state_kubespawner_version == "unknown"
             ):
