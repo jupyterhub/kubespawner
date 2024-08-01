@@ -1688,6 +1688,10 @@ async def test_variable_expansion(ssl_app):
             "configured_value": {"schedulerName": "extra-pod-config-{username}"},
             "findable_in": ["pod"],
         },
+        "notebook_container_name_template": {
+            "configured_value": "notebook-container-name-template-{username}",
+            "findable_in": ["pod"],
+        },
     }
 
     c = Config()

@@ -194,6 +194,9 @@ class KubeSpawner(Spawner):
         self.secret_name = self._expand_user_properties(self.secret_name_template)
 
         self.pvc_name = self._expand_user_properties(self.pvc_name_template)
+        self.notebook_container_name = self._expand_user_properties(
+            self.notebook_container_name_template
+        )
         if self.working_dir:
             self.working_dir = self._expand_user_properties(self.working_dir)
         if self.port == 0:
@@ -776,6 +779,22 @@ class KubeSpawner(Spawner):
         <https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod>`__
         for more information on when and why this might need to be set, and what
         it should be set to.
+        """,
+    )
+
+    notebook_container_name_template = Unicode(
+        'notebook',
+        config=True,
+        help="""
+        Template to use to form the name of the notebook container in the pod.
+
+        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
+        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
+        found within strings of this configuration. The username and servername
+        come escaped to follow the `DNS label standard
+        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+
+        Trailing `-` characters are stripped.
         """,
     )
 
@@ -2044,6 +2063,9 @@ class KubeSpawner(Spawner):
                 'hub.jupyter.org/servername': escapism.escape(
                     self.name, safe=self.safe_chars, escape_char='-'
                 ).lower(),
+                # we put the container name in a label so if the template is updated we don't
+                # lose track of which pods are no longer running and leave stranded pods.
+                'hub.jupyter.org/notebook_container_name': self.notebook_container_name,
             }
         )
         return labels
@@ -2232,6 +2254,7 @@ class KubeSpawner(Spawner):
             ssl_secret_name=self.secret_name if self.internal_ssl else None,
             ssl_secret_mount_path=self.secret_mount_path,
             logger=self.log,
+            notebook_container_name=self.notebook_container_name,
         )
 
     def get_secret_manifest(self, owner_reference):
@@ -2416,7 +2439,11 @@ class KubeSpawner(Spawner):
                 return 1
             for c in ctr_stat:
                 # return exit code if notebook container has terminated
-                if c["name"] == 'notebook':
+                notebook_container_name = pod["metadata"]["labels"].get(
+                    "hub.jupyter.org/notebook_container_name", "notebook"
+                )
+
+                if c["name"] == notebook_container_name:
                     if "terminated" in c["state"]:
                         # call self.stop to delete the pod
                         if self.delete_stopped_pods:
