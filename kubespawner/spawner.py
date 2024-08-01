@@ -18,6 +18,7 @@ from typing import Optional, Tuple, Type
 from urllib.parse import urlparse
 
 import escapism
+import jupyterhub
 from jinja2 import ChoiceLoader, Environment, FileSystemLoader, PackageLoader
 from jupyterhub.spawner import Spawner
 from jupyterhub.traitlets import Callable, Command
@@ -28,6 +29,7 @@ from slugify import slugify
 from traitlets import (
     Bool,
     Dict,
+    Enum,
     Integer,
     List,
     Unicode,
@@ -37,6 +39,7 @@ from traitlets import (
     validate,
 )
 
+from . import __version__
 from .clients import load_config, shared_client
 from .objects import (
     make_namespace,
@@ -47,6 +50,7 @@ from .objects import (
     make_service,
 )
 from .reflector import ResourceReflector
+from .slugs import is_valid_label, multi_slug, safe_slug
 from .utils import recursive_format, recursive_update
 
 
@@ -183,6 +187,14 @@ class KubeSpawner(Spawner):
         # By now, all the traitlets have been set, so we can use them to
         # compute other attributes
 
+        # namespace, pod_name, etc. are persisted in state
+        # so values set here are only _default_ values.
+        # If this Spawner has ever launched before,
+        # these values will be be overridden in `get_state()`
+        #
+        # these same assignments should match clear_state
+        # for transitive values (pod_name, dns_name)
+        # but not persistent values (namespace, pvc_name)
         if self.enable_user_namespaces:
             self.namespace = self._expand_user_properties(self.user_namespace_template)
             self.log.info(f"Using user namespace: {self.namespace}")
@@ -191,9 +203,13 @@ class KubeSpawner(Spawner):
         self.dns_name = self.dns_name_template.format(
             namespace=self.namespace, name=self.pod_name
         )
+
         self.secret_name = self._expand_user_properties(self.secret_name_template)
 
         self.pvc_name = self._expand_user_properties(self.pvc_name_template)
+        # _pvc_exists indicates whether we've checked at least once that our pvc name is right
+        # only persist pvc name in state if pvc exists
+        self._pvc_exists = False  # initialized from load_state or start
         if self.working_dir:
             self.working_dir = self._expand_user_properties(self.working_dir)
         if self.port == 0:
@@ -313,6 +329,41 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    slug_scheme = Enum(
+        default_value="safe",
+        values=["safe", "escape"],
+        config=True,
+        help="""Select the scheme for producing slugs such as pod names, etc.
+
+        Can be 'safe' or 'escape'.
+
+        'escape' is the legacy scheme, used in kubespawner < 7.
+        Pick this to minimize changes when upgrading from kubespawner 6.
+        
+        The way templates are computed is different between the two schemes:
+        
+        'escape' scheme:
+        
+        - does not guarantee correct names, e.g. does not handle capital letters or length
+        
+        'safe' scheme:
+        
+        - should guarantee correct names
+        - escapes only if needed
+        - enforces length requirements
+        - uses hash to avoid collisions when escaping is required
+
+        'safe' is the default and preferred as it produces both:
+
+        - better values, where possible (no `-2d` inserted to escape hyphens)
+        - always valid names, avoiding issues where escaping produced invalid names,
+          stripping characters and appending hashes where needed for names
+          that are not already valid.
+
+        .. versionadded:: 7
+        """,
+    )
+
     user_namespace_labels = Dict(
         config=True,
         help="""
@@ -322,11 +373,10 @@ class KubeSpawner(Spawner):
         Note that these are only set when the namespaces are created, not
         later when this setting is updated.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -339,11 +389,10 @@ class KubeSpawner(Spawner):
         Note that these are only set when the namespaces are created, not
         later when this setting is updated.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -354,11 +403,10 @@ class KubeSpawner(Spawner):
         Template to use to form the namespace of user's pods (only if
         enable_user_namespaces is True).
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -442,11 +490,10 @@ class KubeSpawner(Spawner):
         The working directory where the Notebook server will be started inside the container.
         Defaults to `None` so the working directory will be the one defined in the Dockerfile.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -492,22 +539,18 @@ class KubeSpawner(Spawner):
     )
 
     pod_name_template = Unicode(
-        'jupyter-{username}--{servername}',
+        'jupyter-{user_server}',
         config=True,
         help="""
         Template to use to form the name of user's pods.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
-
-        Trailing `-` characters are stripped for safe handling of empty server names (user default servers).
-
         This must be unique within the namespace the pods are being spawned
         in, so if you are running multiple jupyterhubs spawning in the
         same namespace, consider setting this to be something more unique.
+
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
 
         .. versionchanged:: 0.12
             `--` delimiter added to the template,
@@ -523,13 +566,11 @@ class KubeSpawner(Spawner):
         The IP address (or hostname) of user's pods which KubeSpawner connects to.
         If you do not specify the value, KubeSpawner will use the pod IP.
 
-        e.g. `jupyter-{username}--{servername}.notebooks.jupyterhub.svc.cluster.local`,
+        e.g. `{pod_name}.notebooks.jupyterhub.svc.cluster.local`,
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
 
         Trailing `-` characters in each domain level are stripped for safe handling of empty server names (user default servers).
 
@@ -567,16 +608,11 @@ class KubeSpawner(Spawner):
         """,
     )
     pvc_name_template = Unicode(
-        'claim-{username}--{servername}',
+        'claim-{user_server}',
         config=True,
         help="""
         Template to use to form the name of user's pvc.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
 
         Trailing `-` characters are stripped for safe handling of empty server names (user default servers).
 
@@ -584,11 +620,29 @@ class KubeSpawner(Spawner):
         in, so if you are running multiple jupyterhubs spawning in the
         same namespace, consider setting this to be something more unique.
 
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         .. versionchanged:: 0.12
             `--` delimiter added to the template,
             where it was implicitly added to the `servername` field before.
             Additionally, `username--servername` delimiter was `-` instead of `--`,
             allowing collisions in certain circumstances.
+        """,
+    )
+
+    remember_pvc_name = Bool(
+        True,
+        config=True,
+        help="""
+        Remember the PVC name across restarts and configuration changes.
+
+        If True, once the PVC has been created, its name will be remembered and reused
+        and changing pvc_name_template will have no effect on servers that have previously mounted PVCs.
+        If False, changing pvc_name_template or slug_scheme may detatch servers from their PVCs.
+
+        `False` is the behavior of kubespawner prior to version 7.
         """,
     )
 
@@ -606,20 +660,12 @@ class KubeSpawner(Spawner):
     )
 
     secret_name_template = Unicode(
-        'jupyter-{username}{servername}',
+        '{pod_name}',
         config=True,
         help="""
         Template to use to form the name of user's secret.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
-
-        This must be unique within the namespace the pvc are being spawned
-        in, so if you are running multiple jupyterhubs spawning in the
-        same namespace, consider setting this to be something more unique.
+        Default: same as `pod_name`. It is unlikely that this should be changed.
         """,
     )
 
@@ -689,11 +735,9 @@ class KubeSpawner(Spawner):
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
         for more info on what labels are and why you might want to use them!
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
         """,
     )
 
@@ -710,9 +754,10 @@ class KubeSpawner(Spawner):
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>`__
         for more info on what annotations are and why you might want to use them!
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -1066,11 +1111,10 @@ class KubeSpawner(Spawner):
         for more information on the various kinds of volumes available and their options.
         Your kubernetes cluster must already be configured to support the volume types you want to use.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -1100,11 +1144,10 @@ class KubeSpawner(Spawner):
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/storage/volumes>`__
         for more information on how the `volumeMount` item works.
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -1144,9 +1187,10 @@ class KubeSpawner(Spawner):
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>`__
         for more info on what annotations are and why you might want to use them!
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -1162,11 +1206,10 @@ class KubeSpawner(Spawner):
         See `the Kubernetes documentation <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>`__
         for more info on what labels are and why you might want to use them!
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -1224,11 +1267,10 @@ class KubeSpawner(Spawner):
 
            c.KubeSpawner.storage_selector = {'matchLabels':{'content': 'jupyter'}}
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
         """,
     )
 
@@ -1388,7 +1430,7 @@ class KubeSpawner(Spawner):
                 "command": ["/usr/local/bin/supercronic", "/etc/crontab"]
             }]
 
-        Or as a dictionary::
+        or as a dictionary::
 
             c.KubeSpawner.extra_containers = {
                 "01-crontab": {
@@ -1398,11 +1440,26 @@ class KubeSpawner(Spawner):
                 }
             }
 
-        `{username}`, `{userid}`, `{servername}`, `{hubnamespace}`,
-        `{unescaped_username}`, and `{unescaped_servername}` will be expanded if
-        found within strings of this configuration. The username and servername
-        come escaped to follow the `DNS label standard
-        <https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names>`__.
+        .. seealso::
+
+          :ref:`templates` for information on fields available in template strings.
+
+        """,
+    )
+
+    handle_legacy_names = Bool(
+        True,
+        config=True,
+        help="""handle legacy names and labels
+        
+        kubespawner 7 changed the scheme for computing names and labels to be more reliably valid.
+        In order to preserve backward compatibility, the old names must be handled in some places.
+
+        Currently, this only affects `pvc_name`
+        and has no effect when `remember_pvc_name` is False.
+
+        You can safely disable this if no PVCs were created or running servers were started
+        before upgrading to kubespawner 7.
         """,
     )
 
@@ -1957,36 +2014,105 @@ class KubeSpawner(Spawner):
         )
     del _deprecated_name
 
-    def _expand_user_properties(self, template):
+    def _expand_user_properties(self, template, slug_scheme=None):
         # Make sure username and servername match the restrictions for DNS labels
         # Note: '-' is not in safe_chars, as it is being used as escape character
+        if slug_scheme is None:
+            slug_scheme = self.slug_scheme
+
         safe_chars = set(string.ascii_lowercase + string.digits)
 
         raw_servername = self.name or ''
-        safe_servername = escapism.escape(
+        escaped_servername = escapism.escape(
             raw_servername, safe=safe_chars, escape_char='-'
         ).lower()
+
+        # TODO: measure string template?
+        # for object names, max is 255, so very unlikely to exceed
+        # but labels are only 64, so adding a few fields together could easily exceed length limit
+        # if the per-field limit is more than half the whole budget
+        # for now, recommend {user_server} anywhere both username and servername are desired
+        _slug_max_length = 48
+
+        if raw_servername:
+            safe_servername = safe_slug(raw_servername, max_length=_slug_max_length)
+        else:
+            safe_servername = ""
+
+        username = raw_username = self.user.name
+        safe_username = safe_slug(raw_username, max_length=_slug_max_length)
+
+        # compute safe_user_server = {username}--{servername}
+        if (
+            # double-escape if safe names are too long after join
+            len(safe_username) + len(safe_servername) + 2
+            > _slug_max_length
+        ):
+            # need double-escape if there's a chance of collision
+            safe_user_server = multi_slug(
+                [username, raw_servername], max_length=_slug_max_length
+            )
+        else:
+            if raw_servername:
+                # choices:
+                # - {safe_username}--{safe_servername}  # could get 2 hashes
+                # - always {multi_slug}  # always a hash for named servers
+                # - safe_slug({username}--{servername})  # lots of possible collisions to handle specially
+                safe_user_server = f"{safe_username}--{safe_servername}"
+            else:
+                safe_user_server = safe_username
 
         hub_namespace = self._namespace_default()
         if hub_namespace == "default":
             hub_namespace = "user"
 
-        legacy_escaped_username = ''.join(
-            [s if s in safe_chars else '-' for s in self.user.name.lower()]
-        )
-        safe_username = escapism.escape(
+        escaped_username = escapism.escape(
             self.user.name, safe=safe_chars, escape_char='-'
         ).lower()
-        rendered = template.format(
+
+        if slug_scheme == "safe":
+            username = safe_username
+            servername = safe_servername
+            user_server = safe_user_server
+        elif slug_scheme == "escape":
+            # backward-compatible 'escape' scheme is not safe
+            username = escaped_username
+            servername = escaped_servername
+            if servername:
+                user_server = f"{escaped_username}--{escaped_servername}"
+            else:
+                user_server = escaped_username
+        else:
+            raise ValueError(
+                f"slug scheme must be 'safe' or 'escape', not '{slug_scheme}'"
+            )
+
+        ns = dict(
+            # raw values, always consistent
             userid=self.user.id,
-            username=safe_username,
             unescaped_username=self.user.name,
-            legacy_escape_username=legacy_escaped_username,
-            servername=safe_servername,
             unescaped_servername=raw_servername,
             hubnamespace=hub_namespace,
+            # scheme-dependent
+            username=username,
+            servername=servername,
+            user_server=user_server,
+            # safe values (new 'safe' scheme)
+            safe_username=safe_username,
+            safe_servername=safe_servername,
+            safe_user_server=safe_user_server,
+            # legacy values (old 'escape' scheme)
+            escaped_username=escaped_username,
+            escaped_servername=escaped_servername,
+            escaped_user_server=f"{escaped_username}--{escaped_servername}",
         )
-        # strip trailing - delimiter in case of empty servername.
+        # add some resolved values so they can be referred to.
+        # these may not be defined yet (i.e. when computing the values themselves).
+        for attr_name in ("pod_name", "pvc_name", "namespace"):
+            ns[attr_name] = getattr(self, attr_name, f"{attr_name}_unavailable!")
+
+        rendered = template.format(**ns)
+        # strip trailing - delimiter in case of empty servername and old {username}--{servername} template
         # but only if trailing '-' is added by the template rendering,
         # and not in the template itself
         if not template.endswith("-"):
@@ -2027,9 +2153,9 @@ class KubeSpawner(Spawner):
         # Default set of labels, picked up from
         # https://github.com/helm/helm-www/blob/HEAD/content/en/docs/chart_best_practices/labels.md
         labels = {
-            'hub.jupyter.org/username': escapism.escape(
-                self.user.name, safe=self.safe_chars, escape_char='-'
-            ).lower()
+            'hub.jupyter.org/username': safe_slug(
+                self.user.name, is_valid=is_valid_label
+            ),
         }
         labels.update(extra_labels)
         labels.update(self.common_labels)
@@ -2041,9 +2167,9 @@ class KubeSpawner(Spawner):
             {
                 'app.kubernetes.io/component': self.component_label,
                 'component': self.component_label,
-                'hub.jupyter.org/servername': escapism.escape(
-                    self.name, safe=self.safe_chars, escape_char='-'
-                ).lower(),
+                'hub.jupyter.org/servername': safe_slug(
+                    self.name, is_valid=is_valid_label
+                ),
             }
         )
         return labels
@@ -2053,6 +2179,8 @@ class KubeSpawner(Spawner):
         annotations = {'hub.jupyter.org/username': self.user.name}
         if self.name:
             annotations['hub.jupyter.org/servername'] = self.name
+        annotations["hub.jupyter.org/kubespawner-version"] = __version__
+        annotations["hub.jupyter.org/jupyterhub-version"] = jupyterhub.__version__
 
         annotations.update(extra_annotations)
         return annotations
@@ -2105,12 +2233,11 @@ class KubeSpawner(Spawner):
                 hostname = f"[{hostname}]"
 
         if self.pod_connect_ip:
+            # pod_connect_ip is not a slug
             hostname = ".".join(
                 [
-                    s.rstrip("-")
-                    for s in self._expand_user_properties(self.pod_connect_ip).split(
-                        "."
-                    )
+                    self._expand_user_properties(s) if '{' in s else s
+                    for s in self.pod_connect_ip.split(".")
                 ]
             )
 
@@ -2344,11 +2471,23 @@ class KubeSpawner(Spawner):
 
         We also save the namespace and DNS name for use cases where the namespace is
         calculated dynamically, or it changes between restarts.
+
+        `pvc_name` is also saved, to prevent data loss if template changes across restarts.
         """
         state = super().get_state()
+        state["kubespawner_version"] = __version__
+        # pod_name, dns_name should only be persisted if our pod is running
+        # but we don't have a sync check for that
+        # is that true for namespace as well? (namespace affects pvc)
         state['pod_name'] = self.pod_name
         state['namespace'] = self.namespace
         state['dns_name'] = self.dns_name
+
+        # persist pvc name only if it's established that it exists
+        # ignore 'remember_pvc_name' config here so the info is available
+        # so future calls to load_state can decide whether to use it or not
+        if self._pvc_exists:
+            state['pvc_name'] = self.pvc_name
         return state
 
     def get_env(self):
@@ -2369,6 +2508,9 @@ class KubeSpawner(Spawner):
 
         return env
 
+    # remember version of kubespawner that state was loaded from
+    _state_kubespawner_version = None
+
     def load_state(self, state):
         """
         Load state from storage required to reinstate this user's pod
@@ -2379,7 +2521,9 @@ class KubeSpawner(Spawner):
         be the case. This allows us to continue serving from the old pods with
         the old names.
 
-        For a similar reason, we also save the namespace.
+        For a similar reason, we also save the namespace, dns name, pvc name.
+        Anything where changing a template may break something after Hub restart
+        should be persisted here.
         """
         if 'pod_name' in state:
             self.pod_name = state['pod_name']
@@ -2389,6 +2533,40 @@ class KubeSpawner(Spawner):
 
         if 'dns_name' in state:
             self.dns_name = state['dns_name']
+
+        if 'pvc_name' in state and self.remember_pvc_name:
+            self.pvc_name = state['pvc_name']
+            # indicate that we've already checked that self.pvc_name is correct
+            # and we don't need to check for legacy names anymore
+            self._pvc_exists = True
+
+        if 'kubespawner_version' in state:
+            self._state_kubespawner_version = state["kubespawner_version"]
+        elif state:
+            self.log.warning(
+                f"Loading state for {self.user.name}/{self.name} from unknown prior version of kubespawner (likely 6.x), will attempt to upgrade."
+            )
+            # if there was any state to load, we assume 'unknown' version
+            # (most likely 6.x, prior to 'safe' slug scheme)
+            self._state_kubespawner_version = "unknown"
+        else:
+            # None means no state loaded (i.e. fresh launch)
+            self._state_kubespawner_version = None
+
+    def clear_state(self):
+        """Reset state for a stopped server
+
+        This should reset all state values to new values,
+        except those that should persist across Spawner restarts (e.g. pvc_name)
+        """
+        super().clear_state()
+        # this should be the same initialization as __init__ / trait defaults
+        # this allows changing config to take effect after a server restart
+        self.pod_name = self._expand_user_properties(self.pod_name_template)
+        self.dns_name = self.dns_name_template.format(
+            namespace=self.namespace, name=self.pod_name
+        )
+        # reset namespace as well?
 
     async def poll(self):
         """
@@ -2667,7 +2845,7 @@ class KubeSpawner(Spawner):
             #       monitored can be detected by either old or new labels.
             #
             #       The modern labels were added to resources created by
-            #       KubeSpawner 6.3 first adopted in z2jh 4.0.
+            #       KubeSpawner 7 first adopted in z2jh 4.0.
             #
             #       Related to https://github.com/jupyterhub/kubespawner/issues/834
             #
@@ -2756,6 +2934,7 @@ class KubeSpawner(Spawner):
         # error for quota being exceeded. This is because quota is
         # checked before determining if the PVC needed to be
         # created.
+
         pvc_name = pvc.metadata.name
         try:
             self.log.info(
@@ -2870,6 +3049,25 @@ class KubeSpawner(Spawner):
         else:
             return True
 
+    async def _check_pvc_exists(self, pvc_name, namespace):
+        """Return True/False if a pvc exists"""
+        try:
+            await exponential_backoff(
+                partial(
+                    self.api.read_namespaced_persistent_volume_claim,
+                    name=pvc_name,
+                    namespace=self.namespace,
+                ),
+                f"Could not check if PVC {pvc_name} exists",
+                timeout=self.k8s_api_request_retry_timeout,
+            )
+        except ApiException as e:
+            if e.status == 404:
+                return False
+            else:
+                raise
+        return True
+
     async def _start(self):
         """Start the user's pod"""
 
@@ -2910,8 +3108,40 @@ class KubeSpawner(Spawner):
             self._last_event = events[-1]["metadata"]["uid"]
 
         if self.storage_pvc_ensure:
-            pvc = self.get_pvc_manifest()
+            if (
+                self.handle_legacy_names
+                and self.remember_pvc_name
+                and not self._pvc_exists
+                and self._state_kubespawner_version == "unknown"
+            ):
+                # pvc name wasn't reliably persisted before kubespawner 7,
+                # so if the name changed check if a pvc with the legacy name exists and use it.
+                # This will be persisted in state on next launch in the future,
+                # so the comparison below will be False for launches after the first.
+                # this check will only work if pvc_name_template itself has not changed across the upgrade.
+                legacy_pvc_name = self._expand_user_properties(
+                    self.pvc_name_template, slug_scheme="escape"
+                )
+                if legacy_pvc_name != self.pvc_name:
+                    self.log.debug(
+                        f"Checking for legacy-named pvc {legacy_pvc_name} for {self.user.name}"
+                    )
+                    if await self._check_pvc_exists(self.pvc_name, self.namespace):
+                        # if current name exists: use it
+                        self._pvc_exists = True
+                    else:
+                        # current name doesn't exist, check if legacy name exists
+                        if await self._check_pvc_exists(
+                            legacy_pvc_name, self.namespace
+                        ):
+                            # legacy name exists, use it to avoid data loss
+                            self.log.warning(
+                                f"Using legacy pvc {legacy_pvc_name} for {self.user.name}"
+                            )
+                            self.pvc_name = legacy_pvc_name
+                            self._pvc_exists = True
 
+            pvc = self.get_pvc_manifest()
             # If there's a timeout, just let it propagate
             await exponential_backoff(
                 partial(
@@ -2921,6 +3151,8 @@ class KubeSpawner(Spawner):
                 # Each req should be given k8s_api_request_timeout seconds.
                 timeout=self.k8s_api_request_retry_timeout,
             )
+            # indicate that pvc name is known and should be persisted
+            self._pvc_exists = True
 
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and

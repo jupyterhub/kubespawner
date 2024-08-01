@@ -5,6 +5,7 @@ import os
 from functools import partial
 from unittest.mock import Mock
 
+import jupyterhub
 import pytest
 from jupyterhub.objects import Hub, Server
 from jupyterhub.orm import Spawner
@@ -19,8 +20,10 @@ from kubernetes_asyncio.client.models import (
 )
 from traitlets.config import Config
 
+import kubespawner
 from kubespawner import KubeSpawner
 from kubespawner.objects import make_owner_reference, make_service
+from kubespawner.slugs import safe_slug
 
 
 class MockUser(Mock):
@@ -831,6 +834,84 @@ async def test_spawn_start_restore_namespace(
     assert isinstance(status, int)
 
 
+@pytest.mark.parametrize("handle_legacy_names", [True, False])
+async def test_spawn_start_upgrade_pvc_name(
+    config,
+    hub,
+    handle_legacy_names,
+):
+    # Emulate stopping JupyterHub and starting with different settings while some pods still exist
+    user = MockUser(name="needs-Escape")
+    spawner_args = dict(
+        hub=hub,
+        user=user,
+        orm_spawner=MockOrmSpawner(),
+        config=config,
+        api_token="abc123",
+        oauth_client_id="unused",
+    )
+    config.KubeSpawner.storage_pvc_ensure = True
+    config.KubeSpawner.storage_capacity = "100M"
+    config.KubeSpawner.slug_scheme = "escape"
+    config.KubeSpawner.handle_legacy_names = handle_legacy_names
+
+    # Save state with old config
+    old_spawner = KubeSpawner(
+        **spawner_args, pvc_name_template="claim-{username}--{servername}"
+    )
+    old_spawner.load_state({})
+    assert old_spawner._state_kubespawner_version is None
+
+    old_spawner_pvc_name = old_spawner.pvc_name
+
+    # launch old pod
+    await old_spawner.start()
+    assert old_spawner._pvc_exists
+    old_state = old_spawner.get_state()
+    # subset keys to what's actually stored in earlier versions of kubespawner
+    old_state = {key: old_state[key] for key in ("namespace", "pod_name", "dns_name")}
+
+    await old_spawner.stop()
+
+    # Change config
+    config.KubeSpawner.slug_scheme = "safe"
+
+    # Load old state
+    spawner = KubeSpawner(**spawner_args)
+    spawner.load_state(old_state)
+    assert spawner._state_kubespawner_version == "unknown"
+    # value changed from config
+    new_spawner_pvc_name = spawner.pvc_name
+    assert spawner.pvc_name != old_spawner_pvc_name
+    # start checks for old name and uses it if it exists
+    await spawner.start()
+    if handle_legacy_names:
+        assert spawner.pvc_name == old_spawner_pvc_name
+    else:
+        assert spawner.pvc_name == new_spawner_pvc_name
+    assert spawner._pvc_exists
+    await spawner.stop()
+    new_state = spawner.get_state()
+    assert new_state["pvc_name"] == spawner.pvc_name
+
+    # one more time, this time shouldn't need to call _check_pvc_exists
+    config.KubeSpawner.pvc_name_template = "shouldnt-be-used"
+    spawner = KubeSpawner(**spawner_args)
+
+    def _shouldnt_check():
+        pytest.fail("shouldn't have called _check_pvc_exists")
+
+    spawner._check_pvc_exists = _shouldnt_check
+    spawner.load_state(new_state)
+    assert spawner._pvc_exists
+    assert spawner._state_kubespawner_version == kubespawner.__version__
+
+    await spawner.start()
+    assert spawner.pvc_name == new_state["pvc_name"]
+    assert spawner._pvc_exists
+    await spawner.stop()
+
+
 async def test_get_pod_manifest_tolerates_mixed_input():
     """
     Test that the get_pod_manifest function can handle a either a dictionary or
@@ -1402,9 +1483,10 @@ async def test_spawner_env():
         "CALLABLE": lambda spawner: spawner.user.name + " (callable)",
     }
     spawner = KubeSpawner(config=c, _mock=True)
+    slug = safe_slug(spawner.user.name)
     env = spawner.get_env()
     assert env["STATIC"] == "static"
-    assert env["EXPANDED"] == "mock-5fname (expanded)"
+    assert env["EXPANDED"] == f"{slug} (expanded)"
     assert env["ESCAPED"] == "{username}"
     assert env["CALLABLE"] == "mock_name (callable)"
 
@@ -1413,7 +1495,7 @@ async def test_jupyterhub_supplied_env():
     cookie_options = {"samesite": "None", "secure": True}
     c = Config()
 
-    c.KubeSpawner.environment = {"HELLO": "It's {username}"}
+    c.KubeSpawner.environment = {"HELLO": "It's {unescaped_username}"}
     spawner = KubeSpawner(config=c, _mock=True, cookie_options=cookie_options)
 
     pod_manifest = await spawner.get_pod_manifest()
@@ -1421,7 +1503,7 @@ async def test_jupyterhub_supplied_env():
     env = pod_manifest.spec.containers[0].env
 
     # Set via .environment, must be expanded
-    assert V1EnvVar("HELLO", "It's mock-5fname") in env
+    assert V1EnvVar("HELLO", "It's mock_name") in env
     # Set by JupyterHub itself, must not be expanded
     assert V1EnvVar("JUPYTERHUB_COOKIE_OPTIONS", json.dumps(cookie_options)) in env
 
@@ -1453,18 +1535,18 @@ async def test_pod_name_escaping():
 
     spawner = KubeSpawner(config=c, user=user, orm_spawner=orm_spawner, _mock=True)
 
-    assert spawner.pod_name == "jupyter-some-5fuser--test-2dserver-21"
+    assert spawner.pod_name == "jupyter-some-user---7d3a4d4e--test-server---cb54a9af"
 
 
 async def test_pod_name_custom_template():
     user = MockUser()
     user.name = "some_user"
 
-    pod_name_template = "prefix-{username}-suffix"
+    pod_name_template = "prefix-{user_server}-suffix"
 
     spawner = KubeSpawner(user=user, pod_name_template=pod_name_template, _mock=True)
 
-    assert spawner.pod_name == "prefix-some-5fuser-suffix"
+    assert spawner.pod_name == "prefix-some-user---7d3a4d4e-suffix"
 
 
 async def test_pod_name_collision():
@@ -1477,15 +1559,15 @@ async def test_pod_name_collision():
     user2 = MockUser()
     user2.name = "user-has"
     orm_spawner2 = Spawner()
-    orm_spawner2.name = "2ddash"
+    orm_spawner2.name = "dash"
 
     spawner = KubeSpawner(user=user1, orm_spawner=orm_spawner1, _mock=True)
-    assert spawner.pod_name == "jupyter-user-2dhas-2ddash"
-    assert spawner.pvc_name == "claim-user-2dhas-2ddash"
+    assert spawner.pod_name == "jupyter-user-has-dash"
+    assert spawner.pvc_name == "claim-user-has-dash"
     named_spawner = KubeSpawner(user=user2, orm_spawner=orm_spawner2, _mock=True)
-    assert named_spawner.pod_name == "jupyter-user-2dhas--2ddash"
+    assert named_spawner.pod_name == "jupyter-user-has--dash"
     assert spawner.pod_name != named_spawner.pod_name
-    assert named_spawner.pvc_name == "claim-user-2dhas--2ddash"
+    assert named_spawner.pvc_name == "claim-user-has--dash"
     assert spawner.pvc_name != named_spawner.pvc_name
 
 
@@ -1543,6 +1625,8 @@ async def test_pod_connect_ip(kube_ns, kube_client, config, hub_pod, hub):
 async def test_get_pvc_manifest():
     c = Config()
 
+    username = "mock_name"
+    slug = safe_slug(username)
     c.KubeSpawner.pvc_name_template = "user-{username}"
     c.KubeSpawner.storage_extra_labels = {"user": "{username}"}
     c.KubeSpawner.storage_extra_annotations = {"user": "{username}"}
@@ -1553,10 +1637,10 @@ async def test_get_pvc_manifest():
     manifest = spawner.get_pvc_manifest()
 
     assert isinstance(manifest, V1PersistentVolumeClaim)
-    assert manifest.metadata.name == "user-mock-5fname"
+    assert manifest.metadata.name == f"user-{slug}"
     assert manifest.metadata.labels == {
-        "user": "mock-5fname",
-        "hub.jupyter.org/username": "mock-5fname",
+        "user": slug,
+        "hub.jupyter.org/username": username,
         "app.kubernetes.io/name": "jupyterhub",
         "app.kubernetes.io/managed-by": "kubespawner",
         "app.kubernetes.io/component": "singleuser-server",
@@ -1565,10 +1649,12 @@ async def test_get_pvc_manifest():
         "component": "singleuser-storage",
     }
     assert manifest.metadata.annotations == {
-        "user": "mock-5fname",
-        "hub.jupyter.org/username": "mock_name",
+        "user": slug,
+        "hub.jupyter.org/username": username,
+        "hub.jupyter.org/jupyterhub-version": jupyterhub.__version__,
+        "hub.jupyter.org/kubespawner-version": kubespawner.__version__,
     }
-    assert manifest.spec.selector == {"matchLabels": {"user": "mock-5fname"}}
+    assert manifest.spec.selector == {"matchLabels": {"user": slug}}
 
 
 async def test_variable_expansion(ssl_app):

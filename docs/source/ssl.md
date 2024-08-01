@@ -8,7 +8,7 @@ If enabled, the Kubespawner will mount the internal_ssl certificates as Kubernet
 
 To enable, use the following settings:
 
-```
+```python
 c.JupyterHub.internal_ssl = True
 
 c.JupyterHub.spawner_class = 'kubespawner.KubeSpawner'
@@ -16,8 +16,8 @@ c.JupyterHub.spawner_class = 'kubespawner.KubeSpawner'
 
 Further configuration can be specified with the following (listed with their default values):
 
-```
-c.KubeSpawner.secret_name_template = "jupyter-{username}{servername}"
+```python
+c.KubeSpawner.secret_name_template = "{pod_name}"
 
 c.KubeSpawner.secret_mount_path =  "/etc/jupyterhub/ssl/"
 ```

@@ -13,7 +13,7 @@ management of containerized applications. If you want to run a JupyterHub
 setup that needs to scale across multiple nodes (anything with over ~50
 simultaneous users), Kubernetes is a wonderful way to do it. Features include:
 
-- Easily and elasticly run anywhere between 2 and thousands of nodes with the
+- Easily and elastically run anywhere between 2 and thousands of nodes with the
   same set of powerful abstractions. Scale up and down as required by simply
   adding or removing nodes.
 
@@ -81,5 +81,6 @@ utils
 ```{toctree}
 :maxdepth: 2
 :caption: Reference
+templates
 changelog
 ```
