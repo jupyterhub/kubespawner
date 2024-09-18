@@ -4,6 +4,73 @@
 
 ## [Unreleased]
 
+## 7.0
+
+### [7.0.0b1] - 2024-09-23
+
+([full changelog](https://github.com/jupyterhub/kubespawner/compare/6.2.0...7.0.0b1))
+
+#### Breaking changes
+
+- The new config `slug_scheme` defaults to `safe` (recommended) instead of the
+  legacy mode `escape` ([#744](https://github.com/jupyterhub/kubespawner/pull/744)).
+  Upgrade docs are available at {ref}`templates:upgrading-from-less-than-7`.
+
+#### New features added
+
+- Add KubeSpawner.version_info [#852](https://github.com/jupyterhub/kubespawner/pull/852) ([@consideRatio](https://github.com/consideRatio))
+- Add modern app.kubernetes.io labels alongside old [#835](https://github.com/jupyterhub/kubespawner/pull/835) ([@consideRatio](https://github.com/consideRatio), [@sgaist](https://github.com/sgaist), [@manics](https://github.com/manics), [@yuvipanda](https://github.com/yuvipanda), [@minrk](https://github.com/minrk))
+- add 'safe' slug scheme [#744](https://github.com/jupyterhub/kubespawner/pull/744) ([@minrk](https://github.com/minrk), [@consideRatio](https://github.com/consideRatio), [@Ph0tonic](https://github.com/Ph0tonic), [@yuvipanda](https://github.com/yuvipanda), [@manics](https://github.com/manics))
+
+#### Enhancements made
+
+- Allow all list based config to be assigned dictionaries [#845](https://github.com/jupyterhub/kubespawner/pull/845) ([@sunu](https://github.com/sunu), [@yuvipanda](https://github.com/yuvipanda), [@consideRatio](https://github.com/consideRatio))
+- Allow list based config `volumes` and `volume_mounts` to be assigned dictionaries [#843](https://github.com/jupyterhub/kubespawner/pull/843) ([@sunu](https://github.com/sunu), [@yuvipanda](https://github.com/yuvipanda))
+
+#### Bugs fixed
+
+- specify wheel build target for hatch explicitly [#832](https://github.com/jupyterhub/kubespawner/pull/832) ([@willh-cmyk](https://github.com/willh-cmyk), [@consideRatio](https://github.com/consideRatio))
+- Ensure Kubespawner internal SSL secret is correctly encoded as base64 [#828](https://github.com/jupyterhub/kubespawner/pull/828) ([@manics](https://github.com/manics), [@consideRatio](https://github.com/consideRatio))
+- Don't attempt to expand callable environment variables [#826](https://github.com/jupyterhub/kubespawner/pull/826) ([@manics](https://github.com/manics), [@consideRatio](https://github.com/consideRatio))
+- Fix build with hatch by specifying folder name explicitly [#818](https://github.com/jupyterhub/kubespawner/pull/818) ([@consideRatio](https://github.com/consideRatio), [@minrk](https://github.com/minrk))
+
+#### Maintenance and upkeep improvements
+
+- Refresh sphinx config file and resolve failure in sphinx 8 [#853](https://github.com/jupyterhub/kubespawner/pull/853) ([@consideRatio](https://github.com/consideRatio))
+- use sync client in test_objects [#846](https://github.com/jupyterhub/kubespawner/pull/846) ([@minrk](https://github.com/minrk))
+- update images used in tests [#841](https://github.com/jupyterhub/kubespawner/pull/841) ([@minrk](https://github.com/minrk), [@consideRatio](https://github.com/consideRatio))
+- Improve exception handling for listing Kubernetes resources [#837](https://github.com/jupyterhub/kubespawner/pull/837) ([@josefhandl](https://github.com/josefhandl), [@yuvipanda](https://github.com/yuvipanda), [@consideRatio](https://github.com/consideRatio))
+- temporary pin: pytest-asyncio < 0.23 [#817](https://github.com/jupyterhub/kubespawner/pull/817) ([@minrk](https://github.com/minrk), [@consideRatio](https://github.com/consideRatio))
+
+#### Documentation improvements
+
+- docs: add example on upgrading slug scheme for a volume mount and list more template fields [#854](https://github.com/jupyterhub/kubespawner/pull/854) ([@consideRatio](https://github.com/consideRatio))
+- Fix typo in docs (missing `) [#844](https://github.com/jupyterhub/kubespawner/pull/844) ([@krassowski](https://github.com/krassowski), [@consideRatio](https://github.com/consideRatio))
+
+#### Continuous integration improvements
+
+- build(deps): bump jupyterhub/action-k3s-helm from 3 to 4 [#822](https://github.com/jupyterhub/kubespawner/pull/822) ([@consideRatio](https://github.com/consideRatio))
+- build(deps): bump codecov/codecov-action from 3 to 4 [#821](https://github.com/jupyterhub/kubespawner/pull/821) ([@consideRatio](https://github.com/consideRatio))
+- build(deps): bump actions/setup-python from 4 to 5 [#814](https://github.com/jupyterhub/kubespawner/pull/814) ([@consideRatio](https://github.com/consideRatio))
+
+#### Other merged PRs
+
+- [pre-commit.ci] pre-commit autoupdate [#848](https://github.com/jupyterhub/kubespawner/pull/848) ([@consideRatio](https://github.com/consideRatio))
+- [pre-commit.ci] pre-commit autoupdate [#842](https://github.com/jupyterhub/kubespawner/pull/842) ([@yuvipanda](https://github.com/yuvipanda))
+- [pre-commit.ci] pre-commit autoupdate [#838](https://github.com/jupyterhub/kubespawner/pull/838) ([@consideRatio](https://github.com/consideRatio))
+- [pre-commit.ci] pre-commit autoupdate [#830](https://github.com/jupyterhub/kubespawner/pull/830) ([@consideRatio](https://github.com/consideRatio))
+- [pre-commit.ci] pre-commit autoupdate [#823](https://github.com/jupyterhub/kubespawner/pull/823) ([@consideRatio](https://github.com/consideRatio))
+- [pre-commit.ci] pre-commit autoupdate [#812](https://github.com/jupyterhub/kubespawner/pull/812) ([@consideRatio](https://github.com/consideRatio))
+
+#### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2023-11-23&to=2024-09-23&type=c))
+
+@consideRatio ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2023-11-23..2024-09-23&type=Issues)) | @dolfinus ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adolfinus+updated%3A2023-11-23..2024-09-23&type=Issues)) | @harsimranmaan ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aharsimranmaan+updated%3A2023-11-23..2024-09-23&type=Issues)) | @jabbera ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajabbera+updated%3A2023-11-23..2024-09-23&type=Issues)) | @josefhandl ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajosefhandl+updated%3A2023-11-23..2024-09-23&type=Issues)) | @jwclark ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajwclark+updated%3A2023-11-23..2024-09-23&type=Issues)) | @krassowski ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Akrassowski+updated%3A2023-11-23..2024-09-23&type=Issues)) | @manics ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2023-11-23..2024-09-23&type=Issues)) | @minrk ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2023-11-23..2024-09-23&type=Issues)) | @moschlar ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amoschlar+updated%3A2023-11-23..2024-09-23&type=Issues)) | @Ph0tonic ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3APh0tonic+updated%3A2023-11-23..2024-09-23&type=Issues)) | @sgaist ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Asgaist+updated%3A2023-11-23..2024-09-23&type=Issues)) | @shenghu ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ashenghu+updated%3A2023-11-23..2024-09-23&type=Issues)) | @sunu ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Asunu+updated%3A2023-11-23..2024-09-23&type=Issues)) | @willh-cmyk ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Awillh-cmyk+updated%3A2023-11-23..2024-09-23&type=Issues)) | @yuvipanda ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2023-11-23..2024-09-23&type=Issues))
+
 ### [6.2.0] - 2023-11-23
 
 #### New features added
