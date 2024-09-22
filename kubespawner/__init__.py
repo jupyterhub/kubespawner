@@ -11,5 +11,5 @@ in your `jupyterhub_config.py` file.
 # We export KubeSpawner specifically here. This simplifies import for users.
 # Users can simply import kubespawner.KubeSpawner in their applications
 # instead of the more verbose import kubespawner.spawner.KubeSpawner.
-from ._version import __version__
+from ._version import __version__, version_info
 from .spawner import KubeSpawner
