@@ -16,10 +16,22 @@ so for example the default `pod_name_template` of `"jupyter-{user_server}"` will
 
 ## templated properties
 
-Some common templated fields:
+Templated fields include:
 
+- [extra_annotations](#KubeSpawner.extra_annotations)
+- [extra_containers](#KubeSpawner.extra_containers)
+- [extra_labels](#KubeSpawner.extra_labels)
+- [pod_connect_ip](#KubeSpawner.pod_connect_ip)
 - [pod_name_template](#KubeSpawner.pod_name_template)
 - [pvc_name_template](#KubeSpawner.pvc_name_template)
+- [storage_extra_annotations](#KubeSpawner.storage_extra_annotations)
+- [storage_extra_labels](#KubeSpawner.storage_extra_labels)
+- [storage_selector](#KubeSpawner.storage_selector)
+- [user_namespace_annotations](#KubeSpawner.user_namespace_annotations)
+- [user_namespace_labels](#KubeSpawner.user_namespace_labels)
+- [user_namespace_template](#KubeSpawner.user_namespace_template)
+- [volume_mounts](#KubeSpawner.volume_mounts)
+- [volumes](#KubeSpawner.volumes)
 - [working_dir](#KubeSpawner.working_dir)
 
 ## fields
