@@ -103,6 +103,21 @@ c.KubeSpawner.slug_scheme = "escape"  # no changes from kubespawner 6
 c.KubeSpawner.slug_scheme = "safe"  # default for kubespawner 7
 ```
 
+You can also adjust individual template fields to expand independent of
+configured slug scheme. If you for example previously have mounted a folder
+named `{username}` for a single NFS volume with all user's home folders, a
+change of slug scheme could lead to mounting a different folder. To avoid this,
+you can stick with the previous behavior for the volume mount specifically by
+referencing `{escaped_username}` instead.
+
+```python
+c.KubeSpawner.volume_mounts = {
+    "name": "home",
+    "mountPath": "/home/jovyan",
+    "subPath": "{escaped_username}",  # matches "{username}" in kubespawner 6
+}
+```
+
 The new scheme has the following rules:
 
 - the length of any _single_ template field is limited to 48 characters (the total length of the string is not enforced)
