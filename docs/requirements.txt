@@ -10,3 +10,4 @@ autodoc-traits
 myst-parser>=0.17.0
 sphinx-book-theme
 sphinx-copybutton
+sphinxext-rediraffe
