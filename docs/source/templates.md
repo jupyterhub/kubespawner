@@ -94,6 +94,8 @@ c.KubeSpawner.remember_pvc_name = False
 This handling isn't general for PVCs, only specifically the default `pvc_name`.
 If you have defined your own volumes, you need to handle changes to these yourself.
 
+(templates:upgrading-from-less-than-7)=
+
 ## Upgrading from kubespawner \< 7
 
 Prior to kubespawner 7, an escaping scheme was used that ensured values were _unique_,
