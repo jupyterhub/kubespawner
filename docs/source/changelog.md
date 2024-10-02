@@ -6,6 +6,23 @@
 
 ## 7.0
 
+### 7.0.0b2 - 2024-10-02
+
+([full changelog](https://github.com/jupyterhub/kubespawner/compare/7.0.0b1...7.0.0b2))
+
+#### Bugs fixed
+
+- fix some safe slug patterns [#856](https://github.com/jupyterhub/kubespawner/pull/856) ([@minrk](https://github.com/minrk), [@consideRatio](https://github.com/consideRatio))
+
+#### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2024-09-23&to=2024-10-02&type=c))
+
+@consideRatio ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2024-09-23..2024-10-02&type=Issues)) | @minrk ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2024-09-23..2024-10-02&type=Issues))
+
 ### [7.0.0b1] - 2024-09-23
 
 ([full changelog](https://github.com/jupyterhub/kubespawner/compare/6.2.0...7.0.0b1))
