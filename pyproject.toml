@@ -118,7 +118,7 @@ norecursedirs = "lib lib64"
 github_url = "https://github.com/jupyterhub/kubespawner"
 
 [tool.tbump.version]
-current = "7.0.0b1"
+current = "7.0.0b2"
 regex = '''
     (?P<major>\d+)
     \.
