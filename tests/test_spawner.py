@@ -27,7 +27,7 @@ from kubespawner.slugs import safe_slug
 
 
 class MockUser(Mock):
-    name = 'fake'
+    name = '9user@email.com'
     server = Server()
 
     def __init__(self, **kwargs):
@@ -272,7 +272,7 @@ async def test_spawn_start_in_different_namespace(
 async def test_spawn_enable_user_namespaces():
     user = MockUser()
     spawner = KubeSpawner(user=user, _mock=True, enable_user_namespaces=True)
-    assert spawner.namespace.endswith(f"-{user.escaped_name}")
+    assert spawner.namespace.endswith(f"-{safe_slug(user.name)}")
 
 
 async def test_spawn_start_enable_user_namespaces(
@@ -289,7 +289,7 @@ async def test_spawn_start_enable_user_namespaces(
 
     spawner = KubeSpawner(
         hub=hub,
-        user=MockUser(name="start"),
+        user=MockUser(name="start@test"),
         config=config,
         api_token="abc123",
         oauth_client_id="unused",
@@ -1488,7 +1488,7 @@ async def test_spawner_env():
     assert env["STATIC"] == "static"
     assert env["EXPANDED"] == f"{slug} (expanded)"
     assert env["ESCAPED"] == "{username}"
-    assert env["CALLABLE"] == "mock_name (callable)"
+    assert env["CALLABLE"] == "mock@name (callable)"
 
 
 async def test_jupyterhub_supplied_env():
@@ -1503,7 +1503,7 @@ async def test_jupyterhub_supplied_env():
     env = pod_manifest.spec.containers[0].env
 
     # Set via .environment, must be expanded
-    assert V1EnvVar("HELLO", "It's mock_name") in env
+    assert V1EnvVar("HELLO", "It's mock@name") in env
     # Set by JupyterHub itself, must not be expanded
     assert V1EnvVar("JUPYTERHUB_COOKIE_OPTIONS", json.dumps(cookie_options)) in env
 
@@ -1625,7 +1625,7 @@ async def test_pod_connect_ip(kube_ns, kube_client, config, hub_pod, hub):
 async def test_get_pvc_manifest():
     c = Config()
 
-    username = "mock_name"
+    username = "mock@name"
     slug = safe_slug(username)
     c.KubeSpawner.pvc_name_template = "user-{username}"
     c.KubeSpawner.storage_extra_labels = {"user": "{username}"}
@@ -1640,7 +1640,7 @@ async def test_get_pvc_manifest():
     assert manifest.metadata.name == f"user-{slug}"
     assert manifest.metadata.labels == {
         "user": slug,
-        "hub.jupyter.org/username": username,
+        "hub.jupyter.org/username": slug,
         "app.kubernetes.io/name": "jupyterhub",
         "app.kubernetes.io/managed-by": "kubespawner",
         "app.kubernetes.io/component": "singleuser-server",
