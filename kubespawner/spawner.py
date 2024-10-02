@@ -165,7 +165,7 @@ class KubeSpawner(Spawner):
             # runs during test execution only
             if 'user' not in kwargs:
                 user = MockObject()
-                user.name = 'mock_name'
+                user.name = 'mock@name'
                 user.id = 'mock_id'
                 user.url = 'mock_url'
                 self.user = user

@@ -11,13 +11,14 @@ import re
 import string
 
 _alphanum = tuple(string.ascii_letters + string.digits)
+_alpha_lower = tuple(string.ascii_lowercase)
 _alphanum_lower = tuple(string.ascii_lowercase + string.digits)
 _lower_plus_hyphen = _alphanum_lower + ('-',)
 
 # patterns _do not_ need to cover length or start/end conditions,
 # which are handled separately
-_object_pattern = re.compile(r'^[a-z0-9\.-]+$')
-_label_pattern = re.compile(r'^[a-z0-9\.-_]+$', flags=re.IGNORECASE)
+_object_pattern = re.compile(r'^[a-z0-9\-]+$')
+_label_pattern = re.compile(r'^[a-z0-9\.\-_]+$', flags=re.IGNORECASE)
 
 # match anything that's not lowercase alphanumeric (will be stripped, replaced with '-')
 _non_alphanum_pattern = re.compile(r'[^a-z0-9]+')
@@ -47,14 +48,22 @@ def _is_valid_general(
 
 
 def is_valid_object_name(s):
-    """is_valid check for object names"""
+    """is_valid check for object names
+
+    Ensures all strictest object rules apply,
+    satisfying both RFC 1035 and 1123 dns label name rules
+
+    - 63 characters
+    - starts with letter, ends with letter or number
+    - only lowercalse letters, numbers, '-'
+    """
     # object rules: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
     return _is_valid_general(
         s,
-        starts_with=_alphanum_lower,
+        starts_with=_alpha_lower,
         ends_with=_alphanum_lower,
         pattern=_object_pattern,
-        max_length=255,
+        max_length=63,
         min_length=1,
     )
 
@@ -79,19 +88,11 @@ def is_valid_default(s):
 
     Returns True if it's valid for _all_ our known uses
 
-    So we can more easily have a single is_valid check.
-
-    - object names have stricter character rules, but have longer max length
-    - labels have short max length, but allow uppercase
+    Currently, this is the same as is_valid_object_name,
+    which produces a valid DNS label under RFC1035 AND RFC 1123,
+    which is always also a valid label value.
     """
-    return _is_valid_general(
-        s,
-        starts_with=_alphanum_lower,
-        ends_with=_alphanum_lower,
-        pattern=_object_pattern,
-        min_length=1,
-        max_length=63,
-    )
+    return is_valid_object_name(s)
 
 
 def _extract_safe_name(name, max_length):
@@ -99,7 +100,8 @@ def _extract_safe_name(name, max_length):
 
     Guarantees:
 
-    - always starts and ends with a lowercase letter or number
+    - always starts with a lowercase letter
+    - always ends with a lowercase letter or number
     - never more than one hyphen in a row (no '--')
     - only contains lowercase letters, numbers, and hyphens
     - length at least 1 ('x' if other rules strips down to empty string)
@@ -111,6 +113,9 @@ def _extract_safe_name(name, max_length):
     safe_name = _non_alphanum_pattern.sub("-", name.lower())
     # truncate to max_length chars, strip '-' off ends
     safe_name = safe_name.lstrip("-")[:max_length].rstrip("-")
+    # ensure starts with lowercase letter
+    if safe_name and not safe_name.startswith(_alpha_lower):
+        safe_name = "x-" + safe_name[: max_length - 2]
     if not safe_name:
         # make sure it's non-empty
         safe_name = 'x'
