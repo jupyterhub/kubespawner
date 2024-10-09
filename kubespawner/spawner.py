@@ -2802,7 +2802,7 @@ class KubeSpawner(Spawner):
 
         if previous_reflector:
             # we replaced the reflector, stop the old one
-            asyncio.ensure_future(previous_reflector.stop())
+            await asyncio.ensure_future(previous_reflector.stop())
 
         # wait for first load
         await current_reflector.first_load_future
@@ -3254,7 +3254,7 @@ class KubeSpawner(Spawner):
                     ref_key,
                 )
                 self.log.error("Pods: %s", sorted(self.pod_reflector.pods.keys()))
-                asyncio.ensure_future(self._start_watching_pods(replace=True))
+                await asyncio.ensure_future(self._start_watching_pods(replace=True))
             raise
 
         pod = self.pod_reflector.pods[ref_key]
@@ -3379,7 +3379,7 @@ class KubeSpawner(Spawner):
             self.log.error(
                 "Pod %s did not disappear, restarting pod reflector", ref_key
             )
-            asyncio.ensure_future(self._start_watching_pods(replace=True))
+            await asyncio.ensure_future(self._start_watching_pods(replace=True))
             raise
 
     @default('env_keep')
