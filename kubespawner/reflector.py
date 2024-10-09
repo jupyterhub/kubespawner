@@ -389,6 +389,7 @@ class ResourceReflector(LoggingConfigurable):
                 self.log.debug("%s watcher timeout", self.kind)
             finally:
                 w.stop()
+                await w.close()
                 if self._stopping:
                     self.log.info("%s watcher stopped: outer", self.kind)
                     break
