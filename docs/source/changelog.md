@@ -6,7 +6,7 @@
 
 ## 7.0
 
-### 7.0.0b3 - 2024-10-11
+### [7.0.0b3] - 2024-10-11
 
 ([full changelog](https://github.com/jupyterhub/kubespawner/compare/7.0.0b2...7.0.0b3))
 
@@ -24,7 +24,7 @@ See [our definition of contributors](https://github-activity.readthedocs.io/en/l
 
 @consideRatio ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2024-10-02..2024-10-11&type=Issues)) | @manics ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2024-10-02..2024-10-11&type=Issues))
 
-### 7.0.0b2 - 2024-10-02
+### [7.0.0b2] - 2024-10-02
 
 ([full changelog](https://github.com/jupyterhub/kubespawner/compare/7.0.0b1...7.0.0b2))
 
@@ -965,7 +965,10 @@ Change highlights:
 - Update Kubernetes Python client to 6.0 (supporting Kubernetes 1.10 APIs)
 - Numerous bugfixes
 
-[unreleased]: https://github.com/jupyterhub/kubespawner/compare/6.2.0...HEAD
+[unreleased]: https://github.com/jupyterhub/kubespawner/compare/7.0.0b3...HEAD
+[7.0.0b3]: https://github.com/jupyterhub/kubespawner/compare/7.0.0b2...7.0.0b3
+[7.0.0b2]: https://github.com/jupyterhub/kubespawner/compare/7.0.0b1...7.0.0b2
+[7.0.0b1]: https://github.com/jupyterhub/kubespawner/compare/6.2.0...7.0.0b1
 [6.2.0]: https://github.com/jupyterhub/kubespawner/compare/6.1.0...6.2.0
 [6.1.0]: https://github.com/jupyterhub/kubespawner/compare/6.0.0...6.1.0
 [6.0.0]: https://github.com/jupyterhub/kubespawner/compare/5.0.0...6.0.0
