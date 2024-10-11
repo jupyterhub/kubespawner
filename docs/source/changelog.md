@@ -6,6 +6,24 @@
 
 ## 7.0
 
+### 7.0.0b3 - 2024-10-11
+
+([full changelog](https://github.com/jupyterhub/kubespawner/compare/7.0.0b2...7.0.0b3))
+
+#### Bugs fixed
+
+- await asyncio.ensure_future [#860](https://github.com/jupyterhub/kubespawner/pull/860) ([@manics](https://github.com/manics), [@consideRatio](https://github.com/consideRatio))
+- Reflectors watch: close after stop [#859](https://github.com/jupyterhub/kubespawner/pull/859) ([@manics](https://github.com/manics), [@consideRatio](https://github.com/consideRatio))
+
+#### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2024-10-02&to=2024-10-11&type=c))
+
+@consideRatio ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2024-10-02..2024-10-11&type=Issues)) | @manics ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2024-10-02..2024-10-11&type=Issues))
+
 ### 7.0.0b2 - 2024-10-02
 
 ([full changelog](https://github.com/jupyterhub/kubespawner/compare/7.0.0b1...7.0.0b2))
