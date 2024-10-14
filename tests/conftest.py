@@ -249,6 +249,7 @@ async def _delete_namespace(client, namespace):
         else:
             print("waiting for %s to delete" % namespace)
             await asyncio.sleep(1)
+    raise Exception(f"Namespace {namespace} not deleted after 20 s")
 
 
 @pytest_asyncio.fixture(scope="session")
