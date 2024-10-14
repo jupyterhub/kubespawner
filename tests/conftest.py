@@ -236,6 +236,21 @@ async def watch_kubernetes(kube_client, kube_ns):
         raise exc
 
 
+async def _delete_namespace(client, namespace):
+    await client.delete_namespace(namespace, body={}, grace_period_seconds=0)
+    for _ in range(20):  # Usually finishes a good deal faster
+        try:
+            await client.read_namespace(namespace)
+        except ApiException as e:
+            if e.status == 404:
+                return
+            else:
+                raise
+        else:
+            print("waiting for %s to delete" % namespace)
+            await asyncio.sleep(1)
+
+
 @pytest_asyncio.fixture(scope="session")
 async def kube_client(request, kube_ns, kube_another_ns):
     """fixture for the Kubernetes client object.
@@ -279,19 +294,11 @@ async def kube_client(request, kube_ns, kube_another_ns):
 
     # allow opting out of namespace cleanup, for post-mortem debugging
     if not os.environ.get("KUBESPAWNER_DEBUG_NAMESPACE"):
-        for namespace in expected_namespaces:
-            await client.delete_namespace(namespace, body={}, grace_period_seconds=0)
-            for _ in range(20):  # Usually finishes a good deal faster
-                try:
-                    await client.read_namespace(namespace)
-                except ApiException as e:
-                    if e.status == 404:
-                        return
-                    else:
-                        raise
-                else:
-                    print("waiting for %s to delete" % namespace)
-                    await asyncio.sleep(1)
+        # Delete in parallel so that if one deletion fails we still clean up the others
+        ns_deletions = asyncio.gather(
+            *[_delete_namespace(client, ns) for ns in expected_namespaces]
+        )
+        await ns_deletions
 
 
 async def wait_for_pod(kube_client, kube_ns, pod_name, timeout=90):
