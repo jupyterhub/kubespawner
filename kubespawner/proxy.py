@@ -12,6 +12,7 @@ from traitlets import Bool, Dict, List, Unicode
 from .clients import load_config, shared_client
 from .objects import make_ingress
 from .reflector import ResourceReflector
+from .slugs import escape_slug
 from .utils import generate_hashed_slug
 
 
@@ -360,6 +361,10 @@ class KubeIngressProxy(Proxy):
         asyncio.ensure_future(self.endpoint_reflector.start())
 
     def _safe_name_for_routespec(self, routespec):
+        # FIXME: escape_slug isn't exactly as whats done here, because we aren't
+        #        calling .lower(), it may have been fine to just transition to
+        #        escape_slug though, but its wasn't obvious a safe change so it
+        #        wasn't done.
         safe_chars = set(string.ascii_lowercase + string.digits)
         safe_name = generate_hashed_slug(
             'jupyter-'
@@ -369,28 +374,18 @@ class KubeIngressProxy(Proxy):
         return safe_name
 
     def _expand_user_properties(self, template, routespec, data):
-        # Make sure username and servername match the restrictions for DNS labels
-        # Note: '-' is not in safe_chars, as it is being used as escape character
-        safe_chars = set(string.ascii_lowercase + string.digits)
-
         raw_servername = data.get('server_name') or ''
-        safe_servername = escapism.escape(
-            raw_servername, safe=safe_chars, escape_char='-'
-        ).lower()
+        safe_servername = escape_slug(raw_servername)
 
         hub_namespace = self._namespace_default()
         if hub_namespace == "default":
             hub_namespace = "user"
 
         raw_username = data.get('user') or ''
-        safe_username = escapism.escape(
-            raw_username, safe=safe_chars, escape_char='-'
-        ).lower()
+        safe_username = escape_slug(raw_username)
 
         raw_servicename = data.get('services') or ''
-        safe_servicename = escapism.escape(
-            raw_servicename, safe=safe_chars, escape_char='-'
-        ).lower()
+        safe_servicename = escape_slug(raw_servicename)
 
         raw_routespec = routespec
         safe_routespec = self._safe_name_for_routespec(routespec)

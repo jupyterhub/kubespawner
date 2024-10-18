@@ -17,7 +17,6 @@ from functools import partial
 from typing import Optional, Tuple, Type
 from urllib.parse import urlparse
 
-import escapism
 import jupyterhub
 from jinja2 import ChoiceLoader, Environment, FileSystemLoader, PackageLoader
 from jupyterhub.spawner import Spawner
@@ -50,7 +49,7 @@ from .objects import (
     make_service,
 )
 from .reflector import ResourceReflector
-from .slugs import is_valid_label, multi_slug, safe_slug
+from .slugs import escape_slug, is_valid_label, multi_slug, safe_slug
 from .utils import recursive_format, recursive_update
 
 
@@ -2015,17 +2014,11 @@ class KubeSpawner(Spawner):
     del _deprecated_name
 
     def _expand_user_properties(self, template, slug_scheme=None):
-        # Make sure username and servername match the restrictions for DNS labels
-        # Note: '-' is not in safe_chars, as it is being used as escape character
         if slug_scheme is None:
             slug_scheme = self.slug_scheme
 
-        safe_chars = set(string.ascii_lowercase + string.digits)
-
         raw_servername = self.name or ''
-        escaped_servername = escapism.escape(
-            raw_servername, safe=safe_chars, escape_char='-'
-        ).lower()
+        escaped_servername = escape_slug(raw_servername)
 
         # TODO: measure string template?
         # for object names, max is 255, so very unlikely to exceed
@@ -2066,9 +2059,7 @@ class KubeSpawner(Spawner):
         if hub_namespace == "default":
             hub_namespace = "user"
 
-        escaped_username = escapism.escape(
-            self.user.name, safe=safe_chars, escape_char='-'
-        ).lower()
+        escaped_username = escape_slug(self.user.name)
 
         if slug_scheme == "safe":
             username = safe_username
