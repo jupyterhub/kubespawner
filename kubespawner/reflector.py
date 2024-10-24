@@ -306,6 +306,7 @@ class ResourceReflector(LoggingConfigurable):
             w = watch.Watch()
             try:
                 resource_version = await self._list_and_update(resource_version)
+                cur_delay = 0.1
                 watch_args = {
                     "label_selector": self.label_selector,
                     "field_selector": self.field_selector,
