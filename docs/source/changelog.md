@@ -6,7 +6,7 @@
 
 ## 7.0
 
-### [7.0.0] - 2024-10-21
+### [7.0.0] - 2024-10-25
 
 ([full changelog](https://github.com/jupyterhub/kubespawner/compare/6.2.0...7.0.0))
 
@@ -30,6 +30,7 @@
 
 #### Bugs fixed
 
+- Reset cur_delay after listing resources [#869](https://github.com/jupyterhub/kubespawner/pull/869) ([@d-gol](https://github.com/d-gol), [@manics](https://github.com/manics))
 - await asyncio.ensure_future [#860](https://github.com/jupyterhub/kubespawner/pull/860) ([@manics](https://github.com/manics), [@consideRatio](https://github.com/consideRatio))
 - Reflectors watch: close after stop [#859](https://github.com/jupyterhub/kubespawner/pull/859) ([@manics](https://github.com/manics), [@consideRatio](https://github.com/consideRatio))
 - fix some safe slug patterns [#856](https://github.com/jupyterhub/kubespawner/pull/856) ([@minrk](https://github.com/minrk), [@consideRatio](https://github.com/consideRatio))
@@ -49,7 +50,10 @@
 #### Documentation improvements
 
 - Make changelog links consistent [#862](https://github.com/jupyterhub/kubespawner/pull/862) ([@consideRatio](https://github.com/consideRatio))
+- Add changelog for 7.0.0b3 [#861](https://github.com/jupyterhub/kubespawner/pull/861) ([@consideRatio](https://github.com/consideRatio))
+- changelog for 7.0.0b2 [#857](https://github.com/jupyterhub/kubespawner/pull/857) ([@minrk](https://github.com/minrk), [@consideRatio](https://github.com/consideRatio))
 - docs: add example on upgrading slug scheme for a volume mount and list more template fields [#854](https://github.com/jupyterhub/kubespawner/pull/854) ([@consideRatio](https://github.com/consideRatio))
+- Add changelog for 7.0.0b1 [#851](https://github.com/jupyterhub/kubespawner/pull/851) ([@consideRatio](https://github.com/consideRatio), [@minrk](https://github.com/minrk))
 - Fix typo in docs (missing `) [#844](https://github.com/jupyterhub/kubespawner/pull/844) ([@krassowski](https://github.com/krassowski), [@consideRatio](https://github.com/consideRatio))
 
 #### Contributors to this release
@@ -57,9 +61,9 @@
 The following people contributed discussions, new ideas, code and documentation contributions, and review.
 See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/#how-does-this-tool-define-contributions-in-the-reports).
 
-([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2023-11-23&to=2024-10-21&type=c))
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2023-11-23&to=2024-10-25&type=c))
 
-@consideRatio ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2023-11-23..2024-10-21&type=Issues)) | @dolfinus ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adolfinus+updated%3A2023-11-23..2024-10-21&type=Issues)) | @harsimranmaan ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aharsimranmaan+updated%3A2023-11-23..2024-10-21&type=Issues)) | @jabbera ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajabbera+updated%3A2023-11-23..2024-10-21&type=Issues)) | @josefhandl ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajosefhandl+updated%3A2023-11-23..2024-10-21&type=Issues)) | @jwclark ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajwclark+updated%3A2023-11-23..2024-10-21&type=Issues)) | @krassowski ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Akrassowski+updated%3A2023-11-23..2024-10-21&type=Issues)) | @manics ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2023-11-23..2024-10-21&type=Issues)) | @minrk ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2023-11-23..2024-10-21&type=Issues)) | @moschlar ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amoschlar+updated%3A2023-11-23..2024-10-21&type=Issues)) | @Ph0tonic ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3APh0tonic+updated%3A2023-11-23..2024-10-21&type=Issues)) | @sgaist ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Asgaist+updated%3A2023-11-23..2024-10-21&type=Issues)) | @shenghu ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ashenghu+updated%3A2023-11-23..2024-10-21&type=Issues)) | @sunu ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Asunu+updated%3A2023-11-23..2024-10-21&type=Issues)) | @willh-cmyk ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Awillh-cmyk+updated%3A2023-11-23..2024-10-21&type=Issues)) | @yuvipanda ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2023-11-23..2024-10-21&type=Issues))
+@consideRatio ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2023-11-23..2024-10-25&type=Issues)) | @d-gol ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ad-gol+updated%3A2023-11-23..2024-10-25&type=Issues)) | @dolfinus ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Adolfinus+updated%3A2023-11-23..2024-10-25&type=Issues)) | @harsimranmaan ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aharsimranmaan+updated%3A2023-11-23..2024-10-25&type=Issues)) | @jabbera ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajabbera+updated%3A2023-11-23..2024-10-25&type=Issues)) | @josefhandl ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajosefhandl+updated%3A2023-11-23..2024-10-25&type=Issues)) | @jwclark ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajwclark+updated%3A2023-11-23..2024-10-25&type=Issues)) | @krassowski ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Akrassowski+updated%3A2023-11-23..2024-10-25&type=Issues)) | @manics ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2023-11-23..2024-10-25&type=Issues)) | @minrk ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2023-11-23..2024-10-25&type=Issues)) | @moschlar ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amoschlar+updated%3A2023-11-23..2024-10-25&type=Issues)) | @Ph0tonic ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3APh0tonic+updated%3A2023-11-23..2024-10-25&type=Issues)) | @sgaist ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Asgaist+updated%3A2023-11-23..2024-10-25&type=Issues)) | @shenghu ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ashenghu+updated%3A2023-11-23..2024-10-25&type=Issues)) | @sunu ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Asunu+updated%3A2023-11-23..2024-10-25&type=Issues)) | @willh-cmyk ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Awillh-cmyk+updated%3A2023-11-23..2024-10-25&type=Issues)) | @yuvipanda ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2023-11-23..2024-10-25&type=Issues))
 
 ### [6.2.0] - 2023-11-23
 
