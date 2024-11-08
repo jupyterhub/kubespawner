@@ -1697,7 +1697,6 @@ class KubeSpawner(Spawner):
     )
 
     additional_profile_form_template_paths = List(
-        default=[],
         help="""
         Additional paths to search for jinja2 templates when rendering profile_form.
 
