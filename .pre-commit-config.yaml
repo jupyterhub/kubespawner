@@ -63,7 +63,7 @@ repos:
 
   # Lint our jinja2 templates
   - repo: https://github.com/Riverside-Healthcare/djLint
-    rev: v1.35.4
+    rev: v1.36.3
     hooks:
       - id: djlint-jinja
         files: "kubespawner/templates/.*\\.html"
