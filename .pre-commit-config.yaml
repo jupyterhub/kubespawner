@@ -11,7 +11,7 @@
 repos:
   # Autoformat: Python code, syntax patterns are modernized
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.19.0
+    rev: v3.19.1
     hooks:
       - id: pyupgrade
         args:
@@ -19,13 +19,13 @@ repos:
 
   # Autoformat: Python code
   - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+    rev: 6.0.0
     hooks:
       - id: isort
 
   # Autoformat: Python code
   - repo: https://github.com/psf/black
-    rev: 24.10.0
+    rev: 25.1.0
     hooks:
       - id: black
 
@@ -63,7 +63,7 @@ repos:
 
   # Lint our jinja2 templates
   - repo: https://github.com/Riverside-Healthcare/djLint
-    rev: v1.35.4
+    rev: v1.36.4
     hooks:
       - id: djlint-jinja
         files: "kubespawner/templates/.*\\.html"
