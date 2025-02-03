@@ -192,7 +192,7 @@ def multi_slug(names, max_length=48):
     for name in names[1:]:
         # \xFF can't occur as a start byte in UTF8
         # so use it as a word delimiter to make sure overlapping words don't collide
-        hasher.update(b"\xFF")
+        hasher.update(b"\xff")
         hasher.update(name.encode("utf8"))
     hash = hasher.hexdigest()[:_hash_length]
 
