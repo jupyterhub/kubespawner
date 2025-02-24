@@ -3815,6 +3815,24 @@ class KubeSpawner(Spawner):
             )
             return
 
+        if (
+            not self.name
+            and '{user_server}' not in self.pvc_name_template
+            and '{username}' not in self.pvc_name_template
+        ):
+            # PVC is shared by multiple users
+            self.log.info(
+                f"Not deleting shared pvc for user {log_name}: {self.pvc_name}"
+            )
+            return
+
+        if self.pvc_name != self._expand_user_properties(self.pvc_name_template):
+            # PVC was created using a different template
+            self.log.info(
+                f"Not deleting pvc for user {log_name}: {self.pvc_name} does not match {self.pvc_name_template}"
+            )
+            return
+
         await exponential_backoff(
             partial(
                 self._make_delete_pvc_request,
