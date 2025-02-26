@@ -2,8 +2,10 @@ import asyncio
 import base64
 import json
 import os
+from copy import deepcopy
 from functools import partial
 from unittest.mock import Mock
+from uuid import uuid4
 
 import jupyterhub
 import pytest
@@ -1856,45 +1858,85 @@ async def test_url_changed(kube_ns, kube_client, config, hub_pod, hub):
     await spawner.stop()
 
 
-async def test_delete_pvc(kube_ns, kube_client, hub, config):
+@pytest.mark.parametrize(
+    "pvc_template1,pvc_template2,should_delete",
+    [
+        (None, None, True),
+        ("not-templated", "not-templated", False),
+        (None, "modified-{user_server}", False),
+        ("{user_server}-custom", "{user_server}-custom", True),
+        ("{username}-custom", "{username}-custom", True),
+        # This is currently allowed even though the templates are different,
+        # because we're testing with the default server so user_server==username
+        ("{user_server}-custom", "{username}-custom", True),
+        # TODO: Test that deleting a named server doesn't delete "{username}-custom"
+    ],
+)
+async def test_delete_pvc(
+    kube_ns, kube_client, hub, config, pvc_template1, pvc_template2, should_delete
+):
+
     config.KubeSpawner.storage_pvc_ensure = True
     config.KubeSpawner.storage_capacity = '1M'
+    config2 = deepcopy(config)
+    if pvc_template1:
+        config.KubeSpawner.pvc_name_template = pvc_template1
+    if pvc_template2:
+        config2.KubeSpawner.pvc_name_template = pvc_template2
+    mockusername = "u-" + str(uuid4()).split("-")[0]
 
-    spawner = KubeSpawner(
+    async def start_stop_pod(spawner):
+        spawner.api = kube_client
+
+        # start the spawner
+        await spawner.start()
+
+        # verify the pod exists
+        pod_name = "jupyter-%s" % spawner.user.name
+        pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+        pod_names = [p.metadata.name for p in pods]
+        assert pod_name in pod_names
+
+        # verify PVC is created
+        pvc_name = spawner.pvc_name
+        pvc_list = (
+            await kube_client.list_namespaced_persistent_volume_claim(kube_ns)
+        ).items
+        pvc_names = [s.metadata.name for s in pvc_list]
+        assert pvc_name in pvc_names
+
+        state = spawner.get_state()
+
+        # stop the pod
+        await spawner.stop()
+
+        # verify pod is gone
+        pods = (await kube_client.list_namespaced_pod(kube_ns)).items
+        pod_names = [p.metadata.name for p in pods]
+        assert "jupyter-%s" % spawner.user.name not in pod_names
+        return pvc_name, state
+
+    spawner1 = KubeSpawner(
         hub=hub,
-        user=MockUser(name="mockuser"),
+        user=MockUser(name=mockusername),
         config=config,
         _mock=True,
     )
-    spawner.api = kube_client
+    pvc_name, state = await start_stop_pod(spawner1)
 
-    # start the spawner
-    await spawner.start()
+    spawner2 = KubeSpawner(
+        hub=hub,
+        user=MockUser(name=mockusername),
+        config=config2,
+        _mock=True,
+    )
+    spawner2.load_state(state)
+    pvc_name2, state2 = await start_stop_pod(spawner2)
 
-    # verify the pod exists
-    pod_name = "jupyter-%s" % spawner.user.name
-    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
-    pod_names = [p.metadata.name for p in pods]
-    assert pod_name in pod_names
-
-    # verify PVC is created
-    pvc_name = spawner.pvc_name
-    pvc_list = (
-        await kube_client.list_namespaced_persistent_volume_claim(kube_ns)
-    ).items
-    pvc_names = [s.metadata.name for s in pvc_list]
-    assert pvc_name in pvc_names
-
-    # stop the pod
-    await spawner.stop()
-
-    # verify pod is gone
-    pods = (await kube_client.list_namespaced_pod(kube_ns)).items
-    pod_names = [p.metadata.name for p in pods]
-    assert "jupyter-%s" % spawner.user.name not in pod_names
+    assert pvc_name == pvc_name2
 
     # delete the PVC
-    await spawner.delete_forever()
+    await spawner2.delete_forever()
 
     # verify PVC is deleted, it may take a little while
     for i in range(5):
@@ -1906,7 +1948,10 @@ async def test_delete_pvc(kube_ns, kube_client, hub, config):
             await asyncio.sleep(1)
         else:
             break
-    assert pvc_name not in pvc_names
+    if should_delete:
+        assert pvc_name not in pvc_names
+    else:
+        assert pvc_name in pvc_names
 
 
 async def test_ipv6_addr():
