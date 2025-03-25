@@ -3057,6 +3057,7 @@ class KubeSpawner(Spawner):
             else:
                 raise
         return True
+
     async def _start(self):
         """Start the user's pod"""
 
@@ -3145,13 +3146,15 @@ class KubeSpawner(Spawner):
 
         # Try to get pod template from configmap first
         pod_template = await self._get_pod_template_from_configmap()
-        
+
         if pod_template:
             # Create pod from the configmap template
             pod = await self._create_pod_from_template(pod_template)
             if not pod:
                 # If there was an error creating pod from template, fallback to the original method
-                self.log.warning("Failed to create pod from template, falling back to default pod creation")
+                self.log.warning(
+                    "Failed to create pod from template, falling back to default pod creation"
+                )
                 pod = await self.get_pod_manifest()
                 if self.modify_pod_hook:
                     self.log.info('Pod is being modified via modify_pod_hook')
@@ -3278,6 +3281,7 @@ class KubeSpawner(Spawner):
             )
 
         return self._get_pod_url(pod)
+
     async def _make_delete_pod_request(
         self, pod_name, delete_options, grace_seconds, request_timeout
     ):
@@ -3834,6 +3838,7 @@ class KubeSpawner(Spawner):
             f'Could not delete pvc {self.pvc_name}',
             timeout=self.k8s_api_request_retry_timeout,
         )
+
     async def _get_pod_template_from_configmap(self):
         """
         Attempt to get a pod template from a configmap with the same name as the pod.
@@ -3842,19 +3847,22 @@ class KubeSpawner(Spawner):
         try:
             self.log.info(f"Looking for pod template in configmap {self.pod_name}")
             configmap = await self.api.read_namespaced_config_map(
-                name=self.pod_name,
-                namespace=self.namespace
+                name=self.pod_name, namespace=self.namespace
             )
-            
+
             if 'pod-template' in configmap.data:
                 self.log.info(f"Found pod template in configmap {self.pod_name}")
                 return yaml.safe_load(configmap.data['pod-template'])
             else:
-                self.log.warning(f"Configmap {self.pod_name} exists but does not contain 'pod-template' key")
+                self.log.warning(
+                    f"Configmap {self.pod_name} exists but does not contain 'pod-template' key"
+                )
                 return None
         except ApiException as e:
             if e.status == 404:
-                self.log.info(f"No configmap named {self.pod_name} found, will use default pod creation")
+                self.log.info(
+                    f"No configmap named {self.pod_name} found, will use default pod creation"
+                )
                 return None
             else:
                 self.log.warning(f"Error retrieving configmap {self.pod_name}: {e}")
@@ -3871,30 +3879,32 @@ class KubeSpawner(Spawner):
             if 'metadata' not in template_dict:
                 template_dict['metadata'] = {}
             template_dict['metadata']['name'] = self.pod_name
-            
+
             # Ensure the pod is in the correct namespace
             template_dict['metadata']['namespace'] = self.namespace
-            
+
             # Merge our labels with the template's labels
             if 'labels' not in template_dict['metadata']:
                 template_dict['metadata']['labels'] = {}
             labels = self._build_pod_labels(self._expand_all(self.extra_labels))
             template_dict['metadata']['labels'].update(labels)
-            
+
             # Merge our annotations with the template's annotations
             if 'annotations' not in template_dict['metadata']:
                 template_dict['metadata']['annotations'] = {}
-            annotations = self._build_common_annotations(self._expand_all(self.extra_annotations))
+            annotations = self._build_common_annotations(
+                self._expand_all(self.extra_annotations)
+            )
             template_dict['metadata']['annotations'].update(annotations)
-            
+
             # Convert dictionary to a V1Pod object
             pod = client.V1Pod(**template_dict)
-            
+
             # Apply the modify_pod_hook if configured
             if self.modify_pod_hook:
                 self.log.info('Pod template is being modified via modify_pod_hook')
                 pod = await maybe_future(self.modify_pod_hook(self, pod))
-                
+
             return pod
         except Exception as e:
             self.log.error(f"Error creating pod from template: {e}")
