@@ -2169,7 +2169,7 @@ class KubeSpawner(Spawner):
         annotations = {
             'hub.jupyter.org/username': self.user.name,
             "hub.jupyter.org/kubespawner-version": __version__,
-            "hub.jupyter.org/jupyterhub-version": jupyterhub.__version__
+            "hub.jupyter.org/jupyterhub-version": jupyterhub.__version__,
         }
 
         annotations.update(extra_annotations)
