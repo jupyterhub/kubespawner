@@ -47,7 +47,6 @@ simultaneous users), Kubernetes is a wonderful way to do it. Features include:
 - Control various security parameters (such as userid/groupid, SELinux, etc)
   via flexible [Pod Security Policy](https://kubernetes.io/docs/concepts/security/pod-security-policy/).
 
-
 In general, Kubernetes provides a ton of well thought out, useful features -
 and you can use all of them along with this spawner.
 
