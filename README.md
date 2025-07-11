@@ -30,7 +30,7 @@ simultaneous users), Kubernetes is a wonderful way to do it. Features include:
   monitoring and failover for the hub process itself.
 
 - Spawn multiple hubs in the same kubernetes cluster, with support for
-  [namespaces](https://kubernetes.io/docs/admin/namespaces/). You can limit the
+  [namespaces](https://kubernetes.io/docs/tasks/administer-cluster/namespaces/). You can limit the
   amount of resources each namespace can use, effectively limiting the amount
   of resources a single JupyterHub (and its users) can use. This allows
   organizations to easily maintain multiple JupyterHubs with just one
@@ -38,18 +38,15 @@ simultaneous users), Kubernetes is a wonderful way to do it. Features include:
   utilization.
 
 - Provide guarantees and limits on the amount of resources (CPU / RAM) that
-  single-user notebooks can use. Kubernetes has comprehensive [resource control](https://kubernetes.io/docs/user-guide/compute-resources/) that can
+  single-user notebooks can use. Kubernetes has comprehensive [resource control](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/) that can
   be used from the spawner.
 
-- Mount various types of [persistent volumes](https://kubernetes.io/docs/user-guide/persistent-volumes/)
+- Mount various types of [persistent volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
   onto the single-user notebook's container.
 
 - Control various security parameters (such as userid/groupid, SELinux, etc)
-  via flexible [Pod Security Policies](https://kubernetes.io/docs/user-guide/pod-security-policy/).
+  via flexible [Pod Security Policy](https://kubernetes.io/docs/concepts/security/pod-security-policy/).
 
-- Run easily in multiple clouds (or on your own machines). Helps avoid vendor
-  lock-in. You can even spread out your cluster across
-  [multiple clouds at the same time](https://kubernetes.io/docs/user-guide/federation/).
 
 In general, Kubernetes provides a ton of well thought out, useful features -
 and you can use all of them along with this spawner.
@@ -64,9 +61,9 @@ Requires JupyterHub 4.0+
 
 Everything should work from Kubernetes v1.24+.
 
-The [Kube DNS addon](https://kubernetes.io/docs/user-guide/connecting-applications/#dns)
+The [Kube DNS addon](https://kubernetes.io/docs/tutorials/services/connect-applications-service/#dns)
 is not strictly required - the spawner uses
-[environment variable](https://kubernetes.io/docs/user-guide/connecting-applications/#environment-variables)
+[environment variable](https://kubernetes.io/docs/tutorials/services/connect-applications-service/#environment-variables)
 based discovery instead. Your kubernetes cluster will need to be configured to
 support the types of volumes you want to use.
 
