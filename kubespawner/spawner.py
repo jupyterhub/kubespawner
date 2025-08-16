@@ -3058,6 +3058,25 @@ class KubeSpawner(Spawner):
                 raise
         return True
 
+    async def _check_legacy_pvc_exists(self):
+        """
+        Check if a legacy PVC exists.
+
+        Override this if pvc_name_template changed across upgrades,
+        or if you want to handle legacy PVCs differently.
+
+        Returns the PVC name if found and should be used, otherwise None
+        """
+        legacy_pvc_name = self._expand_user_properties(
+            self.pvc_name_template, slug_scheme="escape"
+        )
+        if legacy_pvc_name != self.pvc_name:
+            self.log.debug(
+                f"Checking for legacy-named pvc {legacy_pvc_name} for {self.user.name}"
+            )
+            if await self._check_pvc_exists(legacy_pvc_name, self.namespace):
+                return legacy_pvc_name
+
     async def _start(self):
         """Start the user's pod"""
 
@@ -3107,29 +3126,19 @@ class KubeSpawner(Spawner):
                 # pvc name wasn't reliably persisted before kubespawner 7,
                 # so if the name changed check if a pvc with the legacy name exists and use it.
                 # This will be persisted in state on next launch in the future,
-                # so the comparison below will be False for launches after the first.
-                # this check will only work if pvc_name_template itself has not changed across the upgrade.
-                legacy_pvc_name = self._expand_user_properties(
-                    self.pvc_name_template, slug_scheme="escape"
-                )
-                if legacy_pvc_name != self.pvc_name:
-                    self.log.debug(
-                        f"Checking for legacy-named pvc {legacy_pvc_name} for {self.user.name}"
-                    )
-                    if await self._check_pvc_exists(self.pvc_name, self.namespace):
-                        # if current name exists: use it
+                # so the check below will be False for launches after the first.
+                if await self._check_pvc_exists(self.pvc_name, self.namespace):
+                    # Current name exists: use it
+                    self._pvc_exists = True
+                else:
+                    legacy_pvc_name = await self._check_legacy_pvc_exists()
+                    if legacy_pvc_name:
+                        # Legacy PVC exists, use it to avoid data loss
+                        self.log.warning(
+                            f"Using legacy pvc {legacy_pvc_name} for {self.user.name}"
+                        )
+                        self.pvc_name = legacy_pvc_name
                         self._pvc_exists = True
-                    else:
-                        # current name doesn't exist, check if legacy name exists
-                        if await self._check_pvc_exists(
-                            legacy_pvc_name, self.namespace
-                        ):
-                            # legacy name exists, use it to avoid data loss
-                            self.log.warning(
-                                f"Using legacy pvc {legacy_pvc_name} for {self.user.name}"
-                            )
-                            self.pvc_name = legacy_pvc_name
-                            self._pvc_exists = True
 
             pvc = self.get_pvc_manifest()
             # If there's a timeout, just let it propagate
