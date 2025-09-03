@@ -3146,13 +3146,27 @@ class KubeSpawner(Spawner):
                 # indicate that pvc name is known and should be persisted
                 self._pvc_exists = True
 
-        # If we run into a 409 Conflict error, it means a pod with the
-        # same name already exists. We stop it, wait for it to stop, and
-        # try again. We try 4 times, and if it still fails we give up.
-        pod = await self.get_pod_manifest()
-        if self.modify_pod_hook:
-            self.log.info('Pod is being modified via modify_pod_hook')
-            pod = await maybe_future(self.modify_pod_hook(self, pod))
+        # Try to get pod template from configmap first
+        pod_template = await self._get_pod_template_from_configmap()
+
+        if pod_template:
+            # Create pod from the configmap template
+            pod = await self._create_pod_from_template(pod_template)
+            if not pod:
+                # If there was an error creating pod from template, fallback to the original method
+                self.log.warning(
+                    "Failed to create pod from template, falling back to default pod creation"
+                )
+                pod = await self.get_pod_manifest()
+                if self.modify_pod_hook:
+                    self.log.info('Pod is being modified via modify_pod_hook')
+                    pod = await maybe_future(self.modify_pod_hook(self, pod))
+        else:
+            # If no template is found, use the original method
+            pod = await self.get_pod_manifest()
+            if self.modify_pod_hook:
+                self.log.info('Pod is being modified via modify_pod_hook')
+                pod = await maybe_future(self.modify_pod_hook(self, pod))
 
         ref_key = f"{self.namespace}/{self.pod_name}"
         # If there's a timeout, just let it propagate
@@ -3826,3 +3840,74 @@ class KubeSpawner(Spawner):
             f'Could not delete pvc {self.pvc_name}',
             timeout=self.k8s_api_request_retry_timeout,
         )
+
+    async def _get_pod_template_from_configmap(self):
+        """
+        Attempt to get a pod template from a configmap with the same name as the pod.
+        Returns None if the configmap doesn't exist.
+        """
+        try:
+            self.log.info(f"Looking for pod template in configmap {self.pod_name}")
+            configmap = await self.api.read_namespaced_config_map(
+                name=self.pod_name, namespace=self.namespace
+            )
+
+            if 'pod-template' in configmap.data:
+                self.log.info(f"Found pod template in configmap {self.pod_name}")
+                return yaml.safe_load(configmap.data['pod-template'])
+            else:
+                self.log.warning(
+                    f"Configmap {self.pod_name} exists but does not contain 'pod-template' key"
+                )
+                return None
+        except ApiException as e:
+            if e.status == 404:
+                self.log.info(
+                    f"No configmap named {self.pod_name} found, will use default pod creation"
+                )
+                return None
+            else:
+                self.log.warning(f"Error retrieving configmap {self.pod_name}: {e}")
+                return None
+
+    async def _create_pod_from_template(self, template_dict):
+        """
+        Create a pod from a template dictionary.
+        Apply necessary modifications to ensure it works with the spawner.
+        """
+        try:
+            # Always set the pod name to what KubeSpawner generates
+            # Overwrite any name that might be in the template
+            if 'metadata' not in template_dict:
+                template_dict['metadata'] = {}
+            template_dict['metadata']['name'] = self.pod_name
+
+            # Ensure the pod is in the correct namespace
+            template_dict['metadata']['namespace'] = self.namespace
+
+            # Merge our labels with the template's labels
+            if 'labels' not in template_dict['metadata']:
+                template_dict['metadata']['labels'] = {}
+            labels = self._build_pod_labels(self._expand_all(self.extra_labels))
+            template_dict['metadata']['labels'].update(labels)
+
+            # Merge our annotations with the template's annotations
+            if 'annotations' not in template_dict['metadata']:
+                template_dict['metadata']['annotations'] = {}
+            annotations = self._build_common_annotations(
+                self._expand_all(self.extra_annotations)
+            )
+            template_dict['metadata']['annotations'].update(annotations)
+
+            # Convert dictionary to a V1Pod object
+            pod = client.V1Pod(**template_dict)
+
+            # Apply the modify_pod_hook if configured
+            if self.modify_pod_hook:
+                self.log.info('Pod template is being modified via modify_pod_hook')
+                pod = await maybe_future(self.modify_pod_hook(self, pod))
+
+            return pod
+        except Exception as e:
+            self.log.error(f"Error creating pod from template: {e}")
+            return None
