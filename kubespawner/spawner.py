@@ -3134,18 +3134,20 @@ class KubeSpawner(Spawner):
                             self.pvc_name = legacy_pvc_name
                             self._pvc_exists = True
 
-            pvc = self.get_pvc_manifest()
-            # If there's a timeout, just let it propagate
-            await exponential_backoff(
-                partial(
-                    self._make_create_pvc_request, pvc, self.k8s_api_request_timeout
-                ),
-                f'Could not create PVC {self.pvc_name}',
-                # Each req should be given k8s_api_request_timeout seconds.
-                timeout=self.k8s_api_request_retry_timeout,
-            )
-            # indicate that pvc name is known and should be persisted
-            self._pvc_exists = True
+            if not self._pvc_exists:
+                pvc = self.get_pvc_manifest()
+                # If there's a timeout, just let it propagate
+                self.log.info(f"Creating PVC {self.pvc_name}")
+                await exponential_backoff(
+                    partial(
+                        self._make_create_pvc_request, pvc, self.k8s_api_request_timeout
+                    ),
+                    f'Could not create PVC {self.pvc_name}',
+                    # Each req should be given k8s_api_request_timeout seconds.
+                    timeout=self.k8s_api_request_retry_timeout,
+                )
+                # indicate that pvc name is known and should be persisted
+                self._pvc_exists = True
 
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
