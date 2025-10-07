@@ -309,6 +309,14 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    custom_event_queue = List(
+        [],
+        config=False,
+        help="""
+        Queue of custom events to be reported to the user on the spawn page.
+        """,
+    )
+
     enable_user_namespaces = Bool(
         False,
         config=True,
@@ -2558,6 +2566,28 @@ class KubeSpawner(Spawner):
         )
         # reset namespace as well?
 
+    def add_custom_event(
+        self, eventTime, lastTimestamp, message, type, involvedObject, metadata
+    ):
+        """Add an event to the event queue
+
+        This is used to add custom events that are not part of the normal
+        kubernetes event stream.
+        """
+        if not self.events_enabled:
+            return
+
+        event = {
+            "eventTime": eventTime,
+            "lastTimestamp": lastTimestamp,
+            "message": message,
+            "type": type,
+            "involvedObject": involvedObject,
+            "metadata": metadata,
+        }
+
+        self.custom_event_queue.append(event)
+
     async def poll(self):
         """
         Check if the pod is still running.
@@ -2651,6 +2681,12 @@ class KubeSpawner(Spawner):
                 events = []
             else:
                 events.append(event)
+
+        for event in self.custom_event_queue:
+            events.append(event)
+
+        self.custom_event_queue = []
+
         return events
 
     async def progress(self):
