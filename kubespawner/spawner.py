@@ -309,6 +309,22 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    custom_event_queue = List(
+        [],
+        config=False,
+        help="""
+        Queue of custom events to be reported to the user on the spawn page.
+        """,
+    )
+
+    _sent_custom_events = List(
+        [],
+        config=False,
+        help="""
+        List of (index, event) tuples of custom events that have been sent to the user.
+        """,
+    )
+
     enable_user_namespaces = Bool(
         False,
         config=True,
@@ -2558,6 +2574,28 @@ class KubeSpawner(Spawner):
         )
         # reset namespace as well?
 
+    def add_custom_event(
+        self, eventTime, lastTimestamp, message, type, involvedObject, metadata
+    ):
+        """Add an event to the event queue
+
+        This is used to add custom events that are not part of the normal
+        kubernetes event stream.
+        """
+        if not self.events_enabled:
+            return
+
+        event = {
+            "eventTime": eventTime,
+            "lastTimestamp": lastTimestamp,
+            "message": message,
+            "type": type,
+            "involvedObject": involvedObject,
+            "metadata": metadata,
+        }
+
+        self.custom_event_queue.append(event)
+
     async def poll(self):
         """
         Check if the pod is still running.
@@ -2639,7 +2677,9 @@ class KubeSpawner(Spawner):
             return []
 
         events = []
+
         for event in self.event_reflector.events:
+
             if event["involvedObject"]["name"] != self.pod_name:
                 # only consider events for my pod name
                 continue
@@ -2649,8 +2689,20 @@ class KubeSpawner(Spawner):
                 # and only consider future events
                 # only include events *after* our _last_event marker
                 events = []
+
             else:
                 events.append(event)
+
+        for idx, event in self._sent_custom_events:
+            events.insert(idx, event)
+
+        for event in self.custom_event_queue:
+            idx = len(events)
+            events.append(event)
+            self._sent_custom_events.append((idx, event))
+
+        self.custom_event_queue = []
+
         return events
 
     async def progress(self):
