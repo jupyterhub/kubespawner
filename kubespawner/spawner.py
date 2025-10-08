@@ -317,6 +317,14 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    _sent_custom_events = List(
+        [],
+        config=False,
+        help="""
+        List of (index, event) tuples of custom events that have been sent to the user.
+        """,
+    )
+
     enable_user_namespaces = Bool(
         False,
         config=True,
@@ -2669,7 +2677,9 @@ class KubeSpawner(Spawner):
             return []
 
         events = []
+
         for event in self.event_reflector.events:
+
             if event["involvedObject"]["name"] != self.pod_name:
                 # only consider events for my pod name
                 continue
@@ -2679,11 +2689,17 @@ class KubeSpawner(Spawner):
                 # and only consider future events
                 # only include events *after* our _last_event marker
                 events = []
+
             else:
                 events.append(event)
 
+        for idx, event in self._sent_custom_events:
+            events.insert(idx, event)
+
         for event in self.custom_event_queue:
+            idx = len(events)
             events.append(event)
+            self._sent_custom_events.append((idx, event))
 
         self.custom_event_queue = []
 
