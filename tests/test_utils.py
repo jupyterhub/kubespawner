@@ -104,7 +104,11 @@ def test_get_k8s_model():
     )
 
     assert isinstance(v1_lifecycle_from_dict, V1Lifecycle)
-    assert v1_lifecycle_from_dict.to_dict() == {
+    lifecycle_from_dict = v1_lifecycle_from_dict.to_dict()
+    # K8S 1.33 added stop signals
+    # https://kubernetes.io/blog/2025/05/14/kubernetes-v1-33-updates-to-container-lifecycle/#container-stop-signals
+    assert lifecycle_from_dict.pop('stop_signal', None) is None
+    assert lifecycle_from_dict == {
         'post_start': None,
         'pre_stop': {'exec': {'command': ['/bin/sh', 'test']}},
     }
@@ -113,7 +117,9 @@ def test_get_k8s_model():
     v1_lifecycle_from_model_object = get_k8s_model(V1Lifecycle, v1_lifecycle_from_dict)
 
     assert isinstance(v1_lifecycle_from_model_object, V1Lifecycle)
-    assert v1_lifecycle_from_model_object.to_dict() == {
+    lifecycle_from_model_object = v1_lifecycle_from_model_object.to_dict()
+    assert lifecycle_from_model_object.pop('stop_signal', None) is None
+    assert lifecycle_from_model_object == {
         'post_start': None,
         'pre_stop': {'exec': {'command': ['/bin/sh', 'test']}},
     }
