@@ -1689,15 +1689,6 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    server_spawn_launch_delay = Integer(
-        0,
-        config=True,
-        help="""
-        Time in seconds to delay a single-user server launch, which can be
-        useful for debugging.  If set to zero, no delay will take place.
-        """,
-    )
-
     server_spawn_launch_timer_enabled = Bool(
         True,
         config=True,
@@ -2730,13 +2721,6 @@ class KubeSpawner(Spawner):
 
     async def _start(self):
         """Start the user's pod"""
-        # delay single user server spawn if testing
-        if self.server_spawn_launch_delay:
-            self.log.info(
-                "Delaying spawn launch for %s seconds.",
-                str(self.server_spawn_launch_delay),
-            )
-            await asyncio.sleep(self.server_spawn_launch_delay)
 
         # load user options (including profile)
         await self.load_user_options()
