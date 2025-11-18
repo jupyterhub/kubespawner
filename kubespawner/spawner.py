@@ -211,7 +211,10 @@ class KubeSpawner(Spawner):
         self._pvc_exists = False  # initialized from load_state or start
         if self.working_dir:
             self.working_dir = self._expand_user_properties(self.working_dir)
-        if self.port == 0:
+        # Prefer reading the port from the persisted server record, if available
+        if getattr(self, "server", None) and getattr(self.server, "port", None):
+            self.port = self.server.port
+        elif self.port == 0:
             # Our default port is 8888
             self.port = 8888
         # The attribute needs to exist, even though it is unset to start with
