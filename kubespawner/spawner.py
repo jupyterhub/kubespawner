@@ -2166,11 +2166,11 @@ class KubeSpawner(Spawner):
 
     def _build_common_annotations(self, extra_annotations):
         # Annotations don't need to be escaped
-        annotations = {'hub.jupyter.org/username': self.user.name}
-        if self.name:
-            annotations['hub.jupyter.org/servername'] = self.name
-        annotations["hub.jupyter.org/kubespawner-version"] = __version__
-        annotations["hub.jupyter.org/jupyterhub-version"] = jupyterhub.__version__
+        annotations = {
+            'hub.jupyter.org/username': self.user.name,
+            "hub.jupyter.org/kubespawner-version": __version__,
+            "hub.jupyter.org/jupyterhub-version": jupyterhub.__version__,
+        }
 
         annotations.update(extra_annotations)
         return annotations
@@ -2285,6 +2285,8 @@ class KubeSpawner(Spawner):
         annotations = self._build_common_annotations(
             self._expand_all(self.extra_annotations)
         )
+        # Unconditionally put servername on the pods
+        annotations['hub.jupyter.org/servername'] = self.name
 
         return make_pod(
             name=self.pod_name,
