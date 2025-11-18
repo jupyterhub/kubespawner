@@ -12,6 +12,7 @@ import os
 import re
 import string
 import sys
+import textwrap
 import warnings
 from functools import partial
 from typing import Optional, Tuple, Type
@@ -1895,6 +1896,42 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    server_spawn_launch_timer_enabled = Bool(
+        True,
+        config=True,
+        help="""
+        Enable the spawn progress counter message.
+        """,
+    )
+
+    server_spawn_launch_timer_threshold = Integer(
+        60,
+        config=True,
+        help="""
+        Time in seconds to wait before injecting a 'please be patient' message
+        to display to the user.
+        """,
+    )
+
+    server_spawn_launch_timer_frequency = Integer(
+        5,
+        config=True,
+        help="""
+        Sets a delay of N seconds between updates to the message buffer, so
+        that we don't spam the user with too many messages.
+        """,
+    )
+
+    server_spawn_launch_timer_message = Unicode(
+        "Server launch is taking longer than expected. Please be patient! Current time spent waiting: XXX seconds.",
+        config=True,
+        help="""
+        The injected timing message to display to the user. The string XXX
+        will be replaced by the number of seconds the spawn has taken in
+        self.progress().
+        """,
+    )
+
     # deprecate redundant and inconsistent singleuser_ and user_ prefixes:
     _deprecated_traits_09 = [
         "singleuser_working_dir",
@@ -2673,6 +2710,9 @@ class KubeSpawner(Spawner):
         progress = 0
         next_event = 0
 
+        # count in seconds to time single user server spawn duration
+        timer = 0
+
         break_while_loop = False
         while True:
             # This logic avoids a race condition. self._start() will be invoked by
@@ -2688,6 +2728,23 @@ class KubeSpawner(Spawner):
             # .sleep() and missed something.
             if start_future and start_future.done():
                 break_while_loop = True
+
+            # if the timer is greater than self.server_spawn_launch_timer_threshold
+            # display a message to the user with an incrementing count in seconds
+            if (
+                timer >= self.server_spawn_launch_timer_threshold
+                and self.server_spawn_launch_timer_enabled
+            ):
+                # don't spam the user, so only update the timer message every few seconds
+                if timer % self.server_spawn_launch_timer_frequency == 0:
+                    patience_message = textwrap.dedent(
+                        self.server_spawn_launch_timer_message
+                    )
+                    patience_message.replace('XXX', str(timer))
+
+                    yield {
+                        'message': patience_message,
+                    }
 
             events = self.events
             len_events = len(events)
@@ -2715,6 +2772,7 @@ class KubeSpawner(Spawner):
 
             if break_while_loop:
                 break
+            timer += 1
             await asyncio.sleep(1)
 
     async def _start_reflector(
