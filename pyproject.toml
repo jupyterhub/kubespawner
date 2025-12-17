@@ -14,7 +14,7 @@ build-backend = "hatchling.build"
 name = "jupyterhub-kubespawner"
 description = "JupyterHub Spawner for Kubernetes"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 keywords = ["jupyterhub", "spawner"]
 authors = [
@@ -30,7 +30,7 @@ dependencies = [
     "escapism",
     "jinja2",
     "jupyterhub>=4.0.0",
-    "kubernetes_asyncio>=24.2.3",
+    "kubernetes_asyncio>=31",
     "python-slugify",
     "pyYAML",
     "traitlets",
@@ -40,11 +40,10 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 test = [
-    "kubernetes>=11",
-    "pytest>=5.4",
+    "kubernetes",
+    "pytest",
     "pytest-cov",
-    # FIXME: unpin pytest-asyncio
-    "pytest-asyncio>=0.17,<0.23",
+    "pytest-asyncio>=1",
 ]
 
 [project.urls]
@@ -73,15 +72,6 @@ packages = ["kubespawner"]
 #
 [tool.black]
 skip-string-normalization = true
-# target-version should be all supported versions, see
-# https://github.com/psf/black/issues/751#issuecomment-473066811
-target_version = [
-    "py37",
-    "py38",
-    "py39",
-    "py310",
-    "py311",
-]
 
 
 # hatch ref: https://hatch.pypa.io/latest/
