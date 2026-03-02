@@ -42,6 +42,7 @@ from traitlets import (
 
 from . import __version__
 from .clients import load_config, shared_client
+from .messages import format_reflected_event
 from .objects import (
     make_namespace,
     make_owner_reference,
@@ -2833,11 +2834,7 @@ class KubeSpawner(Spawner):
                     progress += (90 - progress) / 3
 
                     if self.format_event_hook is None:
-                        message = "{} [{}] {}".format(
-                            event["lastTimestamp"] or event["eventTime"],
-                            event["type"],
-                            event["message"],
-                        )
+                        message = format_reflected_event(event)
                     else:
                         message = await maybe_future(
                             self.format_event_hook(self, event)
