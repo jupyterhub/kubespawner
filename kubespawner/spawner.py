@@ -1971,6 +1971,25 @@ class KubeSpawner(Spawner):
         will be replaced by the number of seconds the spawn has currently taken.
         """,
     )
+    
+    format_event_hook = Callable(
+        None,
+        allow_none=True,
+        config=True,
+        help="""
+        Callable to build an event message from a reflected Event object.
+
+        Expects a callable that takes two parameters:
+
+           1. The spawner object that is doing the spawning
+           2. The Event object that is to be formatted
+
+        This can be a coroutine if necessary. When set to none, the default formatter is used.
+        The hook function should return a dictionary containing a required key `message`,
+        and an optional key `html_message`, pertaining to the plain-text and rich-representation,
+        of the formatted event.
+        """,
+    )
 
     # deprecate redundant and inconsistent singleuser_ and user_ prefixes:
     _deprecated_traits_09 = [
@@ -2813,15 +2832,21 @@ class KubeSpawner(Spawner):
                     # 30 50 63 72 78 82 84 86 87 88 88 89
                     progress += (90 - progress) / 3
 
-                    yield {
-                        'progress': int(progress),
-                        'raw_event': event,
-                        'message': "%s [%s] %s"
-                        % (
+                    if self.format_event_hook is None:
+                        message = "{} [{}] {}".format(
                             event["lastTimestamp"] or event["eventTime"],
                             event["type"],
                             event["message"],
-                        ),
+                        )
+                    else:
+                        message = await maybe_future(
+                            self.format_event_hook(self, event)
+                        )
+
+                    yield {
+                        "progress": int(progress),
+                        "raw_event": event,
+                        "message": message,
                     }
                 next_event = len_events
 
