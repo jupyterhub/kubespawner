@@ -658,13 +658,51 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
         # ensure we can serialize whatever we return
         with open(os.devnull, "w") as devnull:
             json.dump(progress, devnull)
-    # This message varies by version
-    assert re.search(r'Started container|Container started', '\n'.join(messages))
+    assert 'Started the notebook container' in '\n'.join(messages)
 
     await start_future
     # stop the pod
     await spawner.stop()
 
+
+async def test_spawn_progress_formatter_hook(
+    kube_ns, kube_client, config, hub_pod, hub
+):
+    def format_hook(spawner, event):
+        return f"custom-message-{event['message']}"
+
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="progress"),
+        config=config,
+        format_event_hook=format_hook,
+    )
+
+    # empty spawner isn't running
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+    # start the spawner
+    start_future = spawner.start()
+    # check progress events
+    messages = []
+    async for progress in spawner.progress():
+        assert "progress" in progress
+        assert isinstance(progress["progress"], int)
+        assert "message" in progress
+        assert isinstance(progress["message"], str)
+        messages.append(progress["message"])
+
+        # ensure we can serialize whatever we return
+        with open(os.devnull, "w") as devnull:
+            json.dump(progress, devnull)
+        # Look for our custom prefix
+        assert progress["message"].startswith("custom-message-")
+    assert "Started container" in "\n".join(messages)
+
+    await start_future
+    # stop the pod
+    await spawner.stop()
 
 async def test_spawn_start_restore_pod_name(
     kube_ns,
