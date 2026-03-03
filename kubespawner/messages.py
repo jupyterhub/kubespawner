@@ -1,5 +1,6 @@
 import re
 import datetime
+from typing import Optional
 
 # Anchored match patterns ^foo$
 CONTAINER_FIELD_PATH_PAT = r"^spec\.(initContainers|containers)\{([^}]+)\}$"
@@ -10,7 +11,7 @@ CANCELLING_DELETION_MESSAGE_PAT = r"^Cancelling deletion of Pod.*$"
 IMAGE_MESSAGE_PAT = r'^.*image "([^"]+)".*$'
 
 
-def container_events_formatter(event: dict) -> str | None:
+def container_events_formatter(event: dict) -> Optional[str]:
     if event["reportingComponent"] != "kubelet":
         return
 
@@ -41,7 +42,7 @@ def container_events_formatter(event: dict) -> str | None:
         return f"Pulling {image} image for the {container} container"
 
 
-def pod_resource_events_formatter(event: dict) -> str | None:
+def pod_resource_events_formatter(event: dict) -> Optional[str]:
     if event["reportingComponent"] != "kubelet":
         return
 
@@ -59,7 +60,7 @@ def pod_resource_events_formatter(event: dict) -> str | None:
     return f"The node selected to run your server ran out of {resource}"
 
 
-def scheduler_events_formatter(event: dict) -> str | None:
+def scheduler_events_formatter(event: dict) -> Optional[str]:
     if not re.match(USER_SCHEDULER_COMPONENT_PAT, event["reportingComponent"]):
         return
 
@@ -74,7 +75,7 @@ def scheduler_events_formatter(event: dict) -> str | None:
         return "No existing nodes are currently able to run your server"
 
 
-def gke_scheduler_events_formatter(event: dict) -> str | None:
+def gke_scheduler_events_formatter(event: dict) -> Optional[str]:
     if event["reportingComponent"] != "gke.io/optimize-utilization-scheduler":
         return
 
@@ -89,7 +90,7 @@ def gke_scheduler_events_formatter(event: dict) -> str | None:
         return "No existing nodes are currently able to run your server"
 
 
-def cluster_autoscaler_events_formatter(event: dict) -> str | None:
+def cluster_autoscaler_events_formatter(event: dict) -> Optional[str]:
     if event["reportingComponent"] != "cluster-autoscaler":
         return
 
@@ -99,7 +100,7 @@ def cluster_autoscaler_events_formatter(event: dict) -> str | None:
     return "Launching new nodes by scaling up the cluster"
 
 
-def node_affinity_events_formatter(event: dict) -> str | None:
+def node_affinity_events_formatter(event: dict) -> Optional[str]:
     if event["reportingComponent"] != "kubelet":
         return
 
@@ -113,7 +114,7 @@ def node_affinity_events_formatter(event: dict) -> str | None:
     return "It was not possible to find or launch any nodes to run your server. This is likely due to a configuration problem with the infrastructure or the JuyterHub"
 
 
-def taint_eviction_events_formatter(event: dict) -> str | None:
+def taint_eviction_events_formatter(event: dict) -> Optional[str]:
     if event["reportingComponent"] != "taint-eviction-controller":
         return
 
