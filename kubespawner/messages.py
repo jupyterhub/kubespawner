@@ -128,7 +128,7 @@ def taint_eviction_events_formatter(event: dict) -> Optional[str]:
     return "Cancelling deletion of your server. This normally happens when a scale-up has just taken place."
 
 
-event_formatters = [
+DEFAULT_EVENT_FORMATTERS = [
     container_events_formatter,
     pod_resource_events_formatter,
     scheduler_events_formatter,
@@ -225,7 +225,7 @@ def format_reflected_event(event: dict, formatters: list = None) -> str:
     :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
     """
     if formatters is None:
-        formatters = event_formatters
+        formatters = DEFAULT_EVENT_FORMATTERS
 
     # Format each message into a bundle
     for formatter in formatters:
