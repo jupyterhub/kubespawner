@@ -676,7 +676,7 @@ async def test_spawn_progress_formatter_hook(
 
     spawner = KubeSpawner(
         hub=hub,
-        user=MockUser(name="progress"),
+        user=MockUser(name="progress-hook"),
         config=config,
         format_event_hook=format_hook,
     )
