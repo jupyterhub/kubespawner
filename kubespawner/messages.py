@@ -11,7 +11,8 @@ NODE_ASSIGNED_MESSAGE_PAT = r"^.*?assigned \S+ to (\S+)$"
 IMAGE_MESSAGE_PAT = r'^.*image "([^"]+)".*$'
 
 
-def reporting_component(event):
+# reportingComponent is sometimes empty, as is source
+def reporting_component(event: dict) -> str:
     return event["reportingComponent"] or event["source"]["component"]
 
 
