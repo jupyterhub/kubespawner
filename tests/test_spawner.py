@@ -704,7 +704,9 @@ async def test_spawn_progress_formatter_hook(
         # Look for our custom prefix
         assert progress["message"].startswith("custom-message-")
         assert progress["html_message"].startswith("<span>")
-    assert "Started container" in "\n".join(messages)
+    corpus = "\n".join(messages)
+    # K8s changed the format of this message: https://github.com/kubernetes/kubernetes/pull/134043
+    assert "Started container" in corpus or "Container started" in corpus
 
     await start_future
     # stop the pod

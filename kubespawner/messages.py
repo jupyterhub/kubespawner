@@ -5,14 +5,18 @@ from typing import Optional
 # Anchored match patterns ^foo$
 CONTAINER_FIELD_PATH_PAT = r"^spec\.(initContainers|containers)\{([^}]+)\}$"
 USER_SCHEDULER_COMPONENT_PAT = r"^.*-user-scheduler$"
-NODE_ASSIGNED_MESSAGE_PAT = r"^.*?assigned \S+ to (\S+)$"
 NODE_AFFINITY_FAILED_PAT = r"^Predicate NodeAffinity failed.*$"
 CANCELLING_DELETION_MESSAGE_PAT = r"^Cancelling deletion of Pod.*$"
+NODE_ASSIGNED_MESSAGE_PAT = r"^.*?assigned \S+ to (\S+)$"
 IMAGE_MESSAGE_PAT = r'^.*image "([^"]+)".*$'
 
 
+def reporting_component(event):
+    return event["reportingComponent"] or event["source"]["component"]
+
+
 def container_events_formatter(event: dict) -> Optional[str]:
-    if event["reportingComponent"] != "kubelet":
+    if reporting_component(event) != "kubelet":
         return
 
     involved_object = event["involvedObject"]
@@ -43,7 +47,7 @@ def container_events_formatter(event: dict) -> Optional[str]:
 
 
 def pod_resource_events_formatter(event: dict) -> Optional[str]:
-    if event["reportingComponent"] != "kubelet":
+    if reporting_component(event) != "kubelet":
         return
 
     reason = event["reason"]
@@ -61,7 +65,7 @@ def pod_resource_events_formatter(event: dict) -> Optional[str]:
 
 
 def scheduler_events_formatter(event: dict) -> Optional[str]:
-    if not re.match(USER_SCHEDULER_COMPONENT_PAT, event["reportingComponent"]):
+    if not re.match(USER_SCHEDULER_COMPONENT_PAT, reporting_component(event)):
         return
 
     if event["reason"] == "Scheduled":
@@ -76,7 +80,7 @@ def scheduler_events_formatter(event: dict) -> Optional[str]:
 
 
 def gke_scheduler_events_formatter(event: dict) -> Optional[str]:
-    if event["reportingComponent"] != "gke.io/optimize-utilization-scheduler":
+    if reporting_component(event) != "gke.io/optimize-utilization-scheduler":
         return
 
     if event["reason"] == "Scheduled":
@@ -91,7 +95,7 @@ def gke_scheduler_events_formatter(event: dict) -> Optional[str]:
 
 
 def cluster_autoscaler_events_formatter(event: dict) -> Optional[str]:
-    if event["reportingComponent"] != "cluster-autoscaler":
+    if reporting_component(event) != "cluster-autoscaler":
         return
 
     if event["reason"] != "TriggeredScaleUp":
@@ -101,7 +105,7 @@ def cluster_autoscaler_events_formatter(event: dict) -> Optional[str]:
 
 
 def node_affinity_events_formatter(event: dict) -> Optional[str]:
-    if event["reportingComponent"] != "kubelet":
+    if reporting_component(event) != "kubelet":
         return
 
     if event["reason"] != "NodeAffinity":
@@ -115,7 +119,7 @@ def node_affinity_events_formatter(event: dict) -> Optional[str]:
 
 
 def taint_eviction_events_formatter(event: dict) -> Optional[str]:
-    if event["reportingComponent"] != "taint-eviction-controller":
+    if reporting_component(event) != "taint-eviction-controller":
         return
 
     if event["reason"] != "TaintManagerEviction":
