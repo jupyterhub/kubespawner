@@ -1,4 +1,5 @@
 import re
+import datetime
 
 # Anchored match patterns ^foo$
 CONTAINER_FIELD_PATH_PAT = r"^spec\.(initContainers|containers)\{([^}]+)\}$"
@@ -9,7 +10,7 @@ CANCELLING_DELETION_MESSAGE_PAT = r"^Cancelling deletion of Pod.*$"
 IMAGE_MESSAGE_PAT = r'^.*image "([^"]+)".*$'
 
 
-def container_events(event: dict) -> str | None:
+def container_events_formatter(event: dict) -> str | None:
     if event["reportingComponent"] != "kubelet":
         return
 
@@ -40,7 +41,7 @@ def container_events(event: dict) -> str | None:
         return f"Pulling {image} image for the {container} container"
 
 
-def pod_resource_events(event: dict) -> str | None:
+def pod_resource_events_formatter(event: dict) -> str | None:
     if event["reportingComponent"] != "kubelet":
         return
 
@@ -58,7 +59,7 @@ def pod_resource_events(event: dict) -> str | None:
     return f"The node selected to run your server ran out of {resource}"
 
 
-def scheduler_events(event: dict) -> str | None:
+def scheduler_events_formatter(event: dict) -> str | None:
     if not re.match(USER_SCHEDULER_COMPONENT_PAT, event["reportingComponent"]):
         return
 
@@ -73,7 +74,7 @@ def scheduler_events(event: dict) -> str | None:
         return "No existing nodes are currently able to run your server"
 
 
-def gke_scheduler_events(event: dict) -> str | None:
+def gke_scheduler_events_formatter(event: dict) -> str | None:
     if event["reportingComponent"] != "gke.io/optimize-utilization-scheduler":
         return
 
@@ -88,7 +89,7 @@ def gke_scheduler_events(event: dict) -> str | None:
         return "No existing nodes are currently able to run your server"
 
 
-def cluster_autoscaler_events(event: dict) -> str | None:
+def cluster_autoscaler_events_formatter(event: dict) -> str | None:
     if event["reportingComponent"] != "cluster-autoscaler":
         return
 
@@ -98,7 +99,7 @@ def cluster_autoscaler_events(event: dict) -> str | None:
     return "Launching new nodes by scaling up the cluster"
 
 
-def node_affinity_events(event: dict) -> str | None:
+def node_affinity_events_formatter(event: dict) -> str | None:
     if event["reportingComponent"] != "kubelet":
         return
 
@@ -112,46 +113,104 @@ def node_affinity_events(event: dict) -> str | None:
     return "It was not possible to find or launch any nodes to run your server. This is likely due to a configuration problem with the infrastructure or the JuyterHub"
 
 
-def taint_eviction_events(event: dict) -> str | None:
+def taint_eviction_events_formatter(event: dict) -> str | None:
     if event["reportingComponent"] != "taint-eviction-controller":
         return
 
     if event["reason"] != "TaintManagerEviction":
         return
 
-    predicate_match = re.match(NODE_AFFINITY_FAILED_PAT, event["message"])
+    predicate_match = re.match(CANCELLING_DELETION_MESSAGE_PAT, event["message"])
     if predicate_match is None:
         return
 
-    return "It was not possible to find or launch any nodes to run your server. This is likely due to a configuration problem with the infrastructure or the JuyterHub"
+    return "Cancelling deletion of your server. This normally happens when a scale-up has just taken place."
 
 
 event_formatters = [
-    container_events,
-    pod_resource_events,
-    scheduler_events,
-    gke_scheduler_events,
-    cluster_autoscaler_events,
-    node_affinity_events,
+    container_events_formatter,
+    pod_resource_events_formatter,
+    scheduler_events_formatter,
+    gke_scheduler_events_formatter,
+    cluster_autoscaler_events_formatter,
+    node_affinity_events_formatter,
+    taint_eviction_events_formatter,
 ]
 
 
-def format_reflected_event(event: dict) -> str:
+def format_plain_message(message: str, event: dict) -> str:
+    """
+    Build a plain-text message from a plain-text message body and an Event object.
+
+    :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
+    """
+    event_type = event["type"]
+
+    if event_type == "Warning":
+        icon = " ⚠️ "
+    elif event_type == "Normal":
+        icon = " ℹ️ "
+    else:
+        icon = " "
+
+    # Trim the time to the nearest section, assume UTC
+    timestamp = datetime.datetime.fromisoformat(
+        event["lastTimestamp"] or event["eventTime"]
+    ).strftime("%Y-%m-%YT%H:%M:%SZ")
+
+    return f"{timestamp}{icon}{message}"
+
+
+def format_html_message(message: str, event: dict) -> str:
+    """
+    Build a full HTML message from a plain-text message body and an Event object.
+
+    :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
+    """
+    event_type = event["type"]
+
+    if event_type == "Warning":
+        icon = ' <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill">Warning</span> '
+    elif event_type == "Normal":
+        icon = ' <span class="badge bg-info-subtle text-info-emphasis rounded-pill">Info</span> '
+    else:
+        icon = " "
+
+    # Trim the time to the nearest section, assume UTC
+    moment = datetime.datetime.fromisoformat(
+        event["lastTimestamp"] or event["eventTime"]
+    )
+    # Compute both true isoformat string and seconds-resolution readable string
+    readable_time = moment.strftime("%Y-%m-%YT%H:%M:%SZ")
+    true_time = moment.isoformat()
+
+    timestamp = f'<span class="badge bg-light-subtle text-light-emphasis rounded-pill"><time datetime="{true_time}">{readable_time}</time></span>'
+
+    return f"{timestamp}{icon}{message}"
+
+
+def format_reflected_event(event: dict, formatters: list = None) -> str:
     """
     Format a Kubernetes Event object into a human-readable message.
 
     :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
     """
-    for formatter in event_formatters:
-        result = formatter(event)
-        if result is not None:
-            return result
+    if formatters is None:
+        formatters = event_formatters
 
-    return "{} [{}] {}".format(
-        event["lastTimestamp"] or event["eventTime"],
-        event["type"],
-        event["message"],
-    )
+    # Format each message into a bundle
+    for formatter in formatters:
+        message_body = formatter(event)
+        if message_body is not None:
+            break
+    else:
+        message_body = event["message"]
+
+    # Render rich and plain-text representations
+    message = format_plain_message(message_body, event)
+    html_message = format_html_message(message_body, event)
+
+    return {"message": message, "html_message": html_message}
 
 
 if __name__ == "__main__":
@@ -164,12 +223,19 @@ if __name__ == "__main__":
         "file", type=argparse.FileType("r"), help="Path to JSON array of Event objects"
     )
     parser.add_argument("--json", help="Output as JSON", action="store_true")
+    parser.add_argument(
+        "--no-pretty", help="Do not pretty-print the events", action="store_true"
+    )
 
     args = parser.parse_args()
 
     events = json.load(args.file)
-    messages = [format_reflected_event(event) for event in events]
+    formatters = [] if args.no_pretty else None
+
+    bundles = [format_reflected_event(event, formatters) for event in events]
+
     if args.json:
-        json.dump(messages, sys.stdout)
+        json.dump(bundles, sys.stdout)
     else:
-        print("\n".join(messages))
+        for bundle in bundles:
+            print(bundle["message"])

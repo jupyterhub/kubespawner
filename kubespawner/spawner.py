@@ -2834,16 +2834,16 @@ class KubeSpawner(Spawner):
                     progress += (90 - progress) / 3
 
                     if self.format_event_hook is None:
-                        message = format_reflected_event(event)
+                        message_bundle = format_reflected_event(event)
                     else:
-                        message = await maybe_future(
+                        message_bundle = await maybe_future(
                             self.format_event_hook(self, event)
                         )
 
                     yield {
                         "progress": int(progress),
                         "raw_event": event,
-                        "message": message,
+                        **message_bundle,
                     }
                 next_event = len_events
 

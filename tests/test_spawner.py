@@ -669,7 +669,10 @@ async def test_spawn_progress_formatter_hook(
     kube_ns, kube_client, config, hub_pod, hub
 ):
     def format_hook(spawner, event):
-        return f"custom-message-{event['message']}"
+        return { 
+            "message": f"custom-message-{event['message']}",
+            "html_message": f"<span>{event['message']}</span>"
+        }
 
     spawner = KubeSpawner(
         hub=hub,
@@ -691,6 +694,8 @@ async def test_spawn_progress_formatter_hook(
         assert isinstance(progress["progress"], int)
         assert "message" in progress
         assert isinstance(progress["message"], str)
+        assert "html_message" in progress
+        assert isinstance(progress["html_message"], str)
         messages.append(progress["message"])
 
         # ensure we can serialize whatever we return
@@ -698,6 +703,7 @@ async def test_spawn_progress_formatter_hook(
             json.dump(progress, devnull)
         # Look for our custom prefix
         assert progress["message"].startswith("custom-message-")
+        assert progress["html_message"].startswith("<span>")
     assert "Started container" in "\n".join(messages)
 
     await start_future
