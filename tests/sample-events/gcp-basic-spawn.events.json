@@ -1,0 +1,229 @@
+[
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18994cbec2fc6b63",
+      "namespace": "prod",
+      "uid": "c53e8f44-326e-49a6-a34f-961ad3387619",
+      "resourceVersion": "1772532310580415006",
+      "creationTimestamp": "2026-03-03T10:05:10Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "prod",
+      "name": "jupyter-agoose77",
+      "uid": "dedf26bd-c37e-4fc8-b6ba-7649cd9957c0",
+      "apiVersion": "v1",
+      "resourceVersion": "1772532310028623001",
+      "fieldPath": "spec.initContainers{block-nfs-access}"
+    },
+    "reason": "Pulled",
+    "message": "Container image \"quay.io/jupyterhub/k8s-network-tools:4.1.0\" already present on machine",
+    "source": {
+      "component": "kubelet",
+      "host": "gke-a-fake-cluster-a-fake-nodepool-2b2b2b2b-g6jw"
+    },
+    "firstTimestamp": "2026-03-03T10:05:10Z",
+    "lastTimestamp": "2026-03-03T10:05:10Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "gke-a-fake-cluster-a-fake-nodepool-2b2b2b2b-g6jw"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18994cbec3c27d4d",
+      "namespace": "prod",
+      "uid": "d491c07b-1b32-4150-b9be-69bc1073c5db",
+      "resourceVersion": "1772532310601775001",
+      "creationTimestamp": "2026-03-03T10:05:10Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "prod",
+      "name": "jupyter-agoose77",
+      "uid": "dedf26bd-c37e-4fc8-b6ba-7649cd9957c0",
+      "apiVersion": "v1",
+      "resourceVersion": "1772532310028623001",
+      "fieldPath": "spec.initContainers{block-nfs-access}"
+    },
+    "reason": "Created",
+    "message": "Created container: block-nfs-access",
+    "source": {
+      "component": "kubelet",
+      "host": "gke-a-fake-cluster-a-fake-nodepool-2b2b2b2b-g6jw"
+    },
+    "firstTimestamp": "2026-03-03T10:05:10Z",
+    "lastTimestamp": "2026-03-03T10:05:10Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "gke-a-fake-cluster-a-fake-nodepool-2b2b2b2b-g6jw"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18994cbec6ab7d5f",
+      "namespace": "prod",
+      "uid": "e23ea40f-7d3a-4989-a6c9-dfd134edb895",
+      "resourceVersion": "1772532310618463009",
+      "creationTimestamp": "2026-03-03T10:05:10Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "prod",
+      "name": "jupyter-agoose77",
+      "uid": "dedf26bd-c37e-4fc8-b6ba-7649cd9957c0",
+      "apiVersion": "v1",
+      "resourceVersion": "1772532310028623001",
+      "fieldPath": "spec.initContainers{block-nfs-access}"
+    },
+    "reason": "Started",
+    "message": "Started container block-nfs-access",
+    "source": {
+      "component": "kubelet",
+      "host": "gke-a-fake-cluster-a-fake-nodepool-2b2b2b2b-g6jw"
+    },
+    "firstTimestamp": "2026-03-03T10:05:10Z",
+    "lastTimestamp": "2026-03-03T10:05:10Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "gke-a-fake-cluster-a-fake-nodepool-2b2b2b2b-g6jw"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18994cbed4a28761",
+      "namespace": "prod",
+      "uid": "b7cae17a-ae31-4bb3-86d8-cb48db7f9c46",
+      "resourceVersion": "1772532310855711017",
+      "creationTimestamp": "2026-03-03T10:05:10Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "prod",
+      "name": "jupyter-agoose77",
+      "uid": "dedf26bd-c37e-4fc8-b6ba-7649cd9957c0",
+      "apiVersion": "v1",
+      "resourceVersion": "1772532310028623001",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "Pulled",
+    "message": "Container image \"pangeo/pangeo-notebook:2025.11.13\" already present on machine",
+    "source": {
+      "component": "kubelet",
+      "host": "gke-a-fake-cluster-a-fake-nodepool-2b2b2b2b-g6jw"
+    },
+    "firstTimestamp": "2026-03-03T10:05:10Z",
+    "lastTimestamp": "2026-03-03T10:05:10Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "gke-a-fake-cluster-a-fake-nodepool-2b2b2b2b-g6jw"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18994cbed6a1361f",
+      "namespace": "prod",
+      "uid": "e224c088-fde3-40d8-b766-a3809d390968",
+      "resourceVersion": "1772532310890223013",
+      "creationTimestamp": "2026-03-03T10:05:10Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "prod",
+      "name": "jupyter-agoose77",
+      "uid": "dedf26bd-c37e-4fc8-b6ba-7649cd9957c0",
+      "apiVersion": "v1",
+      "resourceVersion": "1772532310028623001",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "Created",
+    "message": "Created container: notebook",
+    "source": {
+      "component": "kubelet",
+      "host": "gke-a-fake-cluster-a-fake-nodepool-2b2b2b2b-g6jw"
+    },
+    "firstTimestamp": "2026-03-03T10:05:10Z",
+    "lastTimestamp": "2026-03-03T10:05:10Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "gke-a-fake-cluster-a-fake-nodepool-2b2b2b2b-g6jw"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18994cbed94f526e",
+      "namespace": "prod",
+      "uid": "756fccea-9f50-44a8-8034-e5438f734dec",
+      "resourceVersion": "1772532310929903010",
+      "creationTimestamp": "2026-03-03T10:05:10Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "prod",
+      "name": "jupyter-agoose77",
+      "uid": "dedf26bd-c37e-4fc8-b6ba-7649cd9957c0",
+      "apiVersion": "v1",
+      "resourceVersion": "1772532310028623001",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "Started",
+    "message": "Started container notebook",
+    "source": {
+      "component": "kubelet",
+      "host": "gke-a-fake-cluster-a-fake-nodepool-2b2b2b2b-g6jw"
+    },
+    "firstTimestamp": "2026-03-03T10:05:10Z",
+    "lastTimestamp": "2026-03-03T10:05:10Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "gke-a-fake-cluster-a-fake-nodepool-2b2b2b2b-g6jw"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18994cbea477a8b5",
+      "namespace": "prod",
+      "uid": "c6134cfe-e5af-4d81-b868-d465af9c84dc",
+      "resourceVersion": "1772532310070831019",
+      "creationTimestamp": "2026-03-03T10:05:10Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "prod",
+      "name": "jupyter-agoose77",
+      "uid": "dedf26bd-c37e-4fc8-b6ba-7649cd9957c0",
+      "apiVersion": "v1",
+      "resourceVersion": "1772532309994559001"
+    },
+    "reason": "Scheduled",
+    "message": "Successfully assigned prod/jupyter-agoose77 to gke-a-fake-cluster-a-fake-nodepool-2b2b2b2b-g6jw",
+    "source": {},
+    "firstTimestamp": null,
+    "lastTimestamp": null,
+    "type": "Normal",
+    "eventTime": "2026-03-03T10:05:10.033790Z",
+    "action": "Binding",
+    "reportingComponent": "gke.io/optimize-utilization-scheduler",
+    "reportingInstance": "gke.io/optimize-utilization-scheduler-gke-insert-uuid-here-for-scheduler"
+  }
+]

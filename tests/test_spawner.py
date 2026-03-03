@@ -669,9 +669,9 @@ async def test_spawn_progress_formatter_hook(
     kube_ns, kube_client, config, hub_pod, hub
 ):
     def format_hook(spawner, event):
-        return { 
+        return {
             "message": f"custom-message-{event['message']}",
-            "html_message": f"<span>{event['message']}</span>"
+            "html_message": f"<span>{event['message']}</span>",
         }
 
     spawner = KubeSpawner(
@@ -709,6 +709,7 @@ async def test_spawn_progress_formatter_hook(
     await start_future
     # stop the pod
     await spawner.stop()
+
 
 async def test_spawn_start_restore_pod_name(
     kube_ns,

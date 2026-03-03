@@ -1,5 +1,5 @@
-import re
 import datetime
+import re
 from typing import Optional
 
 # Anchored match patterns ^foo$

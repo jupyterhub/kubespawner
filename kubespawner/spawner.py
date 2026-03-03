@@ -1972,7 +1972,7 @@ class KubeSpawner(Spawner):
         will be replaced by the number of seconds the spawn has currently taken.
         """,
     )
-    
+
     format_event_hook = Callable(
         None,
         allow_none=True,
