@@ -152,3 +152,24 @@ def format_reflected_event(event: dict) -> str:
         event["type"],
         event["message"],
     )
+
+
+if __name__ == "__main__":
+    import argparse
+    import json
+    import sys
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "file", type=argparse.FileType("r"), help="Path to JSON array of Event objects"
+    )
+    parser.add_argument("--json", help="Output as JSON", action="store_true")
+
+    args = parser.parse_args()
+
+    events = json.load(args.file)
+    messages = [format_reflected_event(event) for event in events]
+    if args.json:
+        json.dump(messages, sys.stdout)
+    else:
+        print("\n".join(messages))
