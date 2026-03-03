@@ -138,6 +138,29 @@ event_formatters = [
 ]
 
 
+def parse_micro_timestamp(time: str) -> datetime.datetime:
+    """
+    Parse a MicroTime timestamp into a UTC datetime.
+
+    :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
+    """
+    return datetime.datetime.strptime(time, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(
+        datetime.timezone.utc
+    )
+
+
+def parse_timestamp(time: str) -> datetime.datetime:
+    """
+    Parse a Time timestamp into a UTC datetime.
+
+    :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
+    """
+
+    return datetime.datetime.strptime(time, "%Y-%m-%dT%H:%M:%S%z").astimezone(
+        datetime.timezone.utc
+    )
+
+
 def format_plain_message(message: str, event: dict) -> str:
     """
     Build a plain-text message from a plain-text message body and an Event object.
@@ -153,10 +176,13 @@ def format_plain_message(message: str, event: dict) -> str:
     else:
         icon = " "
 
+    if event["lastTimestamp"]:
+        moment = parse_timestamp(event["lastTimestamp"])
+    else:
+        moment = parse_micro_timestamp(event["eventTime"])
+
     # Trim the time to the nearest section, assume UTC
-    timestamp = datetime.datetime.fromisoformat(
-        event["lastTimestamp"] or event["eventTime"]
-    ).strftime("%Y-%m-%YT%H:%M:%SZ")
+    timestamp = moment.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     return f"{timestamp}{icon}{message}"
 
@@ -177,11 +203,13 @@ def format_html_message(message: str, event: dict) -> str:
         icon = " "
 
     # Trim the time to the nearest section, assume UTC
-    moment = datetime.datetime.fromisoformat(
-        event["lastTimestamp"] or event["eventTime"]
-    )
+    if event["lastTimestamp"]:
+        moment = parse_timestamp(event["lastTimestamp"])
+    else:
+        moment = parse_micro_timestamp(event["eventTime"])
+
     # Compute both true isoformat string and seconds-resolution readable string
-    readable_time = moment.strftime("%Y-%m-%YT%H:%M:%SZ")
+    readable_time = moment.strftime("%Y-%m-%dT%H:%M:%SZ")
     true_time = moment.isoformat()
 
     timestamp = f'<span class="badge bg-light-subtle text-light-emphasis rounded-pill"><time datetime="{true_time}">{readable_time}</time></span>'
