@@ -116,7 +116,7 @@ def node_affinity_events_formatter(event: dict) -> Optional[str]:
     if predicate_match is None:
         return
 
-    return "It was not possible to find or launch any nodes to run your server. This is likely due to a configuration problem with the infrastructure or the JuyterHub"
+    return "It was not possible to find or launch any nodes to run your server. This is likely due to a configuration problem with the infrastructure or the JupyterHub"
 
 
 def taint_eviction_events_formatter(event: dict) -> Optional[str]:
