@@ -2124,7 +2124,11 @@ class KubeSpawner(Spawner):
         except ValueError:
             text = event["message"]
         else:
-            text = rule["template"].format(**matches)
+            try:
+                text = rule["template"].format(**matches)
+            except Exception:
+                self.log.exception(f"Event template rule failed to render successfully.")
+                text = event["message"]
 
         return {
             "message": format_plain_message(text, event),
