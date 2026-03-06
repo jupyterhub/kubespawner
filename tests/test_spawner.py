@@ -769,7 +769,7 @@ async def test_spawn_progress_formatter_rule(
                     "reportingComponent": "default-scheduler",
                 },
                 # Expect good-match-notebook in outputs
-                "template": "good-match-scheduler",
+                "template": lambda **kwargs: "good-match-scheduler",
             },
         ),
     ]

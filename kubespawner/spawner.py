@@ -2066,7 +2066,12 @@ class KubeSpawner(Spawner):
             except KeyError:
                 raise TraitError("rule missing required key 'template'")
 
-            if not isinstance(template, (str, callable)):
+            if isinstance(template, str):
+                # Re-write as callable
+                rule["template"] = template.format
+            elif callable(template):
+                pass
+            else:
                 raise TraitError("rule['template'] must be a string or callable")
 
             return rule
@@ -2124,10 +2129,14 @@ class KubeSpawner(Spawner):
         except ValueError:
             text = event["message"]
         else:
+            template_fn = rule["template"]
+
             try:
-                text = rule["template"].format(**matches)
+                text = template_fn(**matches)
             except Exception:
-                self.log.exception(f"Event template rule failed to render successfully.")
+                self.log.exception(
+                    f"Event template rule failed to render successfully."
+                )
                 text = event["message"]
 
         return {
