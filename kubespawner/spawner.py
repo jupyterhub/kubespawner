@@ -2084,10 +2084,10 @@ class KubeSpawner(Spawner):
             }
 
     @observe("event_formatter_rules")
-    def _event_formatter_rules_changed(self, change):
+    def _event_formatter_rules_changed(self, change: dict):
         self._compiled_event_formatter_rules = self._sorted_dict_values(change.new)
 
-    def _match_event_rule(self, event):
+    def _match_event_rule(self, event: dict) -> Optional[Tuple[dict, dict]]:
         # Normalise event to handle reportingComponent <-> source.component
         # Fields can both be missing (optional) and in-practice also empty strings
         # We normalise missing or "" to ""
