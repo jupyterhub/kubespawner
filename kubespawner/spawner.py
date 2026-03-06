@@ -2134,9 +2134,7 @@ class KubeSpawner(Spawner):
             try:
                 text = template_fn(**matches)
             except Exception:
-                self.log.exception(
-                    f"Event template rule failed to render successfully."
-                )
+                self.log.exception("Event template rule failed to render successfully.")
                 text = event["message"]
 
         return {
