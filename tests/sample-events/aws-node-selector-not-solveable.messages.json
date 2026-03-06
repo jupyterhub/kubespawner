@@ -1,6 +1,0 @@
-[
-  {
-    "message": "2026-02-11T15:29:29Z \u26a0\ufe0f It was not possible to find or launch any nodes to run your server. This is likely due to a configuration problem with the infrastructure or the JuyterHub",
-    "html_message": "<span class=\"badge bg-light-subtle text-light-emphasis rounded-pill\"><time datetime=\"2026-02-11T15:29:29+00:00\">2026-02-11T15:29:29Z</time></span> <span class=\"badge bg-warning-subtle text-warning-emphasis rounded-pill\">Warning</span> It was not possible to find or launch any nodes to run your server. This is likely due to a configuration problem with the infrastructure or the JuyterHub"
-  }
-]
