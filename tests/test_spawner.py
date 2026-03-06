@@ -715,67 +715,75 @@ async def test_spawn_progress_formatter_hook(
     await spawner.stop()
 
 
+@pytest.mark.parametrize("rules_as_dict", [True, False])
 async def test_spawn_progress_formatter_rule(
-    kube_ns, kube_client, config, hub_pod, hub
+    kube_ns, kube_client, config, hub_pod, hub, rules_as_dict
 ):
+
+    bare_rules = [
+        # Test kubelet started event. From inspecting events in CI, we expect reportingComponent
+        # to come from source.component. This is an IMPLEMENTATION DETAIL that may change.
+        *(
+            # Test bad component match
+            {
+                "match": {
+                    "reportingComponent": "not-a-kubelet",
+                },
+                # Do not expect bad-match in outputs
+                "template": "bad-match",
+            },
+            # Test bad field path match
+            {
+                "match": {
+                    "reportingComponent": "kubelet",
+                    "fieldPath": r"not-a-valid-match",
+                },
+                # Do not expect bad-match in outputs
+                "template": "bad-match",
+            },
+            # Test bad reason match
+            {
+                "match": {
+                    "reportingComponent": "kubelet",
+                    "reason": r"not-a-valid-reason",
+                },
+                # Do not expect bad-match in outputs
+                "template": "bad-match",
+            },
+            {
+                "match": {
+                    # Test kubelet via a pattern
+                    "reportingComponent": "(?P<component>kubelet)",
+                    "fieldPath": r"spec\.containers\{(?P<container>notebook)\}",
+                    # Test a regex here, to ensure it's pattern tested!
+                    "reason": r"St(art)ed",
+                },
+                # Expect good-match-notebook-from-kubelet in outputs
+                "template": "good-match-{container}-from-{component}",
+            },
+        ),
+        # Test different reporting component (default-scheduler)
+        *(
+            {
+                "match": {
+                    "reportingComponent": "default-scheduler",
+                },
+                # Expect good-match-notebook in outputs
+                "template": "good-match-scheduler",
+            },
+        ),
+    ]
+
+    if rules_as_dict:
+        rules = {f"rule-{i}": rule for i, rule in enumerate(bare_rules)}
+    else:
+        rules = bare_rules
 
     spawner = KubeSpawner(
         hub=hub,
         user=MockUser(name="progress-hook"),
         config=config,
-        event_formatter_rules=[
-            # Test kubelet started event. From inspecting events in CI, we expect reportingComponent
-            # to come from source.component. This is an IMPLEMENTATION DETAIL that may change.
-            *(
-                # Test bad component match
-                {
-                    "match": {
-                        "reportingComponent": "not-a-kubelet",
-                    },
-                    # Do not expect bad-match in outputs
-                    "template": "bad-match",
-                },
-                # Test bad field path match
-                {
-                    "match": {
-                        "reportingComponent": "kubelet",
-                        "fieldPath": r"not-a-valid-match",
-                    },
-                    # Do not expect bad-match in outputs
-                    "template": "bad-match",
-                },
-                # Test bad reason match
-                {
-                    "match": {
-                        "reportingComponent": "kubelet",
-                        "reason": r"not-a-valid-reason",
-                    },
-                    # Do not expect bad-match in outputs
-                    "template": "bad-match",
-                },
-                {
-                    "match": {
-                        # Test kubelet via a pattern
-                        "reportingComponent": "(?P<component>kubelet)",
-                        "fieldPath": r"spec\.containers\{(?P<container>notebook)\}",
-                        # Test a regex here, to ensure it's pattern tested!
-                        "reason": r"St(art)ed",
-                    },
-                    # Expect good-match-notebook-from-kubelet in outputs
-                    "template": "good-match-{container}-from-{component}",
-                },
-            ),
-            # Test different reporting component (default-scheduler)
-            *(
-                {
-                    "match": {
-                        "reportingComponent": "default-scheduler",
-                    },
-                    # Expect good-match-notebook in outputs
-                    "template": "good-match-scheduler",
-                },
-            ),
-        ],
+        event_formatter_rules=rules,
     )
 
     # empty spawner isn't running

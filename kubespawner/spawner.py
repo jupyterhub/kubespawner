@@ -33,16 +33,17 @@ from traitlets import (
     Enum,
     Integer,
     List,
+    TraitError,
     Unicode,
     Union,
     default,
     observe,
     validate,
-    TraitError,
 )
 
 from . import __version__
 from .clients import load_config, shared_client
+from .messages import format_html_message, format_plain_message
 from .objects import (
     make_namespace,
     make_owner_reference,
@@ -54,7 +55,6 @@ from .objects import (
 from .reflector import ResourceReflector
 from .slugs import escape_slug, is_valid_label, multi_slug, safe_slug
 from .utils import recursive_format, recursive_update
-from .messages import format_html_message, format_plain_message
 
 
 class PodReflector(ResourceReflector):
