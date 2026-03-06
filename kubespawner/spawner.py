@@ -38,11 +38,11 @@ from traitlets import (
     default,
     observe,
     validate,
+    TraitError,
 )
 
 from . import __version__
 from .clients import load_config, shared_client
-from .messages import format_reflected_event
 from .objects import (
     make_namespace,
     make_owner_reference,
@@ -54,6 +54,7 @@ from .objects import (
 from .reflector import ResourceReflector
 from .slugs import escape_slug, is_valid_label, multi_slug, safe_slug
 from .utils import recursive_format, recursive_update
+from .messages import format_html_message, format_plain_message
 
 
 class PodReflector(ResourceReflector):
@@ -1973,7 +1974,7 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    format_event_hook = Callable(
+    render_event_hook = Callable(
         None,
         allow_none=True,
         config=True,
@@ -1991,6 +1992,134 @@ class KubeSpawner(Spawner):
         of the formatted event.
         """,
     )
+
+    event_formatter_rules = Union(
+        trait_types=[
+            List(),
+            Dict(),
+        ],
+        config=True,
+        help="""
+        List or dictionary of event formatter rules.
+        """,
+    )
+
+    _compiled_event_formatter_rules = []
+
+    @validate("event_formatter_rules")
+    def _validate_event_formatter_rules(self, proposal: dict):
+        def validate_match(match: dict):
+            # Check required fields
+            if "reportingComponent" not in match:
+                raise TraitError(
+                    "rule['match'] missing required key 'reportingComponent'"
+                )
+
+            # Check types of fields
+            allowed_match_fields = (
+                "reportingComponent",
+                "fieldPath",
+                "reason",
+                "message",
+            )
+
+            # Prohibit unknown fields
+            unknown_match_fields = match.keys() - allowed_match_fields
+            if unknown_match_fields:
+                raise TraitError(
+                    f"rule['match'] contains unknown key(s): {', '.join(unknown_match_fields)}"
+                )
+
+            # Validate known fields
+            known_match_fields = allowed_match_fields & match.keys()
+            for field in known_match_fields:
+                value = match[field]
+
+                if not isinstance(value, (str, re.Pattern)):
+                    raise TraitError(
+                        f"rule['match'][{field!r}] must be string or compiled regular expression"
+                    )
+
+                # Pre-compile the rule
+                match[field] = re.compile(value)
+
+        def validate_rule(rule: dict):
+            # Check rule required fields
+            for required_field in ("match", "template"):
+                if required_field not in rule:
+                    raise TraitError(f"rule missing required key '{required_field}'")
+
+            validate_match(rule["match"])
+
+            try:
+                template = rule["template"]
+            except KeyError:
+                raise TraitError("rule missing required key 'template'")
+
+            if not isinstance(template, (str, callable)):
+                raise TraitError("rule['template'] must be a string or callable")
+
+            return rule
+
+        if isinstance(proposal["value"], list):
+            return [validate_rule(rule) for rule in proposal["value"]]
+        else:
+            return {
+                name: validate_rule(rule) for name, rule in proposal["value"].items()
+            }
+
+    @observe("event_formatter_rules")
+    def _event_formatter_rules_changed(self, change):
+        self._compiled_event_formatter_rules = self._sorted_dict_values(change.new)
+
+    def _match_event_rule(self, event):
+        # Normalise event to handle reportingComponent <-> source.component
+        # Fields can both be missing (optional) and in-practice also empty strings
+        # We normalise missing or "" to ""
+
+        match_source = {
+            "fieldPath": event["involvedObject"].get("fieldPath") or "",
+            "reportingComponent": event.get("reportingComponent")
+            or event.get("source", {}).get("component")
+            or "",
+            "message": event.get("message") or "",
+            "reason": event.get("reason") or "",
+        }
+
+        # Try to match a rule
+        for rule in self._compiled_event_formatter_rules:
+            matchers = rule["match"]
+            matches = {}
+            for field, pattern in matchers.items():
+                value = match_source[field]
+
+                # The event value must match the rule value
+                match = pattern.match(value or "")
+                if match is None:
+                    break
+
+                matches.update(
+                    # Include matches for groups, where _optional_ groups to default to ""
+                    match.groupdict(default="")
+                )
+
+            else:
+                return rule, matches
+
+        raise ValueError("No rule found for event")
+
+    def _render_event(self, event: dict) -> dict:
+        try:
+            rule, matches = self._match_event_rule(event)
+        except ValueError:
+            text = event["message"]
+        else:
+            text = rule["template"].format(**matches)
+
+        return {
+            "message": format_plain_message(text, event),
+            "html_message": format_html_message(text, event),
+        }
 
     # deprecate redundant and inconsistent singleuser_ and user_ prefixes:
     _deprecated_traits_09 = [
@@ -2833,11 +2962,11 @@ class KubeSpawner(Spawner):
                     # 30 50 63 72 78 82 84 86 87 88 88 89
                     progress += (90 - progress) / 3
 
-                    if self.format_event_hook is None:
-                        message_bundle = format_reflected_event(event)
+                    if self.render_event_hook is None:
+                        message_bundle = self._render_event(event)
                     else:
                         message_bundle = await maybe_future(
-                            self.format_event_hook(self, event)
+                            self.render_event_hook(self, event)
                         )
 
                     yield {

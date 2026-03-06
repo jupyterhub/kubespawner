@@ -658,7 +658,9 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
         # ensure we can serialize whatever we return
         with open(os.devnull, "w") as devnull:
             json.dump(progress, devnull)
-    assert 'Started the notebook container' in '\n'.join(messages)
+    corpus = "\n".join(messages)
+    # K8s changed the format of this message: https://github.com/kubernetes/kubernetes/pull/134043
+    assert "Started container" in corpus or "Container started" in corpus
 
     await start_future
     # stop the pod
@@ -668,7 +670,7 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
 async def test_spawn_progress_formatter_hook(
     kube_ns, kube_client, config, hub_pod, hub
 ):
-    def format_hook(spawner, event):
+    def render_event_hook(spawner, event):
         return {
             "message": f"custom-message-{event['message']}",
             "html_message": f"<span>{event['message']}</span>",
@@ -678,7 +680,7 @@ async def test_spawn_progress_formatter_hook(
         hub=hub,
         user=MockUser(name="progress-hook"),
         config=config,
-        format_event_hook=format_hook,
+        render_event_hook=render_event_hook,
     )
 
     # empty spawner isn't running
@@ -707,6 +709,101 @@ async def test_spawn_progress_formatter_hook(
     corpus = "\n".join(messages)
     # K8s changed the format of this message: https://github.com/kubernetes/kubernetes/pull/134043
     assert "Started container" in corpus or "Container started" in corpus
+
+    await start_future
+    # stop the pod
+    await spawner.stop()
+
+
+async def test_spawn_progress_formatter_rule(
+    kube_ns, kube_client, config, hub_pod, hub
+):
+
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="progress-hook"),
+        config=config,
+        event_formatter_rules=[
+            # Test kubelet started event. From inspecting events in CI, we expect reportingComponent
+            # to come from source.component. This is an IMPLEMENTATION DETAIL that may change.
+            *(
+                # Test bad component match
+                {
+                    "match": {
+                        "reportingComponent": "not-a-kubelet",
+                    },
+                    # Do not expect bad-match in outputs
+                    "template": "bad-match",
+                },
+                # Test bad field path match
+                {
+                    "match": {
+                        "reportingComponent": "kubelet",
+                        "fieldPath": r"not-a-valid-match",
+                    },
+                    # Do not expect bad-match in outputs
+                    "template": "bad-match",
+                },
+                # Test bad reason match
+                {
+                    "match": {
+                        "reportingComponent": "kubelet",
+                        "reason": r"not-a-valid-reason",
+                    },
+                    # Do not expect bad-match in outputs
+                    "template": "bad-match",
+                },
+                {
+                    "match": {
+                        # Test kubelet via a pattern
+                        "reportingComponent": "(?P<component>kubelet)",
+                        "fieldPath": r"spec\.containers\{(?P<container>notebook)\}",
+                        # Test a regex here, to ensure it's pattern tested!
+                        "reason": r"St(art)ed",
+                    },
+                    # Expect good-match-notebook-from-kubelet in outputs
+                    "template": "good-match-{container}-from-{component}",
+                },
+            ),
+            # Test different reporting component (default-scheduler)
+            *(
+                {
+                    "match": {
+                        "reportingComponent": "default-scheduler",
+                    },
+                    # Expect good-match-notebook in outputs
+                    "template": "good-match-scheduler",
+                },
+            ),
+        ],
+    )
+
+    # empty spawner isn't running
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+    # start the spawner
+    start_future = spawner.start()
+    # check progress events
+    messages = []
+    async for progress in spawner.progress():
+        assert "progress" in progress
+        assert isinstance(progress["progress"], int)
+        assert "message" in progress
+        assert isinstance(progress["message"], str)
+        assert "html_message" in progress
+        assert isinstance(progress["html_message"], str)
+        messages.append(progress["message"])
+
+        # ensure we can serialize whatever we return
+        with open(os.devnull, "w") as devnull:
+            json.dump(progress, devnull)
+    # Look for our custom prefix
+    corpus = "\n".join(messages)
+    # K8s changed the format of this message: https://github.com/kubernetes/kubernetes/pull/134043
+    assert "bad-match-" not in corpus
+    assert "good-match-scheduler" in corpus
+    assert "good-match-notebook-from-kubelet" in corpus
 
     await start_future
     # stop the pod
