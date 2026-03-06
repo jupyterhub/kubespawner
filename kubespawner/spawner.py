@@ -2001,6 +2001,16 @@ class KubeSpawner(Spawner):
         config=True,
         help="""
         List or dictionary of event formatter rules.
+
+        A rule consists of two required fields:
+        - `match` — an object containing regular expression patterns (strings or compiled regular expressions) that match similarly named Event fields. Any named capture groups will be made available to the `template`.
+        - `template` — a string whose .format method will be invoked with any named capture group results. Missing named capture groups are provided as empty strings.
+
+        If provided as a list, each item should be an aforementioned "rule" object.
+        If provided as a dictionary, the keys can be any descriptive name and the values should be the aforementioned "rule" objects.
+        The items will be sorted lexicographically by the dictionary keys and the sorted values will be used to build the list of rules.
+
+        :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
         """,
     )
 
