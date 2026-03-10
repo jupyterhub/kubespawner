@@ -2015,9 +2015,24 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    extra_event_formatter_rules = Union(
+        trait_types=[
+            List(),
+            Dict(),
+        ],
+        config=True,
+        help="""
+        List or dictionary of additional event formatter rules on top of :ref:`event_formatter_rules`.
+
+        .. seealso::
+
+          :ref:`event_formatter_rules` for information on fields available in template strings.
+        """,
+    )
+
     _compiled_event_formatter_rules = []
 
-    @validate("event_formatter_rules")
+    @validate("event_formatter_rules", "extra_event_formatter_rules")
     def _validate_event_formatter_rules(self, proposal: dict):
         def validate_match(match: dict):
             # Check required fields
@@ -2092,9 +2107,21 @@ class KubeSpawner(Spawner):
                 name: validate_rule(rule) for name, rule in proposal["value"].items()
             }
 
-    @observe("event_formatter_rules")
+    @observe("event_formatter_rules", "extra_event_formatter_rules")
     def _event_formatter_rules_changed(self, change: dict):
-        self._compiled_event_formatter_rules = self._sorted_dict_values(change.new)
+        compiled_rules = {}
+        # Merge (in order) the given rulesets
+        for ruleset in (self.event_formatter_rules, self.extra_event_formatter_rules):
+            if isinstance(ruleset, list):
+                ruleset = {
+                    f"rule-{i}-{rule['name']}": rule
+                    for i, rule in enumerate(ruleset, start=len(compiled_rules))
+                }
+            compiled_rules.update(ruleset)
+
+        # List entries are merged without cloberring, whereas dict values may clobber one another
+        # Sort by unique ID
+        self._compiled_event_formatter_rules = self._sorted_dict_values(compiled_rules)
 
     def _match_event_rule(self, event: dict) -> Optional[Tuple[dict, dict]]:
         # Normalise event to handle reportingComponent <-> source.component
@@ -2143,7 +2170,9 @@ class KubeSpawner(Spawner):
             try:
                 text = template_fn(**matches)
             except Exception:
-                self.log.exception(f"Event template for rule {rule['name']} failed to render successfully.")
+                self.log.exception(
+                    f"Event template for rule {rule['name']} failed to render successfully."
+                )
                 text = event["message"]
 
         return {
