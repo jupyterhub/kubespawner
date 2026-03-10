@@ -2002,7 +2002,8 @@ class KubeSpawner(Spawner):
         help="""
         List or dictionary of event formatter rules.
 
-        A rule consists of two required fields:
+        A rule consists of three required fields:
+        - `name` — a unique identifier for the rule
         - `match` — an object containing regular expression patterns (strings or compiled regular expressions) that match similarly named Event fields. Any named capture groups will be made available to the `template`.
         - `template` — a string whose .format method will be invoked with any named capture group results. Missing named capture groups are provided as empty strings.
 
@@ -2052,27 +2053,35 @@ class KubeSpawner(Spawner):
 
                 # Pre-compile the rule
                 match[field] = re.compile(value)
+            return match
+
+        def validate_template(template: any):
+            if isinstance(template, str):
+                # Re-write as callable
+                return template.format
+            elif callable(template):
+                return template
+            else:
+                raise TraitError("rule['template'] must be a string or callable")
+
+        def validate_name(template: any):
+            if isinstance(template, str):
+                # Re-write as callable
+                return template.format
+            elif callable(template):
+                return template
+            else:
+                raise TraitError("rule['name'] must be a string")
 
         def validate_rule(rule: dict):
             # Check rule required fields
-            for required_field in ("match", "template"):
+            for required_field in ("match", "template", "name"):
                 if required_field not in rule:
                     raise TraitError(f"rule missing required key '{required_field}'")
 
-            validate_match(rule["match"])
-
-            try:
-                template = rule["template"]
-            except KeyError:
-                raise TraitError("rule missing required key 'template'")
-
-            if isinstance(template, str):
-                # Re-write as callable
-                rule["template"] = template.format
-            elif callable(template):
-                pass
-            else:
-                raise TraitError("rule['template'] must be a string or callable")
+            rule["match"] = validate_match(rule["match"])
+            rule["template"] = validate_template(rule["template"])
+            rule["name"] = validate_name(rule["name"])
 
             return rule
 
@@ -2134,7 +2143,7 @@ class KubeSpawner(Spawner):
             try:
                 text = template_fn(**matches)
             except Exception:
-                self.log.exception("Event template rule failed to render successfully.")
+                self.log.exception(f"Event template for rule {rule['name']} failed to render successfully.")
                 text = event["message"]
 
         return {
