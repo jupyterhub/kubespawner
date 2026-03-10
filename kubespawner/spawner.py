@@ -2028,6 +2028,86 @@ class KubeSpawner(Spawner):
           :ref:`event_formatter_rules` for information on fields available in template strings.
         """,
     )
+    @default("event_formatter_rules")
+    def _default_event_formatter_rules(self):
+        return [
+            {
+                "match": {
+                    "reportingComponent": "kubelet",
+                    "fieldPath": "spec\\.(?P<container>initContainers|containers)\\{([^}]+)\\}",
+                    "reason": "(?P<action>Pulling|Pulled)",
+                },
+                "template": "{action} {image} image for the {container} container",
+            },
+            {
+                "match": {
+                    "reportingComponent": "kubelet",
+                    "fieldPath": "spec\\.(?P<container>initContainers|containers)\\{([^}]+)\\}",
+                    "reason": "(?P<action>Started|Killing|Created|Stopped)",
+                },
+                "template": "{action} the {container} container",
+            },
+            {
+                "match": {
+                    "reportingComponent": "kubelet",
+                    "reason": "OutOf(?P<resource>memory|cpu|ephemeral-storage|pods)",
+                },
+                "template": "The node selected to run your server ran out of {resource}",
+            },
+            {
+                "match": {
+                    "reportingComponent": ".*-user-scheduler",
+                    "reason": "Scheduled",
+                    "message": ".*?assigned \\S+ to (?P<node>\\S+)",
+                },
+                "template": "A node ({node}) has been found to run your server",
+            },
+            {
+                "match": {
+                    "reportingComponent": ".*-user-scheduler",
+                    "reason": "FailedScheduling",
+                },
+                "template": "No existing nodes are currently able to run your server",
+            },
+            {
+                "match": {
+                    "reportingComponent": "cluster-autoscaler",
+                    "reason": "TriggeredScaleUp",
+                },
+                "template": "Launching new nodes by scaling up the cluster",
+            },
+            {
+                "match": {
+                    "reportingComponent": "kubelet",
+                    "message": "Predicate NodeAffinity failed.*",
+                    "reason": "NodeAffinity",
+                },
+                "template": "It was not possible to find or launch any nodes to run your server. This is likely due to a configuration problem with the infrastructure or the JupyterHub",
+            },
+            {
+                "match": {
+                    "reportingComponent": "gke\\.io/optimize-utilization-scheduler",
+                    "reason": "Scheduled",
+                    "message": ".*?assigned \\S+ to (?P<node>\\S+)",
+                },
+                "template": "A node ({node}) has been found to run your server",
+            },
+            {
+                "match": {
+                    "reportingComponent": "gke\\.io/optimize-utilization-scheduler",
+                    "reason": "FailedScheduling",
+                },
+                "template": "No existing nodes are currently able to run your server",
+            },
+            {
+                "match": {
+                    "reportingComponent": "taint-eviction-controller",
+                    "reason": "gke\\.io/optimize-utilization-scheduler",
+                    "message": "Cancelling deletion of Pod.*",
+                },
+                "template": "Cancelling deletion of your server. This normally happens when a scale-up has just taken place.",
+            },
+        ]
 
     _compiled_event_formatter_rules = []
 
