@@ -2059,7 +2059,7 @@ class KubeSpawner(Spawner):
             },
             {
                 "match": {
-                    "reportingComponent": r".*-user-scheduler",
+                    "reportingComponent": r".*-(user|default)-scheduler",
                     "reason": r"Scheduled",
                     "message": r".*?assigned \S+ to (?P<node>\S+)",
                 },
