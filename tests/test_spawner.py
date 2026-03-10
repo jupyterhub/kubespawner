@@ -2,7 +2,7 @@ import asyncio
 import base64
 import json
 import os
-import re
+import pathlib
 from functools import partial
 from unittest.mock import Mock
 
@@ -816,6 +816,40 @@ async def test_spawn_progress_formatter_rule(
     await start_future
     # stop the pod
     await spawner.stop()
+
+
+RULE_TEST_FILES = (pathlib.Path(__file__).parent / "sample-events").glob(
+    "*.events.json"
+)
+RULE_TEST_PARAMETERS = [
+    (p, p.with_suffix("").with_suffix("").with_suffix(".messages.json"))
+    for p in RULE_TEST_FILES
+]
+
+
+@pytest.mark.parametrize("events_path,messages_path", RULE_TEST_PARAMETERS)
+async def test_spawn_progress_formatter_rules_builtin(events_path, messages_path):
+    spawner = KubeSpawner(
+        _mock=True,
+    )
+    assert messages_path.exists()
+
+    with open(events_path) as f:
+        events = json.load(f)
+
+    with open(messages_path) as f:
+        messages = json.load(f)
+
+    # Uncomment below to actually override the regression tests
+    # formatted = [
+    #     spawner.render_event(event) for event, message in zip(events, messages)
+    # ]
+    # with open(messages_path, "w") as f:
+    #     json.dump(formatted, f, indent=4)
+
+    for event, message in zip(events, messages):
+        rendered_message = spawner.render_event(event)
+        assert rendered_message == message
 
 
 async def test_spawn_start_restore_pod_name(
