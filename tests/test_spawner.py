@@ -852,6 +852,125 @@ async def test_spawn_progress_formatter_rules_builtin(events_path, messages_path
         assert rendered_message == message
 
 
+async def test_spawn_progress_formatter_rules_extra_list_extend():
+    rules = [
+        {
+            "match": {
+                "reportingComponent": "component-one",
+            },
+            # Do not expect bad-match in outputs
+            "template": "default-component-one",
+        },
+    ]
+    extra_rules = [
+        {
+            "match": {
+                "reportingComponent": "component-one",
+            },
+            # Do not expect bad-match in outputs
+            "template": "extra-component-one",
+        },
+        {
+            "match": {
+                "reportingComponent": "component-two",
+            },
+            # Do not expect bad-match in outputs
+            "template": "extra-component-two",
+        },
+    ]
+
+    spawner = KubeSpawner(
+        _mock=True,
+        event_formatter_rules=rules,
+        extra_event_formatter_rules=extra_rules,
+    )
+    event = {
+        "kind": "Event",
+        "involvedObject": {},
+        "lastTimestamp": "2026-02-11T14:58:40Z",
+        "type": "Warning",
+        "reportingComponent": "component-one",
+    }
+
+    bundle = spawner.render_event(event)
+
+    assert "default-component-one" in bundle["message"]
+    event = {
+        "kind": "Event",
+        "involvedObject": {},
+        "lastTimestamp": "2026-02-11T14:58:40Z",
+        "type": "Warning",
+        "reportingComponent": "component-two",
+    }
+
+    bundle = spawner.render_event(event)
+
+    assert "extra-component-two" in bundle["message"]
+
+
+async def test_spawn_progress_formatter_rules_extra_dict_extend():
+    rules = {
+        "first": {
+            "match": {
+                "reportingComponent": "component-one",
+            },
+            # Do not expect bad-match in outputs
+            "template": "default-component-one",
+        },
+        "second": {
+            "match": {
+                "reportingComponent": "component-two",
+            },
+            # Do not expect bad-match in outputs
+            "template": "default-component-two",
+        },
+    }
+    extra_rules = {
+        "first": {
+            "match": {
+                "reportingComponent": "component-one",
+            },
+            # Do not expect bad-match in outputs
+            "template": "extra-component-one",
+        },
+        "third": {
+            "match": {
+                "reportingComponent": "component-two",
+            },
+            # Do not expect bad-match in outputs
+            "template": "extra-component-two",
+        },
+    }
+
+    spawner = KubeSpawner(
+        _mock=True,
+        event_formatter_rules=rules,
+        extra_event_formatter_rules=extra_rules,
+    )
+    event = {
+        "kind": "Event",
+        "involvedObject": {},
+        "type": "Warning",
+        "lastTimestamp": "2026-02-11T14:58:40Z",
+        "reportingComponent": "component-one",
+    }
+
+    bundle = spawner.render_event(event)
+
+    assert "extra-component-one" in bundle["message"]
+    event = {
+        "kind": "Event",
+        "involvedObject": {},
+        "lastTimestamp": "2026-02-11T14:58:40Z",
+        "type": "Warning",
+        "reportingComponent": "component-two",
+    }
+
+    bundle = spawner.render_event(event)
+
+    assert "default-component-two" in bundle["message"]
+
+
 async def test_spawn_start_restore_pod_name(
     kube_ns,
     kube_client,

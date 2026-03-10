@@ -1,6 +1,6 @@
 [
-    {
-        "message": "2026-02-12T15:02:54Z \u26a0\ufe0f The node selected to run your server ran out of cpu",
-        "html_message": "<span class=\"badge bg-light-subtle text-light-emphasis rounded-pill\"><time datetime=\"2026-02-12T15:02:54+00:00\">2026-02-12T15:02:54Z</time></span> <span class=\"badge bg-warning-subtle text-warning-emphasis rounded-pill\">Warning</span> The node selected to run your server ran out of cpu"
-    }
+  {
+    "message": "2026-02-12T15:02:54Z \u26a0\ufe0f The node selected to run your server ran out of cpu",
+    "html_message": "<span class=\"badge bg-light-subtle text-light-emphasis rounded-pill\"><time datetime=\"2026-02-12T15:02:54+00:00\">2026-02-12T15:02:54Z</time></span> <span class=\"badge bg-warning-subtle text-warning-emphasis rounded-pill\">Warning</span> The node selected to run your server ran out of cpu"
+  }
 ]

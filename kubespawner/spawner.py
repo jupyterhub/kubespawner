@@ -2029,6 +2029,7 @@ class KubeSpawner(Spawner):
           :ref:`event_formatter_rules` for information on fields available in template strings.
         """,
     )
+
     @default("event_formatter_rules")
     def _default_event_formatter_rules(self):
         return [
@@ -2110,7 +2111,7 @@ class KubeSpawner(Spawner):
                 "template": "Cancelling deletion of your server. This normally happens when a scale-up has just taken place.",
             },
         ]
- 
+
     @validate("event_formatter_rules", "extra_event_formatter_rules")
     def _validate_event_formatter_rules(self, proposal: dict):
         def validate_match(match: dict):
@@ -2159,7 +2160,6 @@ class KubeSpawner(Spawner):
             validate_template(rule["template"])
             return rule
 
-
         if isinstance(proposal["value"], list):
             return [validate_rule(rule) for rule in proposal["value"]]
         else:
@@ -2185,12 +2185,15 @@ class KubeSpawner(Spawner):
 
             if isinstance(rules, list):
                 compiled_rules = {
-                    f"{rules_name}-{i}": (rule, trait_path_template.format(rules_name, i))
+                    f"{rules_name}-{i}": (
+                        rule,
+                        trait_path_template.format(rules_name, i),
+                    )
                     for i, rule in enumerate(rules)
                 }
-            else: 
+            else:
                 compiled_rules = {
-                    name: (rule, trait_path_template.format(rules_name, name)) 
+                    name: (rule, trait_path_template.format(rules_name, name))
                     for name, rule in rules.items()
                 }
             merged_rules.update(compiled_rules)
@@ -2229,9 +2232,7 @@ class KubeSpawner(Spawner):
                     break
 
                 # Include matches for groups, where _optional_ groups to default to ""
-                matches.update(
-                    match.groupdict(default="")
-                )
+                matches.update(match.groupdict(default=""))
 
             else:
                 return rule, rule_path, matches
