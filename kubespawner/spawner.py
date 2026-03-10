@@ -2034,77 +2034,78 @@ class KubeSpawner(Spawner):
         return [
             {
                 "match": {
-                    "reportingComponent": "kubelet",
-                    "fieldPath": "spec\\.(?P<container>initContainers|containers)\\{([^}]+)\\}",
-                    "reason": "(?P<action>Pulling|Pulled)",
+                    "reportingComponent": r"kubelet",
+                    "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
+                    "reason": r"(?P<action>Pulling|Pulled)",
+                    "message": r'.*image\s*"(?P<image>[^"]+)\:(?P<tag>[^"]+)"',
                 },
-                "template": "{action} {image} image for the {container} container",
+                "template": "{action} {image} image ({tag}) for the {container} container",
             },
             {
                 "match": {
-                    "reportingComponent": "kubelet",
-                    "fieldPath": "spec\\.(?P<container>initContainers|containers)\\{([^}]+)\\}",
-                    "reason": "(?P<action>Started|Killing|Created|Stopped)",
+                    "reportingComponent": r"kubelet",
+                    "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
+                    "reason": r"(?P<action>Started|Killing|Created|Stopped)",
                 },
                 "template": "{action} the {container} container",
             },
             {
                 "match": {
-                    "reportingComponent": "kubelet",
-                    "reason": "OutOf(?P<resource>memory|cpu|ephemeral-storage|pods)",
+                    "reportingComponent": r"kubelet",
+                    "reason": r"OutOf(?P<resource>memory|cpu|ephemeral-storage|pods)",
                 },
                 "template": "The node selected to run your server ran out of {resource}",
             },
             {
                 "match": {
-                    "reportingComponent": ".*-user-scheduler",
-                    "reason": "Scheduled",
-                    "message": ".*?assigned \\S+ to (?P<node>\\S+)",
+                    "reportingComponent": r".*-user-scheduler",
+                    "reason": r"Scheduled",
+                    "message": r".*?assigned \S+ to (?P<node>\S+)",
                 },
                 "template": "A node ({node}) has been found to run your server",
             },
             {
                 "match": {
-                    "reportingComponent": ".*-user-scheduler",
-                    "reason": "FailedScheduling",
+                    "reportingComponent": r".*-user-scheduler",
+                    "reason": r"FailedScheduling",
                 },
                 "template": "No existing nodes are currently able to run your server",
             },
             {
                 "match": {
-                    "reportingComponent": "cluster-autoscaler",
-                    "reason": "TriggeredScaleUp",
+                    "reportingComponent": r"cluster-autoscaler",
+                    "reason": r"TriggeredScaleUp",
                 },
                 "template": "Launching new nodes by scaling up the cluster",
             },
             {
                 "match": {
-                    "reportingComponent": "kubelet",
-                    "message": "Predicate NodeAffinity failed.*",
+                    "reportingComponent": r"kubelet",
+                    "message": r"Predicate NodeAffinity failed.*",
                     "reason": "NodeAffinity",
                 },
                 "template": "It was not possible to find or launch any nodes to run your server. This is likely due to a configuration problem with the infrastructure or the JupyterHub",
             },
             {
                 "match": {
-                    "reportingComponent": "gke\\.io/optimize-utilization-scheduler",
-                    "reason": "Scheduled",
-                    "message": ".*?assigned \\S+ to (?P<node>\\S+)",
+                    "reportingComponent": r"gke\.io/optimize-utilization-scheduler",
+                    "reason": r"Scheduled",
+                    "message": r".*?assigned \S+ to (?P<node>\S+)",
                 },
                 "template": "A node ({node}) has been found to run your server",
             },
             {
                 "match": {
-                    "reportingComponent": "gke\\.io/optimize-utilization-scheduler",
-                    "reason": "FailedScheduling",
+                    "reportingComponent": r"gke\.io/optimize-utilization-scheduler",
+                    "reason": r"FailedScheduling",
                 },
                 "template": "No existing nodes are currently able to run your server",
             },
             {
                 "match": {
-                    "reportingComponent": "taint-eviction-controller",
-                    "reason": "gke\\.io/optimize-utilization-scheduler",
-                    "message": "Cancelling deletion of Pod.*",
+                    "reportingComponent": r"taint-eviction-controller",
+                    "reason": r"TaintManagerEviction",
+                    "message": r"Cancelling deletion of Pod.*",
                 },
                 "template": "Cancelling deletion of your server. This normally happens when a scale-up has just taken place.",
             },
@@ -2144,17 +2145,8 @@ class KubeSpawner(Spawner):
                         f"rule['match'][{field!r}] must be string or compiled regular expression"
                     )
 
-                # Pre-compile the rule
-                match[field] = re.compile(value)
-            return match
-
         def validate_template(template: any):
-            if isinstance(template, str):
-                # Re-write as callable
-                return template.format
-            elif callable(template):
-                return template
-            else:
+            if not (isinstance(template, str) or callable(template)):
                 raise TraitError("rule['template'] must be a string or callable")
 
         def validate_rule(rule: dict):
@@ -2163,10 +2155,10 @@ class KubeSpawner(Spawner):
                 if required_field not in rule:
                     raise TraitError(f"rule missing required key '{required_field}'")
 
-            rule["match"] = validate_match(rule["match"])
-            rule["template"] = validate_template(rule["template"])
-
+            validate_match(rule["match"])
+            validate_template(rule["template"])
             return rule
+
 
         if isinstance(proposal["value"], list):
             return [validate_rule(rule) for rule in proposal["value"]]
@@ -2182,7 +2174,7 @@ class KubeSpawner(Spawner):
         # Clear compiled event formatter rules
         self._compiled_event_formatter_rules = None
 
-    def _compiled_event_formatter_rules(self):
+    def _compile_event_formatter_rules(self):
         # Template for forming helpful debug messages
         trait_path_template = "{}[{!r}]"
 
@@ -2191,7 +2183,7 @@ class KubeSpawner(Spawner):
         for rules_name in ("event_formatter_rules", "extra_event_formatter_rules"):
             rules = getattr(self, rules_name)
 
-            if isinstance(ruleset, list):
+            if isinstance(rules, list):
                 compiled_rules = {
                     f"{rules_name}-{i}": (rule, trait_path_template.format(rules_name, i))
                     for i, rule in enumerate(rules)
@@ -2214,7 +2206,7 @@ class KubeSpawner(Spawner):
 
         match_source = {
             "fieldPath": event["involvedObject"].get("fieldPath") or "",
-            "reportingComponent": event.get("reporti/ngComponent")
+            "reportingComponent": event.get("reportingComponent")
             or event.get("source", {}).get("component")
             or "",
             "message": event.get("message") or "",
@@ -2223,29 +2215,28 @@ class KubeSpawner(Spawner):
 
         # Populate cache of compiled event rules
         if self._compiled_event_formatter_rules is None:
-            self._compiled_event_formatter_rules = self._compiled_event_formatter_rules()
+            self._compiled_event_formatter_rules = self._compile_event_formatter_rules()
 
         # Try to match a rule
         for rule, rule_path in self._compiled_event_formatter_rules:
-            matchers = rule["match"]
             matches = {}
-            for field, pattern in matchers.items():
+            for field, pattern in rule["match"].items():
                 value = match_source[field]
 
                 # The event value must match the rule value
-                match = pattern.match(value or "")
+                match = re.match(pattern, value or "")
                 if match is None:
                     break
 
+                # Include matches for groups, where _optional_ groups to default to ""
                 matches.update(
-                    # Include matches for groups, where _optional_ groups to default to ""
                     match.groupdict(default="")
                 )
 
             else:
                 return rule, rule_path, matches
 
-        raise ValueError("No rule found for event")
+        raise ValueError("No matching rule found for event")
 
     def render_event(self, event: dict) -> dict:
         try:
@@ -2253,10 +2244,15 @@ class KubeSpawner(Spawner):
         except ValueError:
             text = event["message"]
         else:
-            template_fn = rule["template"]
+            template = rule["template"]
+
+            if isinstance(template, str):
+                format_template = template.format
+            else:
+                format_template = template
 
             try:
-                text = template_fn(**matches)
+                text = format_template(**matches)
             except Exception:
                 self.log.exception(
                     f"Event template for rule {rule_path} failed to render successfully."
