@@ -2002,8 +2002,7 @@ class KubeSpawner(Spawner):
         help="""
         List or dictionary of event formatter rules.
 
-        A rule consists of three required fields:
-        - `name` — a unique identifier for the rule
+        A rule consists of two required fields:
         - `match` — an object containing regular expression patterns (strings or compiled regular expressions) that match similarly named Event fields. Any named capture groups will be made available to the `template`.
         - `template` — a string whose .format method will be invoked with any named capture group results. Missing named capture groups are provided as empty strings.
 
@@ -2079,24 +2078,14 @@ class KubeSpawner(Spawner):
             else:
                 raise TraitError("rule['template'] must be a string or callable")
 
-        def validate_name(template: any):
-            if isinstance(template, str):
-                # Re-write as callable
-                return template.format
-            elif callable(template):
-                return template
-            else:
-                raise TraitError("rule['name'] must be a string")
-
         def validate_rule(rule: dict):
             # Check rule required fields
-            for required_field in ("match", "template", "name"):
+            for required_field in ("match", "template"):
                 if required_field not in rule:
                     raise TraitError(f"rule missing required key '{required_field}'")
 
             rule["match"] = validate_match(rule["match"])
             rule["template"] = validate_template(rule["template"])
-            rule["name"] = validate_name(rule["name"])
 
             return rule
 
@@ -2109,21 +2098,31 @@ class KubeSpawner(Spawner):
 
     @observe("event_formatter_rules", "extra_event_formatter_rules")
     def _event_formatter_rules_changed(self, change: dict):
-        compiled_rules = {}
+        # Template for forming helpful debug messages
+        trait_path_template = "{}[{!r}]"
+
         # Merge (in order) the given rulesets
-        for ruleset in (self.event_formatter_rules, self.extra_event_formatter_rules):
+        merged_rules = {}
+        for rules_name in ("event_formatter_rules", "extra_event_formatter_rules"):
+            rules = getattr(self, rules_name)
+
             if isinstance(ruleset, list):
-                ruleset = {
-                    f"rule-{i}-{rule['name']}": rule
-                    for i, rule in enumerate(ruleset, start=len(compiled_rules))
+                compiled_rules = {
+                    f"{rules_name}-{i}": (rule, trait_path_template.format(rules_name, i))
+                    for i, rule in enumerate(rules)
                 }
-            compiled_rules.update(ruleset)
+            else: 
+                compiled_rules = {
+                    name: (rule, trait_path_template.format(rules_name, name)) 
+                    for name, rule in rules.items()
+                }
+            merged_rules.update(compiled_rules)
 
         # List entries are merged without cloberring, whereas dict values may clobber one another
         # Sort by unique ID
-        self._compiled_event_formatter_rules = self._sorted_dict_values(compiled_rules)
+        self._compiled_event_formatter_rules = self._sorted_dict_values(merged_rules)
 
-    def _match_event_rule(self, event: dict) -> Optional[Tuple[dict, dict]]:
+    def _match_event_rule(self, event: dict) -> Optional[Tuple[dict, str, dict]]:
         # Normalise event to handle reportingComponent <-> source.component
         # Fields can both be missing (optional) and in-practice also empty strings
         # We normalise missing or "" to ""
@@ -2138,7 +2137,7 @@ class KubeSpawner(Spawner):
         }
 
         # Try to match a rule
-        for rule in self._compiled_event_formatter_rules:
+        for rule, rule_path in self._compiled_event_formatter_rules:
             matchers = rule["match"]
             matches = {}
             for field, pattern in matchers.items():
@@ -2155,13 +2154,13 @@ class KubeSpawner(Spawner):
                 )
 
             else:
-                return rule, matches
+                return rule, rule_path, matches
 
         raise ValueError("No rule found for event")
 
     def _render_event(self, event: dict) -> dict:
         try:
-            rule, matches = self._match_event_rule(event)
+            rule, rule_path, matches = self._match_event_rule(event)
         except ValueError:
             text = event["message"]
         else:
@@ -2171,7 +2170,7 @@ class KubeSpawner(Spawner):
                 text = template_fn(**matches)
             except Exception:
                 self.log.exception(
-                    f"Event template for rule {rule['name']} failed to render successfully."
+                    f"Event template for rule {rule_path} failed to render successfully."
                 )
                 text = event["message"]
 
