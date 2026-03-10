@@ -670,7 +670,7 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
 async def test_spawn_progress_formatter_hook(
     kube_ns, kube_client, config, hub_pod, hub
 ):
-    def render_event_hook(spawner, event):
+    def modify_progress_hook(spawner, event, bundle):
         return {
             "message": f"custom-message-{event['message']}",
             "html_message": f"<span>{event['message']}</span>",
@@ -680,7 +680,7 @@ async def test_spawn_progress_formatter_hook(
         hub=hub,
         user=MockUser(name="progress-hook"),
         config=config,
-        render_event_hook=render_event_hook,
+        modify_progress_hook=modify_progress_hook,
     )
 
     # empty spawner isn't running

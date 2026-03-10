@@ -1974,17 +1974,18 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    render_event_hook = Callable(
+    modify_progress_hook = Callable(
         None,
         allow_none=True,
         config=True,
         help="""
-        Callable to build an event message from a reflected Event object.
+        Callable to modify a rendered event message from a reflected Event object.
 
         Expects a callable that takes two parameters:
 
            1. The spawner object that is doing the spawning
            2. The Event object that is to be formatted
+           3. The rendered message as dictionary containing `html_message` and `message` keys
 
         This can be a coroutine if necessary. When set to none, the default formatter is used.
         The hook function should return a dictionary containing a required key `message`,
@@ -2108,9 +2109,7 @@ class KubeSpawner(Spawner):
                 "template": "Cancelling deletion of your server. This normally happens when a scale-up has just taken place.",
             },
         ]
-
-    _compiled_event_formatter_rules = []
-
+ 
     @validate("event_formatter_rules", "extra_event_formatter_rules")
     def _validate_event_formatter_rules(self, proposal: dict):
         def validate_match(match: dict):
@@ -2176,8 +2175,14 @@ class KubeSpawner(Spawner):
                 name: validate_rule(rule) for name, rule in proposal["value"].items()
             }
 
+    _compiled_event_formatter_rules = None
+
     @observe("event_formatter_rules", "extra_event_formatter_rules")
     def _event_formatter_rules_changed(self, change: dict):
+        # Clear compiled event formatter rules
+        self._compiled_event_formatter_rules = None
+
+    def _compiled_event_formatter_rules(self):
         # Template for forming helpful debug messages
         trait_path_template = "{}[{!r}]"
 
@@ -2200,7 +2205,7 @@ class KubeSpawner(Spawner):
 
         # List entries are merged without cloberring, whereas dict values may clobber one another
         # Sort by unique ID
-        self._compiled_event_formatter_rules = self._sorted_dict_values(merged_rules)
+        return self._sorted_dict_values(merged_rules)
 
     def _match_event_rule(self, event: dict) -> Optional[Tuple[dict, str, dict]]:
         # Normalise event to handle reportingComponent <-> source.component
@@ -2209,12 +2214,16 @@ class KubeSpawner(Spawner):
 
         match_source = {
             "fieldPath": event["involvedObject"].get("fieldPath") or "",
-            "reportingComponent": event.get("reportingComponent")
+            "reportingComponent": event.get("reporti/ngComponent")
             or event.get("source", {}).get("component")
             or "",
             "message": event.get("message") or "",
             "reason": event.get("reason") or "",
         }
+
+        # Populate cache of compiled event rules
+        if self._compiled_event_formatter_rules is None:
+            self._compiled_event_formatter_rules = self._compiled_event_formatter_rules()
 
         # Try to match a rule
         for rule, rule_path in self._compiled_event_formatter_rules:
@@ -2238,7 +2247,7 @@ class KubeSpawner(Spawner):
 
         raise ValueError("No rule found for event")
 
-    def _render_event(self, event: dict) -> dict:
+    def render_event(self, event: dict) -> dict:
         try:
             rule, rule_path, matches = self._match_event_rule(event)
         except ValueError:
@@ -3100,11 +3109,10 @@ class KubeSpawner(Spawner):
                     # 30 50 63 72 78 82 84 86 87 88 88 89
                     progress += (90 - progress) / 3
 
-                    if self.render_event_hook is None:
-                        message_bundle = self._render_event(event)
-                    else:
+                    message_bundle = self.render_event(event)
+                    if self.modify_progress_hook is None:
                         message_bundle = await maybe_future(
-                            self.render_event_hook(self, event)
+                            self.modify_progress_hook(self, event, message_bundle)
                         )
 
                     yield {
