@@ -3107,7 +3107,7 @@ class KubeSpawner(Spawner):
                     progress += (90 - progress) / 3
 
                     message_bundle = self.render_event(event)
-                    if self.modify_progress_hook is None:
+                    if self.modify_progress_hook is not None:
                         message_bundle = await maybe_future(
                             self.modify_progress_hook(self, event, message_bundle)
                         )
