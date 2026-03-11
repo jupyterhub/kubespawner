@@ -1,5 +1,4 @@
 <style>{% include 'style.css' %}</style>
-
 {#- Macro to render profile_options recursively.
     profile_slug: the slug of the parent profile (used for form field names)
     profile_options: the profile_options dict to render
@@ -50,7 +49,6 @@
     </div>
   {%- endfor %}
 {%- endmacro %}
-
 <div class="form-group" id="kubespawner-profiles-list">
   {%- for profile in profile_list %}
     {#- Wrap everything in a label tag so clicking anywhere selects the option #}
@@ -67,9 +65,7 @@
         <h3>{{ profile.display_name }}</h3>
         {%- if profile.description %}<p>{{ profile.description }}</p>{%- endif %}
         {%- if profile.profile_options %}
-          <div>
-            {{ render_profile_options(profile.slug, profile.profile_options) }}
-          </div>
+          <div>{{ render_profile_options(profile.slug, profile.profile_options) }}</div>
         {%- endif %}
       </div>
     </label>

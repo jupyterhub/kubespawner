@@ -3539,9 +3539,7 @@ class KubeSpawner(Spawner):
         _apply_profile_options_overrides.
         """
         for option_name, option in profile_options.items():
-            option_key = (
-                f"{key_prefix}--{option_name}" if key_prefix else option_name
-            )
+            option_key = f"{key_prefix}--{option_name}" if key_prefix else option_name
             unlisted_choice_key = f"{option_key}--unlisted-choice"
             unlisted_choice_value = self.user_options.get(unlisted_choice_key)
             choice_key = self.user_options.get(option_key)
@@ -3676,9 +3674,7 @@ class KubeSpawner(Spawner):
         "image--testing".
         """
         for option_name, option in profile_options.items():
-            option_key = (
-                f"{key_prefix}--{option_name}" if key_prefix else option_name
-            )
+            option_key = f"{key_prefix}--{option_name}" if key_prefix else option_name
             unlisted_choice_key = f"{option_key}--unlisted-choice"
             unlisted_choice_value = self.user_options.get(unlisted_choice_key)
             choice_key = self.user_options.get(option_key)
@@ -3708,9 +3704,7 @@ class KubeSpawner(Spawner):
                         f"Unable to determine a default choice for {option_key}."
                     )
                 selected_choice_key, selected_choice = next(
-                    (k, c)
-                    for k, c in option["choices"].items()
-                    if c.get("default")
+                    (k, c) for k, c in option["choices"].items() if c.get("default")
                 )
                 option_overrides = selected_choice.get("kubespawner_override", {})
 
