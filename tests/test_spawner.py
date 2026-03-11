@@ -660,7 +660,7 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
             json.dump(progress, devnull)
     corpus = "\n".join(messages)
     # K8s changed the format of this message: https://github.com/kubernetes/kubernetes/pull/134043
-    assert "Started container" in corpus or "Container started" in corpus
+    assert "Started the notebook container" in corpus
 
     await start_future
     # stop the pod
