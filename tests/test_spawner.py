@@ -1798,7 +1798,7 @@ async def test_variable_expansion(ssl_app):
         "pod": await spawner.get_pod_manifest(),
         "pvc": spawner.get_pvc_manifest(),
         "secret": spawner.get_secret_manifest("dummy-owner-ref"),
-        "service": spawner.get_service_manifest("dummy-owner-ref"),
+        "service": spawner.get_service_manifest("dummy-owner-ref", 8888),
     }
 
     for resource_kind, manifest in manifests.items():
@@ -1851,6 +1851,18 @@ async def test_url_changed(kube_ns, kube_client, config, hub_pod, hub):
     # run it again, to make sure we aren't incorrectly detecting and committing
     # changes on every poll
     await spawner.poll()
+    assert spawner.db.commit.call_count == previous_commit_count
+
+    # changing spawner.port (e.g. updated config while pod is running)
+    # should _not_ indicate changed url of running pod
+    spawner.port = 1234
+    await spawner.poll()
+    ref_key = f"{spawner.namespace}/{spawner.pod_name}"
+    pod = spawner.pod_reflector.pods.get(ref_key, None)
+    assert spawner._get_pod_port(pod) == 8888
+    url = spawner._get_pod_url(pod)
+    assert url == pod_host
+    # didn't commit to the db
     assert spawner.db.commit.call_count == previous_commit_count
 
     await spawner.stop()
@@ -1917,7 +1929,22 @@ async def test_ipv6_addr():
     spawner = KubeSpawner(
         _mock=True,
     )
-    url = spawner._get_pod_url({"status": {"podIP": "cafe:f00d::"}})
+    url = spawner._get_pod_url(
+        {
+            "metadata": {
+                "name": "jupyter-test",
+            },
+            "spec": {
+                "containers": [
+                    {
+                        "name": "notebook",
+                        "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    }
+                ]
+            },
+            "status": {"podIP": "cafe:f00d::"},
+        }
+    )
     assert "[" in url and "]" in url
 
 

@@ -12,6 +12,8 @@ import os
 import re
 import string
 import sys
+import textwrap
+import time
 import warnings
 from functools import partial
 from typing import Optional, Tuple, Type
@@ -1895,6 +1897,33 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    slow_spawn_message_threshold = Integer(
+        60,
+        config=True,
+        help="""
+        Time in seconds to wait before injecting a 'please be patient' message
+        to display to the user. If this value is 0, no message will be shown.
+        """,
+    )
+
+    slow_spawn_message_frequency = Integer(
+        5,
+        config=True,
+        help="""
+        Sets a delay of N seconds between updates to the message buffer, so
+        that we don't spam the user with too many messages.
+        """,
+    )
+
+    slow_spawn_message = Unicode(
+        "Server launch is taking longer than expected. Please be patient! Current time spent waiting: {seconds} seconds.",
+        config=True,
+        help="""
+        The injected timing message to display to the user. The variable `{seconds}`
+        will be replaced by the number of seconds the spawn has currently taken.
+        """,
+    )
+
     # deprecate redundant and inconsistent singleuser_ and user_ prefixes:
     _deprecated_traits_09 = [
         "singleuser_working_dir",
@@ -2201,6 +2230,19 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    def _get_pod_port(self, pod):
+        """
+        Return the port of the server in the pod.
+
+        That port must be called 'notebook-port'.
+        """
+        for container in pod["spec"]["containers"]:
+            for port in container["ports"]:
+                if port.get("name") == "notebook-port":
+                    return port["containerPort"]
+        pod_name = pod["metadata"]["name"]
+        raise KeyError(f"No port 'notebook-port' in pod {pod_name}")
+
     def _get_pod_url(self, pod):
         """Return the pod url
 
@@ -2231,10 +2273,12 @@ class KubeSpawner(Spawner):
                 ]
             )
 
+        port = self._get_pod_port(pod)
+
         return "{}://{}:{}".format(
             proto,
             hostname,
-            self.port,
+            port,
         )
 
     async def get_pod_manifest(self):
@@ -2371,7 +2415,7 @@ class KubeSpawner(Spawner):
             annotations=annotations,
         )
 
-    def get_service_manifest(self, owner_reference):
+    def get_service_manifest(self, owner_reference, port):
         """
         Make a service manifest for dns.
         """
@@ -2385,7 +2429,7 @@ class KubeSpawner(Spawner):
         # TODO: validate that the service name
         return make_service(
             name=self.pod_name,
-            port=self.port,
+            port=port,
             selector=selector,
             owner_references=[owner_reference],
             labels=labels,
@@ -2673,6 +2717,10 @@ class KubeSpawner(Spawner):
         progress = 0
         next_event = 0
 
+        # timers for deciding when to show slow spawn patience message
+        start_time = time.perf_counter()
+        last_message_time = 0
+
         break_while_loop = False
         while True:
             # This logic avoids a race condition. self._start() will be invoked by
@@ -2688,6 +2736,22 @@ class KubeSpawner(Spawner):
             # .sleep() and missed something.
             if start_future and start_future.done():
                 break_while_loop = True
+
+            # if the timer is greater than self.server_spawn_launch_timer_threshold
+            # display a message to the user with an incrementing count in seconds
+            elapsed = time.perf_counter() - start_time
+            if (
+                elapsed >= self.slow_spawn_message_threshold
+                and self.slow_spawn_message_threshold > 0
+            ):
+                # don't spam the user, so only update the timer message every few seconds
+                if elapsed >= last_message_time + self.slow_spawn_message_frequency:
+                    patience_message = textwrap.dedent(self.slow_spawn_message)
+                    patience_message = patience_message.format(seconds=int(elapsed))
+                    last_message_time = elapsed
+                    yield {
+                        'message': patience_message,
+                    }
 
             events = self.events
             len_events = len(events)
@@ -3199,7 +3263,9 @@ class KubeSpawner(Spawner):
                     )
 
                 if self.internal_ssl or self.services_enabled:
-                    service_manifest = self.get_service_manifest(owner_reference)
+                    service_manifest = self.get_service_manifest(
+                        owner_reference, self._get_pod_port(pod)
+                    )
                     await exponential_backoff(
                         partial(
                             self._ensure_not_exists,
