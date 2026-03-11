@@ -1,4 +1,12 @@
 /*
+    .hidden is used by kubespawner's form JS to show/hide elements.
+    Defined here explicitly so it works regardless of Bootstrap version.
+*/
+.hidden {
+  display: none !important;
+}
+
+/*
     .profile divs holds two div tags: one for a radio button, and one
     for the profile's content.
 */

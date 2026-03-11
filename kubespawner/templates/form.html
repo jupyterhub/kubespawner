@@ -12,7 +12,8 @@
       <div class="option">
         <label for="profile-option-{{ profile_slug }}--{{ option_key }}"
                class="js-profile-option-label">{{ option.display_name }}</label>
-        <select data-name="profile-option-{{ profile_slug }}--{{ option_key }}"
+        <select {% if not key_prefix %}name="profile-option-{{ profile_slug }}--{{ option_key }}"{% endif %}
+                data-name="profile-option-{{ profile_slug }}--{{ option_key }}"
                 data-option-key="{{ option_key }}"
                 class="form-control js-profile-option-select">
           {%- for choice_key, choice in option.get('choices', {}).items() %}
@@ -75,8 +76,11 @@
   {%- endfor %}
 </div>
 <script>
-  $('.js-profile-option-select, .js-profile-option-label').click(function() {
-    // we need this bit of JS to select the profile when a <select> inside is clicked.
+  // Use event delegation so handlers work regardless of how/when the form HTML
+  // is injected into the page (e.g. via JupyterHub's dynamic form loading).
+
+  $(document).on('click', '.js-profile-option-select, .js-profile-option-label', function() {
+    // Select the profile radio button when the user clicks a dropdown or label.
     $(this).closest('.js-profile-label')
       .find('input[type=radio]')
       .prop('checked', true);
@@ -87,8 +91,8 @@
     var $myContainer = $select.closest('.js-options-container');
 
     // If the user selects "Other" in the dropdown, show the free text field.
-    // Remove the "name" attribute from whichever input should not submit,
-    // so that we only submit valid form values.
+    // We remove "name" from whichever input should NOT submit so the backend
+    // receives exactly one value per option.
     var $otherInputContainer = $myContainer.children('.js-other-input-container');
     var $otherInput = $otherInputContainer.find('.js-other-input');
     if (selectedValue === 'unlisted-choice') {
@@ -105,40 +109,45 @@
     var optionKey = $select.data('option-key');
     var $profileLabel = $select.closest('.js-profile-label');
 
-    // Hide all nested option containers for this parent option and strip
-    // their selects' name attributes so they don't submit.
+    // Hide all nested containers for this parent option and remove their
+    // selects' name attributes so they don't submit.
     $profileLabel.find('.js-nested-options[data-parent-option="' + optionKey + '"]').each(function() {
       $(this).addClass('hidden');
       $(this).find('select.js-profile-option-select').removeAttr('name');
       $(this).find('input.js-other-input').removeAttr('name');
     });
 
-    // Show the matching nested container for the selected choice and restore
-    // the name attribute for its direct selects, then trigger their change
-    // events to propagate the show/hide state recursively.
+    // Show the matching container for the selected choice, restore name
+    // attributes for its immediate selects, then trigger their change events
+    // so that their own nested options and unlisted-choice fields initialise.
     $profileLabel.find(
       '.js-nested-options[data-parent-option="' + optionKey + '"]' +
       '[data-parent-choice="' + selectedValue + '"]'
     ).each(function() {
       $(this).removeClass('hidden');
-      $(this).children('.js-options-container').children('.option').find('> select.js-profile-option-select').each(function() {
+      // Use chained .children() to find only the direct selects (one level down),
+      // avoiding accidentally matching selects inside deeper nested containers.
+      $(this).children('.js-options-container').children('.option').children('select.js-profile-option-select').each(function() {
         $(this).attr('name', $(this).data('name'));
         handleProfileOptionSelectChange($(this));
       });
     });
   }
 
-  $('.js-profile-option-select').change(function() {
+  $(document).on('change', '.js-profile-option-select', function() {
     handleProfileOptionSelectChange($(this));
   });
 
-  // wrapping in a document.ready to make clear this is executed once
-  // on page load
-  $(document).ready(() => {
-    // Trigger change on the top-level (non-nested) selects for each profile
-    // so that nested options are correctly shown/hidden on load.
+  // Trigger change on top-level selects once the DOM is ready so that:
+  //   1. nested option containers are shown/hidden per the default selection,
+  //   2. unlisted-choice inputs are shown if the default happens to be "Other".
+  // Top-level selects already have their "name" attribute in the HTML, so no
+  // name-restoration is needed here.
+  $(document).ready(function() {
     $('.js-profile-label').each(function() {
-      $(this).find('.js-profile-option-select').not('.js-nested-options .js-profile-option-select').trigger('change');
+      $(this).find('.js-profile-option-select')
+             .not('.js-nested-options .js-profile-option-select')
+             .trigger('change');
     });
   });
 
