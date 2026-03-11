@@ -2059,7 +2059,7 @@ class KubeSpawner(Spawner):
             },
             {
                 "match": {
-                    "reportingComponent": r".*-(user|default)-scheduler",
+                    "reportingComponent": r"\b(user|default)-scheduler",
                     "reason": r"Scheduled",
                     "message": r".*?assigned \S+ to (?P<node>\S+)",
                 },
@@ -2067,7 +2067,7 @@ class KubeSpawner(Spawner):
             },
             {
                 "match": {
-                    "reportingComponent": r".*-user-scheduler",
+                    "reportingComponent": r"\b(user|default)-scheduler",
                     "reason": r"FailedScheduling",
                 },
                 "template": "No existing nodes are currently able to run your server",
