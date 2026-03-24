@@ -842,13 +842,13 @@ async def test_spawn_progress_formatter_rules_builtin(events_path, messages_path
 
     # Uncomment below to actually override the regression tests
     # formatted = [
-    #     spawner.render_event(event) for event, message in zip(events, messages)
+    #     spawner.event_formatter.format_event(event) for event, message in zip(events, messages)
     # ]
     # with open(messages_path, "w") as f:
     #     json.dump(formatted, f, indent=4)
 
     for event, message in zip(events, messages):
-        rendered_message = spawner.render_event(event)
+        rendered_message = spawner.event_formatter.format_event(event)
         assert rendered_message == message
 
 
@@ -892,7 +892,7 @@ async def test_spawn_progress_formatter_rules_extra_list_extend():
         "reportingComponent": "component-one",
     }
 
-    bundle = spawner.render_event(event)
+    bundle = spawner.event_formatter.format_event(event)
 
     assert "default-component-one" in bundle["message"]
     event = {
@@ -903,7 +903,7 @@ async def test_spawn_progress_formatter_rules_extra_list_extend():
         "reportingComponent": "component-two",
     }
 
-    bundle = spawner.render_event(event)
+    bundle = spawner.event_formatter.format_event(event)
 
     assert "extra-component-two" in bundle["message"]
 
@@ -955,7 +955,7 @@ async def test_spawn_progress_formatter_rules_extra_dict_extend():
         "reportingComponent": "component-one",
     }
 
-    bundle = spawner.render_event(event)
+    bundle = spawner.event_formatter.format_event(event)
 
     assert "extra-component-one" in bundle["message"]
     event = {
@@ -966,7 +966,7 @@ async def test_spawn_progress_formatter_rules_extra_dict_extend():
         "reportingComponent": "component-two",
     }
 
-    bundle = spawner.render_event(event)
+    bundle = spawner.event_formatter.format_event(event)
 
     assert "default-component-two" in bundle["message"]
 

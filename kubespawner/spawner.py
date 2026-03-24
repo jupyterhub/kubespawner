@@ -32,8 +32,9 @@ from traitlets import (
     Dict,
     Enum,
     Integer,
+    Type as TypeTrait,
+    Instance,
     List,
-    TraitError,
     Unicode,
     Union,
     default,
@@ -43,7 +44,7 @@ from traitlets import (
 
 from . import __version__
 from .clients import load_config, shared_client
-from .events import match_event_rule, format_html_message, format_plain_message, DEFAULT_EVENT_RULES
+from .events import EventFormatter, RuleEventFormatter
 from .objects import (
     make_namespace,
     make_owner_reference,
@@ -54,7 +55,7 @@ from .objects import (
 )
 from .reflector import ResourceReflector
 from .slugs import escape_slug, is_valid_label, multi_slug, safe_slug
-from .utils import recursive_format, recursive_update
+from .utils import recursive_format, recursive_update, sorted_dict_values
 
 
 class PodReflector(ResourceReflector):
@@ -1994,163 +1995,20 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    event_formatter_rules = Union(
-        trait_types=[
-            List(),
-            Dict(),
-        ],
-        config=True,
-        help="""
-        List or dictionary of event formatter rules.
+    event_formatter_class = TypeTrait(
+        klass=EventFormatter,
+        default_value=RuleEventFormatter,
+        help="""The class to use for formatting Kubernetes Event objects.
 
-        A rule consists of two required fields:
-        - `match` — an object containing regular expression patterns (strings or compiled regular expressions) that match similarly named Event fields. Any named capture groups will be made available to the `template`.
-        - `template` — a string whose .format method will be invoked with any named capture group results. Missing named capture groups are provided as empty strings.
-
-        If provided as a list, each item should be an aforementioned "rule" object.
-        If provided as a dictionary, the keys can be any descriptive name and the values should be the aforementioned "rule" objects.
-        The items will be sorted lexicographically by the dictionary keys and the sorted values will be used to build the list of rules.
-
-        :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
+        Should be a subclass of :class:`jupyterhub.event.EventFormatter`.
         """,
     )
 
-    extra_event_formatter_rules = Union(
-        trait_types=[
-            List(),
-            Dict(),
-        ],
-        config=True,
-        help="""
-        List or dictionary of additional event formatter rules on top of :ref:`event_formatter_rules`.
+    event_formatter = Instance(EventFormatter)
 
-        .. seealso::
-
-          :ref:`event_formatter_rules` for information on fields available in template strings.
-        """,
-    )
-
-    @default("event_formatter_rules")
-    def _default_event_formatter_rules(self):
-        return DEFAULT_EVENT_RULES
-
-    @validate("event_formatter_rules", "extra_event_formatter_rules")
-    def _validate_event_formatter_rules(self, proposal: dict):
-        def validate_match(match: dict):
-            # Check required fields
-            if "reportingComponent" not in match:
-                raise TraitError(
-                    "rule['match'] missing required key 'reportingComponent'"
-                )
-
-            # Check types of fields
-            allowed_match_fields = (
-                "reportingComponent",
-                "fieldPath",
-                "reason",
-                "message",
-            )
-
-            # Prohibit unknown fields
-            unknown_match_fields = match.keys() - allowed_match_fields
-            if unknown_match_fields:
-                raise TraitError(
-                    f"rule['match'] contains unknown key(s): {', '.join(unknown_match_fields)}"
-                )
-
-            # Validate known fields
-            known_match_fields = allowed_match_fields & match.keys()
-            for field in known_match_fields:
-                value = match[field]
-
-                if not isinstance(value, (str, re.Pattern)):
-                    raise TraitError(
-                        f"rule['match'][{field!r}] must be string or compiled regular expression"
-                    )
-
-        def validate_template(template: any):
-            if not (isinstance(template, str) or callable(template)):
-                raise TraitError("rule['template'] must be a string or callable")
-
-        def validate_rule(rule: dict):
-            # Check rule required fields
-            for required_field in ("match", "template"):
-                if required_field not in rule:
-                    raise TraitError(f"rule missing required key '{required_field}'")
-
-            validate_match(rule["match"])
-            validate_template(rule["template"])
-            return rule
-
-        if isinstance(proposal["value"], list):
-            return [validate_rule(rule) for rule in proposal["value"]]
-        else:
-            return {
-                name: validate_rule(rule) for name, rule in proposal["value"].items()
-            }
-
-    _compiled_event_formatter_rules = None
-
-    @observe("event_formatter_rules", "extra_event_formatter_rules")
-    def _event_formatter_rules_changed(self, change: dict):
-        # Clear compiled event formatter rules
-        self._compiled_event_formatter_rules = None
-
-    def _compile_event_formatter_rules(self):
-        # Template for forming helpful debug messages
-        trait_path_template = "{}[{!r}]"
-
-        # Merge (in order) the given rulesets
-        merged_rules = {}
-        for rules_name in ("event_formatter_rules", "extra_event_formatter_rules"):
-            rules = getattr(self, rules_name)
-
-            if isinstance(rules, list):
-                compiled_rules = {
-                    f"{rules_name}-{i}": (
-                        rule,
-                        trait_path_template.format(rules_name, i),
-                    )
-                    for i, rule in enumerate(rules)
-                }
-            else:
-                compiled_rules = {
-                    name: (rule, trait_path_template.format(rules_name, name))
-                    for name, rule in rules.items()
-                }
-            merged_rules.update(compiled_rules)
-
-        # List entries are merged without cloberring, whereas dict values may clobber one another
-        # Sort by unique ID
-        return self._sorted_dict_values(merged_rules)
-
-    def render_event(self, event: dict) -> dict:
-        # Populate cache of compiled event rules
-        if self._compiled_event_formatter_rules is None:
-            self._compiled_event_formatter_rules = self._compile_event_formatter_rules()
-
-        rule, rule_path, matches = match_event_rule(
-            event, self._compiled_event_formatter_rules
-        )
-        template = rule["template"]
-
-        if isinstance(template, str):
-            format_template = template.format
-        else:
-            format_template = template
-
-        try:
-            text = format_template(**matches)
-        except Exception:
-            self.log.exception(
-                f"Event template for rule {rule_path} failed to render successfully."
-            )
-            text = event["message"]
-
-        return {
-            "message": format_plain_message(text, event),
-            "html_message": format_html_message(text, event),
-        }
+    @default("event_formatter")
+    def _default_event_formatter(self):
+        return self.event_formatter_class(parent=self)
 
     # deprecate redundant and inconsistent singleuser_ and user_ prefixes:
     _deprecated_traits_09 = [
@@ -2387,15 +2245,6 @@ class KubeSpawner(Spawner):
         else:
             return src
 
-    def _sorted_dict_values(self, src):
-        """
-        Return a list of dict values sorted by keys if src is a dict, otherwise return src as-is.
-        """
-        if isinstance(src, dict):
-            return [src[key] for key in sorted(src.keys())]
-        else:
-            return src
-
     def _build_common_labels(self, extra_labels):
         # Default set of labels, picked up from
         # https://github.com/helm/helm-www/blob/HEAD/content/en/docs/chart_best_practices/labels.md
@@ -2575,9 +2424,9 @@ class KubeSpawner(Spawner):
             container_security_context=csc,
             pod_security_context=psc,
             env=self.get_env(),  # Expansion is handled by get_env
-            volumes=self._expand_all(self._sorted_dict_values(self.volumes)),
+            volumes=self._expand_all(sorted_dict_values(self.volumes)),
             volume_mounts=self._expand_all(
-                self._sorted_dict_values(self.volume_mounts)
+                sorted_dict_values(self.volume_mounts)
             ),
             working_dir=self.working_dir,
             labels=labels,
@@ -2590,31 +2439,31 @@ class KubeSpawner(Spawner):
             extra_resource_guarantees=self.extra_resource_guarantees,
             lifecycle_hooks=self.lifecycle_hooks,
             init_containers=self._expand_all(
-                self._sorted_dict_values(self.init_containers)
+                sorted_dict_values(self.init_containers)
             ),
             service_account=self._expand_all(self.service_account),
             automount_service_account_token=self.automount_service_account_token,
             extra_container_config=self.extra_container_config,
             extra_pod_config=self._expand_all(self.extra_pod_config),
             extra_containers=self._expand_all(
-                self._sorted_dict_values(self.extra_containers)
+                sorted_dict_values(self.extra_containers)
             ),
             scheduler_name=self.scheduler_name,
-            tolerations=self._sorted_dict_values(self.tolerations),
-            node_affinity_preferred=self._sorted_dict_values(
+            tolerations=sorted_dict_values(self.tolerations),
+            node_affinity_preferred=sorted_dict_values(
                 self.node_affinity_preferred
             ),
-            node_affinity_required=self._sorted_dict_values(
+            node_affinity_required=sorted_dict_values(
                 self.node_affinity_required
             ),
-            pod_affinity_preferred=self._sorted_dict_values(
+            pod_affinity_preferred=sorted_dict_values(
                 self.pod_affinity_preferred
             ),
-            pod_affinity_required=self._sorted_dict_values(self.pod_affinity_required),
-            pod_anti_affinity_preferred=self._sorted_dict_values(
+            pod_affinity_required=sorted_dict_values(self.pod_affinity_required),
+            pod_anti_affinity_preferred=sorted_dict_values(
                 self.pod_anti_affinity_preferred
             ),
-            pod_anti_affinity_required=self._sorted_dict_values(
+            pod_anti_affinity_required=sorted_dict_values(
                 self.pod_anti_affinity_required
             ),
             priority_class_name=self.priority_class_name,
@@ -2993,7 +2842,7 @@ class KubeSpawner(Spawner):
                     # 30 50 63 72 78 82 84 86 87 88 88 89
                     progress += (90 - progress) / 3
 
-                    message_bundle = self.render_event(event)
+                    message_bundle = self.event_formatter.format_event(event)
                     if self.modify_progress_hook is not None:
                         message_bundle = await maybe_future(
                             self.modify_progress_hook(self, event, message_bundle)

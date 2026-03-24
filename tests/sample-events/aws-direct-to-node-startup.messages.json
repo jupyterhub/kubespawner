@@ -1,34 +1,10 @@
 [
-  {
-    "message": "2026-02-11T14:58:40Z \u2139\ufe0f Pulled quay.io/jupyterhub/k8s-network-tools image (4.1.0) for the block-nfs-access container",
-    "html_message": "<span class=\"badge bg-light-subtle text-light-emphasis rounded-pill\"><time datetime=\"2026-02-11T14:58:40+00:00\">2026-02-11T14:58:40Z</time></span> <span class=\"badge bg-info-subtle text-info-emphasis rounded-pill\">Info</span> Pulled quay.io/jupyterhub/k8s-network-tools image (4.1.0) for the block-nfs-access container"
-  },
-  {
-    "message": "2026-02-11T14:58:40Z \u2139\ufe0f Created the block-nfs-access container",
-    "html_message": "<span class=\"badge bg-light-subtle text-light-emphasis rounded-pill\"><time datetime=\"2026-02-11T14:58:40+00:00\">2026-02-11T14:58:40Z</time></span> <span class=\"badge bg-info-subtle text-info-emphasis rounded-pill\">Info</span> Created the block-nfs-access container"
-  },
-  {
-    "message": "2026-02-11T14:58:40Z \u2139\ufe0f Started the block-nfs-access container",
-    "html_message": "<span class=\"badge bg-light-subtle text-light-emphasis rounded-pill\"><time datetime=\"2026-02-11T14:58:40+00:00\">2026-02-11T14:58:40Z</time></span> <span class=\"badge bg-info-subtle text-info-emphasis rounded-pill\">Info</span> Started the block-nfs-access container"
-  },
-  {
-    "message": "2026-02-11T14:58:40Z \u2139\ufe0f A node (ip-192-168-25-166.us-west-2.compute.internal) has been found to run your server",
-    "html_message": "<span class=\"badge bg-light-subtle text-light-emphasis rounded-pill\"><time datetime=\"2026-02-11T14:58:40.158951+00:00\">2026-02-11T14:58:40Z</time></span> <span class=\"badge bg-info-subtle text-info-emphasis rounded-pill\">Info</span> A node (ip-192-168-25-166.us-west-2.compute.internal) has been found to run your server"
-  },
-  {
-    "message": "2026-02-11T14:58:41Z \u2139\ufe0f Pulled quay.io/cryointhecloud/cryo-hub-image image (d624b28e39c4) for the notebook container",
-    "html_message": "<span class=\"badge bg-light-subtle text-light-emphasis rounded-pill\"><time datetime=\"2026-02-11T14:58:41+00:00\">2026-02-11T14:58:41Z</time></span> <span class=\"badge bg-info-subtle text-info-emphasis rounded-pill\">Info</span> Pulled quay.io/cryointhecloud/cryo-hub-image image (d624b28e39c4) for the notebook container"
-  },
-  {
-    "message": "2026-02-11T14:58:41Z \u2139\ufe0f Created the notebook container",
-    "html_message": "<span class=\"badge bg-light-subtle text-light-emphasis rounded-pill\"><time datetime=\"2026-02-11T14:58:41+00:00\">2026-02-11T14:58:41Z</time></span> <span class=\"badge bg-info-subtle text-info-emphasis rounded-pill\">Info</span> Created the notebook container"
-  },
-  {
-    "message": "2026-02-11T14:58:41Z \u2139\ufe0f Started the notebook container",
-    "html_message": "<span class=\"badge bg-light-subtle text-light-emphasis rounded-pill\"><time datetime=\"2026-02-11T14:58:41+00:00\">2026-02-11T14:58:41Z</time></span> <span class=\"badge bg-info-subtle text-info-emphasis rounded-pill\">Info</span> Started the notebook container"
-  },
-  {
-    "message": "2026-02-11T15:11:16Z \u2139\ufe0f Killing the notebook container",
-    "html_message": "<span class=\"badge bg-light-subtle text-light-emphasis rounded-pill\"><time datetime=\"2026-02-11T15:11:16+00:00\">2026-02-11T15:11:16Z</time></span> <span class=\"badge bg-info-subtle text-info-emphasis rounded-pill\">Info</span> Killing the notebook container"
-  }
+    "Pulled quay.io/jupyterhub/k8s-network-tools image (4.1.0) for the block-nfs-access container",
+    "Created the block-nfs-access container",
+    "Started the block-nfs-access container",
+    "A node (ip-192-168-25-166.us-west-2.compute.internal) has been found to run your server",
+    "Pulled quay.io/cryointhecloud/cryo-hub-image image (d624b28e39c4) for the notebook container",
+    "Created the notebook container",
+    "Started the notebook container",
+    "Killing the notebook container"
 ]
