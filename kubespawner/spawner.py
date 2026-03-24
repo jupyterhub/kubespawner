@@ -43,7 +43,7 @@ from traitlets import (
 
 from . import __version__
 from .clients import load_config, shared_client
-from .messages import format_html_message, format_plain_message
+from .events import format_html_message, format_plain_message
 from .objects import (
     make_namespace,
     make_owner_reference,
