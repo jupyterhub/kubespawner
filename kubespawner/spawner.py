@@ -43,7 +43,7 @@ from traitlets import (
 
 from . import __version__
 from .clients import load_config, shared_client
-from .events import match_event_rule, format_html_message, format_plain_message
+from .events import match_event_rule, format_html_message, format_plain_message, DEFAULT_EVENT_RULES
 from .objects import (
     make_namespace,
     make_owner_reference,
@@ -2032,85 +2032,7 @@ class KubeSpawner(Spawner):
 
     @default("event_formatter_rules")
     def _default_event_formatter_rules(self):
-        return [
-            {
-                "match": {
-                    "reportingComponent": r"kubelet",
-                    "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
-                    "reason": r"(?P<action>Pulling|Pulled)",
-                    "message": r'.*image\s*"(?P<image>[^"]+)\:(?P<tag>[^"]+)"',
-                },
-                "template": "{action} {image} image ({tag}) for the {container} container",
-            },
-            {
-                "match": {
-                    "reportingComponent": r"kubelet",
-                    "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
-                    "reason": r"(?P<action>Started|Killing|Created|Stopped)",
-                },
-                "template": "{action} the {container} container",
-            },
-            {
-                "match": {
-                    "reportingComponent": r"kubelet",
-                    "reason": r"OutOf(?P<resource>memory|cpu|ephemeral-storage|pods)",
-                },
-                "template": "The node selected to run your server ran out of {resource}",
-            },
-            {
-                "match": {
-                    "reportingComponent": r"(.*-)?(user|default)-scheduler",
-                    "reason": r"Scheduled",
-                    "message": r".*?assigned \S+ to (?P<node>\S+)",
-                },
-                "template": "A node ({node}) has been found to run your server",
-            },
-            {
-                "match": {
-                    "reportingComponent": r"(.*-)?(user|default)-scheduler",
-                    "reason": r"FailedScheduling",
-                },
-                "template": "No existing nodes are currently able to run your server",
-            },
-            {
-                "match": {
-                    "reportingComponent": r"cluster-autoscaler",
-                    "reason": r"TriggeredScaleUp",
-                },
-                "template": "Launching new nodes by scaling up the cluster",
-            },
-            {
-                "match": {
-                    "reportingComponent": r"kubelet",
-                    "message": r"Predicate NodeAffinity failed.*",
-                    "reason": "NodeAffinity",
-                },
-                "template": "It was not possible to find or launch any nodes to run your server. This is likely due to a configuration problem with the infrastructure or the JupyterHub",
-            },
-            {
-                "match": {
-                    "reportingComponent": r"gke\.io/optimize-utilization-scheduler",
-                    "reason": r"Scheduled",
-                    "message": r".*?assigned \S+ to (?P<node>\S+)",
-                },
-                "template": "A node ({node}) has been found to run your server",
-            },
-            {
-                "match": {
-                    "reportingComponent": r"gke\.io/optimize-utilization-scheduler",
-                    "reason": r"FailedScheduling",
-                },
-                "template": "No existing nodes are currently able to run your server",
-            },
-            {
-                "match": {
-                    "reportingComponent": r"taint-eviction-controller",
-                    "reason": r"TaintManagerEviction",
-                    "message": r"Cancelling deletion of Pod.*",
-                },
-                "template": "Cancelling deletion of your server. This normally happens when a scale-up has just taken place.",
-            },
-        ]
+        return DEFAULT_EVENT_RULES
 
     @validate("event_formatter_rules", "extra_event_formatter_rules")
     def _validate_event_formatter_rules(self, proposal: dict):
@@ -2207,27 +2129,23 @@ class KubeSpawner(Spawner):
         if self._compiled_event_formatter_rules is None:
             self._compiled_event_formatter_rules = self._compile_event_formatter_rules()
 
-        try:
-            rule, rule_path, matches = match_event_rule(
-                event, self._compiled_event_formatter_rules
-            )
-        except ValueError:
-            text = event["message"]
+        rule, rule_path, matches = match_event_rule(
+            event, self._compiled_event_formatter_rules
+        )
+        template = rule["template"]
+
+        if isinstance(template, str):
+            format_template = template.format
         else:
-            template = rule["template"]
+            format_template = template
 
-            if isinstance(template, str):
-                format_template = template.format
-            else:
-                format_template = template
-
-            try:
-                text = format_template(**matches)
-            except Exception:
-                self.log.exception(
-                    f"Event template for rule {rule_path} failed to render successfully."
-                )
-                text = event["message"]
+        try:
+            text = format_template(**matches)
+        except Exception:
+            self.log.exception(
+                f"Event template for rule {rule_path} failed to render successfully."
+            )
+            text = event["message"]
 
         return {
             "message": format_plain_message(text, event),

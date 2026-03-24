@@ -4,7 +4,105 @@ import datetime
 import re
 
 
+# A simple message-based event rule.
+# Matches everything
+FALLBACK_EVENT_RULE_ID = "<fallback>"
+FALLBACK_EVENT_RULE = {
+    "match": {
+        "reportingComponent": ".*",
+        "message": "(?P<text>.*)",
+    },
+    "template": "{text}",
+}
+
+
+DEFAULT_EVENT_RULES = [
+    {
+        "match": {
+            "reportingComponent": r"kubelet",
+            "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
+            "reason": r"(?P<action>Pulling|Pulled)",
+            "message": r'.*image\s*"(?P<image>[^"]+)\:(?P<tag>[^"]+)"',
+        },
+        "template": "{action} {image} image ({tag}) for the {container} container",
+    },
+    {
+        "match": {
+            "reportingComponent": r"kubelet",
+            "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
+            "reason": r"(?P<action>Started|Killing|Created|Stopped)",
+        },
+        "template": "{action} the {container} container",
+    },
+    {
+        "match": {
+            "reportingComponent": r"kubelet",
+            "reason": r"OutOf(?P<resource>memory|cpu|ephemeral-storage|pods)",
+        },
+        "template": "The node selected to run your server ran out of {resource}",
+    },
+    {
+        "match": {
+            "reportingComponent": r"(.*-)?(user|default)-scheduler",
+            "reason": r"Scheduled",
+            "message": r".*?assigned \S+ to (?P<node>\S+)",
+        },
+        "template": "A node ({node}) has been found to run your server",
+    },
+    {
+        "match": {
+            "reportingComponent": r"(.*-)?(user|default)-scheduler",
+            "reason": r"FailedScheduling",
+        },
+        "template": "No existing nodes are currently able to run your server",
+    },
+    {
+        "match": {
+            "reportingComponent": r"cluster-autoscaler",
+            "reason": r"TriggeredScaleUp",
+        },
+        "template": "Launching new nodes by scaling up the cluster",
+    },
+    {
+        "match": {
+            "reportingComponent": r"kubelet",
+            "message": r"Predicate NodeAffinity failed.*",
+            "reason": "NodeAffinity",
+        },
+        "template": "It was not possible to find or launch any nodes to run your server. This is likely due to a configuration problem with the infrastructure or the JupyterHub",
+    },
+    {
+        "match": {
+            "reportingComponent": r"gke\.io/optimize-utilization-scheduler",
+            "reason": r"Scheduled",
+            "message": r".*?assigned \S+ to (?P<node>\S+)",
+        },
+        "template": "A node ({node}) has been found to run your server",
+    },
+    {
+        "match": {
+            "reportingComponent": r"gke\.io/optimize-utilization-scheduler",
+            "reason": r"FailedScheduling",
+        },
+        "template": "No existing nodes are currently able to run your server",
+    },
+    {
+        "match": {
+            "reportingComponent": r"taint-eviction-controller",
+            "reason": r"TaintManagerEviction",
+            "message": r"Cancelling deletion of Pod.*",
+        },
+        "template": "Cancelling deletion of your server. This normally happens when a scale-up has just taken place.",
+    },
+]
+
+
 def normalize_kubernetes_event(self, event: dict) -> dict:
+    """
+    Normalise event to handle reportingComponent <-> source.component
+    Fields can both be missing (optional) and in-practice also empty strings
+    We normalise missing or "" to ""
+    """
     return {
         "fieldPath": event["involvedObject"].get("fieldPath") or "",
         "reportingComponent": event.get("reportingComponent")
@@ -15,36 +113,47 @@ def normalize_kubernetes_event(self, event: dict) -> dict:
     }
 
 
+def single_rule_matches(rule: dict, match_source: dict) -> Optional[dict]:
+    """
+    Match a normalised event against a list of formatter rules.
+    If a match is found, return the match dictionary.
+    """
+    matches = {}
+    for field, pattern in rule["match"].items():
+        # Pull out the value for the match field
+        value = match_source[field]
+
+        # The event value must match the rule value
+        match = re.match(pattern, value or "")
+        if match is None:
+            return None
+
+        # Include matches for groups, where optional groups default to ""
+        matches.update(match.groupdict(default=""))
+    return matches
+
+
 def match_event_rule(
-    event: dict, compiled_rules: list
-) -> Optional[Tuple[dict, str, dict]]:
+    event: dict,
+    compiled_rules: list,
+) -> Tuple[dict, str, dict]:
     """
-    Match a Kubernetes event against a list of formatter rules
+    Match a Kubernetes event against a list of formatter rules.
+    If no given rules match, match against a catch-all rule.
     """
-    # Normalise event to handle reportingComponent <-> source.component
-    # Fields can both be missing (optional) and in-practice also empty strings
-    # We normalise missing or "" to ""
     match_source = normalize_kubernetes_event(event)
 
     # Try to match a rule
-    for rule, rule_path in compiled_rules:
-        matches = {}
-        for field, pattern in rule["match"].items():
-            # Pull out the value for the match field
-            value = match_source[field]
+    for rule, rule_id in compiled_rules:
+        matches = single_rule_matches(rule, match_source)
+        if matches is not None:
+            return rule, rule_id, matches
 
-            # The event value must match the rule value
-            match = re.match(pattern, value or "")
-            if match is None:
-                break
+    # Fall back on catch-all rule
+    matches = single_rule_matches(FALLBACK_EVENT_RULE, match_source)
+    assert matches is not None, "The fallback event rule should match any event"
 
-            # Include matches for groups, where optional groups default to ""
-            matches.update(match.groupdict(default=""))
-
-        else:
-            return rule, rule_path, matches
-
-    raise ValueError("No matching rule found for event")
+    return rule, FALLBACK_EVENT_RULE_ID, matches
 
 
 def parse_micro_timestamp(time: str) -> datetime.datetime:
