@@ -51,12 +51,13 @@ class RuleEventFormatter(EventFormatter):
         List or dictionary of event formatter rules.
 
         A rule consists of two required fields:
-        - `match` — an object containing regular expression patterns (strings or compiled regular expressions) that match similarly named Event fields. Any named capture groups will be made available to the `template`.
-        - `template` — a string whose .format method will be invoked with any named capture group results. Missing named capture groups are provided as empty strings.
+
+        - `match` — an object containing regular expression patterns (strings or compiled regular expressions) that match similarly named `Event` fields. Any named capture groups will be made available to the `template`.
+        - `template` — a string whose `.format` method will be invoked with any named capture group results. Missing named capture groups are provided as empty strings.
 
         If provided as a list, each item should be an aforementioned "rule" object.
         If provided as a dictionary, the keys can be any descriptive name and the values should be the aforementioned "rule" objects.
-        The items will be sorted lexicographically by the dictionary keys and the sorted values will be used to build the list of rules.
+        The items will be sorted lexicographically by the dictionary keys, and the sorted values will be used to build the list of rules.
 
         :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
         """,
@@ -69,11 +70,12 @@ class RuleEventFormatter(EventFormatter):
         ],
         config=True,
         help="""
-        List or dictionary of additional event formatter rules on top of :ref:`event_formatter_rules`.
+        List or dictionary of additional event formatter rules on top of :attr:`.RuleEventFormatter.rules`.
+        These rules are merged with :attr:`.RuleEventFormatter.rules`. Where `extra_rules` is a dict, the name of each rule can be chosen to override a base rule. 
 
         .. seealso::
 
-          :ref:`event_formatter_rules` for information on fields available in template strings.
+          :attr:`.RuleEventFormatter.rules` for information on fields available in template strings.
         """,
     )
 
