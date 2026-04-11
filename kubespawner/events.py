@@ -1,6 +1,7 @@
 """
 Class for formatting Kubernetes event messages.
 """
+
 import datetime
 import re
 from typing import Optional, Tuple
@@ -55,8 +56,8 @@ class RuleEventFormatter(EventFormatter):
 
         A "rule" is an object that consists of two required fields:
 
-        - `match` — an object containing regular expression patterns (strings or compiled regular expressions) that match similarly named `Event` fields. Any named capture groups will be made available to the `template`.
-        - `template` — a string whose `.format` method will be invoked with any named capture group results. Missing named capture groups are provided as empty strings.
+        - `match` — an object containing regular expression patterns (strings or compiled regular expressions) that match similarly named `Event` fields. Any named capture groups will be made available to the `template`. Supported fields are `reportingComponent`, `fieldPath`, `reason`, `message`, and `type`.
+        - `template` — a string, or a callable that will be used to build a formatted event message. If a string, the `.format` method will be invoked with any named capture group results as keyword arguments. If a callable, the same named capture groups will be directly passed as keyword arguments. Missing named capture groups are provided as empty strings.
 
         If provided as a list, each item should be an aforementioned "rule" object.
         If provided as a dictionary, the keys can be any descriptive name and the values should be the aforementioned "rule" objects.
