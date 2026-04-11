@@ -2,6 +2,7 @@ import json
 import pathlib
 
 import pytest
+from test_utils import MockLogger
 
 from kubespawner.events import BasicEventFormatter, RuleEventFormatter
 
@@ -52,6 +53,67 @@ def test_event_formatter_basic():
     message = event_formatter.format_event(event)
 
     assert "something-went-wrong" in message
+
+
+def test_event_formatter_rules_error():
+    template_called = False
+
+    def raises_exception():
+        nonlocal template_called
+        template_called = True
+
+        raise RuntimeError
+
+    logger = MockLogger()
+    event_formatter = RuleEventFormatter(
+        rules=[
+            {
+                "match": {"reportingComponent": ".*"},
+                "template": raises_exception,
+            }
+        ],
+        log=logger,
+    )
+    event = {
+        "kind": "Event",
+        "involvedObject": {},
+        "lastTimestamp": "2026-02-11T14:58:40Z",
+        "type": "Warning",
+        "reportingComponent": "component-one",
+        "message": "a-simple-message",
+    }
+
+    message = event_formatter.format_event(event)
+
+    assert message == "a-simple-message"
+    assert template_called
+    assert logger.info_logs
+
+
+def test_event_formatter_rules_error_template():
+    logger = MockLogger()
+    event_formatter = RuleEventFormatter(
+        rules=[
+            {
+                "match": {"reportingComponent": ".*"},
+                "template": "{no_such_group}",
+            }
+        ],
+        log=logger,
+    )
+    event = {
+        "kind": "Event",
+        "involvedObject": {},
+        "lastTimestamp": "2026-02-11T14:58:40Z",
+        "type": "Warning",
+        "reportingComponent": "component-one",
+        "message": "a-simple-message",
+    }
+
+    message = event_formatter.format_event(event)
+
+    assert message == "a-simple-message"
+    assert logger.info_logs
 
 
 def test_event_formatter_rules_extra_list_extend():
