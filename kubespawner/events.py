@@ -1,3 +1,6 @@
+"""
+Class for formatting Kubernetes event messages.
+"""
 import datetime
 import re
 from typing import Optional, Tuple
@@ -50,7 +53,7 @@ class RuleEventFormatter(EventFormatter):
         help="""
         List or dictionary of event formatter rules.
 
-        A rule consists of two required fields:
+        A "rule" is an object that consists of two required fields:
 
         - `match` — an object containing regular expression patterns (strings or compiled regular expressions) that match similarly named `Event` fields. Any named capture groups will be made available to the `template`.
         - `template` — a string whose `.format` method will be invoked with any named capture group results. Missing named capture groups are provided as empty strings.
@@ -157,7 +160,7 @@ class RuleEventFormatter(EventFormatter):
                     "reason": r"TaintManagerEviction",
                     "message": r"Cancelling deletion of Pod.*",
                 },
-                "template": "Cancelling deletion of your server. This normally happens when a scale-up has just taken place.",
+                "template": "Canceling deletion of your server. This normally happens when a scale-up has just taken place",
             },
         ]
 
