@@ -261,6 +261,11 @@ class RuleEventFormatter(EventFormatter):
             # List entries are merged without cloberring, whereas dict values may clobber one another
             # Sort by unique ID
             self._compiled_rules = sorted_dict_values(merged_rules)
+
+        # Always append a fallback rule
+        self._compiled_rules.append(
+            (self.FALLBACK_EVENT_RULE, self.FALLBACK_EVENT_RULE_ID)
+        )
         return self._compiled_rules
 
     def _normalize_kubernetes_event(self, event: dict) -> dict:
@@ -314,11 +319,8 @@ class RuleEventFormatter(EventFormatter):
             if matches is not None:
                 return rule, rule_id, matches
 
-        # Fall back on catch-all rule
-        matches = self._single_rule_matches(self.FALLBACK_EVENT_RULE, match_source)
-        assert matches is not None, "The fallback event rule should match any event"
-
-        return rule, self.FALLBACK_EVENT_RULE_ID, matches
+        # We should have encountered a final fallback rule
+        assert False, "The fallback event rule should match any event"
 
     def format_event(self, event: dict) -> str:
         rule, rule_path, matches = self.match_event_rule(event)
