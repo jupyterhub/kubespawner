@@ -5,9 +5,9 @@
   "No existing nodes are currently able to run your server",
   "A node (gke-a-fake-cluster-a-fake-nodepool-1a1a1a1a-rc5d) has been found to run your server",
   "Canceling deletion of your server. This normally happens when a scale-up has just taken place",
-  "Pulling quay.io/jupyterhub/k8s-network-tools image (4.1.0) for the block-nfs-access container",
-  "Pulled quay.io/jupyterhub/k8s-network-tools image (4.1.0) for the block-nfs-access container",
-  "Created the block-nfs-access container",
-  "Started the block-nfs-access container",
-  "Pulling pangeo/ml-notebook image (2025.11.13) for the notebook container"
+  "Pulling image quay.io/jupyterhub/k8s-network-tools:4.1.0 for the block-nfs-access container",
+  "Pulled image quay.io/jupyterhub/k8s-network-tools:4.1.0 for the block-nfs-access container",
+  "Created the container \"block-nfs-access\"",
+  "Started the container \"block-nfs-access\"",
+  "Pulling image pangeo/ml-notebook:2025.11.13 for the notebook container"
 ]

@@ -93,7 +93,7 @@ class RuleEventFormatter(EventFormatter):
                     "reason": r"(?P<action>Pulling|Pulled)",
                     "message": r'.*image\s*"(?P<image>[^"]+)\:(?P<tag>[^"]+)"',
                 },
-                "template": "{action} {image} image ({tag}) for the {container} container",
+                "template": "{action} image {image}:{tag} for the {container} container",
             },
             {
                 "match": {
@@ -101,7 +101,7 @@ class RuleEventFormatter(EventFormatter):
                     "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
                     "reason": r"(?P<action>Started|Killing|Created|Stopped)",
                 },
-                "template": "{action} the {container} container",
+                "template": '{action} the container "{container}"',
             },
             {
                 "match": {
@@ -170,7 +170,7 @@ class RuleEventFormatter(EventFormatter):
                     "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
                     "message": r'Back-off pulling image "(?P<image>[^"]+)\:(?P<tag>[^"]+)"',
                 },
-                "template": "Waiting to try pulling {image} ({tag}) for the {container} container after the last attempt failed",
+                "template": 'Waiting to try pulling {image}:{tag} for the container "{container}" after the last attempt failed',
             },
             {
                 "match": {
@@ -179,7 +179,7 @@ class RuleEventFormatter(EventFormatter):
                     "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
                     "message": r'Failed to pull image "(?P<image>[^"]+)\:(?P<tag>[^"]+)"',
                 },
-                "template": "Attempts to pull {image} ({tag}) for the {container} container failed. Does this image exist?",
+                "template": 'Attempts to pull {image}:{tag} for the container "{container}" failed',
             },
             {
                 "match": {
@@ -188,7 +188,7 @@ class RuleEventFormatter(EventFormatter):
                     "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
                     "message": r"Error: ImagePullBackOff",
                 },
-                "template": "Waiting to try pulling images the {container} container",
+                "template": 'Waiting to try pulling an image into the container "{container}"',
             },
             {
                 "match": {
@@ -197,7 +197,7 @@ class RuleEventFormatter(EventFormatter):
                     "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
                     "message": r"Error: ErrImagePull",
                 },
-                "template": "Attempts to pull images for the {container} container failed",
+                "template": 'Attempts to pull an image for the container "{container}" failed',
             },
         ]
 

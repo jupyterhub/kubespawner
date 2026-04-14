@@ -1,0 +1,13 @@
+[
+  "A node (nixos) has been found to run your server",
+  "Pulled image ghcr.io/geojupyter/geojupyter:21bdbc2698c4 for the notebook container",
+  "Created the container \"notebook\"",
+  "Started the container \"notebook\"",
+  "Killing the container \"notebook\"",
+  "A node (nixos) has been found to run your server",
+  "Pulling image ghcr.io/foo:bat for the notebook container",
+  "Attempts to pull ghcr.io/foo:bat for the container \"notebook\" failed",
+  "Attempts to pull an image for the container \"notebook\" failed",
+  "Waiting to try pulling ghcr.io/foo:bat for the container \"notebook\" after the last attempt failed",
+  "Waiting to try pulling an image into the container \"notebook\""
+]

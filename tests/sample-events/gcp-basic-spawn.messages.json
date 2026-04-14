@@ -1,9 +1,9 @@
 [
-  "Pulled quay.io/jupyterhub/k8s-network-tools image (4.1.0) for the block-nfs-access container",
-  "Created the block-nfs-access container",
-  "Started the block-nfs-access container",
-  "Pulled pangeo/pangeo-notebook image (2025.11.13) for the notebook container",
-  "Created the notebook container",
-  "Started the notebook container",
+  "Pulled image quay.io/jupyterhub/k8s-network-tools:4.1.0 for the block-nfs-access container",
+  "Created the container \"block-nfs-access\"",
+  "Started the container \"block-nfs-access\"",
+  "Pulled image pangeo/pangeo-notebook:2025.11.13 for the notebook container",
+  "Created the container \"notebook\"",
+  "Started the container \"notebook\"",
   "A node (gke-a-fake-cluster-a-fake-nodepool-2b2b2b2b-g6jw) has been found to run your server"
 ]

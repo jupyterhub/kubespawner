@@ -17,22 +17,19 @@ RULE_TEST_PARAMETERS = [
 
 @pytest.mark.parametrize("events_path,messages_path", RULE_TEST_PARAMETERS)
 def test_event_formatter_rules_builtin(events_path, messages_path):
-    assert messages_path.exists()
-
     with open(events_path) as f:
         events = json.load(f)
-
-    with open(messages_path) as f:
-        messages = json.load(f)
 
     event_formatter = RuleEventFormatter()
 
     # Uncomment below to actually override the regression tests
-    # formatted = [
-    #     event_formatter.format_event(event) for event, message in zip(events, messages)
-    # ]
+    # formatted = [event_formatter.format_event(event) for event in events]
     # with open(messages_path, "w") as f:
     #     json.dump(formatted, f, indent=4)
+
+    assert messages_path.exists()
+    with open(messages_path) as f:
+        messages = json.load(f)
 
     for event, message in zip(events, messages):
         rendered_message = event_formatter.format_event(event)

@@ -1995,16 +1995,33 @@ class KubeSpawner(Spawner):
         help="""
         Callable to decorate a rendered event message from a reflected Event object.
 
-        Expects a callable that takes two parameters:
+        Expects a callable that returns a dictionary containing a required key `message`,
+        and an optional key `html_message`, each with callable values that render plain-text and 
+        rich-representation of the formatted event, respectively. The callable takes three parameters:
 
            1. The spawner object that is doing the spawning
-           2. The Event object that is to be formatted
+           2. The event object to be formatted
            3. The rendered event message string
 
         This can be a coroutine if necessary. When set to none, the default formatter is used.
-        The hook function should return a dictionary containing a required key `message`,
-        and an optional key `html_message`, pertaining to the plain-text and rich-representation,
-        of the formatted event.
+        
+        Example
+        -------
+        .. code-block:: python
+
+           def my_plain_decorator(message, event):
+               event_type = event["type"]
+               if event_type == "Normal":
+                   return f"INFO: {message}"
+               elif event_type == "Warning":
+                   return f"WARNING: {message}"
+               else:
+                   return f"{message}"
+   
+           def my_decorator(spawner, event, message):
+               return {"message": my_plain_decorator(message, event)}
+           
+           c.KubeSpawner.decorate_progress_message = my_decorator
         """,
     )
 

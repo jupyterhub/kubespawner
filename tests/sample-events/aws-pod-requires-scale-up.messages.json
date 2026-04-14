@@ -2,12 +2,12 @@
   "No existing nodes are currently able to run your server",
   "Launching new nodes by scaling up the cluster",
   "A node (ip-192-168-11-0.us-west-2.compute.internal) has been found to run your server",
-  "Pulling quay.io/jupyterhub/k8s-network-tools image (4.1.0) for the block-nfs-access container",
-  "Pulled quay.io/jupyterhub/k8s-network-tools image (4.1.0) for the block-nfs-access container",
-  "Created the block-nfs-access container",
-  "Started the block-nfs-access container",
-  "Pulling quay.io/cryointhecloud/cryo-hub-image image (d624b28e39c4) for the notebook container",
-  "Pulled quay.io/cryointhecloud/cryo-hub-image image (d624b28e39c4) for the notebook container",
-  "Created the notebook container",
-  "Started the notebook container"
+  "Pulling image quay.io/jupyterhub/k8s-network-tools:4.1.0 for the block-nfs-access container",
+  "Pulled image quay.io/jupyterhub/k8s-network-tools:4.1.0 for the block-nfs-access container",
+  "Created the container \"block-nfs-access\"",
+  "Started the container \"block-nfs-access\"",
+  "Pulling image quay.io/cryointhecloud/cryo-hub-image:d624b28e39c4 for the notebook container",
+  "Pulled image quay.io/cryointhecloud/cryo-hub-image:d624b28e39c4 for the notebook container",
+  "Created the container \"notebook\"",
+  "Started the container \"notebook\""
 ]
