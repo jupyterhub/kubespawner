@@ -163,6 +163,42 @@ class RuleEventFormatter(EventFormatter):
                 },
                 "template": "Canceling deletion of your server. This normally happens when a scale-up has just taken place",
             },
+            {
+                "match": {
+                    "reportingComponent": r"kubelet",
+                    "reason": r"BackOff",
+                    "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
+                    "message": r'Back-off pulling image "(?P<image>[^"]+)\:(?P<tag>[^"]+)"',
+                },
+                "template": "Waiting to try pulling {image} ({tag}) for the {container} container after the last attempt failed",
+            },
+            {
+                "match": {
+                    "reportingComponent": r"kubelet",
+                    "reason": r"Failed",
+                    "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
+                    "message": r'Failed to pull image "(?P<image>[^"]+)\:(?P<tag>[^"]+)"',
+                },
+                "template": "Attempts to pull {image} ({tag}) for the {container} container failed. Does this image exist?",
+            },
+            {
+                "match": {
+                    "reportingComponent": r"kubelet",
+                    "reason": r"Failed",
+                    "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
+                    "message": r"Error: ImagePullBackOff",
+                },
+                "template": "Waiting to try pulling images the {container} container",
+            },
+            {
+                "match": {
+                    "reportingComponent": r"kubelet",
+                    "reason": r"Failed",
+                    "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
+                    "message": r"Error: ErrImagePull",
+                },
+                "template": "Attempts to pull images for the {container} container failed",
+            },
         ]
 
     @validate("rules", "extra_rules")
