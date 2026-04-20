@@ -23,7 +23,7 @@ on:
 
 jobs:
   run-pytest:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
 
     strategy:
@@ -43,17 +43,19 @@ jobs:
           # NOTE: If lower bounds are updated, also update our test for the
           #       lower bounds in pyproject.toml.
           #
-          - python: "3.7"
-            k3s: v1.24
+          - python: "3.10"
+            k3s: v1.31
             test_dependencies: >-
               jupyterhub==4.0.0
-              kubernetes_asyncio==24.2.3
+              kubernetes_asyncio==31.*
 
           # Test with modern python and k8s versions
           - python: "3.11"
-            k3s: v1.27
+            k3s: v1.32
           - python: "3.12"
-            k3s: v1.28
+            k3s: v1.33
+          - python: "3.13"
+            k3s: stable
 
           # Test with latest python and JupyterHub in main branch
           - python: "3.X"
