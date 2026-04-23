@@ -23,6 +23,7 @@ from traitlets.config import Config
 
 import kubespawner
 from kubespawner import KubeSpawner
+from kubespawner.events import BasicEventFormatter
 from kubespawner.objects import make_owner_reference, make_service
 from kubespawner.slugs import safe_slug
 
@@ -638,6 +639,8 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
         hub=hub,
         user=MockUser(name="progress"),
         config=config,
+        # Ensure we only test the mechanism, not the rules
+        event_formatter_class=BasicEventFormatter,
     )
 
     # empty spawner isn't running
@@ -649,38 +652,37 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
     # check progress events
     messages = []
     async for progress in spawner.progress():
-        assert 'progress' in progress
-        assert isinstance(progress['progress'], int)
-        assert 'message' in progress
-        assert isinstance(progress['message'], str)
-        messages.append(progress['message'])
+        assert "progress" in progress
+        assert isinstance(progress["progress"], int)
+        assert "message" in progress
+        assert isinstance(progress["message"], str)
+        messages.append(progress["message"])
 
         # ensure we can serialize whatever we return
         with open(os.devnull, "w") as devnull:
             json.dump(progress, devnull)
     corpus = "\n".join(messages)
-    # K8s changed the format of this message: https://github.com/kubernetes/kubernetes/pull/134043
-    assert "Started the notebook container" in corpus
+
+    assert "Started container" in corpus or "Container started" in corpus
 
     await start_future
     # stop the pod
     await spawner.stop()
 
 
-async def test_spawn_progress_formatter_hook(
-    kube_ns, kube_client, config, hub_pod, hub
-):
-    def modify_progress_hook(spawner, event, bundle):
+async def test_spawn_progress_decorator(kube_ns, kube_client, config, hub_pod, hub):
+    def decorate_progress_message(spawner, event, message):
         return {
-            "message": f"custom-message-{event['message']}",
-            "html_message": f"<span>{event['message']}</span>",
+            "message": f"custom-message-{message}",
+            "html_message": f"<span>{message}</span>",
         }
 
     spawner = KubeSpawner(
         hub=hub,
         user=MockUser(name="progress-hook"),
         config=config,
-        modify_progress_hook=modify_progress_hook,
+        decorate_progress_message=decorate_progress_message,
+        event_formatter_class=BasicEventFormatter,
     )
 
     # empty spawner isn't running
@@ -713,262 +715,6 @@ async def test_spawn_progress_formatter_hook(
     await start_future
     # stop the pod
     await spawner.stop()
-
-
-@pytest.mark.parametrize("rules_as_dict", [True, False])
-async def test_spawn_progress_formatter_rule(
-    kube_ns, kube_client, config, hub_pod, hub, rules_as_dict
-):
-
-    bare_rules = [
-        # Test kubelet started event. From inspecting events in CI, we expect reportingComponent
-        # to come from source.component. This is an IMPLEMENTATION DETAIL that may change.
-        *(
-            # Test bad component match
-            {
-                "match": {
-                    "reportingComponent": "not-a-kubelet",
-                },
-                # Do not expect bad-match in outputs
-                "template": "bad-match",
-            },
-            # Test bad field path match
-            {
-                "match": {
-                    "reportingComponent": "kubelet",
-                    "fieldPath": r"not-a-valid-match",
-                },
-                # Do not expect bad-match in outputs
-                "template": "bad-match",
-            },
-            # Test bad reason match
-            {
-                "match": {
-                    "reportingComponent": "kubelet",
-                    "reason": r"not-a-valid-reason",
-                },
-                # Do not expect bad-match in outputs
-                "template": "bad-match",
-            },
-            {
-                "match": {
-                    # Test kubelet via a pattern
-                    "reportingComponent": "(?P<component>kubelet)",
-                    "fieldPath": r"spec\.containers\{(?P<container>notebook)\}",
-                    # Test a regex here, to ensure it's pattern tested!
-                    "reason": r"St(art)ed",
-                },
-                # Expect good-match-notebook-from-kubelet in outputs
-                "template": "good-match-{container}-from-{component}",
-            },
-        ),
-        # Test different reporting component (default-scheduler)
-        *(
-            {
-                "match": {
-                    "reportingComponent": "default-scheduler",
-                },
-                # Expect good-match-notebook in outputs
-                "template": lambda **kwargs: "good-match-scheduler",
-            },
-        ),
-    ]
-
-    if rules_as_dict:
-        rules = {f"rule-{i}": rule for i, rule in enumerate(bare_rules)}
-    else:
-        rules = bare_rules
-
-    spawner = KubeSpawner(
-        hub=hub,
-        user=MockUser(name="progress-hook"),
-        config=config,
-        event_formatter_rules=rules,
-    )
-
-    # empty spawner isn't running
-    status = await spawner.poll()
-    assert isinstance(status, int)
-
-    # start the spawner
-    start_future = spawner.start()
-    # check progress events
-    messages = []
-    async for progress in spawner.progress():
-        assert "progress" in progress
-        assert isinstance(progress["progress"], int)
-        assert "message" in progress
-        assert isinstance(progress["message"], str)
-        assert "html_message" in progress
-        assert isinstance(progress["html_message"], str)
-        messages.append(progress["message"])
-
-        # ensure we can serialize whatever we return
-        with open(os.devnull, "w") as devnull:
-            json.dump(progress, devnull)
-    # Look for our custom prefix
-    corpus = "\n".join(messages)
-    # K8s changed the format of this message: https://github.com/kubernetes/kubernetes/pull/134043
-    assert "bad-match-" not in corpus
-    assert "good-match-scheduler" in corpus
-    assert "good-match-notebook-from-kubelet" in corpus
-
-    await start_future
-    # stop the pod
-    await spawner.stop()
-
-
-RULE_TEST_FILES = (pathlib.Path(__file__).parent / "sample-events").glob(
-    "*.events.json"
-)
-RULE_TEST_PARAMETERS = [
-    (p, p.with_suffix("").with_suffix("").with_suffix(".messages.json"))
-    for p in RULE_TEST_FILES
-]
-
-
-@pytest.mark.parametrize("events_path,messages_path", RULE_TEST_PARAMETERS)
-async def test_spawn_progress_formatter_rules_builtin(events_path, messages_path):
-    spawner = KubeSpawner(
-        _mock=True,
-    )
-    assert messages_path.exists()
-
-    with open(events_path) as f:
-        events = json.load(f)
-
-    with open(messages_path) as f:
-        messages = json.load(f)
-
-    # Uncomment below to actually override the regression tests
-    # formatted = [
-    #     spawner.event_formatter.format_event(event) for event, message in zip(events, messages)
-    # ]
-    # with open(messages_path, "w") as f:
-    #     json.dump(formatted, f, indent=4)
-
-    for event, message in zip(events, messages):
-        rendered_message = spawner.event_formatter.format_event(event)
-        assert rendered_message == message
-
-
-async def test_spawn_progress_formatter_rules_extra_list_extend():
-    rules = [
-        {
-            "match": {
-                "reportingComponent": "component-one",
-            },
-            # Do not expect bad-match in outputs
-            "template": "default-component-one",
-        },
-    ]
-    extra_rules = [
-        {
-            "match": {
-                "reportingComponent": "component-one",
-            },
-            # Do not expect bad-match in outputs
-            "template": "extra-component-one",
-        },
-        {
-            "match": {
-                "reportingComponent": "component-two",
-            },
-            # Do not expect bad-match in outputs
-            "template": "extra-component-two",
-        },
-    ]
-
-    spawner = KubeSpawner(
-        _mock=True,
-        event_formatter_rules=rules,
-        extra_event_formatter_rules=extra_rules,
-    )
-    event = {
-        "kind": "Event",
-        "involvedObject": {},
-        "lastTimestamp": "2026-02-11T14:58:40Z",
-        "type": "Warning",
-        "reportingComponent": "component-one",
-    }
-
-    bundle = spawner.event_formatter.format_event(event)
-
-    assert "default-component-one" in bundle["message"]
-    event = {
-        "kind": "Event",
-        "involvedObject": {},
-        "lastTimestamp": "2026-02-11T14:58:40Z",
-        "type": "Warning",
-        "reportingComponent": "component-two",
-    }
-
-    bundle = spawner.event_formatter.format_event(event)
-
-    assert "extra-component-two" in bundle["message"]
-
-
-async def test_spawn_progress_formatter_rules_extra_dict_extend():
-    rules = {
-        "first": {
-            "match": {
-                "reportingComponent": "component-one",
-            },
-            # Do not expect bad-match in outputs
-            "template": "default-component-one",
-        },
-        "second": {
-            "match": {
-                "reportingComponent": "component-two",
-            },
-            # Do not expect bad-match in outputs
-            "template": "default-component-two",
-        },
-    }
-    extra_rules = {
-        "first": {
-            "match": {
-                "reportingComponent": "component-one",
-            },
-            # Do not expect bad-match in outputs
-            "template": "extra-component-one",
-        },
-        "third": {
-            "match": {
-                "reportingComponent": "component-two",
-            },
-            # Do not expect bad-match in outputs
-            "template": "extra-component-two",
-        },
-    }
-
-    spawner = KubeSpawner(
-        _mock=True,
-        event_formatter_rules=rules,
-        extra_event_formatter_rules=extra_rules,
-    )
-    event = {
-        "kind": "Event",
-        "involvedObject": {},
-        "type": "Warning",
-        "lastTimestamp": "2026-02-11T14:58:40Z",
-        "reportingComponent": "component-one",
-    }
-
-    bundle = spawner.event_formatter.format_event(event)
-
-    assert "extra-component-one" in bundle["message"]
-    event = {
-        "kind": "Event",
-        "involvedObject": {},
-        "lastTimestamp": "2026-02-11T14:58:40Z",
-        "type": "Warning",
-        "reportingComponent": "component-two",
-    }
-
-    bundle = spawner.event_formatter.format_event(event)
-
-    assert "default-component-two" in bundle["message"]
 
 
 async def test_spawn_start_restore_pod_name(

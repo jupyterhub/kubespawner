@@ -5,7 +5,6 @@ import pytest
 
 from kubespawner.events import BasicEventFormatter, RuleEventFormatter
 
-
 RULE_TEST_FILES = (pathlib.Path(__file__).parent / "sample-events").glob(
     "*.events.json"
 )

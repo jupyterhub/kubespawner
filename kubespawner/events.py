@@ -1,9 +1,7 @@
-from typing import Optional, Tuple
-
 import datetime
 import re
+from typing import Optional, Tuple
 
-from traitlets.config import LoggingConfigurable
 from traitlets import (
     Dict,
     List,
@@ -13,17 +11,22 @@ from traitlets import (
     observe,
     validate,
 )
+from traitlets.config import LoggingConfigurable
+
 from .utils import sorted_dict_values
 
 
 class EventFormatter(LoggingConfigurable):
-    def format_event(self, event: dict) -> dict:
+    def format_event(self, event: dict) -> str:
         """
-        Format a Kubernetes Event into a bundle of plain-text and HTML messages
+        Format a Kubernetes Event into a string
         :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
         """
 
-        return {"message": event["message"]}
+
+class BasicEventFormatter(EventFormatter):
+    def format_event(self, event: dict) -> str:
+        return event["message"]
 
 
 class RuleEventFormatter(EventFormatter):
@@ -171,6 +174,7 @@ class RuleEventFormatter(EventFormatter):
                 "fieldPath",
                 "reason",
                 "message",
+                "type",
             )
 
             # Prohibit unknown fields
@@ -227,16 +231,19 @@ class RuleEventFormatter(EventFormatter):
 
             # Merge (in order) the given rulesets
             merged_rules = {}
-            for rules_name in ("rules", "extra_rules"):
+            for i, rules_name in enumerate(("rules", "extra_rules")):
                 rules = getattr(self, rules_name)
 
                 if isinstance(rules, list):
+                    # NOTE: the rules index i must not exceed 9, as it is
+                    #       expected to be a single char
                     compiled_rules = {
-                        f"{rules_name}-{i}": (
+                        # Ensure that names sort by ruleset index
+                        f"{i}-{rules_name}-{j}": (
                             rule,
-                            trait_path_template.format(rules_name, i),
+                            trait_path_template.format(rules_name, j),
                         )
-                        for i, rule in enumerate(rules)
+                        for j, rule in enumerate(rules)
                     }
                 else:
                     compiled_rules = {
@@ -263,6 +270,7 @@ class RuleEventFormatter(EventFormatter):
             or "",
             "message": event.get("message") or "",
             "reason": event.get("reason") or "",
+            "type": event["type"],
         }
 
     def _single_rule_matches(self, rule: dict, match_source: dict) -> Optional[dict]:
@@ -306,82 +314,7 @@ class RuleEventFormatter(EventFormatter):
 
         return rule, self.FALLBACK_EVENT_RULE_ID, matches
 
-    def _parse_micro_timestamp(self, time: str) -> datetime.datetime:
-        """
-        Parse a MicroTime timestamp into a UTC datetime.
-
-        :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
-        """
-        return datetime.datetime.strptime(time, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(
-            datetime.timezone.utc
-        )
-
-    def _parse_timestamp(self, time: str) -> datetime.datetime:
-        """
-        Parse a Time timestamp into a UTC datetime.
-
-        :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
-        """
-
-        return datetime.datetime.strptime(time, "%Y-%m-%dT%H:%M:%S%z").astimezone(
-            datetime.timezone.utc
-        )
-
-    def _format_plain_message(self, message: str, event: dict) -> str:
-        """
-        Build a plain-text message from a plain-text message body and an Event object.
-
-        :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
-        """
-        event_type = event["type"]
-
-        if event_type == "Warning":
-            icon = " ⚠️ "
-        elif event_type == "Normal":
-            icon = " ℹ️ "
-        else:
-            icon = " "
-
-        if event["lastTimestamp"]:
-            moment = self._parse_timestamp(event["lastTimestamp"])
-        else:
-            moment = self._parse_micro_timestamp(event["eventTime"])
-
-        # Trim the time to the nearest section, assume UTC
-        timestamp = moment.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-        return f"{timestamp}{icon}{message}"
-
-    def _format_html_message(self, message: str, event: dict) -> str:
-        """
-        Build a full HTML message from a plain-text message body and an Event object.
-
-        :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
-        """
-        event_type = event["type"]
-
-        if event_type == "Warning":
-            icon = ' <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill">Warning</span> '
-        elif event_type == "Normal":
-            icon = ' <span class="badge bg-info-subtle text-info-emphasis rounded-pill">Info</span> '
-        else:
-            icon = " "
-
-        # Trim the time to the nearest section, assume UTC
-        if event["lastTimestamp"]:
-            moment = self._parse_timestamp(event["lastTimestamp"])
-        else:
-            moment = self._parse_micro_timestamp(event["eventTime"])
-
-        # Compute both true isoformat string and seconds-resolution readable string
-        readable_time = moment.strftime("%Y-%m-%dT%H:%M:%SZ")
-        true_time = moment.isoformat()
-
-        timestamp = f'<span class="badge bg-light-subtle text-light-emphasis rounded-pill"><time datetime="{true_time}">{readable_time}</time></span>'
-
-        return f"{timestamp}{icon}{message}"
-
-    def format_event(self, event: dict) -> dict:
+    def format_event(self, event: dict) -> str:
         rule, rule_path, matches = self.match_event_rule(event)
         template = rule["template"]
 
@@ -391,14 +324,88 @@ class RuleEventFormatter(EventFormatter):
             format_template = template
 
         try:
-            text = format_template(**matches)
+            return format_template(**matches)
         except Exception:
             self.log.exception(
                 f"Event template for rule {rule_path} failed to render successfully."
             )
-            text = event["message"]
+            return event["message"]
 
-        return {
-            "message": self._format_plain_message(text, event),
-            "html_message": self._format_html_message(text, event),
-        }
+
+def parse_micro_timestamp(time: str) -> datetime.datetime:
+    """
+    Parse a MicroTime timestamp into a UTC datetime.
+
+    :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
+    """
+    return datetime.datetime.strptime(time, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(
+        datetime.timezone.utc
+    )
+
+
+def parse_timestamp(time: str) -> datetime.datetime:
+    """
+    Parse a Time timestamp into a UTC datetime.
+
+    :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
+    """
+
+    return datetime.datetime.strptime(time, "%Y-%m-%dT%H:%M:%S%z").astimezone(
+        datetime.timezone.utc
+    )
+
+
+def decorate_plain_message(message: str, event: dict) -> str:
+    """
+    Build a plain-text message from a plain-text message body and an Event object.
+
+    :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
+    """
+    event_type = event["type"]
+
+    if event_type == "Warning":
+        icon = " ⚠️ "
+    elif event_type == "Normal":
+        icon = " ℹ️ "
+    else:
+        icon = " "
+
+    if event["lastTimestamp"]:
+        moment = parse_timestamp(event["lastTimestamp"])
+    else:
+        moment = parse_micro_timestamp(event["eventTime"])
+
+    # Trim the time to the nearest section, assume UTC
+    timestamp = moment.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    return f"{timestamp}{icon}{message}"
+
+
+def decorate_html_message(message: str, event: dict) -> str:
+    """
+    Build a full HTML message from a plain-text message body and an Event object.
+
+    :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
+    """
+    event_type = event["type"]
+
+    if event_type == "Warning":
+        icon = ' <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill">Warning</span> '
+    elif event_type == "Normal":
+        icon = ' <span class="badge bg-info-subtle text-info-emphasis rounded-pill">Info</span> '
+    else:
+        icon = " "
+
+    # Trim the time to the nearest section, assume UTC
+    if event["lastTimestamp"]:
+        moment = parse_timestamp(event["lastTimestamp"])
+    else:
+        moment = parse_micro_timestamp(event["eventTime"])
+
+    # Compute both true isoformat string and seconds-resolution readable string
+    readable_time = moment.strftime("%Y-%m-%dT%H:%M:%SZ")
+    true_time = moment.isoformat()
+
+    timestamp = f'<span class="badge bg-light-subtle text-light-emphasis rounded-pill"><time datetime="{true_time}">{readable_time}</time></span>'
+
+    return f"{timestamp}{icon}{message}"

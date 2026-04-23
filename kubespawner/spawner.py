@@ -31,10 +31,12 @@ from traitlets import (
     Bool,
     Dict,
     Enum,
-    Integer,
-    Type as TypeTrait,
     Instance,
+    Integer,
     List,
+)
+from traitlets import Type as TypeTrait
+from traitlets import (
     Unicode,
     Union,
     default,
@@ -44,7 +46,12 @@ from traitlets import (
 
 from . import __version__
 from .clients import load_config, shared_client
-from .events import EventFormatter, RuleEventFormatter
+from .events import (
+    EventFormatter,
+    RuleEventFormatter,
+    decorate_html_message,
+    decorate_plain_message,
+)
 from .objects import (
     make_namespace,
     make_owner_reference,
@@ -1975,18 +1982,24 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    modify_progress_hook = Callable(
-        None,
+    def _decorate_progress_message(spawner, event, message):
+        return {
+            "message": decorate_plain_message(message, event),
+            "html_message": decorate_html_message(message, event),
+        }
+
+    decorate_progress_message = Callable(
+        _decorate_progress_message,
         allow_none=True,
         config=True,
         help="""
-        Callable to modify a rendered event message from a reflected Event object.
+        Callable to decorate a rendered event message from a reflected Event object.
 
         Expects a callable that takes two parameters:
 
            1. The spawner object that is doing the spawning
            2. The Event object that is to be formatted
-           3. The rendered message as dictionary containing `html_message` and `message` keys
+           3. The rendered event message string
 
         This can be a coroutine if necessary. When set to none, the default formatter is used.
         The hook function should return a dictionary containing a required key `message`,
@@ -1998,6 +2011,7 @@ class KubeSpawner(Spawner):
     event_formatter_class = TypeTrait(
         klass=EventFormatter,
         default_value=RuleEventFormatter,
+        config=True,
         help="""The class to use for formatting Kubernetes Event objects.
 
         Should be a subclass of :class:`jupyterhub.event.EventFormatter`.
@@ -2842,11 +2856,11 @@ class KubeSpawner(Spawner):
                     # 30 50 63 72 78 82 84 86 87 88 88 89
                     progress += (90 - progress) / 3
 
-                    message_bundle = self.event_formatter.format_event(event)
-                    if self.modify_progress_hook is not None:
-                        message_bundle = await maybe_future(
-                            self.modify_progress_hook(self, event, message_bundle)
-                        )
+                    message = self.event_formatter.format_event(event)
+
+                    message_bundle = await maybe_future(
+                        self.decorate_progress_message(self, event, message)
+                    )
 
                     yield {
                         "progress": int(progress),
