@@ -1,4 +1,50 @@
+from typing import Optional, Tuple
+
 import datetime
+import re
+
+
+def normalize_kubernetes_event(self, event: dict) -> dict:
+    return {
+        "fieldPath": event["involvedObject"].get("fieldPath") or "",
+        "reportingComponent": event.get("reportingComponent")
+        or event.get("source", {}).get("component")
+        or "",
+        "message": event.get("message") or "",
+        "reason": event.get("reason") or "",
+    }
+
+
+def match_event_rule(
+    event: dict, compiled_rules: list
+) -> Optional[Tuple[dict, str, dict]]:
+    """
+    Match a Kubernetes event against a list of formatter rules
+    """
+    # Normalise event to handle reportingComponent <-> source.component
+    # Fields can both be missing (optional) and in-practice also empty strings
+    # We normalise missing or "" to ""
+    match_source = normalize_kubernetes_event(event)
+
+    # Try to match a rule
+    for rule, rule_path in compiled_rules:
+        matches = {}
+        for field, pattern in rule["match"].items():
+            # Pull out the value for the match field
+            value = match_source[field]
+
+            # The event value must match the rule value
+            match = re.match(pattern, value or "")
+            if match is None:
+                break
+
+            # Include matches for groups, where optional groups default to ""
+            matches.update(match.groupdict(default=""))
+
+        else:
+            return rule, rule_path, matches
+
+    raise ValueError("No matching rule found for event")
 
 
 def parse_micro_timestamp(time: str) -> datetime.datetime:

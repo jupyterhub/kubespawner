@@ -43,7 +43,7 @@ from traitlets import (
 
 from . import __version__
 from .clients import load_config, shared_client
-from .events import format_html_message, format_plain_message
+from .events import match_event_rule, format_html_message, format_plain_message
 from .objects import (
     make_namespace,
     make_owner_reference,
@@ -2202,46 +2202,15 @@ class KubeSpawner(Spawner):
         # Sort by unique ID
         return self._sorted_dict_values(merged_rules)
 
-    def _match_event_rule(self, event: dict) -> Optional[Tuple[dict, str, dict]]:
-        # Normalise event to handle reportingComponent <-> source.component
-        # Fields can both be missing (optional) and in-practice also empty strings
-        # We normalise missing or "" to ""
-
-        match_source = {
-            "fieldPath": event["involvedObject"].get("fieldPath") or "",
-            "reportingComponent": event.get("reportingComponent")
-            or event.get("source", {}).get("component")
-            or "",
-            "message": event.get("message") or "",
-            "reason": event.get("reason") or "",
-        }
-
+    def render_event(self, event: dict) -> dict:
         # Populate cache of compiled event rules
         if self._compiled_event_formatter_rules is None:
             self._compiled_event_formatter_rules = self._compile_event_formatter_rules()
 
-        # Try to match a rule
-        for rule, rule_path in self._compiled_event_formatter_rules:
-            matches = {}
-            for field, pattern in rule["match"].items():
-                value = match_source[field]
-
-                # The event value must match the rule value
-                match = re.match(pattern, value or "")
-                if match is None:
-                    break
-
-                # Include matches for groups, where _optional_ groups to default to ""
-                matches.update(match.groupdict(default=""))
-
-            else:
-                return rule, rule_path, matches
-
-        raise ValueError("No matching rule found for event")
-
-    def render_event(self, event: dict) -> dict:
         try:
-            rule, rule_path, matches = self._match_event_rule(event)
+            rule, rule_path, matches = match_event_rule(
+                event, self._compiled_event_formatter_rules
+            )
         except ValueError:
             text = event["message"]
         else:
