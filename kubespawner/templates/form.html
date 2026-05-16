@@ -9,7 +9,9 @@
                name="profile"
                id="profile-item-{{ profile.slug }}"
                value="{{ profile.slug }}"
-               {% if profile.default %}checked{% endif %} />
+               {% if user_options.profile == profile.slug %}checked
+               {% elif not user_options.profile and profile.default %}checked
+               {% endif %} />
       </div>
       <div>
         <h3>{{ profile.display_name }}</h3>
@@ -53,6 +55,7 @@
   {%- endfor %}
 </div>
 <script>
+  const userOptions = {{ user_options|tojson }};
   $('.js-profile-option-select, .js-profile-option-label').click(function() {
     // we need this bit of JS to select the profile when a <select> inside is clicked.
     $(this).parents('.js-profile-label')
@@ -89,6 +92,22 @@
   // wrapping in a document.ready to make clear this is executed once
   // on page load
   $(document).ready(() => {
+    // Pre-select options from previously saved user_options
+    const savedProfile = userOptions && userOptions.profile;
+    if (savedProfile) {
+      $(`label[for="profile-item-${savedProfile}"] .js-profile-option-select`).each(function() {
+        // name format: profile-option-{slug}--{optionKey}
+        const optionKey = $(this).attr('name').split('--').pop();
+        const unlistedValue = userOptions[optionKey + '--unlisted-choice'];
+        const savedValue = userOptions[optionKey];
+        if (unlistedValue) {
+          $(this).val('unlisted-choice');
+          $(this).parents('.js-options-container').find('.js-other-input').val(unlistedValue);
+        } else if (savedValue) {
+          $(this).val(savedValue);
+        }
+      });
+    }
     // trigger the `change` event on the select inputs,
     // so that if "Other" is selected on page load, the corresponding
     // free-text input shows

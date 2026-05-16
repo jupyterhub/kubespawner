@@ -3487,7 +3487,9 @@ class KubeSpawner(Spawner):
             profile_form_template = env.from_string(self.profile_form_template)
         else:
             profile_form_template = env.get_template("form.html")
-        return profile_form_template.render(profile_list=profile_list)
+        return profile_form_template.render(
+            profile_list=profile_list, user_options=self.user_options or {}
+        )
 
     async def _render_options_form_dynamically(self, current_spawner):
         """
