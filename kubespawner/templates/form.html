@@ -9,9 +9,7 @@
                name="profile"
                id="profile-item-{{ profile.slug }}"
                value="{{ profile.slug }}"
-               {% if user_options.profile == profile.slug %}checked
-               {% elif not user_options.profile and profile.default %}checked
-               {% endif %} />
+               {% if user_options.profile == profile.slug %}checked {% elif not user_options.profile and profile.default %}checked {% endif %} />
       </div>
       <div>
         <h3>{{ profile.display_name }}</h3>
