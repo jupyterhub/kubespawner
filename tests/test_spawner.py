@@ -1016,6 +1016,7 @@ async def test_init_containers_as_dict():
     assert init_containers[0].image == 'mock_image_1'
     assert init_containers[1].image == 'mock_image_2'
 
+
 _test_profiles_dict = {
     'training-python': {
         'display_name': 'Training Env - Python',
@@ -1028,7 +1029,7 @@ _test_profiles_dict = {
             'environment': {'override': 'override-value'},
         },
     },
-    'training-datascience':{
+    'training-datascience': {
         'display_name': 'Training Env - Datascience',
         'slug': 'training-datascience',
         'kubespawner_override': {
@@ -1037,7 +1038,7 @@ _test_profiles_dict = {
             'mem_limit': 8 * 1024 * 1024 * 1024,
         },
     },
-    'training-r':{
+    'training-r': {
         'display_name': 'Training Env - R',
         'slug': 'training-r',
         'kubespawner_override': {
@@ -1105,12 +1106,15 @@ _test_profiles_dict = {
     },
 }
 
+
 def get_idx_based_on_profile_list_type(prf, idx):
     if type(prf) == dict:
         return _test_profiles_list[idx]['slug']
     return idx
 
+
 _test_profiles_list = list(_test_profiles_dict.values())
+
 
 @pytest.mark.parametrize("test_profiles", [_test_profiles_list, _test_profiles_dict])
 async def test_user_options_set_from_form(test_profiles):
@@ -1132,6 +1136,7 @@ async def test_user_options_set_from_form(test_profiles):
     await spawner.load_user_options()
     for key, value in test_profiles[idx]['kubespawner_override'].items():
         assert getattr(spawner, key) == value
+
 
 @pytest.mark.parametrize("test_profiles", [_test_profiles_list, _test_profiles_dict])
 async def test_user_options_set_from_form_choices(test_profiles):
@@ -1158,6 +1163,7 @@ async def test_user_options_set_from_form_choices(test_profiles):
     assert spawner.cpu_limit is None
     await spawner.load_user_options()
     assert getattr(spawner, 'image') == 'pangeo/pytorch-notebook:master'
+
 
 @pytest.mark.parametrize("test_profiles", [_test_profiles_list, _test_profiles_dict])
 async def test_user_options_set_from_form_unlisted_choice(test_profiles):
@@ -1234,6 +1240,7 @@ async def test_user_options_set_from_form_invalid_regex(test_profiles):
     with pytest.raises(ValueError):
         await spawner.load_user_options()
 
+
 @pytest.mark.parametrize("test_profiles", [_test_profiles_list, _test_profiles_dict])
 async def test_user_options_set_from_form_no_regex(test_profiles):
     """
@@ -1260,6 +1267,7 @@ async def test_user_options_set_from_form_no_regex(test_profiles):
     await spawner.load_user_options()
     assert getattr(spawner, 'image') == 'invalid/foo:latest'
 
+
 @pytest.mark.parametrize("test_profiles", [_test_profiles_list, _test_profiles_dict])
 async def test_kubespawner_override(test_profiles):
     spawner = KubeSpawner(_mock=True)
@@ -1274,7 +1282,7 @@ async def test_kubespawner_override(test_profiles):
     idx = get_idx_based_on_profile_list_type(test_profiles, 2)
 
     spawner.user_options = spawner.options_from_form(
-        {'profile':  test_profiles[idx]['slug']}
+        {'profile': [test_profiles[idx]['slug']]}
     )
     assert spawner.user_options == {
         'profile': test_profiles[idx]['slug'],
@@ -1284,6 +1292,7 @@ async def test_kubespawner_override(test_profiles):
         "existing": "existing-value",
         "override": "override-value",
     }
+
 
 @pytest.mark.parametrize("test_profiles", [_test_profiles_list, _test_profiles_dict])
 async def test_user_options_api(test_profiles):
@@ -1300,12 +1309,13 @@ async def test_user_options_api(test_profiles):
     for key, value in test_profiles[idx]['kubespawner_override'].items():
         assert getattr(spawner, key) == value
 
+
 @pytest.mark.parametrize("test_profiles", [_test_profiles_list, _test_profiles_dict])
 async def test_default_profile(test_profiles):
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = test_profiles
     spawner.user_options = {}
-    idx = get_idx_based_on_profile_list_type(test_profiles, 1)
+    idx = get_idx_based_on_profile_list_type(test_profiles, 0)
 
     # nothing should be loaded yet
     assert spawner.cpu_limit is None
