@@ -357,6 +357,12 @@ class ResourceReflector(LoggingConfigurable):
                         else:
                             # This is an atomic operation on the dictionary!
                             self.resources[ref_key] = resource
+                            # _entry_generations is updated on the next line after
+                            # resources; there is a brief window of inconsistency
+                            # between the two dicts.  is_stale() is advisory so
+                            # this is safe: a caller that races here will either
+                            # see the old generation (slightly conservative) or
+                            # the new one (correct), never a crash.
                             self._entry_generations[ref_key] = self._generation
                             resource_version = resource["metadata"]["resourceVersion"]
                         if self._stopping:
