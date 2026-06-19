@@ -50,8 +50,6 @@ jobs:
               kubernetes_asyncio==24.2.3
 
           # Test with modern python and k8s versions
-          - python: "3.11"
-            k3s: v1.27
           - python: "3.12"
             k3s: v1.28
 
@@ -60,8 +58,8 @@ jobs:
             k3s: latest
 
           # Test with specific python, kubernetes and latest jupyterhub
-          - python: "3.12"
-            k3s: v1.28
+          - python: "3.11"
+            k3s: v1.27
             test_dependencies: git+https://github.com/jupyterhub/jupyterhub
 
     steps:
