@@ -1,8 +1,8 @@
 import asyncio
 import base64
 import json
-import re
 import os
+import re
 from functools import partial
 from unittest.mock import Mock
 
