@@ -252,7 +252,7 @@ async def _delete_namespace(client, namespace):
     import subprocess
     subprocess.check_call([
         "kubectl", "-n", namespace,
-        "get", "all"
+        "get", "pvc"
     ])
     subprocess.check_call([
         "kubectl", "describe", "namespace", namespace
