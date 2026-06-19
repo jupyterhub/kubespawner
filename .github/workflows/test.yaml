@@ -55,9 +55,13 @@ jobs:
           - python: "3.12"
             k3s: v1.28
 
-          # Test with latest python and JupyterHub in main branch
+          # Test with latest python and latest kubernetes
           - python: "3.X"
             k3s: latest
+
+          # Test with specific python, kubernetes and latest jupyterhub
+          - python: "3.12"
+            k3s: v1.28
             test_dependencies: git+https://github.com/jupyterhub/jupyterhub
 
     steps:
