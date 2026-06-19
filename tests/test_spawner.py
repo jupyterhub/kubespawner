@@ -659,7 +659,7 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
         with open(os.devnull, "w") as devnull:
             json.dump(progress, devnull)
     # This message varies by version
-    assert re.match(r'Started container|Container started', '\n'.join(messages))
+    assert re.search(r'Started container|Container started', '\n'.join(messages))
 
     await start_future
     # stop the pod
