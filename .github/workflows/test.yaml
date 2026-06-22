@@ -54,7 +54,7 @@ jobs:
             k3s: v1.28
 
           # Test with latest python and latest kubernetes
-          - python: latest
+          - python: 3.x
             k3s: latest
 
           # Test with latest python and newer kubernetes to see where it fails
