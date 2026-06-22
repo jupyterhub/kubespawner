@@ -59,27 +59,7 @@ jobs:
 
           # Test with latest python and newer kubernetes to see where it fails
           - python: "3.12"
-            k3s: v1.30
-
-          # Test with latest python and newer kubernetes to see where it fails
-          - python: "3.12"
-            k3s: v1.31
-
-          # Test with latest python and newer kubernetes to see where it fails
-          - python: "3.12"
             k3s: v1.32
-
-          # Test with latest python and newer kubernetes to see where it fails
-          - python: "3.12"
-            k3s: v1.33
-
-          # Test with latest python and newer kubernetes to see where it fails
-          - python: "3.12"
-            k3s: v1.34
-
-          # Test with latest python and newer kubernetes to see where it fails
-          - python: "3.12"
-            k3s: v1.35
 
           # Test with specific python, kubernetes and latest jupyterhub
           - python: "3.11"
