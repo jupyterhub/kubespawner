@@ -250,9 +250,10 @@ async def _delete_namespace(client, namespace):
             print("waiting for %s to delete" % namespace)
             await asyncio.sleep(1)
     import subprocess
+    print("debug info")
     subprocess.check_call([
         "kubectl", "-n", namespace,
-        "get", "pvc"
+        "get", "pvc", "-oyaml", "-A"
     ])
     subprocess.check_call([
         "kubectl", "describe", "namespace", namespace
