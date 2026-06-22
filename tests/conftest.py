@@ -251,13 +251,7 @@ async def _delete_namespace(client, namespace):
             await asyncio.sleep(1)
     import subprocess
 
-    print("debug info")
-    subprocess.check_call(["kubectl", "-n", namespace, "get", "pvc", "-oyaml", "-A"])
-    subprocess.check_call(["kubectl", "-n", namespace, "get", "pv", "-oyaml", "-A"])
-    subprocess.check_call(["kubectl", "-n", namespace, "get", "pod", "-oyaml", "-A"])
-    subprocess.check_call(["kubectl", "get", "namespace", "-oyaml"])
-    subprocess.check_call(["kubectl", "describe", "namespace", namespace])
-    raise Exception(f"Namespace {namespace} not deleted after 20 s")
+    raise Exception(f"Namespace {namespace} not deleted after 60s")
 
 
 @pytest_asyncio.fixture(scope="session")
