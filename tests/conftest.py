@@ -238,7 +238,7 @@ async def watch_kubernetes(kube_client, kube_ns):
 
 async def _delete_namespace(client, namespace):
     await client.delete_namespace(namespace, body={}, grace_period_seconds=0)
-    for _ in range(20):  # Usually finishes a good deal faster
+    for _ in range(60):  # Usually finishes a good deal faster
         try:
             await client.read_namespace(namespace)
         except ApiException as e:
