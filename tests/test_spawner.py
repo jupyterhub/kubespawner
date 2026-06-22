@@ -2,6 +2,7 @@ import asyncio
 import base64
 import json
 import os
+import re
 from functools import partial
 from unittest.mock import Mock
 
@@ -657,7 +658,8 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
         # ensure we can serialize whatever we return
         with open(os.devnull, "w") as devnull:
             json.dump(progress, devnull)
-    assert 'Started container' in '\n'.join(messages)
+    # This message varies by version
+    assert re.search(r'Started container|Container started', '\n'.join(messages))
 
     await start_future
     # stop the pod
