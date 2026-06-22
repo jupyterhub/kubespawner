@@ -253,6 +253,7 @@ async def _delete_namespace(client, namespace):
 
     print("debug info")
     subprocess.check_call(["kubectl", "-n", namespace, "get", "pvc", "-oyaml", "-A"])
+    subprocess.check_call(["kubectl", "-n", namespace, "get", "pv", "-oyaml", "-A"])
     subprocess.check_call(["kubectl", "describe", "namespace", namespace])
     raise Exception(f"Namespace {namespace} not deleted after 20 s")
 
