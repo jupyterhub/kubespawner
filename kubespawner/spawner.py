@@ -3624,9 +3624,7 @@ class KubeSpawner(Spawner):
             return self._render_options_form_dynamically
         else:
             # Return the rendered string, as it does not change
-            return self._render_options_form(
-                sorted_dict_values(self.profile_list)
-            )
+            return self._render_options_form(sorted_dict_values(self.profile_list))
 
     @default('options_from_form')
     def _options_from_form_default(self):

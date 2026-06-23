@@ -16,6 +16,7 @@ from traitlets import (
     validate,
 )
 from traitlets.config import LoggingConfigurable
+
 from .utils import sorted_dict_values
 
 
