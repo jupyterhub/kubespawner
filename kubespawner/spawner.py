@@ -62,7 +62,7 @@ from .objects import (
 )
 from .reflector import ResourceReflector
 from .slugs import escape_slug, is_valid_label, multi_slug, safe_slug
-from .utils import recursive_format, recursive_update, sorted_dict_values
+from .utils import recursive_format, recursive_update
 
 
 class PodReflector(ResourceReflector):
@@ -2276,6 +2276,15 @@ class KubeSpawner(Spawner):
         else:
             return src
 
+    def _sorted_dict_values(self, src):
+        """
+        Return a list of dict values sorted by keys if src is a dict, otherwise return src as-is.
+        """
+        if isinstance(src, dict):
+            return [src[key] for key in sorted(src.keys())]
+        else:
+            return src
+
     def _build_common_labels(self, extra_labels):
         # Default set of labels, picked up from
         # https://github.com/helm/helm-www/blob/HEAD/content/en/docs/chart_best_practices/labels.md
@@ -2455,8 +2464,8 @@ class KubeSpawner(Spawner):
             container_security_context=csc,
             pod_security_context=psc,
             env=self.get_env(),  # Expansion is handled by get_env
-            volumes=self._expand_all(sorted_dict_values(self.volumes)),
-            volume_mounts=self._expand_all(sorted_dict_values(self.volume_mounts)),
+            volumes=self._expand_all(self._sorted_dict_values(self.volumes)),
+            volume_mounts=self._expand_all(self._sorted_dict_values(self.volume_mounts)),
             working_dir=self.working_dir,
             labels=labels,
             annotations=annotations,
@@ -2467,24 +2476,24 @@ class KubeSpawner(Spawner):
             extra_resource_limits=self.extra_resource_limits,
             extra_resource_guarantees=self.extra_resource_guarantees,
             lifecycle_hooks=self.lifecycle_hooks,
-            init_containers=self._expand_all(sorted_dict_values(self.init_containers)),
+            init_containers=self._expand_all(self._sorted_dict_values(self.init_containers)),
             service_account=self._expand_all(self.service_account),
             automount_service_account_token=self.automount_service_account_token,
             extra_container_config=self.extra_container_config,
             extra_pod_config=self._expand_all(self.extra_pod_config),
             extra_containers=self._expand_all(
-                sorted_dict_values(self.extra_containers)
+                self._sorted_dict_values(self.extra_containers)
             ),
             scheduler_name=self.scheduler_name,
-            tolerations=sorted_dict_values(self.tolerations),
-            node_affinity_preferred=sorted_dict_values(self.node_affinity_preferred),
-            node_affinity_required=sorted_dict_values(self.node_affinity_required),
-            pod_affinity_preferred=sorted_dict_values(self.pod_affinity_preferred),
-            pod_affinity_required=sorted_dict_values(self.pod_affinity_required),
-            pod_anti_affinity_preferred=sorted_dict_values(
+            tolerations=self._sorted_dict_values(self.tolerations),
+            node_affinity_preferred=self._sorted_dict_values(self.node_affinity_preferred),
+            node_affinity_required=self._sorted_dict_values(self.node_affinity_required),
+            pod_affinity_preferred=self._sorted_dict_values(self.pod_affinity_preferred),
+            pod_affinity_required=self._sorted_dict_values(self.pod_affinity_required),
+            pod_anti_affinity_preferred=self._sorted_dict_values(
                 self.pod_anti_affinity_preferred
             ),
-            pod_anti_affinity_required=sorted_dict_values(
+            pod_anti_affinity_required=self._sorted_dict_values(
                 self.pod_anti_affinity_required
             ),
             priority_class_name=self.priority_class_name,

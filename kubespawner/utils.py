@@ -264,13 +264,3 @@ def recursive_format(format_object, **kwargs):
     else:
         # Everything else just gets returned as is, unformatted
         return format_object
-
-
-def sorted_dict_values(src):
-    """
-    Return a list of dict values sorted by keys if src is a dict, otherwise return src as-is.
-    """
-    if isinstance(src, dict):
-        return [src[key] for key in sorted(src.keys())]
-    else:
-        return src
