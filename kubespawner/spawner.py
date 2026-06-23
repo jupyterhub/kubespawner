@@ -2465,7 +2465,9 @@ class KubeSpawner(Spawner):
             pod_security_context=psc,
             env=self.get_env(),  # Expansion is handled by get_env
             volumes=self._expand_all(self._sorted_dict_values(self.volumes)),
-            volume_mounts=self._expand_all(self._sorted_dict_values(self.volume_mounts)),
+            volume_mounts=self._expand_all(
+                self._sorted_dict_values(self.volume_mounts)
+            ),
             working_dir=self.working_dir,
             labels=labels,
             annotations=annotations,
@@ -2476,7 +2478,9 @@ class KubeSpawner(Spawner):
             extra_resource_limits=self.extra_resource_limits,
             extra_resource_guarantees=self.extra_resource_guarantees,
             lifecycle_hooks=self.lifecycle_hooks,
-            init_containers=self._expand_all(self._sorted_dict_values(self.init_containers)),
+            init_containers=self._expand_all(
+                self._sorted_dict_values(self.init_containers)
+            ),
             service_account=self._expand_all(self.service_account),
             automount_service_account_token=self.automount_service_account_token,
             extra_container_config=self.extra_container_config,
@@ -2486,9 +2490,15 @@ class KubeSpawner(Spawner):
             ),
             scheduler_name=self.scheduler_name,
             tolerations=self._sorted_dict_values(self.tolerations),
-            node_affinity_preferred=self._sorted_dict_values(self.node_affinity_preferred),
-            node_affinity_required=self._sorted_dict_values(self.node_affinity_required),
-            pod_affinity_preferred=self._sorted_dict_values(self.pod_affinity_preferred),
+            node_affinity_preferred=self._sorted_dict_values(
+                self.node_affinity_preferred
+            ),
+            node_affinity_required=self._sorted_dict_values(
+                self.node_affinity_required
+            ),
+            pod_affinity_preferred=self._sorted_dict_values(
+                self.pod_affinity_preferred
+            ),
             pod_affinity_required=self._sorted_dict_values(self.pod_affinity_required),
             pod_anti_affinity_preferred=self._sorted_dict_values(
                 self.pod_anti_affinity_preferred
