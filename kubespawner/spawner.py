@@ -1736,24 +1736,30 @@ class KubeSpawner(Spawner):
     )
 
     profile_list = Union(
-        trait_types=[List(trait=Dict()), Callable()],
+        trait_types=[List(trait=Dict()), Callable(), Dict()],
         config=True,
         help="""
-        List of profiles to offer for selection by the user.
+        Callable, List or Dict of profiles to offer for selection by the user.
 
-        Signature is: `List(Dict())`, where each item is a dictionary that has two keys:
+        - If a list, then each item is a dictionary.
+        - If it's a dictionary, then its keys are "slugs" - machine
+        readable strings that identify a profile. The values are dictionaries.
+
+        In both cases, the inner, dictionaries representing the profiles,
+        have the following keys:
 
         - `display_name`: the human readable display name (should be HTML safe)
         - `default`: (Optional Bool) True if this is the default selected option
         - `description`: Optional description of this profile displayed to the user.
         - `slug`: (Optional) the machine readable string to identify the
-          profile (missing slugs are generated from display_name)
+          profile (missing slugs are generated from display_name, and might not match the
+          outer "slug" key, in case profile_list is a dict. This is ok.)
         - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
           settings. Each value can be either the final value to change or a callable that
           take the `KubeSpawner` instance as parameter and return the final value. This can
           be further overridden by 'profile_options'
-          If the traitlet being overriden is a *dictionary*, the dictionary
-          will be *recursively updated*, rather than overriden. If you want to
+          If the traitlet being overridden is a *dictionary*, the dictionary
+          will be *recursively updated*, rather than overridden. If you want to
           remove a key, set its value to `None`
         - `profile_options`: A dictionary of sub-options that allow users to further customize the
           selected profile. By default, these are rendered as a dropdown with the label
@@ -1801,8 +1807,8 @@ class KubeSpawner(Spawner):
               and value can be either the final value or a callable that returns the final
               value when called with the spawner instance as the only parameter. The callable
               may be async.
-              If the traitlet being overriden is a *dictionary*, the dictionary
-              will be *recursively updated*, rather than overriden. If you want to
+              If the traitlet being overridden is a *dictionary*, the dictionary
+              will be *recursively updated*, rather than overridden. If you want to
               remove a key, set its value to `None`
 
         kubespawner setting overrides work in the following manner, with items further in the
@@ -1814,7 +1820,7 @@ class KubeSpawner(Spawner):
            profile, applied linearly based on the ordering of the option in the profile
            definition configuration
 
-        Example::
+        List example::
 
             c.KubeSpawner.profile_list = [
                 {
@@ -1862,6 +1868,48 @@ class KubeSpawner(Spawner):
                     },
                 },
             ]
+        Dict example::
+
+            c.KubeSpawner.profile_list = {
+                "demo-1": {
+                    'display_name': 'Demo - profile_list entry 1',
+                    'description': 'Demo description for profile_list entry 1, and it should look good even though it is a bit lengthy.',
+                    'slug': 'demo-1',
+                    'default': True,
+                    'profile_options': {
+                        'image': {
+                            'display_name': 'Image',
+                            'choices': {
+                                'base': {
+                                    'display_name': 'jupyter/base-notebook:latest',
+                                    'kubespawner_override': {
+                                        'image': 'jupyter/base-notebook:latest'
+                                    },
+                                },
+                            },
+                            'unlisted_choice': {
+                                'enabled': True,
+                                'display_name': 'Other image',
+                                'display_name_in_choices': 'Enter image manually',
+                                'validation_regex': '^jupyter/.+:.+$',
+                                'validation_message': 'Must be an image matching ^jupyter/<name>:<tag>$',
+                                'kubespawner_override': {'image': '{value}'},
+                            },
+                        },
+                    },
+                    'kubespawner_override': {
+                        'default_url': '/lab',
+                    },
+                },
+                demo-2: {
+                    'display_name': 'Demo - profile_list entry 2',
+                    'slug': 'demo-2',
+                    'kubespawner_override': {
+                        'extra_resource_guarantees': {"nvidia.com/gpu": "1"},
+                    },
+                },
+            }
+
 
         Instead of a list of dictionaries, this could also be a callable that takes as one
         parameter the current spawner instance and returns a list of dictionaries. The
@@ -3527,7 +3575,9 @@ class KubeSpawner(Spawner):
             return self._render_options_form_dynamically
         else:
             # Return the rendered string, as it does not change
-            return self._render_options_form(self.profile_list)
+            return self._render_options_form(
+                self._sorted_dict_values(self.profile_list)
+            )
 
     @default('options_from_form')
     def _options_from_form_default(self):
@@ -3820,9 +3870,10 @@ class KubeSpawner(Spawner):
         Override in subclasses to support other options.
         """
         # get an initialized profile list
-        profile_list = self.profile_list
+        profile_list = self._sorted_dict_values(self.profile_list)
         if callable(profile_list):
             profile_list = await maybe_future(profile_list(self))
+
         profile_list = self._get_initialized_profile_list(profile_list)
 
         # validate user_options against initialized profile_list
