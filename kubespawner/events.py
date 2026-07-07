@@ -90,7 +90,7 @@ class RuleEventFormatter(EventFormatter):
                     }
                 ]
                 
-        When set to none, a default ruleset is used.
+        When set to None, a default ruleset is used.
 
         :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
         """,
