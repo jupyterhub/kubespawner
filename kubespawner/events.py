@@ -62,6 +62,35 @@ class RuleEventFormatter(EventFormatter):
         If provided as a list, each item should be an aforementioned "rule" object.
         If provided as a dictionary, the keys can be any descriptive name and the values should be the aforementioned "rule" objects.
         The items will be sorted lexicographically by the dictionary keys, and the sorted values will be used to build the list of rules.
+        .. admonition:: Example
+           :collapsible: closed
+
+           Here is an example of two rules that are defined by default in the `RuleEventFormatter`.
+
+           .. code-block:: python
+
+              c.RuleEventFormatter.rules = 
+                [
+                    {
+                        "match": {
+                            "reportingComponent": r"kubelet",
+                            "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
+                            "reason": r"(?P<action>Pulling|Pulled)",
+                            "message": r'.*image\s*"(?P<image>[^"]+)\:(?P<tag>[^"]+)"',
+                        },
+                        "template": "{action} image {image}:{tag} for the {container} container",
+                    },
+                    {
+                        "match": {
+                            "reportingComponent": r"kubelet",
+                            "fieldPath": r"spec\.(initContainers|containers)\{(?P<container>[^}]+)\}",
+                            "reason": r"(?P<action>Started|Killing|Created|Stopped)",
+                        },
+                        "template": '{action} the container "{container}"',
+                    }
+                ]
+                
+        When set to none, a default ruleset is used.
 
         :ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#event-v1-core
         """,
