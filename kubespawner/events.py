@@ -440,7 +440,7 @@ def decorate_html_message(message: str, event: dict) -> str:
     else:
         icon = " "
 
-    # Trim the time to the nearest section, assume UTC
+    # Trim the time to the nearest second, assume UTC
     if event["lastTimestamp"]:
         moment = parse_timestamp(event["lastTimestamp"])
     else:
