@@ -347,8 +347,7 @@ class RuleEventFormatter(EventFormatter):
             "message": event.get("message") or "",
             "reason": event.get("reason") or "",
             # This should never happen!
-            "type":  event.get("type") or "",
-
+            "type": event.get("type") or "",
         }
 
     def _single_rule_matches(self, rule: dict, match_source: dict) -> Optional[dict]:
