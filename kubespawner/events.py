@@ -419,7 +419,7 @@ def decorate_plain_message(message: str, event: dict) -> str:
     else:
         moment = parse_micro_timestamp(event["eventTime"])
 
-    # Trim the time to the nearest section, assume UTC
+    # Trim the time to the nearest second, assume UTC
     timestamp = moment.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     return f"{timestamp}{icon}{message}"
