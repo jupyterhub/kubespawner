@@ -2003,7 +2003,7 @@ class KubeSpawner(Spawner):
            2. The event object to be formatted
            3. The rendered event message string
 
-        This can be a coroutine if necessary. When set to none, the default formatter is used.
+        This can be a coroutine if necessary. When set to none, the default decorator is used.
         
         Example
         -------
