@@ -63,7 +63,7 @@ jobs:
             test_dependencies: git+https://github.com/jupyterhub/jupyterhub
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: "${{ matrix.python }}"
@@ -95,4 +95,4 @@ jobs:
         if: always()
 
       # ref: https://github.com/codecov/codecov-action
-      - uses: codecov/codecov-action@v6
+      - uses: codecov/codecov-action@v7
