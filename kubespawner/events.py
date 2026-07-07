@@ -51,7 +51,7 @@ class RuleEventFormatter(EventFormatter):
             Dict(),
         ],
         config=True,
-        help="""
+        help=r"""
         List or dictionary of event formatter rules.
 
         A "rule" is an object that consists of two required fields:
