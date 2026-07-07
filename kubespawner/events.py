@@ -335,7 +335,7 @@ class RuleEventFormatter(EventFormatter):
 
     def _normalize_kubernetes_event(self, event: dict) -> dict:
         """
-        Normalise event to handle reportingComponent <-> source.component
+        Normalise event to handle field renames, aliases, and missing fields.
         Fields can both be missing (optional) and in-practice also empty strings
         We normalise missing or "" to ""
         """
@@ -346,7 +346,9 @@ class RuleEventFormatter(EventFormatter):
             or "",
             "message": event.get("message") or "",
             "reason": event.get("reason") or "",
-            "type": event["type"],
+            # This should never happen!
+            "type":  event.get("type") or "",
+
         }
 
     def _single_rule_matches(self, rule: dict, match_source: dict) -> Optional[dict]:
