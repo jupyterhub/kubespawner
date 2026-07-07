@@ -2017,9 +2017,15 @@ class KubeSpawner(Spawner):
                    return f"WARNING: {message}"
                else:
                    return f"{message}"
-   
-           def my_decorator(spawner, event, message):
-               return {"message": my_plain_decorator(message, event)}
+
+            def my_html_decorator(message, event):
+                return f"{event['lastTimestamp']}<span class='badge bg-info-subtle text-info-emphasis rounded-pill'>Info</span>{message}"
+
+            def my_decorator(spawner, event, message):
+                return {
+                    "message": my_plain_decorator(message, event),
+                    "html_message": my_html_decorator(message, event)
+                }
            
            c.KubeSpawner.decorate_progress_message = my_decorator
         """,
