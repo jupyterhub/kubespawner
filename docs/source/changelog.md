@@ -7,6 +7,7 @@
 ## 7.0
 
 ### [7.1.0] - 2026-06-14
+
 ([full changelog](https://github.com/jupyterhub/kubespawner/compare/7.0.0...631150bb4c3f8dc5681e7f237f758fea789a56f3))
 
 #### New features added
