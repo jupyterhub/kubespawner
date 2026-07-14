@@ -149,13 +149,17 @@ c.KubeSpawner.profile_list = [
                                                         'display_name': 'Exclusive',
                                                         'default': True,
                                                         'kubespawner_override': {
-                                                            'environment': {'DEMO_GPU_SHARING': 'exclusive'},
+                                                            'environment': {
+                                                                'DEMO_GPU_SHARING': 'exclusive'
+                                                            },
                                                         },
                                                     },
                                                     'mig': {
                                                         'display_name': 'MIG slice',
                                                         'kubespawner_override': {
-                                                            'environment': {'DEMO_GPU_SHARING': 'mig'},
+                                                            'environment': {
+                                                                'DEMO_GPU_SHARING': 'mig'
+                                                            },
                                                         },
                                                     },
                                                 },
