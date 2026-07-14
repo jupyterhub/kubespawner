@@ -3511,6 +3511,20 @@ class KubeSpawner(Spawner):
         """
         profile_list = self._get_initialized_profile_list(profile_list)
 
+        # user_options may be stale (e.g. profile_list changed since the last spawn)
+        # or set unvalidated via the REST API, so validate them first and fall back
+        # to defaults if invalid.
+        user_options = self.user_options or {}
+        if user_options:
+            try:
+                self._validate_user_options(profile_list)
+            except ValueError as e:
+                self.log.warning(
+                    f"Not pre-selecting saved user_options on the spawn form "
+                    f"because they failed validation: {e}"
+                )
+                user_options = {}
+
         loader = ChoiceLoader(
             [
                 FileSystemLoader(self.additional_profile_form_template_paths),
@@ -3535,7 +3549,9 @@ class KubeSpawner(Spawner):
             profile_form_template = env.from_string(self.profile_form_template)
         else:
             profile_form_template = env.get_template("form.html")
-        return profile_form_template.render(profile_list=profile_list)
+        return profile_form_template.render(
+            profile_list=profile_list, user_options=self.user_options
+        )
 
     async def _render_options_form_dynamically(self, current_spawner):
         """
