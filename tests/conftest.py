@@ -238,7 +238,7 @@ async def watch_kubernetes(kube_client, kube_ns):
 
 async def _delete_namespace(client, namespace):
     await client.delete_namespace(namespace, body={}, grace_period_seconds=0)
-    for _ in range(20):  # Usually finishes a good deal faster
+    for _ in range(60):  # Usually finishes a good deal faster
         try:
             await client.read_namespace(namespace)
         except ApiException as e:
@@ -249,7 +249,8 @@ async def _delete_namespace(client, namespace):
         else:
             print("waiting for %s to delete" % namespace)
             await asyncio.sleep(1)
-    raise Exception(f"Namespace {namespace} not deleted after 20 s")
+
+    raise Exception(f"Namespace {namespace} not deleted after 60s")
 
 
 @pytest_asyncio.fixture(scope="session")
