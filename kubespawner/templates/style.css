@@ -41,3 +41,18 @@
 #kubespawner-profiles-list .js-other-input-container.hidden {
   display: none;
 }
+
+/*
+    Nested profile options are indented with a guide line, so it is visible
+    that they belong to the choice selected in the option above them.
+    Nesting deeper than one level indents further by the same amount.
+*/
+#kubespawner-profiles-list .profile .js-nested-options {
+  margin: 0 0 12px 8px;
+  padding-left: 16px;
+  border-left: 2px solid #ccc;
+}
+
+#kubespawner-profiles-list .profile .js-nested-options .option:last-child {
+  padding-bottom: 0;
+}

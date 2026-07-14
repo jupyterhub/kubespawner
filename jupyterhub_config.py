@@ -79,4 +79,101 @@ c.KubeSpawner.profile_list = [
             'extra_resource_guarantees': {"nvidia.com/gpu": "1"},
         },
     },
+    {
+        # Demonstrates nested profile_options: choices can declare their own
+        # profile_options, shown only while that choice is selected. Overrides
+        # here only set environment variables so the pod stays schedulable on
+        # a local cluster and the result is observable with `env | grep DEMO_`
+        # in the spawned server's terminal.
+        'display_name': 'Demo - nested profile options',
+        'slug': 'demo-nested',
+        'profile_options': {
+            'gpu': {
+                'display_name': 'GPU setup',
+                'choices': {
+                    'none': {
+                        'display_name': 'No GPU',
+                        'default': True,
+                        'kubespawner_override': {
+                            'environment': {'DEMO_GPU_SETUP': 'none'},
+                        },
+                    },
+                    'nvidia': {
+                        'display_name': 'NVIDIA',
+                        'kubespawner_override': {
+                            'environment': {'DEMO_GPU_SETUP': 'nvidia'},
+                        },
+                        'profile_options': {
+                            'type': {
+                                'display_name': 'GPU type',
+                                'choices': {
+                                    't4': {
+                                        'display_name': 'T4',
+                                        'default': True,
+                                        'kubespawner_override': {
+                                            'environment': {'DEMO_GPU_TYPE': 't4'},
+                                        },
+                                    },
+                                    'a100': {
+                                        'display_name': 'A100',
+                                        'kubespawner_override': {
+                                            'environment': {'DEMO_GPU_TYPE': 'a100'},
+                                        },
+                                    },
+                                },
+                                'unlisted_choice': {
+                                    'enabled': True,
+                                    'display_name': 'Custom GPU type',
+                                    'validation_regex': '^[a-z0-9-]+$',
+                                    'validation_message': 'Lowercase letters, digits and dashes only',
+                                    'kubespawner_override': {
+                                        'environment': {'DEMO_GPU_TYPE': '{value}'},
+                                    },
+                                },
+                            },
+                            'count': {
+                                'display_name': 'GPU count',
+                                'choices': {
+                                    'one': {
+                                        'display_name': '1',
+                                        'default': True,
+                                        'kubespawner_override': {
+                                            'environment': {'DEMO_GPU_COUNT': '1'},
+                                        },
+                                        # A second level of nesting to exercise recursion
+                                        'profile_options': {
+                                            'sharing': {
+                                                'display_name': 'GPU sharing',
+                                                'choices': {
+                                                    'exclusive': {
+                                                        'display_name': 'Exclusive',
+                                                        'default': True,
+                                                        'kubespawner_override': {
+                                                            'environment': {'DEMO_GPU_SHARING': 'exclusive'},
+                                                        },
+                                                    },
+                                                    'mig': {
+                                                        'display_name': 'MIG slice',
+                                                        'kubespawner_override': {
+                                                            'environment': {'DEMO_GPU_SHARING': 'mig'},
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                    'two': {
+                                        'display_name': '2',
+                                        'kubespawner_override': {
+                                            'environment': {'DEMO_GPU_COUNT': '2'},
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
 ]
