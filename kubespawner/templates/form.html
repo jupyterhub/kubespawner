@@ -22,6 +22,7 @@
                   <label for="profile-option-{{ profile.slug }}--{{ k }}"
                          class="js-profile-option-label">{{ option.display_name }}</label>
                   <select name="profile-option-{{ profile.slug }}--{{ k }}"
+                          id="profile-option-{{ profile.slug }}--{{ k }}"
                           class="form-control js-profile-option-select">
                     {%- for k, choice in option['choices'].items() %}
                       <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
@@ -37,6 +38,7 @@
                       {{ option['unlisted_choice']['display_name'] }}
                     </label>
                     <input data-name="profile-option-{{ profile.slug }}--{{ k }}--unlisted-choice"
+                           id="profile-option-{{ profile.slug }}--{{ k }}--unlisted-choice"
                            {%- if option['unlisted_choice']['validation_regex'] %}
                            pattern="{{ option['unlisted_choice']['validation_regex'] }}"
                            {%- endif %}
