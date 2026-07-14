@@ -12,6 +12,7 @@
         <label for="profile-option-{{ profile_slug }}--{{ option_key }}"
                class="js-profile-option-label">{{ option.display_name }}</label>
         <select {% if not key_prefix %}name="profile-option-{{ profile_slug }}--{{ option_key }}"{% endif %}
+                id="profile-option-{{ profile_slug }}--{{ option_key }}"
                 data-name="profile-option-{{ profile_slug }}--{{ option_key }}"
                 data-option-key="{{ option_key }}"
                 class="form-control js-profile-option-select">
@@ -29,6 +30,7 @@
             {{ option['unlisted_choice']['display_name'] }}
           </label>
           <input data-name="profile-option-{{ profile_slug }}--{{ option_key }}--unlisted-choice"
+                 id="profile-option-{{ profile_slug }}--{{ option_key }}--unlisted-choice"
                  {%- if option['unlisted_choice']['validation_regex'] %}
                  pattern="{{ option['unlisted_choice']['validation_regex'] }}"
                  {%- endif %}
@@ -59,7 +61,7 @@
                name="profile"
                id="profile-item-{{ profile.slug }}"
                value="{{ profile.slug }}"
-               {% if profile.default %}checked{% endif %} />
+               {% if user_options.profile == profile.slug %}checked {% elif not user_options.profile and profile.default %}checked {% endif %} />
       </div>
       <div>
         <h3>{{ profile.display_name }}</h3>
@@ -72,6 +74,8 @@
   {%- endfor %}
 </div>
 <script>
+  const userOptions = {{ user_options|tojson }};
+
   // Use event delegation so handlers work regardless of how/when the form HTML
   // is injected into the page (e.g. via JupyterHub's dynamic form loading).
 
@@ -134,12 +138,37 @@
     handleProfileOptionSelectChange($(this));
   });
 
-  // Trigger change on top-level selects once the DOM is ready so that:
-  //   1. nested option containers are shown/hidden per the default selection,
-  //   2. unlisted-choice inputs are shown if the default happens to be "Other".
-  // Top-level selects already have their "name" attribute in the HTML, so no
-  // name-restoration is needed here.
   $(document).ready(function() {
+    // Pre-select options from previously saved user_options. Values are set on
+    // every select of the saved profile (nested ones included, matched via
+    // data-name since inactive selects carry no name attribute) before any
+    // change events fire, so the show/hide cascade below respects them.
+    const savedProfile = userOptions && userOptions.profile;
+    if (savedProfile) {
+      const prefix = `profile-option-${savedProfile}--`;
+      $(`label[for="profile-item-${savedProfile}"] .js-profile-option-select`).each(function() {
+        // data-name format: profile-option-{slug}--{"--"-delimited option key path}
+        const optionKey = String($(this).data('name')).slice(prefix.length);
+        const unlistedValue = userOptions[optionKey + '--unlisted-choice'];
+        const savedValue = userOptions[optionKey];
+        if (unlistedValue) {
+          $(this).val('unlisted-choice');
+          $(this).closest('.js-options-container')
+                 .children('.js-other-input-container')
+                 .find('.js-other-input')
+                 .val(unlistedValue);
+        } else if (savedValue) {
+          $(this).val(savedValue);
+        }
+      });
+    }
+
+    // Trigger change on top-level selects so that:
+    //   1. nested option containers are shown/hidden per the saved or default
+    //      selection, cascading into revealed nested selects,
+    //   2. unlisted-choice inputs are shown where "Other" is selected.
+    // Top-level selects already have their "name" attribute in the HTML, so no
+    // name-restoration is needed here.
     $('.js-profile-label').each(function() {
       $(this).find('.js-profile-option-select')
              .not('.js-nested-options .js-profile-option-select')
