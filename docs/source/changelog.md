@@ -6,9 +6,9 @@
 
 ## 7.0
 
-### [7.1.0] - 2026-06-14
+### [7.1.0] - 2026-06-16
 
-([full changelog](https://github.com/jupyterhub/kubespawner/compare/7.0.0...631150bb4c3f8dc5681e7f237f758fea789a56f3))
+([full changelog](https://github.com/jupyterhub/kubespawner/compare/7.0.0...4196e8b13f25c4b396184df74ae3ac36300c624a))
 
 #### New features added
 
@@ -17,6 +17,7 @@
 #### Enhancements made
 
 - Allow profile_list to be assigned a dictionary [#919](https://github.com/jupyterhub/kubespawner/pull/919) ([@GeorgianaElena](https://github.com/GeorgianaElena), [@jnywong](https://github.com/jnywong), [@yuvipanda](https://github.com/yuvipanda))
+- pre-select saved user options on the spawn form [#918](https://github.com/jupyterhub/kubespawner/pull/918) ([@sunu](https://github.com/sunu), [@agoose77](https://github.com/agoose77), [@jnywong](https://github.com/jnywong))
 - Don't recreate pvc manifest if old pvc exists [#882](https://github.com/jupyterhub/kubespawner/pull/882) ([@manics](https://github.com/manics), [@minrk](https://github.com/minrk))
 
 #### Bugs fixed
@@ -57,9 +58,9 @@
 The following people contributed discussions, new ideas, code and documentation contributions, and review.
 See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
 
-([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2024-10-25&to=2026-07-13&type=c))
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2024-10-25&to=2026-07-15&type=c))
 
-@agoose77 ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aagoose77+updated%3A2024-10-25..2026-07-13&type=Issues)) | @BioQwer ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3ABioQwer+updated%3A2024-10-25..2026-07-13&type=Issues)) | @consideRatio ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2024-10-25..2026-07-13&type=Issues)) | @f-marschall ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Af-marschall+updated%3A2024-10-25..2026-07-13&type=Issues)) | @fpfuetsch ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Afpfuetsch+updated%3A2024-10-25..2026-07-13&type=Issues)) | @GeorgianaElena ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AGeorgianaElena+updated%3A2024-10-25..2026-07-13&type=Issues)) | @jnywong ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajnywong+updated%3A2024-10-25..2026-07-13&type=Issues)) | @manics ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2024-10-25..2026-07-13&type=Issues)) | @meeseeksmachine ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ameeseeksmachine+updated%3A2024-10-25..2026-07-13&type=Issues)) | @minrk ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2024-10-25..2026-07-13&type=Issues)) | @omad ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aomad+updated%3A2024-10-25..2026-07-13&type=Issues)) | @rtmiz ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Artmiz+updated%3A2024-10-25..2026-07-13&type=Issues)) | @shaneknapp ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ashaneknapp+updated%3A2024-10-25..2026-07-13&type=Issues)) | @yuvipanda ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2024-10-25..2026-07-13&type=Issues))
+@agoose77 ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aagoose77+updated%3A2024-10-25..2026-07-15&type=Issues)) | @BioQwer ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3ABioQwer+updated%3A2024-10-25..2026-07-15&type=Issues)) | @consideRatio ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2024-10-25..2026-07-15&type=Issues)) | @f-marschall ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Af-marschall+updated%3A2024-10-25..2026-07-15&type=Issues)) | @fpfuetsch ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Afpfuetsch+updated%3A2024-10-25..2026-07-15&type=Issues)) | @GeorgianaElena ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AGeorgianaElena+updated%3A2024-10-25..2026-07-15&type=Issues)) | @jnywong ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajnywong+updated%3A2024-10-25..2026-07-15&type=Issues)) | @manics ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2024-10-25..2026-07-15&type=Issues)) | @meeseeksmachine ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ameeseeksmachine+updated%3A2024-10-25..2026-07-15&type=Issues)) | @minrk ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2024-10-25..2026-07-15&type=Issues)) | @omad ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aomad+updated%3A2024-10-25..2026-07-15&type=Issues)) | @rtmiz ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Artmiz+updated%3A2024-10-25..2026-07-15&type=Issues)) | @shaneknapp ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ashaneknapp+updated%3A2024-10-25..2026-07-15&type=Issues)) | @sunu ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Asunu+updated%3A2024-10-25..2026-07-15&type=Issues)) | @yuvipanda ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2024-10-25..2026-07-15&type=Issues))
 
 ### [7.0.0] - 2024-10-25
 
