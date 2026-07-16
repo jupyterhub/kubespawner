@@ -8,7 +8,7 @@
 
 ### [7.1.0] - 2026-06-16
 
-([full changelog](https://github.com/jupyterhub/kubespawner/compare/7.0.0...4196e8b13f25c4b396184df74ae3ac36300c624a))
+([full changelog](https://github.com/jupyterhub/kubespawner/compare/7.0.0...7.1.0))
 
 #### New features added
 
@@ -29,14 +29,7 @@
 #### Maintenance and upkeep improvements
 
 - Fix Failing Tests on latest k3s on Main [#923](https://github.com/jupyterhub/kubespawner/pull/923) ([@yuvipanda](https://github.com/yuvipanda), [@consideRatio](https://github.com/consideRatio), [@jnywong](https://github.com/jnywong))
-- [pre-commit.ci] pre-commit autoupdate [#905](https://github.com/jupyterhub/kubespawner/pull/905) ([@minrk](https://github.com/minrk))
-- [pre-commit.ci] pre-commit autoupdate [#898](https://github.com/jupyterhub/kubespawner/pull/898) ([@minrk](https://github.com/minrk))
-- [pre-commit.ci] pre-commit autoupdate [#894](https://github.com/jupyterhub/kubespawner/pull/894) ([@consideRatio](https://github.com/consideRatio))
-- [pre-commit.ci] pre-commit autoupdate [#890](https://github.com/jupyterhub/kubespawner/pull/890) ([@yuvipanda](https://github.com/yuvipanda))
-- [pre-commit.ci] pre-commit autoupdate [#884](https://github.com/jupyterhub/kubespawner/pull/884) ([@consideRatio](https://github.com/consideRatio))
-- [pre-commit.ci] pre-commit autoupdate [#876](https://github.com/jupyterhub/kubespawner/pull/876) ([@consideRatio](https://github.com/consideRatio))
 - Fix traitlets warning [#871](https://github.com/jupyterhub/kubespawner/pull/871) ([@omad](https://github.com/omad), [@consideRatio](https://github.com/consideRatio))
-- [pre-commit.ci] pre-commit autoupdate [#870](https://github.com/jupyterhub/kubespawner/pull/870) ([@minrk](https://github.com/minrk))
 
 #### Documentation improvements
 
@@ -44,14 +37,7 @@
 
 #### Continuous integration improvements
 
-- Bump actions/checkout from 6 to 7 [#926](https://github.com/jupyterhub/kubespawner/pull/926) ([@manics](https://github.com/manics))
-- Bump codecov/codecov-action from 6 to 7 [#925](https://github.com/jupyterhub/kubespawner/pull/925) ([@manics](https://github.com/manics))
-- Bump codecov/codecov-action from 5 to 6 [#914](https://github.com/jupyterhub/kubespawner/pull/914) ([@consideRatio](https://github.com/consideRatio))
-- Bump actions/checkout from 5 to 6 [#904](https://github.com/jupyterhub/kubespawner/pull/904) ([@consideRatio](https://github.com/consideRatio))
 - Fix test_utils.test_get_k8s_model [#901](https://github.com/jupyterhub/kubespawner/pull/901) ([@manics](https://github.com/manics), [@consideRatio](https://github.com/consideRatio), [@rtmiz](https://github.com/rtmiz))
-- Bump actions/checkout from 4 to 5 [#897](https://github.com/jupyterhub/kubespawner/pull/897) ([@consideRatio](https://github.com/consideRatio))
-- Bump actions/setup-python from 5 to 6 [#896](https://github.com/jupyterhub/kubespawner/pull/896) ([@consideRatio](https://github.com/consideRatio))
-- Bump codecov/codecov-action from 4 to 5 [#875](https://github.com/jupyterhub/kubespawner/pull/875) ([@yuvipanda](https://github.com/yuvipanda))
 
 #### Contributors to this release
 
