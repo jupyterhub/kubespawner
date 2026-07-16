@@ -6,6 +6,48 @@
 
 ## 7.0
 
+### [7.1.0] - 2026-06-16
+
+([full changelog](https://github.com/jupyterhub/kubespawner/compare/7.0.0...7.1.0))
+
+#### New features added
+
+- add slow_spawn_message progress for slow spawns [#825](https://github.com/jupyterhub/kubespawner/pull/825) ([@shaneknapp](https://github.com/shaneknapp), [@manics](https://github.com/manics), [@minrk](https://github.com/minrk))
+
+#### Enhancements made
+
+- Allow profile_list to be assigned a dictionary [#919](https://github.com/jupyterhub/kubespawner/pull/919) ([@GeorgianaElena](https://github.com/GeorgianaElena), [@jnywong](https://github.com/jnywong), [@yuvipanda](https://github.com/yuvipanda))
+- pre-select saved user options on the spawn form [#918](https://github.com/jupyterhub/kubespawner/pull/918) ([@sunu](https://github.com/sunu), [@agoose77](https://github.com/agoose77), [@jnywong](https://github.com/jnywong))
+- Don't recreate pvc manifest if old pvc exists [#882](https://github.com/jupyterhub/kubespawner/pull/882) ([@manics](https://github.com/manics), [@minrk](https://github.com/minrk))
+
+#### Bugs fixed
+
+- Fix input field for unlisted choice to be only display when selected [#906](https://github.com/jupyterhub/kubespawner/pull/906) ([@fpfuetsch](https://github.com/fpfuetsch), [@minrk](https://github.com/minrk))
+- Load port from named notebook-port containerPort [#903](https://github.com/jupyterhub/kubespawner/pull/903) ([@minrk](https://github.com/minrk), [@manics](https://github.com/manics))
+- Delete named PVCs if they contain `{user_server}` [#873](https://github.com/jupyterhub/kubespawner/pull/873) ([@manics](https://github.com/manics), [@consideRatio](https://github.com/consideRatio))
+
+#### Maintenance and upkeep improvements
+
+- Fix Failing Tests on latest k3s on Main [#923](https://github.com/jupyterhub/kubespawner/pull/923) ([@yuvipanda](https://github.com/yuvipanda), [@consideRatio](https://github.com/consideRatio), [@jnywong](https://github.com/jnywong))
+- Fix traitlets warning [#871](https://github.com/jupyterhub/kubespawner/pull/871) ([@omad](https://github.com/omad), [@consideRatio](https://github.com/consideRatio))
+
+#### Documentation improvements
+
+- Update Kubernetes link refs [#891](https://github.com/jupyterhub/kubespawner/pull/891) ([@f-marschall](https://github.com/f-marschall), [@consideRatio](https://github.com/consideRatio))
+
+#### Continuous integration improvements
+
+- Fix test_utils.test_get_k8s_model [#901](https://github.com/jupyterhub/kubespawner/pull/901) ([@manics](https://github.com/manics), [@consideRatio](https://github.com/consideRatio), [@rtmiz](https://github.com/rtmiz))
+
+#### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2024-10-25&to=2026-07-15&type=c))
+
+@agoose77 ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aagoose77+updated%3A2024-10-25..2026-07-15&type=Issues)) | @BioQwer ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3ABioQwer+updated%3A2024-10-25..2026-07-15&type=Issues)) | @consideRatio ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2024-10-25..2026-07-15&type=Issues)) | @f-marschall ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Af-marschall+updated%3A2024-10-25..2026-07-15&type=Issues)) | @fpfuetsch ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Afpfuetsch+updated%3A2024-10-25..2026-07-15&type=Issues)) | @GeorgianaElena ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AGeorgianaElena+updated%3A2024-10-25..2026-07-15&type=Issues)) | @jnywong ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajnywong+updated%3A2024-10-25..2026-07-15&type=Issues)) | @manics ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2024-10-25..2026-07-15&type=Issues)) | @meeseeksmachine ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ameeseeksmachine+updated%3A2024-10-25..2026-07-15&type=Issues)) | @minrk ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2024-10-25..2026-07-15&type=Issues)) | @omad ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aomad+updated%3A2024-10-25..2026-07-15&type=Issues)) | @rtmiz ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Artmiz+updated%3A2024-10-25..2026-07-15&type=Issues)) | @shaneknapp ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ashaneknapp+updated%3A2024-10-25..2026-07-15&type=Issues)) | @sunu ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Asunu+updated%3A2024-10-25..2026-07-15&type=Issues)) | @yuvipanda ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2024-10-25..2026-07-15&type=Issues))
+
 ### [7.0.0] - 2024-10-25
 
 ([full changelog](https://github.com/jupyterhub/kubespawner/compare/6.2.0...7.0.0))
@@ -924,7 +966,7 @@ Change highlights:
 - Update Kubernetes Python client to 6.0 (supporting Kubernetes 1.10 APIs)
 - Numerous bugfixes
 
-[unreleased]: https://github.com/jupyterhub/kubespawner/compare/7.0.0...HEAD
+[unreleased]: https://github.com/jupyterhub/kubespawner/compare/7.1.0...HEAD
 [7.0.0]: https://github.com/jupyterhub/kubespawner/compare/6.2.0...7.0.0
 [6.2.0]: https://github.com/jupyterhub/kubespawner/compare/6.1.0...6.2.0
 [6.1.0]: https://github.com/jupyterhub/kubespawner/compare/6.0.0...6.1.0
