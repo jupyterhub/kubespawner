@@ -696,9 +696,7 @@ class KubeSpawner(Spawner):
             """
             KubeSpawner.{0} is deprecated with JupyterHub >= 0.8.
             Use JupyterHub.{0}
-            """.format(
-                change.name
-            ),
+            """.format(change.name),
             DeprecationWarning,
         )
         setattr(self.hub, change.name.split('_', 1)[1], change.new)

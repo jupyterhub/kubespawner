@@ -19,13 +19,13 @@ repos:
 
   # Autoformat: Python code
   - repo: https://github.com/pycqa/isort
-    rev: 7.0.0
+    rev: 9.0.0a3
     hooks:
       - id: isort
 
   # Autoformat: Python code
   - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 25.11.0
+    rev: 26.5.1
     hooks:
       - id: black
 
@@ -63,7 +63,7 @@ repos:
 
   # Lint our jinja2 templates
   - repo: https://github.com/Riverside-Healthcare/djLint
-    rev: v1.36.4
+    rev: v1.40.3
     hooks:
       - id: djlint-jinja
         files: "kubespawner/templates/.*\\.html"
