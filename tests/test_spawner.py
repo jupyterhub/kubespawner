@@ -2,7 +2,6 @@ import asyncio
 import base64
 import json
 import os
-import re
 from functools import partial
 from unittest.mock import Mock
 
@@ -23,6 +22,7 @@ from traitlets.config import Config
 
 import kubespawner
 from kubespawner import KubeSpawner
+from kubespawner.events import BasicEventFormatter
 from kubespawner.objects import make_owner_reference, make_service
 from kubespawner.slugs import safe_slug
 
@@ -638,6 +638,8 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
         hub=hub,
         user=MockUser(name="progress"),
         config=config,
+        # Ensure we only test the mechanism, not the rules
+        event_formatter_class=BasicEventFormatter,
     )
 
     # empty spawner isn't running
@@ -649,17 +651,65 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
     # check progress events
     messages = []
     async for progress in spawner.progress():
-        assert 'progress' in progress
-        assert isinstance(progress['progress'], int)
-        assert 'message' in progress
-        assert isinstance(progress['message'], str)
-        messages.append(progress['message'])
+        assert "progress" in progress
+        assert isinstance(progress["progress"], int)
+        assert "message" in progress
+        assert isinstance(progress["message"], str)
+        messages.append(progress["message"])
 
         # ensure we can serialize whatever we return
         with open(os.devnull, "w") as devnull:
             json.dump(progress, devnull)
-    # This message varies by version
-    assert re.search(r'Started container|Container started', '\n'.join(messages))
+    corpus = "\n".join(messages)
+
+    assert "Started container" in corpus or "Container started" in corpus
+
+    await start_future
+    # stop the pod
+    await spawner.stop()
+
+
+async def test_spawn_progress_decorator(kube_ns, kube_client, config, hub_pod, hub):
+    def decorate_progress_message(spawner, event, message):
+        return {
+            "message": f"custom-message-{message}",
+            "html_message": f"<span>{message}</span>",
+        }
+
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="progress-hook"),
+        config=config,
+        decorate_progress_message=decorate_progress_message,
+        event_formatter_class=BasicEventFormatter,
+    )
+
+    # empty spawner isn't running
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+    # start the spawner
+    start_future = spawner.start()
+    # check progress events
+    messages = []
+    async for progress in spawner.progress():
+        assert "progress" in progress
+        assert isinstance(progress["progress"], int)
+        assert "message" in progress
+        assert isinstance(progress["message"], str)
+        assert "html_message" in progress
+        assert isinstance(progress["html_message"], str)
+        messages.append(progress["message"])
+
+        # ensure we can serialize whatever we return
+        with open(os.devnull, "w") as devnull:
+            json.dump(progress, devnull)
+        # Look for our custom prefix
+        assert progress["message"].startswith("custom-message-")
+        assert progress["html_message"].startswith("<span>")
+    corpus = "\n".join(messages)
+    # K8s changed the format of this message: https://github.com/kubernetes/kubernetes/pull/134043
+    assert "Started container" in corpus or "Container started" in corpus
 
     await start_future
     # stop the pod

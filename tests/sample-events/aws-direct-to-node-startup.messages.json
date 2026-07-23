@@ -1,0 +1,10 @@
+[
+  "Pulled image quay.io/jupyterhub/k8s-network-tools:4.1.0 for the block-nfs-access container",
+  "Created the container \"block-nfs-access\"",
+  "Started the container \"block-nfs-access\"",
+  "A node (ip-192-168-25-166.us-west-2.compute.internal) has been found to run your server",
+  "Pulled image quay.io/cryointhecloud/cryo-hub-image:d624b28e39c4 for the notebook container",
+  "Created the container \"notebook\"",
+  "Started the container \"notebook\"",
+  "Killing the container \"notebook\""
+]

@@ -31,8 +31,12 @@ from traitlets import (
     Bool,
     Dict,
     Enum,
+    Instance,
     Integer,
     List,
+)
+from traitlets import Type as TypeTrait
+from traitlets import (
     Unicode,
     Union,
     default,
@@ -42,6 +46,12 @@ from traitlets import (
 
 from . import __version__
 from .clients import load_config, shared_client
+from .events import (
+    EventFormatter,
+    RuleEventFormatter,
+    decorate_html_message,
+    decorate_plain_message,
+)
 from .objects import (
     make_namespace,
     make_owner_reference,
@@ -52,7 +62,7 @@ from .objects import (
 )
 from .reflector import ResourceReflector
 from .slugs import escape_slug, is_valid_label, multi_slug, safe_slug
-from .utils import recursive_format, recursive_update
+from .utils import recursive_format, recursive_update, sorted_dict_values
 
 
 class PodReflector(ResourceReflector):
@@ -1970,6 +1980,71 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    def _decorate_progress_message(spawner, event, message):
+        return {
+            "message": decorate_plain_message(message, event),
+            "html_message": decorate_html_message(message, event),
+        }
+
+    decorate_progress_message = Callable(
+        _decorate_progress_message,
+        allow_none=True,
+        config=True,
+        help="""
+        Callable to decorate a rendered event message from a reflected Event object.
+
+        Expects a callable that returns a dictionary containing a required key `message`,
+        and an optional key `html_message`, each with callable values that render plain-text and 
+        rich-representation of the formatted event, respectively. The callable takes three parameters:
+
+           1. The spawner object that is doing the spawning
+           2. The event object to be formatted
+           3. The rendered event message string
+
+        This can be a coroutine if necessary. When set to None, the default decorator is used.
+        
+        Example
+        -------
+        .. code-block:: python
+
+           def my_plain_decorator(message, event):
+               event_type = event["type"]
+               if event_type == "Normal":
+                   return f"INFO: {message}"
+               elif event_type == "Warning":
+                   return f"WARNING: {message}"
+               else:
+                   return f"{message}"
+
+            def my_html_decorator(message, event):
+                return f"{event['lastTimestamp']}<span class='badge bg-info-subtle text-info-emphasis rounded-pill'>Info</span>{message}"
+
+            def my_decorator(spawner, event, message):
+                return {
+                    "message": my_plain_decorator(message, event),
+                    "html_message": my_html_decorator(message, event)
+                }
+           
+           c.KubeSpawner.decorate_progress_message = my_decorator
+        """,
+    )
+
+    event_formatter_class = TypeTrait(
+        klass=EventFormatter,
+        default_value=RuleEventFormatter,
+        config=True,
+        help="""The class to use for formatting Kubernetes Event objects.
+
+        Should be a subclass of :class:`jupyterhub.event.EventFormatter`.
+        """,
+    )
+
+    event_formatter = Instance(EventFormatter)
+
+    @default("event_formatter")
+    def _default_event_formatter(self):
+        return self.event_formatter_class(parent=self)
+
     # deprecate redundant and inconsistent singleuser_ and user_ prefixes:
     _deprecated_traits_09 = [
         "singleuser_working_dir",
@@ -2205,15 +2280,6 @@ class KubeSpawner(Spawner):
         else:
             return src
 
-    def _sorted_dict_values(self, src):
-        """
-        Return a list of dict values sorted by keys if src is a dict, otherwise return src as-is.
-        """
-        if isinstance(src, dict):
-            return [src[key] for key in sorted(src.keys())]
-        else:
-            return src
-
     def _build_common_labels(self, extra_labels):
         # Default set of labels, picked up from
         # https://github.com/helm/helm-www/blob/HEAD/content/en/docs/chart_best_practices/labels.md
@@ -2393,10 +2459,8 @@ class KubeSpawner(Spawner):
             container_security_context=csc,
             pod_security_context=psc,
             env=self.get_env(),  # Expansion is handled by get_env
-            volumes=self._expand_all(self._sorted_dict_values(self.volumes)),
-            volume_mounts=self._expand_all(
-                self._sorted_dict_values(self.volume_mounts)
-            ),
+            volumes=self._expand_all(sorted_dict_values(self.volumes)),
+            volume_mounts=self._expand_all(sorted_dict_values(self.volume_mounts)),
             working_dir=self.working_dir,
             labels=labels,
             annotations=annotations,
@@ -2407,32 +2471,24 @@ class KubeSpawner(Spawner):
             extra_resource_limits=self.extra_resource_limits,
             extra_resource_guarantees=self.extra_resource_guarantees,
             lifecycle_hooks=self.lifecycle_hooks,
-            init_containers=self._expand_all(
-                self._sorted_dict_values(self.init_containers)
-            ),
+            init_containers=self._expand_all(sorted_dict_values(self.init_containers)),
             service_account=self._expand_all(self.service_account),
             automount_service_account_token=self.automount_service_account_token,
             extra_container_config=self.extra_container_config,
             extra_pod_config=self._expand_all(self.extra_pod_config),
             extra_containers=self._expand_all(
-                self._sorted_dict_values(self.extra_containers)
+                sorted_dict_values(self.extra_containers)
             ),
             scheduler_name=self.scheduler_name,
-            tolerations=self._sorted_dict_values(self.tolerations),
-            node_affinity_preferred=self._sorted_dict_values(
-                self.node_affinity_preferred
-            ),
-            node_affinity_required=self._sorted_dict_values(
-                self.node_affinity_required
-            ),
-            pod_affinity_preferred=self._sorted_dict_values(
-                self.pod_affinity_preferred
-            ),
-            pod_affinity_required=self._sorted_dict_values(self.pod_affinity_required),
-            pod_anti_affinity_preferred=self._sorted_dict_values(
+            tolerations=sorted_dict_values(self.tolerations),
+            node_affinity_preferred=sorted_dict_values(self.node_affinity_preferred),
+            node_affinity_required=sorted_dict_values(self.node_affinity_required),
+            pod_affinity_preferred=sorted_dict_values(self.pod_affinity_preferred),
+            pod_affinity_required=sorted_dict_values(self.pod_affinity_required),
+            pod_anti_affinity_preferred=sorted_dict_values(
                 self.pod_anti_affinity_preferred
             ),
-            pod_anti_affinity_required=self._sorted_dict_values(
+            pod_anti_affinity_required=sorted_dict_values(
                 self.pod_anti_affinity_required
             ),
             priority_class_name=self.priority_class_name,
@@ -2811,15 +2867,16 @@ class KubeSpawner(Spawner):
                     # 30 50 63 72 78 82 84 86 87 88 88 89
                     progress += (90 - progress) / 3
 
+                    message = self.event_formatter.format_event(event)
+
+                    message_bundle = await maybe_future(
+                        self.decorate_progress_message(self, event, message)
+                    )
+
                     yield {
-                        'progress': int(progress),
-                        'raw_event': event,
-                        'message': "%s [%s] %s"
-                        % (
-                            event["lastTimestamp"] or event["eventTime"],
-                            event["type"],
-                            event["message"],
-                        ),
+                        "progress": int(progress),
+                        "raw_event": event,
+                        **message_bundle,
                     }
                 next_event = len_events
 
@@ -3587,9 +3644,7 @@ class KubeSpawner(Spawner):
             return self._render_options_form_dynamically
         else:
             # Return the rendered string, as it does not change
-            return self._render_options_form(
-                self._sorted_dict_values(self.profile_list)
-            )
+            return self._render_options_form(sorted_dict_values(self.profile_list))
 
     @default('options_from_form')
     def _options_from_form_default(self):
@@ -3882,7 +3937,7 @@ class KubeSpawner(Spawner):
         Override in subclasses to support other options.
         """
         # get an initialized profile list
-        profile_list = self._sorted_dict_values(self.profile_list)
+        profile_list = sorted_dict_values(self.profile_list)
         if callable(profile_list):
             profile_list = await maybe_future(profile_list(self))
 
