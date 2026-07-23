@@ -2784,8 +2784,8 @@ class KubeSpawner(Spawner):
             if start_future and start_future.done():
                 break_while_loop = True
 
-            # if the timer is greater than self.server_spawn_launch_timer_threshold
-            # display a message to the user with an incrementing count in seconds
+            # if the timer is greater than self.slow_spawn_message_threshold display
+            # a message to the user with an incrementing count in seconds
             elapsed = time.perf_counter() - start_time
             if (
                 elapsed >= self.slow_spawn_message_threshold
