@@ -1967,7 +1967,7 @@ class KubeSpawner(Spawner):
         help="""
         The injected timing message to display to the user. The variable `{seconds}`
         will be replaced by the number of seconds the spawn has currently taken.
-        The variable `{timeout}` will be replaced by the current spawn timeout setting.
+        The variable `{timeout}` will be replaced by the default `start_timeout` setting.
         """,
     )
 
