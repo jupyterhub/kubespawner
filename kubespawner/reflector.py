@@ -208,6 +208,12 @@ class ResourceReflector(LoggingConfigurable):
 
         self.watch_task = None
 
+        # Generation counter for stale-entry detection.
+        # Incremented on each watch reconnect so callers can tell whether a
+        # cached entry was seen in the current watch cycle or a previous one.
+        self._generation = 0
+        self._entry_generations = {}  # ref_key → generation when last seen
+
     async def _list_and_update(self, resource_version=None):
         """
         Update current list of resources by doing a full fetch.
@@ -307,6 +313,7 @@ class ResourceReflector(LoggingConfigurable):
             try:
                 resource_version = await self._list_and_update(resource_version)
                 cur_delay = 0.1
+                self._generation += 1  # new watch cycle; old entries are now stale
                 watch_args = {
                     "label_selector": self.label_selector,
                     "field_selector": self.field_selector,
@@ -346,9 +353,17 @@ class ResourceReflector(LoggingConfigurable):
                         if watch_event['type'] == 'DELETED':
                             # This is an atomic delete operation on the dictionary!
                             self.resources.pop(ref_key, None)
+                            self._entry_generations.pop(ref_key, None)
                         else:
                             # This is an atomic operation on the dictionary!
                             self.resources[ref_key] = resource
+                            # _entry_generations is updated on the next line after
+                            # resources; there is a brief window of inconsistency
+                            # between the two dicts.  is_stale() is advisory so
+                            # this is safe: a caller that races here will either
+                            # see the old generation (slightly conservative) or
+                            # the new one (correct), never a crash.
+                            self._entry_generations[ref_key] = self._generation
                             resource_version = resource["metadata"]["resourceVersion"]
                         if self._stopping:
                             self.log.info("%s watcher stopped: inner", self.kind)
@@ -436,6 +451,20 @@ class ResourceReflector(LoggingConfigurable):
                     f"Watch task did not finish in {timeout}s and was cancelled"
                 )
         self.watch_task = None
+
+    def is_stale(self, ref_key: str) -> bool:
+        """Return True if the cached entry was not seen in the current watch cycle.
+
+        After a watch reconnects, entries that existed before the reconnect
+        but have not yet been confirmed by a new watch event carry a previous
+        generation number.  Callers (e.g. ``poll()``) can use this to decide
+        whether to re-query the API rather than trust a potentially stale value.
+
+        Returns False if the key is not in the cache (absent is not stale).
+        """
+        if ref_key not in self.resources:
+            return False
+        return self._entry_generations.get(ref_key, 0) < self._generation
 
 
 class NamespacedResourceReflector(ResourceReflector):
