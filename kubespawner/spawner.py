@@ -3660,6 +3660,49 @@ class KubeSpawner(Spawner):
 
         return user_options
 
+    def _validate_profile_options(self, profile_options, key_prefix=""):
+        """
+        Validates user_options entries corresponding to a profile_options dict,
+        recursively validating nested profile_options for the active choice.
+
+        key_prefix mirrors the same path convention used by
+        _apply_profile_options_overrides.
+        """
+        for option_name, option in profile_options.items():
+            option_key = f"{key_prefix}--{option_name}" if key_prefix else option_name
+            unlisted_choice_key = f"{option_key}--unlisted-choice"
+            unlisted_choice_value = self.user_options.get(unlisted_choice_key)
+            choice_key = self.user_options.get(option_key)
+
+            if not (unlisted_choice_value or choice_key):
+                # no user_options was passed for this profile option, the
+                # profile option's default value can be used
+                continue
+
+            if unlisted_choice_value:
+                # we have been passed a value for the profile option's
+                # unlisted_choice, it must be enabled and the provided value
+                # must validate against the validation_regex if configured
+                if not option.get("unlisted_choice", {}).get("enabled"):
+                    raise ValueError(
+                        f"Received unlisted_choice for {option_key} without being enabled."
+                    )
+                validation_regex = option["unlisted_choice"].get("validation_regex")
+                if validation_regex and not re.match(
+                    validation_regex, unlisted_choice_value
+                ):
+                    raise ValueError(
+                        f"Received unlisted_choice for {option_key} that failed validation regex."
+                    )
+            elif choice_key in option.get("choices", {}):
+                # Validate nested profile_options for the active choice
+                choice = option["choices"][choice_key]
+                if choice.get("profile_options"):
+                    nested_prefix = f"{option_key}--{choice_key}"
+                    self._validate_profile_options(
+                        choice["profile_options"], key_prefix=nested_prefix
+                    )
+
     def _validate_user_options(self, profile_list):
         """
         Validate `user_options` using an initialized `profile_list` by raising
@@ -3696,28 +3739,8 @@ class KubeSpawner(Spawner):
         profile = self._get_profile(profile_slug, profile_list)
 
         # Ensure user_options related to the profile's profile_options are valid
-        for option_name, option in profile.get('profile_options', {}).items():
-            unlisted_choice_key = f"{option_name}--unlisted-choice"
-            unlisted_choice = self.user_options.get(unlisted_choice_key)
-            choice = self.user_options.get(option_name)
-            if not (unlisted_choice or choice):
-                # no user_options was passed for this profile option, the
-                # profile option's default value can be used
-                continue
-            if unlisted_choice:
-                # we have been passed a value for the profile option's
-                # unlisted_choice, it must be enabled and the provided value
-                # must validate against the validation_regex if configured
-                if not option.get("unlisted_choice", {}).get("enabled"):
-                    raise ValueError(
-                        f"Received unlisted_choice for {option_name} without being enabled."
-                    )
-
-                validation_regex = option["unlisted_choice"].get("validation_regex")
-                if validation_regex and not re.match(validation_regex, unlisted_choice):
-                    raise ValueError(
-                        f"Received unlisted_choice for {option_name} that failed validation regex."
-                    )
+        # (recursively including nested profile_options)
+        self._validate_profile_options(profile.get('profile_options', {}))
 
     def _get_profile(self, slug: Optional[str], profile_list: list):
         """
@@ -3770,11 +3793,66 @@ class KubeSpawner(Spawner):
             else:
                 setattr(self, k, v)
 
+    def _apply_profile_options_overrides(self, profile_options, key_prefix=""):
+        """
+        Applies kubespawner_override from each active profile option choice,
+        recursively processing any nested profile_options in the selected choice.
+
+        key_prefix is a "--"-delimited path used to look up user_options keys
+        for nested options. For top-level options it is empty; for options
+        nested under choice "testing" of option "image" it would be
+        "image--testing".
+        """
+        for option_name, option in profile_options.items():
+            option_key = f"{key_prefix}--{option_name}" if key_prefix else option_name
+            unlisted_choice_key = f"{option_key}--unlisted-choice"
+            unlisted_choice_value = self.user_options.get(unlisted_choice_key)
+            choice_key = self.user_options.get(option_key)
+
+            if unlisted_choice_value:
+                # An unlisted_choice value was passed; render its overrides
+                option_overrides = option["unlisted_choice"].get(
+                    "kubespawner_override", {}
+                )
+                for k, v in option_overrides.items():
+                    option_overrides[k] = recursive_format(
+                        v, value=unlisted_choice_value
+                    )
+                selected_choice_key = None
+                selected_choice = None
+            elif choice_key:
+                # A pre-defined choice was selected
+                selected_choice = option["choices"][choice_key]
+                selected_choice_key = choice_key
+                option_overrides = selected_choice.get("kubespawner_override", {})
+            else:
+                # Determine the default choice
+                if not option.get("choices"):
+                    # if the option only defined unlisted_choice, we can't
+                    # determine a default choice or associated overrides
+                    raise ValueError(
+                        f"Unable to determine a default choice for {option_key}."
+                    )
+                selected_choice_key, selected_choice = next(
+                    (k, c) for k, c in option["choices"].items() if c.get("default")
+                )
+                option_overrides = selected_choice.get("kubespawner_override", {})
+
+            self._apply_overrides(option_overrides)
+
+            # Recurse into nested profile_options of the selected choice
+            if selected_choice and selected_choice.get("profile_options"):
+                nested_prefix = f"{option_key}--{selected_choice_key}"
+                self._apply_profile_options_overrides(
+                    selected_choice["profile_options"],
+                    key_prefix=nested_prefix,
+                )
+
     def _load_profile(self, slug, profile_list):
         """
         Applies configured overrides for a selected or default profile,
         including the selected or default overrides for the profile's
-        profile_options.
+        profile_options (recursively, including any nested profile_options).
 
         Called by `load_user_options` after validation of user_options has been
         done with the initialized profile_list.
@@ -3789,40 +3867,33 @@ class KubeSpawner(Spawner):
         self._apply_overrides(profile.get("kubespawner_override", {}))
 
         # Apply overrides for the profile_options's choices or defaults
-        profile_options = profile.get("profile_options", {})
-        for option_name, option in profile_options.items():
-            unlisted_choice_key = f"{option_name}--unlisted-choice"
-            unlisted_choice = self.user_options.get(unlisted_choice_key)
-            choice = self.user_options.get(option_name)
+        self._apply_profile_options_overrides(profile.get("profile_options", {}))
 
-            if unlisted_choice:
-                # An unlisted_choice value was passed, its kubespawner_override
-                # needs to be rendered using the value
-                option_overrides = option["unlisted_choice"].get(
-                    "kubespawner_override", {}
-                )
-                for k, v in option_overrides.items():
-                    option_overrides[k] = recursive_format(v, value=unlisted_choice)
-            elif choice:
-                # A pre-defined choice was selected
-                option_overrides = option["choices"][choice].get(
-                    "kubespawner_override", {}
-                )
-            else:
-                # A default choice for the option needs to be determined
-                if not option.get("choices"):
-                    # if the option only defined unlisted_choice, we can't
-                    # determine a default choice or associated overrides
-                    raise ValueError(
-                        f"Unable to determine a default choice for {option_name}."
-                    )
+    @staticmethod
+    def _init_profile_option_configs(option_configs: dict):
+        """
+        Initializes a profile_options dict in-place, recursively including any
+        nested profile_options found inside choices.
 
-                default_choice = next(
-                    c for c in option["choices"].values() if c.get("default")
-                )
-                option_overrides = default_choice.get("kubespawner_override", {})
-
-            self._apply_overrides(option_overrides)
+        - If choices exist but no choice is marked as default, the first choice
+          is set as the default.
+        - Each option's unlisted_choice dict is populated with default values.
+        """
+        for option_config in option_configs.values():
+            if option_config.get('choices') and not any(
+                c.get('default') for c in option_config['choices'].values()
+            ):
+                # pre-defined choices were provided without a default choice
+                default_choice = list(option_config['choices'].keys())[0]
+                option_config['choices'][default_choice]["default"] = True
+            unlisted_choice = option_config.setdefault("unlisted_choice", {})
+            unlisted_choice.setdefault("enabled", False)
+            if unlisted_choice["enabled"]:
+                unlisted_choice.setdefault("display_name_in_choices", "Other...")
+            # Recurse into nested profile_options inside each choice
+            for choice in option_config.get('choices', {}).values():
+                if choice.get('profile_options'):
+                    KubeSpawner._init_profile_option_configs(choice['profile_options'])
 
     def _get_initialized_profile_list(self, profile_list: list):
         """
@@ -3833,6 +3904,8 @@ class KubeSpawner(Spawner):
           as the default, the first choice is set to be the default.
         - If no default profile is set, the first profile is set to be the
           default
+        - Nested profile_options inside choices are also initialized
+          recursively.
         """
         profile_list = copy.deepcopy(profile_list)
 
@@ -3847,18 +3920,9 @@ class KubeSpawner(Spawner):
 
             # ensure each option in profile_options has a default choice if
             # pre-defined choices are available, and initialize an
-            # unlisted_choice dictionary
-            for option_config in profile.get('profile_options', {}).values():
-                if option_config.get('choices') and not any(
-                    c.get('default') for c in option_config['choices'].values()
-                ):
-                    # pre-defined choices were provided without a default choice
-                    default_choice = list(option_config['choices'].keys())[0]
-                    option_config['choices'][default_choice]["default"] = True
-                unlisted_choice = option_config.setdefault("unlisted_choice", {})
-                unlisted_choice.setdefault("enabled", False)
-                if unlisted_choice["enabled"]:
-                    unlisted_choice.setdefault("display_name_in_choices", "Other...")
+            # unlisted_choice dictionary (recursively for nested options)
+            self._init_profile_option_configs(profile.get('profile_options', {}))
+
         # ensure there is one default profile
         if not any(p.get("default") for p in profile_list):
             profile_list[0]["default"] = True

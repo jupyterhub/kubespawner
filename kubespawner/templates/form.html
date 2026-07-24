@@ -1,4 +1,56 @@
 <style>{% include 'style.css' %}</style>
+{#- Macro to render profile_options recursively.
+    profile_slug: the slug of the parent profile (used for form field names)
+    profile_options: the profile_options dict to render
+    key_prefix: "--"-delimited path prefix for nested options (empty at top level)
+#}
+{%- macro render_profile_options(profile_slug, profile_options, key_prefix="") %}
+  {%- for option_name, option in profile_options.items() %}
+    {%- set option_key = (key_prefix ~ "--" ~ option_name) if key_prefix else option_name %}
+    <div class="js-options-container">
+      <div class="option">
+        <label for="profile-option-{{ profile_slug }}--{{ option_key }}"
+               class="js-profile-option-label">{{ option.display_name }}</label>
+        <select {% if not key_prefix %}name="profile-option-{{ profile_slug }}--{{ option_key }}"{% endif %}
+                id="profile-option-{{ profile_slug }}--{{ option_key }}"
+                data-name="profile-option-{{ profile_slug }}--{{ option_key }}"
+                data-option-key="{{ option_key }}"
+                class="form-control js-profile-option-select">
+          {%- for choice_key, choice in option.get('choices', {}).items() %}
+            <option value="{{ choice_key }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
+          {%- endfor %}
+          {%- if option['unlisted_choice']['enabled'] %}
+            <option value="unlisted-choice">{{ option['unlisted_choice']['display_name_in_choices'] }}</option>
+          {%- endif %}
+        </select>
+      </div>
+      {%- if option['unlisted_choice']['enabled'] %}
+        <div class="option hidden js-other-input-container">
+          <label for="profile-option-{{ profile_slug }}--{{ option_key }}--unlisted-choice">
+            {{ option['unlisted_choice']['display_name'] }}
+          </label>
+          <input data-name="profile-option-{{ profile_slug }}--{{ option_key }}--unlisted-choice"
+                 id="profile-option-{{ profile_slug }}--{{ option_key }}--unlisted-choice"
+                 {%- if option['unlisted_choice']['validation_regex'] %}
+                 pattern="{{ option['unlisted_choice']['validation_regex'] }}"
+                 {%- endif %}
+                 title="{{ option['unlisted_choice']['validation_message'] }}"
+                 class="form-control js-other-input" />
+        </div>
+      {%- endif %}
+      {#- Render nested profile_options for each choice, all initially hidden #}
+      {%- for choice_key, choice in option.get('choices', {}).items() %}
+        {%- if choice.get('profile_options') %}
+          <div class="hidden js-nested-options"
+               data-parent-option="{{ option_key }}"
+               data-parent-choice="{{ choice_key }}">
+            {{ render_profile_options(profile_slug, choice['profile_options'], option_key ~ "--" ~ choice_key) }}
+          </div>
+        {%- endif %}
+      {%- endfor %}
+    </div>
+  {%- endfor %}
+{%- endmacro %}
 <div class="form-group" id="kubespawner-profiles-list">
   {%- for profile in profile_list %}
     {#- Wrap everything in a label tag so clicking anywhere selects the option #}
@@ -15,40 +67,7 @@
         <h3>{{ profile.display_name }}</h3>
         {%- if profile.description %}<p>{{ profile.description }}</p>{%- endif %}
         {%- if profile.profile_options %}
-          <div>
-            {%- for k, option in profile.profile_options.items() %}
-              <div class="js-options-container">
-                <div class="option">
-                  <label for="profile-option-{{ profile.slug }}--{{ k }}"
-                         class="js-profile-option-label">{{ option.display_name }}</label>
-                  <select name="profile-option-{{ profile.slug }}--{{ k }}"
-                          id="profile-option-{{ profile.slug }}--{{ k }}"
-                          class="form-control js-profile-option-select">
-                    {%- for k, choice in option['choices'].items() %}
-                      <option value="{{ k }}" {% if choice.default %}selected{% endif %}>{{ choice.display_name }}</option>
-                    {%- endfor %}
-                    {%- if option['unlisted_choice']['enabled'] %}
-                      <option value="unlisted-choice">{{ option['unlisted_choice']['display_name_in_choices'] }}</option>
-                    {%- endif %}
-                  </select>
-                </div>
-                {%- if option['unlisted_choice']['enabled'] %}
-                  <div class="option hidden js-other-input-container">
-                    <label for="profile-option-{{ profile.slug }}--{{ k }}--unlisted-choice">
-                      {{ option['unlisted_choice']['display_name'] }}
-                    </label>
-                    <input data-name="profile-option-{{ profile.slug }}--{{ k }}--unlisted-choice"
-                           id="profile-option-{{ profile.slug }}--{{ k }}--unlisted-choice"
-                           {%- if option['unlisted_choice']['validation_regex'] %}
-                           pattern="{{ option['unlisted_choice']['validation_regex'] }}"
-                           {%- endif %}
-                           title="{{ option['unlisted_choice']['validation_message'] }}"
-                           class="form-control js-other-input" />
-                  </div>
-                {%- endif %}
-              </div>
-            {%- endfor %}
-          </div>
+          <div>{{ render_profile_options(profile.slug, profile.profile_options) }}</div>
         {%- endif %}
       </div>
     </label>
@@ -56,62 +75,105 @@
 </div>
 <script>
   const userOptions = {{ user_options|tojson }};
-  $('.js-profile-option-select, .js-profile-option-label').click(function() {
-    // we need this bit of JS to select the profile when a <select> inside is clicked.
-    $(this).parents('.js-profile-label')
+
+  // Use event delegation so handlers work regardless of how/when the form HTML
+  // is injected into the page (e.g. via JupyterHub's dynamic form loading).
+
+  $(document).on('click', '.js-profile-option-select, .js-profile-option-label', function() {
+    // Select the profile radio button when the user clicks a dropdown or label.
+    $(this).closest('.js-profile-label')
       .find('input[type=radio]')
       .prop('checked', true);
   });
 
-  // If the user selects "Other" in the dropdown, show the free text field
-  $('.js-profile-option-select').change(function() {
-    const selectionValue = $(this).val();
-    const $otherInputContainer = $(this).parents('.js-options-container').find('.js-other-input-container');
-    const $otherInput = $(this).parents('.js-options-container').find('.js-other-input');
-    if (selectionValue === 'unlisted-choice') {
+  function handleProfileOptionSelectChange($select) {
+    var selectedValue = $select.val();
+    var $myContainer = $select.closest('.js-options-container');
 
-      // if the Select box is selected with a value that is not 'unlisted-choice',
-      // we remove the "name" attribute for the unlisted-choice input
-      // and vice-versa, so that we only submit valid form values
-      // and don't leave the complexity of figuring out which value
-      // to use to the back-end.
-
-      // This can probably be done cleaner by completely refactoring
-      // how we send values from the frontend.
-      $(this).data('name', $(this).attr('name'));
-      $(this).removeAttr('name');
+    // If the user selects "Other" in the dropdown, show the free text field.
+    // We remove "name" from whichever input should NOT submit so the backend
+    // receives exactly one value per option.
+    var $otherInputContainer = $myContainer.children('.js-other-input-container');
+    var $otherInput = $otherInputContainer.find('.js-other-input');
+    if (selectedValue === 'unlisted-choice') {
+      $select.removeAttr('name');
       $otherInput.attr('name', $otherInput.data('name'));
       $otherInputContainer.removeClass('hidden');
     } else {
+      $select.attr('name', $select.data('name'));
       $otherInput.removeAttr('name');
-      $(this).attr('name', $(this).data('name'));
       $otherInputContainer.addClass('hidden');
     }
+
+    // Show/hide nested options for the selected choice.
+    var optionKey = $select.data('option-key');
+    var $profileLabel = $select.closest('.js-profile-label');
+
+    // Hide all nested containers for this parent option and remove their
+    // selects' name attributes so they don't submit.
+    $profileLabel.find('.js-nested-options[data-parent-option="' + optionKey + '"]').each(function() {
+      $(this).addClass('hidden');
+      $(this).find('select.js-profile-option-select').removeAttr('name');
+      $(this).find('input.js-other-input').removeAttr('name');
+    });
+
+    // Show the matching container for the selected choice, restore name
+    // attributes for its immediate selects, then trigger their change events
+    // so that their own nested options and unlisted-choice fields initialise.
+    $profileLabel.find(
+      '.js-nested-options[data-parent-option="' + optionKey + '"]' +
+      '[data-parent-choice="' + selectedValue + '"]'
+    ).each(function() {
+      $(this).removeClass('hidden');
+      // Use chained .children() to find only the direct selects (one level down),
+      // avoiding accidentally matching selects inside deeper nested containers.
+      $(this).children('.js-options-container').children('.option').children('select.js-profile-option-select').each(function() {
+        $(this).attr('name', $(this).data('name'));
+        handleProfileOptionSelectChange($(this));
+      });
+    });
+  }
+
+  $(document).on('change', '.js-profile-option-select', function() {
+    handleProfileOptionSelectChange($(this));
   });
 
-  // wrapping in a document.ready to make clear this is executed once
-  // on page load
-  $(document).ready(() => {
-    // Pre-select options from previously saved user_options
+  $(document).ready(function() {
+    // Pre-select options from previously saved user_options. Values are set on
+    // every select of the saved profile (nested ones included, matched via
+    // data-name since inactive selects carry no name attribute) before any
+    // change events fire, so the show/hide cascade below respects them.
     const savedProfile = userOptions && userOptions.profile;
     if (savedProfile) {
+      const prefix = `profile-option-${savedProfile}--`;
       $(`label[for="profile-item-${savedProfile}"] .js-profile-option-select`).each(function() {
-        // name format: profile-option-{slug}--{optionKey}
-        const optionKey = $(this).attr('name').split('--').pop();
+        // data-name format: profile-option-{slug}--{"--"-delimited option key path}
+        const optionKey = String($(this).data('name')).slice(prefix.length);
         const unlistedValue = userOptions[optionKey + '--unlisted-choice'];
         const savedValue = userOptions[optionKey];
         if (unlistedValue) {
           $(this).val('unlisted-choice');
-          $(this).parents('.js-options-container').find('.js-other-input').val(unlistedValue);
+          $(this).closest('.js-options-container')
+                 .children('.js-other-input-container')
+                 .find('.js-other-input')
+                 .val(unlistedValue);
         } else if (savedValue) {
           $(this).val(savedValue);
         }
       });
     }
-    // trigger the `change` event on the select inputs,
-    // so that if "Other" is selected on page load, the corresponding
-    // free-text input shows
-    $('.js-profile-option-select').trigger('change');
+
+    // Trigger change on top-level selects so that:
+    //   1. nested option containers are shown/hidden per the saved or default
+    //      selection, cascading into revealed nested selects,
+    //   2. unlisted-choice inputs are shown where "Other" is selected.
+    // Top-level selects already have their "name" attribute in the HTML, so no
+    // name-restoration is needed here.
+    $('.js-profile-label').each(function() {
+      $(this).find('.js-profile-option-select')
+             .not('.js-nested-options .js-profile-option-select')
+             .trigger('change');
+    });
   });
 
 </script>

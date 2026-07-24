@@ -1,4 +1,12 @@
 /*
+    .hidden is used by kubespawner's form JS to show/hide elements.
+    Defined here explicitly so it works regardless of Bootstrap version.
+*/
+.hidden {
+  display: none !important;
+}
+
+/*
     .profile divs holds two div tags: one for a radio button, and one
     for the profile's content.
 */
@@ -32,4 +40,19 @@
 #kubespawner-profiles-list .profile .option.hidden,
 #kubespawner-profiles-list .js-other-input-container.hidden {
   display: none;
+}
+
+/*
+    Nested profile options are indented with a guide line, so it is visible
+    that they belong to the choice selected in the option above them.
+    Nesting deeper than one level indents further by the same amount.
+*/
+#kubespawner-profiles-list .profile .js-nested-options {
+  margin: 0 0 12px 8px;
+  padding-left: 16px;
+  border-left: 2px solid #ccc;
+}
+
+#kubespawner-profiles-list .profile .js-nested-options .option:last-child {
+  padding-bottom: 0;
 }
