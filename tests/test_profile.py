@@ -400,3 +400,199 @@ async def test_profile_slug_and_option_slug_mixup(profile_list, formdata):
     assert user_options.get("profile") == "short"
     assert user_options.get("relevant") == "choice-a"
     assert not user_options.get("plus-irrelevant")
+
+
+# Shared profile list with nested profile_options used by several tests below.
+# "image" has two choices: "standard" (no nested options) and "testing" (has a
+# nested "version" option with choices v1/v2).
+NESTED_PROFILE_LIST = [
+    {
+        'display_name': 'Example Profile',
+        'slug': 'example',
+        'profile_options': {
+            'image': {
+                'display_name': 'Image',
+                'choices': {
+                    'standard': {
+                        'display_name': 'Standard Image',
+                        'kubespawner_override': {
+                            'image': 'example_org/standard:latest',
+                        },
+                    },
+                    'testing': {
+                        'display_name': 'Testing Image',
+                        'kubespawner_override': {
+                            'image': 'example_org/testing:default',
+                        },
+                        'profile_options': {
+                            'version': {
+                                'display_name': 'Version',
+                                'choices': {
+                                    'v1': {
+                                        'display_name': 'v1',
+                                        'default': True,
+                                        'kubespawner_override': {
+                                            'image': 'example_org/testing:v1',
+                                        },
+                                    },
+                                    'v2': {
+                                        'display_name': 'v2',
+                                        'kubespawner_override': {
+                                            'image': 'example_org/testing:v2',
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
+]
+
+
+async def test_nested_profile_options_initialized():
+    """
+    _get_initialized_profile_list should recursively initialize nested
+    profile_options inside choices.
+    """
+    spawner = KubeSpawner(_mock=True)
+    initialized = spawner._get_initialized_profile_list(NESTED_PROFILE_LIST)
+
+    profile = initialized[0]
+    image_option = profile['profile_options']['image']
+
+    # top-level option gets unlisted_choice initialized
+    assert image_option['unlisted_choice'] == {'enabled': False}
+
+    testing_choice = image_option['choices']['testing']
+    version_option = testing_choice['profile_options']['version']
+
+    # nested option also gets unlisted_choice initialized
+    assert version_option['unlisted_choice'] == {'enabled': False}
+    # nested option's default choice is preserved
+    assert version_option['choices']['v1']['default'] is True
+    assert 'default' not in version_option['choices']['v2']
+
+
+async def test_nested_profile_options_default_choice_applied():
+    """
+    When the parent choice ('testing') is selected but no nested choice is
+    explicitly passed, the nested default ('v1') override should be applied.
+    """
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = NESTED_PROFILE_LIST
+    spawner.user_options = {'profile': 'example', 'image': 'testing'}
+
+    await spawner.load_user_options()
+
+    # The nested default v1 image should win over the parent's default image
+    assert spawner.image == 'example_org/testing:v1'
+
+
+async def test_nested_profile_options_explicit_choice_applied():
+    """
+    When an explicit nested choice ('v2') is passed in user_options, its
+    override should be applied.
+    """
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = NESTED_PROFILE_LIST
+    spawner.user_options = {
+        'profile': 'example',
+        'image': 'testing',
+        'image--testing--version': 'v2',
+    }
+
+    await spawner.load_user_options()
+
+    assert spawner.image == 'example_org/testing:v2'
+
+
+async def test_nested_profile_options_inactive_choice_not_applied():
+    """
+    When a parent choice without nested options ('standard') is selected,
+    nested options from other choices must not contribute to the spawner config.
+    """
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = NESTED_PROFILE_LIST
+    # Select 'standard'; also include a stale nested option that must be ignored
+    spawner.user_options = {
+        'profile': 'example',
+        'image': 'standard',
+        'image--testing--version': 'v2',  # stale / inactive, should be ignored
+    }
+
+    await spawner.load_user_options()
+
+    assert spawner.image == 'example_org/standard:latest'
+
+
+async def test_nested_profile_options_form_roundtrip():
+    """
+    Form data with nested option fields should round-trip correctly through
+    _options_from_form into user_options.
+    """
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = NESTED_PROFILE_LIST
+
+    formdata = {
+        'profile': ['example'],
+        'profile-option-example--image': ['testing'],
+        'profile-option-example--image--testing--version': ['v2'],
+    }
+    user_options = spawner.options_from_form(formdata)
+
+    assert user_options == {
+        'profile': 'example',
+        'image': 'testing',
+        'image--testing--version': 'v2',
+    }
+
+
+async def test_nested_unlisted_choice_validation():
+    """
+    An unlisted_choice value for a nested option should be validated against
+    its validation_regex.
+    """
+    profiles = [
+        {
+            'display_name': 'Test',
+            'slug': 'test',
+            'profile_options': {
+                'image': {
+                    'display_name': 'Image',
+                    'choices': {
+                        'custom': {
+                            'display_name': 'Custom',
+                            'kubespawner_override': {},
+                            'profile_options': {
+                                'tag': {
+                                    'display_name': 'Tag',
+                                    'unlisted_choice': {
+                                        'enabled': True,
+                                        'display_name': 'Custom tag',
+                                        'validation_regex': r'^v\d+$',
+                                        'validation_message': 'Must be vN',
+                                        'kubespawner_override': {
+                                            'image': 'example_org/image:{value}',
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    ]
+    spawner = KubeSpawner(_mock=True)
+    spawner.profile_list = profiles
+    spawner.user_options = {
+        'profile': 'test',
+        'image': 'custom',
+        'image--custom--tag--unlisted-choice': 'bad-value',
+    }
+
+    with pytest.raises(ValueError, match="failed validation regex"):
+        await spawner.load_user_options()
