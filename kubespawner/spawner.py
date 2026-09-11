@@ -2974,12 +2974,27 @@ class KubeSpawner(Spawner):
         previous_reflector = self.__class__.reflectors.get(key, None)
 
         if previous_reflector and not replace:
-            # fast path
-            if not previous_reflector.first_load_future.done():
-                # make sure it's loaded, so subsequent calls to start_reflector
-                # don't finish before the first
-                await previous_reflector.first_load_future
-            return previous_reflector
+            if (
+                previous_reflector.watch_task is not None
+                and previous_reflector.watch_task.done()
+            ):
+                # The watch task has exited, e.g. because the reflector gave up
+                # after repeated failures. Its cache is frozen at whatever it
+                # last saw and will never be updated again, so reusing it would
+                # mean serving stale state indefinitely. Start a fresh one.
+                # Note that watch_task is None while start() is still in
+                # progress, which is not a failure and must not trigger this.
+                self.log.warning(
+                    "Reflector with key %r stopped watching, restarting it.", key
+                )
+                replace = True
+            else:
+                # fast path
+                if not previous_reflector.first_load_future.done():
+                    # make sure it's loaded, so subsequent calls to start_reflector
+                    # don't finish before the first
+                    await previous_reflector.first_load_future
+                return previous_reflector
 
         if self.enable_user_namespaces:
             # Create one reflector for all namespaces.
