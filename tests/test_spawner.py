@@ -25,6 +25,7 @@ from kubespawner import KubeSpawner
 from kubespawner.events import BasicEventFormatter
 from kubespawner.objects import make_owner_reference, make_service
 from kubespawner.slugs import safe_slug
+from kubespawner.utils import sorted_dict_values
 
 
 class MockUser(Mock):

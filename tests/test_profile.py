@@ -1,11 +1,10 @@
-from kubespawner.utils import sorted_dict_values
 import pytest
 
 from kubespawner import KubeSpawner
-
+from kubespawner.utils import sorted_dict_values
 
 _unfilled_profile_list_dict = {
-    "0":  {
+    "0": {
         "no-slug": {
             'display_name': 'Something without a slug',
             'kubespawner_override': {},
@@ -130,16 +129,29 @@ _filled_profile_list_dict = {
     },
 }
 
+
 @pytest.mark.parametrize(
     "unfilled_profile_list,filled_profile_list",
     [
-        (sorted_dict_values(_unfilled_profile_list_dict["0"]), sorted_dict_values(_filled_profile_list_dict["0"])),
-        (sorted_dict_values(_unfilled_profile_list_dict["1"]), sorted_dict_values(_filled_profile_list_dict["1"])),
+        (
+            sorted_dict_values(_unfilled_profile_list_dict["0"]),
+            sorted_dict_values(_filled_profile_list_dict["0"]),
+        ),
+        (
+            sorted_dict_values(_unfilled_profile_list_dict["1"]),
+            sorted_dict_values(_filled_profile_list_dict["1"]),
+        ),
         ([], []),
-        (_unfilled_profile_list_dict["0"], sorted_dict_values(_filled_profile_list_dict["0"])),
-        (_unfilled_profile_list_dict["1"], sorted_dict_values(_filled_profile_list_dict["1"])),
+        (
+            _unfilled_profile_list_dict["0"],
+            sorted_dict_values(_filled_profile_list_dict["0"]),
+        ),
+        (
+            _unfilled_profile_list_dict["1"],
+            sorted_dict_values(_filled_profile_list_dict["1"]),
+        ),
         ({}, []),
-    ]
+    ],
 )
 async def test_profile_missing_defaults_populated(
     unfilled_profile_list, filled_profile_list
@@ -152,6 +164,7 @@ async def test_profile_missing_defaults_populated(
         spawner._get_initialized_profile_list(unfilled_profile_list)
         == filled_profile_list
     )
+
 
 _input_profile_list = {
     "0": {
@@ -174,7 +187,7 @@ _input_profile_list = {
             'default': True,
             'kubespawner_override': {},
         },
-    }
+    },
 }
 
 _expected_selected_profile_list = {
@@ -188,8 +201,9 @@ _expected_selected_profile_list = {
         'slug': 'profile-2',
         'default': True,
         'kubespawner_override': {},
-    }
+    },
 }
+
 
 @pytest.mark.parametrize(
     "profile_list,slug,selected_profile",
@@ -197,33 +211,21 @@ _expected_selected_profile_list = {
         (
             sorted_dict_values(_input_profile_list["0"]),
             'profile-2',
-            _expected_selected_profile_list["0"]
+            _expected_selected_profile_list["0"],
         ),
         (
             sorted_dict_values(_input_profile_list["1"]),
             None,
-            _expected_selected_profile_list["1"]
+            _expected_selected_profile_list["1"],
         ),
         (
             sorted_dict_values(_input_profile_list["1"]),
             '',
-            _expected_selected_profile_list["1"]
+            _expected_selected_profile_list["1"],
         ),
-        (
-            _input_profile_list["0"],
-            'profile-2',
-            _expected_selected_profile_list["0"]
-        ),
-        (
-            _input_profile_list["1"],
-            None,
-            _expected_selected_profile_list["1"]
-        ),
-        (
-            _input_profile_list["1"],
-            '',
-            _expected_selected_profile_list["1"]
-        ),
+        (_input_profile_list["0"], 'profile-2', _expected_selected_profile_list["0"]),
+        (_input_profile_list["1"], None, _expected_selected_profile_list["1"]),
+        (_input_profile_list["1"], '', _expected_selected_profile_list["1"]),
     ],
 )
 async def test_find_slug(profile_list, slug, selected_profile):
@@ -245,12 +247,10 @@ _profile_list = {
         'kubespawner_override': {},
     },
 }
+
+
 @pytest.mark.parametrize(
-    "profile_list",
-    [
-        sorted_dict_values(_profile_list),
-        _profile_list
-    ]
+    "profile_list", [sorted_dict_values(_profile_list), _profile_list]
 )
 async def test_find_slug_exception(profile_list):
     """
@@ -260,6 +260,7 @@ async def test_find_slug_exception(profile_list):
     profile_list = spawner._get_initialized_profile_list(profile_list)
     with pytest.raises(ValueError):
         spawner._get_profile('does-not-exist', profile_list)
+
 
 _profiles = {
     "cpu": {
@@ -297,13 +298,9 @@ _profiles = {
         },
     },
 }
-@pytest.mark.parametrize(
-    "profile_list",
-    [
-        sorted_dict_values(_profiles),
-        _profiles
-    ]
-)
+
+
+@pytest.mark.parametrize("profile_list", [sorted_dict_values(_profiles), _profiles])
 async def test_unlisted_choice_non_string_override(profile_list):
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = profile_list
@@ -325,6 +322,7 @@ async def test_unlisted_choice_non_string_override(profile_list):
     assert spawner.init_containers == [
         {"name": "testing", "image": image, 'securityContext': {'runAsUser': 1000}}
     ]
+
 
 _profiles = {
     "cpu": {
@@ -357,15 +355,11 @@ _profiles = {
         },
     },
 }
-@pytest.mark.parametrize(
-    "profile_list",
-    [
-        sorted_dict_values(_profiles),
-        _profiles
-    ]
-)
+
+
+@pytest.mark.parametrize("profile_list", [sorted_dict_values(_profiles), _profiles])
 async def test_empty_user_options_and_profile_options_api(profile_list):
-    
+
     spawner = KubeSpawner(_mock=True)
     spawner.profile_list = profile_list
     # set user_options directly (e.g. via api)
@@ -379,6 +373,7 @@ async def test_empty_user_options_and_profile_options_api(profile_list):
 
     # implicit defaults should be used
     assert spawner.image == "pangeo/pangeo-notebook:ebeb9dd"
+
 
 _profile_list = {
     "short": {
@@ -408,6 +403,8 @@ _profile_list = {
         },
     },
 }
+
+
 @pytest.mark.parametrize(
     "profile_list, formdata",
     [
