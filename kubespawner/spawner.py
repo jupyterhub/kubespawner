@@ -3945,7 +3945,7 @@ class KubeSpawner(Spawner):
 
             self._apply_overrides(option_overrides)
 
-    def _get_initialized_profile_list(self, profile_list: list):
+    def _get_initialized_profile_list(self, profile_list) -> list:
         """
         Returns a fully initialized copy of profile_list.
 
@@ -3955,7 +3955,7 @@ class KubeSpawner(Spawner):
         - If no default profile is set, the first profile is set to be the
           default
         """
-        profile_list = copy.deepcopy(profile_list)
+        profile_list = copy.deepcopy(sorted_dict_values(profile_list))
 
         if not profile_list:
             # empty profile lists are just returned
