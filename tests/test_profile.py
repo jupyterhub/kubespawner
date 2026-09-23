@@ -1,136 +1,156 @@
 import pytest
 
 from kubespawner import KubeSpawner
+from kubespawner.utils import sorted_dict_values
+
+_unfilled_profile_list_dict = {
+    "0": {
+        "no-slug": {
+            'display_name': 'Something without a slug',
+            'kubespawner_override': {},
+        },
+        "with-slug": {
+            'display_name': 'Something with a slug',
+            'slug': 'sluggity-slug',
+            'kubespawner_override': {},
+        },
+    },
+    "1": {
+        "no-choices": {
+            'display_name': 'Something without choices',
+            'kubespawner_override': {},
+        },
+        "with-choices": {
+            'display_name': 'Something with choices',
+            'kubespawner_override': {},
+            'default': True,
+            'profile_options': {
+                'no-defaults': {
+                    'display_name': 'Some choice without a default set',
+                    'choices': {
+                        'option-1': {
+                            'display_name': 'Option 1',
+                            'kubespawner_override': {},
+                        },
+                        'option-2': {
+                            'display_name': 'Option 2',
+                            'kubespawner_override': {},
+                        },
+                    },
+                },
+                'only-unlisted': {
+                    'display_name': 'Some option without any choices set',
+                    'unlisted_choice': {'enabled': True},
+                },
+                'explicit-defaults': {
+                    'display_name': 'Some choice with a default set',
+                    'choices': {
+                        'option-1': {
+                            'display_name': 'Option 1',
+                            'kubespawner_override': {},
+                        },
+                        'option-2': {
+                            'display_name': 'Option 2',
+                            'default': True,
+                            'kubespawner_override': {},
+                        },
+                    },
+                },
+            },
+        },
+    },
+}
+
+_filled_profile_list_dict = {
+    "0": {
+        "no-slug": {
+            'display_name': 'Something without a slug',
+            'slug': 'something-without-a-slug',
+            'default': True,
+            'kubespawner_override': {},
+        },
+        "with-slug": {
+            'display_name': 'Something with a slug',
+            'slug': 'sluggity-slug',
+            'kubespawner_override': {},
+        },
+    },
+    "1": {
+        "no-choices": {
+            'display_name': 'Something without choices',
+            'slug': 'something-without-choices',
+            'kubespawner_override': {},
+        },
+        "with-choices": {
+            'display_name': 'Something with choices',
+            'slug': 'something-with-choices',
+            'default': True,
+            'kubespawner_override': {},
+            'profile_options': {
+                'no-defaults': {
+                    'display_name': 'Some choice without a default set',
+                    'unlisted_choice': {'enabled': False},
+                    'choices': {
+                        'option-1': {
+                            'display_name': 'Option 1',
+                            'default': True,
+                            'kubespawner_override': {},
+                        },
+                        'option-2': {
+                            'display_name': 'Option 2',
+                            'kubespawner_override': {},
+                        },
+                    },
+                },
+                'only-unlisted': {
+                    'display_name': 'Some option without any choices set',
+                    'unlisted_choice': {
+                        'enabled': True,
+                        'display_name_in_choices': 'Other...',
+                    },
+                },
+                'explicit-defaults': {
+                    'display_name': 'Some choice with a default set',
+                    'unlisted_choice': {'enabled': False},
+                    'choices': {
+                        'option-1': {
+                            'display_name': 'Option 1',
+                            'kubespawner_override': {},
+                        },
+                        'option-2': {
+                            'display_name': 'Option 2',
+                            'default': True,
+                            'kubespawner_override': {},
+                        },
+                    },
+                },
+            },
+        },
+    },
+}
 
 
 @pytest.mark.parametrize(
     "unfilled_profile_list,filled_profile_list",
     [
         (
-            [
-                {
-                    'display_name': 'Something without a slug',
-                    'kubespawner_override': {},
-                },
-                {
-                    'display_name': 'Something with a slug',
-                    'slug': 'sluggity-slug',
-                    'kubespawner_override': {},
-                },
-            ],
-            [
-                {
-                    'display_name': 'Something without a slug',
-                    'slug': 'something-without-a-slug',
-                    'default': True,
-                    'kubespawner_override': {},
-                },
-                {
-                    'display_name': 'Something with a slug',
-                    'slug': 'sluggity-slug',
-                    'kubespawner_override': {},
-                },
-            ],
+            sorted_dict_values(_unfilled_profile_list_dict["0"]),
+            sorted_dict_values(_filled_profile_list_dict["0"]),
         ),
         (
-            [
-                {
-                    'display_name': 'Something without choices',
-                    'kubespawner_override': {},
-                },
-                {
-                    'display_name': 'Something with choices',
-                    'kubespawner_override': {},
-                    'default': True,
-                    'profile_options': {
-                        'no-defaults': {
-                            'display_name': 'Some choice without a default set',
-                            'choices': {
-                                'option-1': {
-                                    'display_name': 'Option 1',
-                                    'kubespawner_override': {},
-                                },
-                                'option-2': {
-                                    'display_name': 'Option 2',
-                                    'kubespawner_override': {},
-                                },
-                            },
-                        },
-                        'only-unlisted': {
-                            'display_name': 'Some option without any choices set',
-                            'unlisted_choice': {'enabled': True},
-                        },
-                        'explicit-defaults': {
-                            'display_name': 'Some choice with a default set',
-                            'choices': {
-                                'option-1': {
-                                    'display_name': 'Option 1',
-                                    'kubespawner_override': {},
-                                },
-                                'option-2': {
-                                    'display_name': 'Option 2',
-                                    'default': True,
-                                    'kubespawner_override': {},
-                                },
-                            },
-                        },
-                    },
-                },
-            ],
-            [
-                {
-                    'display_name': 'Something without choices',
-                    'slug': 'something-without-choices',
-                    'kubespawner_override': {},
-                },
-                {
-                    'display_name': 'Something with choices',
-                    'slug': 'something-with-choices',
-                    'default': True,
-                    'kubespawner_override': {},
-                    'profile_options': {
-                        'no-defaults': {
-                            'display_name': 'Some choice without a default set',
-                            'unlisted_choice': {'enabled': False},
-                            'choices': {
-                                'option-1': {
-                                    'display_name': 'Option 1',
-                                    'default': True,
-                                    'kubespawner_override': {},
-                                },
-                                'option-2': {
-                                    'display_name': 'Option 2',
-                                    'kubespawner_override': {},
-                                },
-                            },
-                        },
-                        'only-unlisted': {
-                            'display_name': 'Some option without any choices set',
-                            'unlisted_choice': {
-                                'enabled': True,
-                                'display_name_in_choices': 'Other...',
-                            },
-                        },
-                        'explicit-defaults': {
-                            'display_name': 'Some choice with a default set',
-                            'unlisted_choice': {'enabled': False},
-                            'choices': {
-                                'option-1': {
-                                    'display_name': 'Option 1',
-                                    'kubespawner_override': {},
-                                },
-                                'option-2': {
-                                    'display_name': 'Option 2',
-                                    'default': True,
-                                    'kubespawner_override': {},
-                                },
-                            },
-                        },
-                    },
-                },
-            ],
+            sorted_dict_values(_unfilled_profile_list_dict["1"]),
+            sorted_dict_values(_filled_profile_list_dict["1"]),
         ),
         ([], []),
+        (
+            _unfilled_profile_list_dict["0"],
+            sorted_dict_values(_filled_profile_list_dict["0"]),
+        ),
+        (
+            _unfilled_profile_list_dict["1"],
+            sorted_dict_values(_filled_profile_list_dict["1"]),
+        ),
+        ({}, []),
     ],
 )
 async def test_profile_missing_defaults_populated(
@@ -146,67 +166,66 @@ async def test_profile_missing_defaults_populated(
     )
 
 
+_input_profile_list = {
+    "0": {
+        "profile1": {
+            'display_name': 'profile 1',
+            'kubespawner_override': {},
+        },
+        "profile2": {
+            'display_name': 'profile 2',
+            'kubespawner_override': {},
+        },
+    },
+    "1": {
+        "profile1": {
+            'display_name': 'profile 1',
+            'kubespawner_override': {},
+        },
+        "profile2": {
+            'display_name': 'profile 2',
+            'default': True,
+            'kubespawner_override': {},
+        },
+    },
+}
+
+_expected_selected_profile_list = {
+    "0": {
+        'display_name': 'profile 2',
+        'slug': 'profile-2',
+        'kubespawner_override': {},
+    },
+    "1": {
+        'display_name': 'profile 2',
+        'slug': 'profile-2',
+        'default': True,
+        'kubespawner_override': {},
+    },
+}
+
+
 @pytest.mark.parametrize(
     "profile_list,slug,selected_profile",
     [
         (
-            [
-                {
-                    'display_name': 'profile 1',
-                    'kubespawner_override': {},
-                },
-                {
-                    'display_name': 'profile 2',
-                    'kubespawner_override': {},
-                },
-            ],
+            sorted_dict_values(_input_profile_list["0"]),
             'profile-2',
-            {
-                'display_name': 'profile 2',
-                'slug': 'profile-2',
-                'kubespawner_override': {},
-            },
+            _expected_selected_profile_list["0"],
         ),
         (
-            [
-                {
-                    'display_name': 'profile 1',
-                    'kubespawner_override': {},
-                },
-                {
-                    'display_name': 'profile 2',
-                    'default': True,
-                    'kubespawner_override': {},
-                },
-            ],
+            sorted_dict_values(_input_profile_list["1"]),
             None,
-            {
-                'display_name': 'profile 2',
-                'slug': 'profile-2',
-                'default': True,
-                'kubespawner_override': {},
-            },
+            _expected_selected_profile_list["1"],
         ),
         (
-            [
-                {
-                    'display_name': 'profile 1',
-                    'kubespawner_override': {},
-                },
-                {
-                    'display_name': 'profile 2',
-                    'default': True,
-                    'kubespawner_override': {},
-                },
-            ],
+            sorted_dict_values(_input_profile_list["1"]),
             '',
-            {
-                'display_name': 'profile 2',
-                'slug': 'profile-2',
-                'default': True,
-                'kubespawner_override': {},
-            },
+            _expected_selected_profile_list["1"],
         ),
+        (_input_profile_list["0"], 'profile-2', _expected_selected_profile_list["0"]),
+        (_input_profile_list["1"], None, _expected_selected_profile_list["1"]),
+        (_input_profile_list["1"], '', _expected_selected_profile_list["1"]),
     ],
 )
 async def test_find_slug(profile_list, slug, selected_profile):
@@ -218,65 +237,73 @@ async def test_find_slug(profile_list, slug, selected_profile):
     assert spawner._get_profile(slug, profile_list) == selected_profile
 
 
-async def test_find_slug_exception():
+_profile_list = {
+    "profile1": {
+        'display_name': 'profile 1',
+        'kubespawner_override': {},
+    },
+    "profile2": {
+        'display_name': 'profile 2',
+        'kubespawner_override': {},
+    },
+}
+
+
+@pytest.mark.parametrize(
+    "profile_list", [sorted_dict_values(_profile_list), _profile_list]
+)
+async def test_find_slug_exception(profile_list):
     """
     Test that looking for a slug that doesn't exist gives us an exception
     """
     spawner = KubeSpawner(_mock=True)
-    profile_list = [
-        {
-            'display_name': 'profile 1',
-            'kubespawner_override': {},
-        },
-        {
-            'display_name': 'profile 2',
-            'kubespawner_override': {},
-        },
-    ]
     profile_list = spawner._get_initialized_profile_list(profile_list)
     with pytest.raises(ValueError):
         spawner._get_profile('does-not-exist', profile_list)
 
 
-async def test_unlisted_choice_non_string_override():
-    profiles = [
-        {
-            'display_name': 'CPU only',
-            'slug': 'cpu',
-            'profile_options': {
-                'image': {
-                    'display_name': 'Image',
-                    'unlisted_choice': {
-                        'enabled': True,
-                        'display_name': 'Image Location',
-                        'validation_regex': '^pangeo/.*$',
-                        'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
-                        'kubespawner_override': {
-                            'image': '{value}',
-                            'environment': {
-                                'CUSTOM_IMAGE_USED': 'yes',
-                                'CUSTOM_IMAGE': '{value}',
-                                # This should just be passed through, as JUPYTER_USER is not replaced
-                                'USER': '${JUPYTER_USER}',
-                                # This should render as ${JUPYTER_USER}, as the {{ and }} escape them.
-                                # this matches existing behavior for other replacements elsewhere
-                                'USER_TEST': '${{JUPYTER_USER}}',
-                            },
-                            "init_containers": [
-                                {
-                                    "name": "testing",
-                                    "image": "{value}",
-                                    "securityContext": {"runAsUser": 1000},
-                                }
-                            ],
+_profiles = {
+    "cpu": {
+        'display_name': 'CPU only',
+        'slug': 'cpu',
+        'profile_options': {
+            'image': {
+                'display_name': 'Image',
+                'unlisted_choice': {
+                    'enabled': True,
+                    'display_name': 'Image Location',
+                    'validation_regex': '^pangeo/.*$',
+                    'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
+                    'kubespawner_override': {
+                        'image': '{value}',
+                        'environment': {
+                            'CUSTOM_IMAGE_USED': 'yes',
+                            'CUSTOM_IMAGE': '{value}',
+                            # This should just be passed through, as JUPYTER_USER is not replaced
+                            'USER': '${JUPYTER_USER}',
+                            # This should render as ${JUPYTER_USER}, as the {{ and }} escape them.
+                            # this matches existing behavior for other replacements elsewhere
+                            'USER_TEST': '${{JUPYTER_USER}}',
                         },
+                        "init_containers": [
+                            {
+                                "name": "testing",
+                                "image": "{value}",
+                                "securityContext": {"runAsUser": 1000},
+                            }
+                        ],
                     },
-                }
-            },
+                },
+            }
         },
-    ]
+    },
+}
+
+
+@pytest.mark.parametrize("profile_list", [sorted_dict_values(_profiles), _profiles])
+async def test_unlisted_choice_non_string_override(profile_list):
     spawner = KubeSpawner(_mock=True)
-    spawner.profile_list = profiles
+    spawner.profile_list = profile_list
 
     image = "pangeo/pangeo-notebook:latest"
     # Set user option for image directly
@@ -297,40 +324,44 @@ async def test_unlisted_choice_non_string_override():
     ]
 
 
-async def test_empty_user_options_and_profile_options_api():
-    profiles = [
-        {
-            'display_name': 'CPU only',
-            'profile_options': {
-                'image': {
-                    'display_name': 'Image',
-                    'unlisted_choice': {
-                        'enabled': True,
-                        'display_name': 'Image Location',
-                        'validation_regex': '^pangeo/.*$',
-                        'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
-                        'kubespawner_override': {'image': '{value}'},
-                    },
-                    "choices": {
-                        'op-1': {
-                            'display_name': 'Option 1',
-                            'kubespawner_override': {
-                                'image': 'pangeo/pangeo-notebook:ebeb9dd'
-                            },
-                        },
-                        'op-2': {
-                            'display_name': 'Option 2',
-                            'kubespawner_override': {
-                                'image': 'pangeo/pangeo-notebook:latest'
-                            },
+_profiles = {
+    "cpu": {
+        'display_name': 'CPU only',
+        'profile_options': {
+            'image': {
+                'display_name': 'Image',
+                'unlisted_choice': {
+                    'enabled': True,
+                    'display_name': 'Image Location',
+                    'validation_regex': '^pangeo/.*$',
+                    'validation_message': 'Must be a pangeo image, matching ^pangeo/.*$',
+                    'kubespawner_override': {'image': '{value}'},
+                },
+                "choices": {
+                    'op-1': {
+                        'display_name': 'Option 1',
+                        'kubespawner_override': {
+                            'image': 'pangeo/pangeo-notebook:ebeb9dd'
                         },
                     },
-                }
-            },
+                    'op-2': {
+                        'display_name': 'Option 2',
+                        'kubespawner_override': {
+                            'image': 'pangeo/pangeo-notebook:latest'
+                        },
+                    },
+                },
+            }
         },
-    ]
+    },
+}
+
+
+@pytest.mark.parametrize("profile_list", [sorted_dict_values(_profiles), _profiles])
+async def test_empty_user_options_and_profile_options_api(profile_list):
+
     spawner = KubeSpawner(_mock=True)
-    spawner.profile_list = profiles
+    spawner.profile_list = profile_list
     # set user_options directly (e.g. via api)
     spawner.user_options = {}
 
@@ -344,41 +375,52 @@ async def test_empty_user_options_and_profile_options_api():
     assert spawner.image == "pangeo/pangeo-notebook:ebeb9dd"
 
 
+_profile_list = {
+    "short": {
+        "display_name": "short",
+        "slug": "short",
+        "profile_options": {
+            "relevant": {
+                "choices": {
+                    "choice-a": {
+                        "kubespawner_override": {},
+                    },
+                },
+            },
+        },
+    },
+    "short-plus": {
+        "display_name": "short-plus",
+        "slug": "short-plus",
+        "profile_options": {
+            "irrelevant": {
+                "choices": {
+                    "choice-b": {
+                        "kubespawner_override": {},
+                    },
+                },
+            },
+        },
+    },
+}
+
+
 @pytest.mark.parametrize(
     "profile_list, formdata",
     [
         (
-            [
-                {
-                    "display_name": "short",
-                    "slug": "short",
-                    "profile_options": {
-                        "relevant": {
-                            "choices": {
-                                "choice-a": {
-                                    "kubespawner_override": {},
-                                },
-                            },
-                        },
-                    },
-                },
-                {
-                    "display_name": "short-plus",
-                    "slug": "short-plus",
-                    "profile_options": {
-                        "irrelevant": {
-                            "choices": {
-                                "choice-b": {
-                                    "kubespawner_override": {},
-                                },
-                            },
-                        },
-                    },
-                },
-            ],
+            sorted_dict_values(_profile_list),
             # What is below is hardcoded based on what is above and based on
             # how the HTML form looks currently. If that changes, whats below needs
             # to change as well.
+            {
+                'profile': ['short'],
+                'profile-option-short--relevant': ['choice-a'],
+                'profile-option-short-plus--irrelevant': ['choice-b'],
+            },
+        ),
+        (
+            _profile_list,
             {
                 'profile': ['short'],
                 'profile-option-short--relevant': ['choice-a'],
