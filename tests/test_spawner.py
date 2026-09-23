@@ -26,6 +26,8 @@ from kubespawner.events import BasicEventFormatter
 from kubespawner.objects import make_owner_reference, make_service
 from kubespawner.slugs import safe_slug
 
+pytestmark = pytest.mark.asyncio(loop_scope="session")
+
 
 class MockUser(Mock):
     name = '9user@email.com'
