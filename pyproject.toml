@@ -43,8 +43,7 @@ test = [
     "kubernetes>=11",
     "pytest>=5.4",
     "pytest-cov",
-    # FIXME: unpin pytest-asyncio
-    "pytest-asyncio>=0.17,<0.23",
+    "pytest-asyncio",
 ]
 
 [project.urls]
