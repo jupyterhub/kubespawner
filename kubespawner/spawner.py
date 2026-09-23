@@ -1975,7 +1975,7 @@ class KubeSpawner(Spawner):
     )
 
     slow_spawn_message_frequency = Integer(
-        5,
+        15,
         config=True,
         help="""
         Sets a delay of N seconds between updates to the message buffer, so
