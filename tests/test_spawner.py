@@ -85,6 +85,17 @@ async def test_deprecated_runtime_access():
     spawner.image_spec = 'abc:latest'
     assert spawner.image_spec == 'abc:latest'
     assert spawner.image == 'abc:latest'
+
+
+async def test_deprecated_singleuser_lifecycle_hooks():
+    """singleuser_lifecycle_hooks config maps to lifecycle_hooks"""
+    c = Config()
+    lifecycle_hooks = {
+        "postStart": {"exec": {"command": ["/bin/sh", "-c", "echo hello"]}}
+    }
+    c.KubeSpawner.singleuser_lifecycle_hooks = lifecycle_hooks
+    spawner = KubeSpawner(hub=Hub(), config=c, _mock=True)
+    assert spawner.lifecycle_hooks == lifecycle_hooks
     spawner.image = 'abc:123'
     assert spawner.image_spec == 'abc:123'
     assert spawner.image == 'abc:123'
