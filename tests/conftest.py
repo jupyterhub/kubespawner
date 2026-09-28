@@ -122,8 +122,8 @@ def config(kube_ns):
     return cfg
 
 
-@pytest.fixture(scope="session")
-def ssl_app(tmpdir_factory, kube_ns):
+@pytest_asyncio.fixture(scope="session")
+async def ssl_app(tmpdir_factory, kube_ns):
     """Partially instantiate a JupyterHub instance to generate ssl certificates
 
     Generates ssl certificates on the host,
@@ -132,6 +132,9 @@ def ssl_app(tmpdir_factory, kube_ns):
     This is not a fully instantiated Hub,
     but it will have internal_ssl-related attributes such as
     .internal_trust_bundles and .internal_certs_location initialized.
+
+    This is async because init_internal_ssl() instantiates
+    JupyterHubHTTPClient, which calls asyncio.get_running_loop().
     """
     tmpdir = tmpdir_factory.mktemp("ssl")
     tmpdir.chdir()
