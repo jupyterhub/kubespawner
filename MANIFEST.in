@@ -1,3 +1,4 @@
 include LICENSE
 include README.md
+include kubespawner/py.typed
 graft kubespawner/templates

@@ -23,6 +23,7 @@ authors = [
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
+    "Typing :: Typed",
 ]
 dependencies = [
     # NOTE: If lower bounds are updated, also update our test for the lower
