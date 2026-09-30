@@ -288,6 +288,11 @@ class ResourceReflector(LoggingConfigurable):
         resource_version = "0"
 
         cur_delay = 0.1
+        # Separate backoff counter for early-close events (server closes the
+        # watch stream before our timeout_seconds).  Kept outside the loop so
+        # it accumulates across consecutive early closes, independent of the
+        # exception backoff tracked by cur_delay.
+        early_close_delay = 0.1
 
         if self.omit_namespace:
             ns_str = "all namespaces"
@@ -386,8 +391,25 @@ class ResourceReflector(LoggingConfigurable):
                 await asyncio.sleep(cur_delay)
                 continue
             else:
-                # no events on watch, reconnect
-                self.log.debug("%s watcher timeout", self.kind)
+                # The watch stream exited cleanly (no exception).  This is
+                # either a normal timeout_seconds expiry or the API server
+                # closing the connection early (e.g. after an initial list,
+                # some cloud providers close within 2-6 seconds).  Detect the
+                # early-close case and back off to avoid hammering the API.
+                watch_duration = time.monotonic() - start
+                if watch_duration < 30:
+                    self.log.warning(
+                        "%s watcher closed after %.1fs; "
+                        "backing off %.1fs to avoid reconnect storms",
+                        self.kind,
+                        watch_duration,
+                        early_close_delay,
+                    )
+                    await asyncio.sleep(early_close_delay)
+                    early_close_delay = min(early_close_delay * 2, 30)
+                else:
+                    early_close_delay = 0.1  # normal exit; reset backoff
+                    self.log.debug("%s watcher timeout", self.kind)
             finally:
                 w.stop()
                 await w.close()
