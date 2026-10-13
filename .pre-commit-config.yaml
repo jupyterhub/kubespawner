@@ -14,8 +14,6 @@ repos:
     rev: v3.21.2
     hooks:
       - id: pyupgrade
-        args:
-          - --py37-plus
 
   # Autoformat: Python code
   - repo: https://github.com/pycqa/isort

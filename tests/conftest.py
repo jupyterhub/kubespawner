@@ -70,15 +70,6 @@ async def cancel_tasks():
             log.debug("Task status: %s", t)
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    # cancel tasks, as is done in JupyterHub
-    loop.run_until_complete(cancel_tasks())
-    loop.close()
-
-
 @pytest.fixture(autouse=True)
 def traitlets_logging():
     """Ensure traitlets default logging is enabled
