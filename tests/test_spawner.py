@@ -3,7 +3,7 @@ import base64
 import json
 import os
 from functools import partial
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import jupyterhub
 import pytest
@@ -2054,7 +2054,11 @@ async def test_ipv6_addr():
 async def test_get_url_after_interrupted_launch(pod_status, expected):
     """A launch interrupted by a hub restart leaves a placeholder url in the db"""
     spawner = KubeSpawner(_mock=True)
-    spawner._start_watching_pods = AsyncMock()
+
+    async def _start_watching_pods():
+        pass
+
+    spawner._start_watching_pods = _start_watching_pods
     spawner.server = Server.from_url("http://hub-1234:55787/user/mock@name/")
     pods = {}
     if pod_status is not None:
