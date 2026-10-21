@@ -2406,6 +2406,25 @@ class KubeSpawner(Spawner):
             port,
         )
 
+    async def get_url(self):
+        """Get the URL of the server from its pod
+
+        JupyterHub calls this on startup for servers that claim to be running,
+        so a launch interrupted by a Hub restart can recover its URL.
+        The URL in the database is then a placeholder,
+        and `poll` only corrects it once the pod is fully running,
+        so a pod still pulling its image would otherwise be waited on
+        at the placeholder for the whole `http_timeout`, then shut down.
+
+        Falls back to the stored URL if the pod has no IP yet.
+        """
+        await self._start_watching_pods()
+        ref_key = f"{self.namespace}/{self.pod_name}"
+        pod = self.pod_reflector.pods.get(ref_key, None)
+        if pod is None or not pod["status"].get("podIP"):
+            return await super().get_url()
+        return self._get_pod_url(pod) + self.server.base_url
+
     async def get_pod_manifest(self):
         """
         Make a pod manifest that will spawn current user's notebook pod.
