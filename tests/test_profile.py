@@ -3,8 +3,8 @@ import pytest
 from kubespawner import KubeSpawner
 from kubespawner.utils import sorted_dict_values
 
-_unfilled_profile_list_dict = {
-    "0": {
+_unfilled_profile_list_dict = [
+    {
         "no-slug": {
             'display_name': 'Something without a slug',
             'kubespawner_override': {},
@@ -15,7 +15,7 @@ _unfilled_profile_list_dict = {
             'kubespawner_override': {},
         },
     },
-    "1": {
+    {
         "no-choices": {
             'display_name': 'Something without choices',
             'kubespawner_override': {},
@@ -59,10 +59,10 @@ _unfilled_profile_list_dict = {
             },
         },
     },
-}
+]
 
-_filled_profile_list_dict = {
-    "0": {
+_filled_profile_list_dict = [
+    {
         "no-slug": {
             'display_name': 'Something without a slug',
             'slug': 'something-without-a-slug',
@@ -75,7 +75,7 @@ _filled_profile_list_dict = {
             'kubespawner_override': {},
         },
     },
-    "1": {
+    {
         "no-choices": {
             'display_name': 'Something without choices',
             'slug': 'something-without-choices',
@@ -127,28 +127,28 @@ _filled_profile_list_dict = {
             },
         },
     },
-}
+]
 
 
 @pytest.mark.parametrize(
     "unfilled_profile_list,filled_profile_list",
     [
         (
-            sorted_dict_values(_unfilled_profile_list_dict["0"]),
-            sorted_dict_values(_filled_profile_list_dict["0"]),
+            sorted_dict_values(_unfilled_profile_list_dict[0]),
+            sorted_dict_values(_filled_profile_list_dict[0]),
         ),
         (
-            sorted_dict_values(_unfilled_profile_list_dict["1"]),
-            sorted_dict_values(_filled_profile_list_dict["1"]),
+            sorted_dict_values(_unfilled_profile_list_dict[1]),
+            sorted_dict_values(_filled_profile_list_dict[1]),
         ),
         ([], []),
         (
-            _unfilled_profile_list_dict["0"],
-            sorted_dict_values(_filled_profile_list_dict["0"]),
+            _unfilled_profile_list_dict[0],
+            sorted_dict_values(_filled_profile_list_dict[0]),
         ),
         (
-            _unfilled_profile_list_dict["1"],
-            sorted_dict_values(_filled_profile_list_dict["1"]),
+            _unfilled_profile_list_dict[1],
+            sorted_dict_values(_filled_profile_list_dict[1]),
         ),
         ({}, []),
     ],
@@ -166,8 +166,8 @@ async def test_profile_missing_defaults_populated(
     )
 
 
-_input_profile_list = {
-    "0": {
+_input_profile_list = [
+    {
         "profile1": {
             'display_name': 'profile 1',
             'kubespawner_override': {},
@@ -177,7 +177,7 @@ _input_profile_list = {
             'kubespawner_override': {},
         },
     },
-    "1": {
+    {
         "profile1": {
             'display_name': 'profile 1',
             'kubespawner_override': {},
@@ -188,44 +188,44 @@ _input_profile_list = {
             'kubespawner_override': {},
         },
     },
-}
+]
 
-_expected_selected_profile_list = {
-    "0": {
+_expected_selected_profile_list = [
+    {
         'display_name': 'profile 2',
         'slug': 'profile-2',
         'kubespawner_override': {},
     },
-    "1": {
+    {
         'display_name': 'profile 2',
         'slug': 'profile-2',
         'default': True,
         'kubespawner_override': {},
     },
-}
+]
 
 
 @pytest.mark.parametrize(
     "profile_list,slug,selected_profile",
     [
         (
-            sorted_dict_values(_input_profile_list["0"]),
+            sorted_dict_values(_input_profile_list[0]),
             'profile-2',
-            _expected_selected_profile_list["0"],
+            _expected_selected_profile_list[0],
         ),
         (
-            sorted_dict_values(_input_profile_list["1"]),
+            sorted_dict_values(_input_profile_list[1]),
             None,
-            _expected_selected_profile_list["1"],
+            _expected_selected_profile_list[1],
         ),
         (
-            sorted_dict_values(_input_profile_list["1"]),
+            sorted_dict_values(_input_profile_list[1]),
             '',
-            _expected_selected_profile_list["1"],
+            _expected_selected_profile_list[1],
         ),
-        (_input_profile_list["0"], 'profile-2', _expected_selected_profile_list["0"]),
-        (_input_profile_list["1"], None, _expected_selected_profile_list["1"]),
-        (_input_profile_list["1"], '', _expected_selected_profile_list["1"]),
+        (_input_profile_list[0], 'profile-2', _expected_selected_profile_list[0]),
+        (_input_profile_list[1], None, _expected_selected_profile_list[1]),
+        (_input_profile_list[1], '', _expected_selected_profile_list[1]),
     ],
 )
 async def test_find_slug(profile_list, slug, selected_profile):
