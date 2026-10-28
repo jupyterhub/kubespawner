@@ -7,6 +7,8 @@ from kubernetes_asyncio.client import ApiClient
 
 from kubespawner.objects import make_ingress, make_namespace, make_pod, make_pvc
 
+# These tests only need serialization; ApiClient() opens an aiohttp connector
+# and requires a running event loop.
 api_client = ApiClient.__new__(ApiClient)
 
 
