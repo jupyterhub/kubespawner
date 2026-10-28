@@ -2418,7 +2418,9 @@ class KubeSpawner(Spawner):
 
         Falls back to the stored URL if the pod has no IP yet.
         """
-        await self._start_watching_pods()
+        assert (
+            self.pod_reflector is not None
+        ), "poll() must initialize the pod reflector"
         ref_key = f"{self.namespace}/{self.pod_name}"
         pod = self.pod_reflector.pods.get(ref_key, None)
         if pod is None or not pod["status"].get("podIP"):
