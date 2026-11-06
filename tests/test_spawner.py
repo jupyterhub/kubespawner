@@ -1730,7 +1730,6 @@ async def test_get_pvc_manifest():
     assert manifest.metadata.labels == {
         "user": slug,
         "hub.jupyter.org/username": slug,
-        "hub.jupyter.org/servername": "",
         "app.kubernetes.io/name": "jupyterhub",
         "app.kubernetes.io/managed-by": "kubespawner",
         "app.kubernetes.io/component": "singleuser-server",
@@ -1741,6 +1740,7 @@ async def test_get_pvc_manifest():
     assert manifest.metadata.annotations == {
         "user": slug,
         "hub.jupyter.org/username": username,
+        "hub.jupyter.org/servername": "",
         "hub.jupyter.org/jupyterhub-version": jupyterhub.__version__,
         "hub.jupyter.org/kubespawner-version": kubespawner.__version__,
     }
