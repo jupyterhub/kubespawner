@@ -2891,3 +2891,29 @@ async def test_start_reflector_replaces_reflector_that_stopped_watching(
     assert replacement is not gave_up
     assert gave_up.stopped
     assert isolated_reflectors[spawner._get_reflector_key("pods")] is replacement
+
+
+@pytest.mark.parametrize(
+    "template, expected",
+    [
+        ("{user_server}", True),
+        ("foo-{escaped_username}", True),
+        ("outside-template-user", False),
+        ("{safe_servername}", False),
+    ],
+)
+def test_user_sensitive(template, expected):
+    assert kubespawner.spawner._user_sensitive_template(template) == expected
+
+
+@pytest.mark.parametrize(
+    "template, expected",
+    [
+        ("{user_server}", True),
+        ("foo-{escaped_username}", False),
+        ("outside-template-server", False),
+        ("{safe_servername}", True),
+    ],
+)
+def test_server_sensitive(template, expected):
+    assert kubespawner.spawner._server_sensitive_template(template) == expected

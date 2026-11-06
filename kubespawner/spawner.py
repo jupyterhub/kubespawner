@@ -18,6 +18,7 @@ import uuid
 import warnings
 from datetime import datetime, timezone
 from functools import partial
+from string import Formatter
 from typing import Optional, Tuple, Type
 from urllib.parse import urlparse
 
@@ -63,6 +64,27 @@ from .objects import (
 from .reflector import ResourceReflector
 from .slugs import escape_slug, is_valid_label, multi_slug, safe_slug
 from .utils import recursive_format, recursive_update, sorted_dict_values
+
+
+def _template_fields(template):
+    """Return set of field names from a template string"""
+    return {
+        field_name
+        for (_lit, field_name, _fmt, _conv) in Formatter().parse(template)
+        if field_name
+    }
+
+
+def _user_sensitive_template(template):
+    """Return whether a template string references the user name"""
+    field_names = _template_fields(template)
+    return any("user" in name for name in field_names)
+
+
+def _server_sensitive_template(template):
+    """Return whether a template string references the server name"""
+    field_names = _template_fields(template)
+    return any("server" in name for name in field_names)
 
 
 class PodReflector(ResourceReflector):
@@ -4081,7 +4103,7 @@ class KubeSpawner(Spawner):
             self.log.info(f"Not deleting pvc for {log_name}: {self.pvc_name}")
             return
 
-        if self.name and '{user_server}' not in self.pvc_name_template:
+        if self.name and not _server_sensitive_template(self.pvc_template):
             # named server has the same PVC as the default server
             # don't delete the default server's PVC!
             self.log.info(
@@ -4089,11 +4111,7 @@ class KubeSpawner(Spawner):
             )
             return
 
-        if (
-            not self.name
-            and '{user_server}' not in self.pvc_name_template
-            and '{username}' not in self.pvc_name_template
-        ):
+        if not self.name and not _user_sensitive_template(self.pvc_name_template):
             # PVC is shared by multiple users
             self.log.info(
                 f"Not deleting shared pvc for user {log_name}: {self.pvc_name}"
