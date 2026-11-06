@@ -74,6 +74,7 @@ probably the nicest option. For AWS/Azure,
 spawner
 objects
 reflector
+events
 ssl
 utils
 ```

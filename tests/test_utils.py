@@ -18,8 +18,12 @@ class MockLogger:
 
     def __init__(self):
         self.info_logs = []
+        self.exception_logs = []
 
     def info(self, message):
+        self.info_logs.append(message)
+
+    def exception(self, message):
         self.info_logs.append(message)
 
 
@@ -56,11 +60,11 @@ def test_update_k8s_model():
     manually_updated_target = V1Container(
         name="mock_name",
         image="mock_image",
-        command=['iptables'],
+        command=["iptables"],
         security_context=V1SecurityContext(
             privileged=True,
             run_as_user=0,
-            capabilities=V1Capabilities(add=['NET_ADMIN']),
+            capabilities=V1Capabilities(add=["NET_ADMIN"]),
         ),
     )
     target = copy.deepcopy(manually_updated_target)
@@ -100,17 +104,17 @@ def test_get_k8s_model():
     # verify get_k8s_model for when passing dict objects
     v1_lifecycle_from_dict = get_k8s_model(
         V1Lifecycle,
-        {'preStop': {'exec': {'command': ['/bin/sh', 'test']}}},
+        {"preStop": {"exec": {"command": ["/bin/sh", "test"]}}},
     )
 
     assert isinstance(v1_lifecycle_from_dict, V1Lifecycle)
     lifecycle_from_dict = v1_lifecycle_from_dict.to_dict()
     # K8S 1.33 added stop signals
     # https://kubernetes.io/blog/2025/05/14/kubernetes-v1-33-updates-to-container-lifecycle/#container-stop-signals
-    assert lifecycle_from_dict.pop('stop_signal', None) is None
+    assert lifecycle_from_dict.pop("stop_signal", None) is None
     assert lifecycle_from_dict == {
-        'post_start': None,
-        'pre_stop': {'exec': {'command': ['/bin/sh', 'test']}},
+        "post_start": None,
+        "pre_stop": {"exec": {"command": ["/bin/sh", "test"]}},
     }
 
     # verify get_k8s_model for when passing model objects
@@ -118,8 +122,8 @@ def test_get_k8s_model():
 
     assert isinstance(v1_lifecycle_from_model_object, V1Lifecycle)
     lifecycle_from_model_object = v1_lifecycle_from_model_object.to_dict()
-    assert lifecycle_from_model_object.pop('stop_signal', None) is None
+    assert lifecycle_from_model_object.pop("stop_signal", None) is None
     assert lifecycle_from_model_object == {
-        'post_start': None,
-        'pre_stop': {'exec': {'command': ['/bin/sh', 'test']}},
+        "post_start": None,
+        "pre_stop": {"exec": {"command": ["/bin/sh", "test"]}},
     }
