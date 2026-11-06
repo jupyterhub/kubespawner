@@ -24,6 +24,7 @@ from traitlets.config import Config
 
 import kubespawner
 from kubespawner import KubeSpawner
+from kubespawner.events import BasicEventFormatter
 from kubespawner.objects import make_owner_reference, make_service
 from kubespawner.slugs import safe_slug
 
@@ -639,6 +640,8 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
         hub=hub,
         user=MockUser(name="progress"),
         config=config,
+        # Ensure we only test the mechanism, not the rules
+        event_formatter_class=BasicEventFormatter,
     )
 
     # empty spawner isn't running
@@ -650,16 +653,65 @@ async def test_spawn_progress(kube_ns, kube_client, config, hub_pod, hub):
     # check progress events
     messages = []
     async for progress in spawner.progress():
-        assert 'progress' in progress
-        assert isinstance(progress['progress'], int)
-        assert 'message' in progress
-        assert isinstance(progress['message'], str)
-        messages.append(progress['message'])
+        assert "progress" in progress
+        assert isinstance(progress["progress"], int)
+        assert "message" in progress
+        assert isinstance(progress["message"], str)
+        messages.append(progress["message"])
 
         # ensure we can serialize whatever we return
         with open(os.devnull, "w") as devnull:
             json.dump(progress, devnull)
-    assert 'Started container' in '\n'.join(messages)
+    corpus = "\n".join(messages)
+
+    assert "Started container" in corpus or "Container started" in corpus
+
+    await start_future
+    # stop the pod
+    await spawner.stop()
+
+
+async def test_spawn_progress_decorator(kube_ns, kube_client, config, hub_pod, hub):
+    def decorate_progress_message(spawner, event, message):
+        return {
+            "message": f"custom-message-{message}",
+            "html_message": f"<span>{message}</span>",
+        }
+
+    spawner = KubeSpawner(
+        hub=hub,
+        user=MockUser(name="progress-hook"),
+        config=config,
+        decorate_progress_message=decorate_progress_message,
+        event_formatter_class=BasicEventFormatter,
+    )
+
+    # empty spawner isn't running
+    status = await spawner.poll()
+    assert isinstance(status, int)
+
+    # start the spawner
+    start_future = spawner.start()
+    # check progress events
+    messages = []
+    async for progress in spawner.progress():
+        assert "progress" in progress
+        assert isinstance(progress["progress"], int)
+        assert "message" in progress
+        assert isinstance(progress["message"], str)
+        assert "html_message" in progress
+        assert isinstance(progress["html_message"], str)
+        messages.append(progress["message"])
+
+        # ensure we can serialize whatever we return
+        with open(os.devnull, "w") as devnull:
+            json.dump(progress, devnull)
+        # Look for our custom prefix
+        assert progress["message"].startswith("custom-message-")
+        assert progress["html_message"].startswith("<span>")
+    corpus = "\n".join(messages)
+    # K8s changed the format of this message: https://github.com/kubernetes/kubernetes/pull/134043
+    assert "Started container" in corpus or "Container started" in corpus
 
     await start_future
     # stop the pod
@@ -1019,8 +1071,8 @@ async def test_init_containers_as_dict():
     assert init_containers[1].image == 'mock_image_2'
 
 
-_test_profiles = [
-    {
+_test_profiles_dict = {
+    'training-python': {
         'display_name': 'Training Env - Python',
         'slug': 'training-python',
         'default': True,
@@ -1031,7 +1083,7 @@ _test_profiles = [
             'environment': {'override': 'override-value'},
         },
     },
-    {
+    'training-datascience': {
         'display_name': 'Training Env - Datascience',
         'slug': 'training-datascience',
         'kubespawner_override': {
@@ -1040,7 +1092,7 @@ _test_profiles = [
             'mem_limit': 8 * 1024 * 1024 * 1024,
         },
     },
-    {
+    'training-r': {
         'display_name': 'Training Env - R',
         'slug': 'training-r',
         'kubespawner_override': {
@@ -1050,7 +1102,7 @@ _test_profiles = [
             'environment': {'override': 'override-value', "to-remove": None},
         },
     },
-    {
+    'test-choices': {
         'display_name': 'Test choices',
         'slug': 'test-choices',
         'profile_options': {
@@ -1079,7 +1131,7 @@ _test_profiles = [
             },
         },
     },
-    {
+    'no-regex': {
         'display_name': 'Test choices no regex',
         'slug': 'no-regex',
         'profile_options': {
@@ -1106,62 +1158,82 @@ _test_profiles = [
             },
         },
     },
-]
+}
 
 
-async def test_user_options_set_from_form():
+def get_idx_based_on_profile_list_type(prf, idx):
+    if type(prf) == dict:
+        return _test_profiles_list[idx]['slug']
+    return idx
+
+
+_test_profiles_list = list(_test_profiles_dict.values())
+
+
+@pytest.mark.parametrize("test_profiles", [_test_profiles_list, _test_profiles_dict])
+async def test_user_options_set_from_form(test_profiles):
     spawner = KubeSpawner(_mock=True)
-    spawner.profile_list = _test_profiles
+    spawner.profile_list = test_profiles
     # render the form
     await spawner.get_options_form()
+
+    idx = get_idx_based_on_profile_list_type(test_profiles, 1)
+
     spawner.user_options = spawner.options_from_form(
-        {'profile': [_test_profiles[1]['slug']]}
+        {'profile': [test_profiles[idx]['slug']]}
     )
     assert spawner.user_options == {
-        'profile': _test_profiles[1]['slug'],
+        'profile': test_profiles[idx]['slug'],
     }
     # nothing should be loaded yet
     assert spawner.cpu_limit is None
     await spawner.load_user_options()
-    for key, value in _test_profiles[1]['kubespawner_override'].items():
+    for key, value in test_profiles[idx]['kubespawner_override'].items():
         assert getattr(spawner, key) == value
 
 
-async def test_user_options_set_from_form_choices():
+@pytest.mark.parametrize("test_profiles", [_test_profiles_list, _test_profiles_dict])
+async def test_user_options_set_from_form_choices(test_profiles):
     """
     Test that the `choices` field in profile_options is processed correctly -
     i.e. when a user sends a profile option choice, it is correctly processed
     in user_options and the value on the spawner correctly over-ridden by the user choice.
     """
     spawner = KubeSpawner(_mock=True)
-    spawner.profile_list = _test_profiles
+    spawner.profile_list = test_profiles
     await spawner.get_options_form()
+
+    idx = get_idx_based_on_profile_list_type(test_profiles, 3)
     spawner.user_options = spawner.options_from_form(
         {
-            'profile': [_test_profiles[3]['slug']],
+            'profile': [test_profiles[idx]['slug']],
             'profile-option-test-choices--image': ['pytorch'],
         }
     )
     assert spawner.user_options == {
         'image': 'pytorch',
-        'profile': _test_profiles[3]['slug'],
+        'profile': test_profiles[idx]['slug'],
     }
     assert spawner.cpu_limit is None
     await spawner.load_user_options()
     assert getattr(spawner, 'image') == 'pangeo/pytorch-notebook:master'
 
 
-async def test_user_options_set_from_form_unlisted_choice():
+@pytest.mark.parametrize("test_profiles", [_test_profiles_list, _test_profiles_dict])
+async def test_user_options_set_from_form_unlisted_choice(test_profiles):
     """
     Test that when user sends an arbitrary text input in the `unlisted_choice` field,
     it is process correctly and the correct attribute over-ridden on the spawner.
     """
     spawner = KubeSpawner(_mock=True)
-    spawner.profile_list = _test_profiles
+    spawner.profile_list = test_profiles
     await spawner.get_options_form()
+
+    idx = get_idx_based_on_profile_list_type(test_profiles, 3)
+
     spawner.user_options = spawner.options_from_form(
         {
-            'profile': [_test_profiles[3]['slug']],
+            'profile': [test_profiles[idx]['slug']],
             'profile-option-test-choices--image--unlisted-choice': [
                 'pangeo/test:latest'
             ],
@@ -1169,7 +1241,7 @@ async def test_user_options_set_from_form_unlisted_choice():
     )
     assert spawner.user_options == {
         'image--unlisted-choice': 'pangeo/test:latest',
-        'profile': _test_profiles[3]['slug'],
+        'profile': test_profiles[idx]['slug'],
     }
     assert spawner.cpu_limit is None
     await spawner.load_user_options()
@@ -1178,7 +1250,7 @@ async def test_user_options_set_from_form_unlisted_choice():
     # Test choosing an unlisted choice a second time
     spawner.user_options = spawner.options_from_form(
         {
-            'profile': [_test_profiles[3]['slug']],
+            'profile': [test_profiles[idx]['slug']],
             'profile-option-test-choices--image--unlisted-choice': [
                 'pangeo/test:1.2.3'
             ],
@@ -1186,24 +1258,28 @@ async def test_user_options_set_from_form_unlisted_choice():
     )
     assert spawner.user_options == {
         'image--unlisted-choice': 'pangeo/test:1.2.3',
-        'profile': _test_profiles[3]['slug'],
+        'profile': test_profiles[idx]['slug'],
     }
     assert spawner.cpu_limit is None
     await spawner.load_user_options()
     assert getattr(spawner, 'image') == 'pangeo/test:1.2.3'
 
 
-async def test_user_options_set_from_form_invalid_regex():
+@pytest.mark.parametrize("test_profiles", [_test_profiles_list, _test_profiles_dict])
+async def test_user_options_set_from_form_invalid_regex(test_profiles):
     """
     Test that if the user input for the `unlisted-choice` field does not match the regex
     specified in the `validation_match_regex` option for the `unlisted_choice`, a ValueError is raised.
     """
     spawner = KubeSpawner(_mock=True)
-    spawner.profile_list = _test_profiles
+    spawner.profile_list = test_profiles
     await spawner.get_options_form()
+
+    idx = get_idx_based_on_profile_list_type(test_profiles, 3)
+
     spawner.user_options = spawner.options_from_form(
         {
-            'profile': [_test_profiles[3]['slug']],
+            'profile': [test_profiles[idx]['slug']],
             'profile-option-test-choices--image--unlisted-choice': [
                 'invalid/foo:latest'
             ],
@@ -1211,7 +1287,7 @@ async def test_user_options_set_from_form_invalid_regex():
     )
     assert spawner.user_options == {
         'image--unlisted-choice': 'invalid/foo:latest',
-        'profile': _test_profiles[3]['slug'],
+        'profile': test_profiles[idx]['slug'],
     }
     assert spawner.cpu_limit is None
 
@@ -1219,44 +1295,51 @@ async def test_user_options_set_from_form_invalid_regex():
         await spawner.load_user_options()
 
 
-async def test_user_options_set_from_form_no_regex():
+@pytest.mark.parametrize("test_profiles", [_test_profiles_list, _test_profiles_dict])
+async def test_user_options_set_from_form_no_regex(test_profiles):
     """
     Test that if the `unlisted_choice` object in the profile_options does not contain
     a `validation_regex` key, no validation is done and the input is correctly processed - i.e. validation_regex is optional.
     """
     spawner = KubeSpawner(_mock=True)
-    spawner.profile_list = _test_profiles
+    spawner.profile_list = test_profiles
     await spawner.get_options_form()
-    # print(_test_profiles[4])
+
+    idx = get_idx_based_on_profile_list_type(test_profiles, 4)
+
     spawner.user_options = spawner.options_from_form(
         {
-            'profile': [_test_profiles[4]['slug']],
+            'profile': [test_profiles[idx]['slug']],
             'profile-option-no-regex--image--unlisted-choice': ['invalid/foo:latest'],
         }
     )
     assert spawner.user_options == {
         'image--unlisted-choice': 'invalid/foo:latest',
-        'profile': _test_profiles[4]['slug'],
+        'profile': test_profiles[idx]['slug'],
     }
     assert spawner.cpu_limit is None
     await spawner.load_user_options()
     assert getattr(spawner, 'image') == 'invalid/foo:latest'
 
 
-async def test_kubespawner_override():
+@pytest.mark.parametrize("test_profiles", [_test_profiles_list, _test_profiles_dict])
+async def test_kubespawner_override(test_profiles):
     spawner = KubeSpawner(_mock=True)
-    spawner.profile_list = _test_profiles
+    spawner.profile_list = test_profiles
     # Set a base environment
     # to-remove will be removed because we set its value to None
     # in the override
     spawner.environment = {"existing": "existing-value", "to-remove": "does-it-matter"}
     # render the form, select first option
     await spawner.get_options_form()
+
+    idx = get_idx_based_on_profile_list_type(test_profiles, 2)
+
     spawner.user_options = spawner.options_from_form(
-        {'profile': [_test_profiles[2]['slug']]}
+        {'profile': [test_profiles[idx]['slug']]}
     )
     assert spawner.user_options == {
-        'profile': _test_profiles[2]['slug'],
+        'profile': test_profiles[idx]['slug'],
     }
     await spawner.load_user_options()
     assert spawner.environment == {
@@ -1265,27 +1348,33 @@ async def test_kubespawner_override():
     }
 
 
-async def test_user_options_api():
+@pytest.mark.parametrize("test_profiles", [_test_profiles_list, _test_profiles_dict])
+async def test_user_options_api(test_profiles):
     spawner = KubeSpawner(_mock=True)
-    spawner.profile_list = _test_profiles
+    spawner.profile_list = test_profiles
+
+    idx = get_idx_based_on_profile_list_type(test_profiles, 1)
     # set user_options directly (e.g. via api)
-    spawner.user_options = {'profile': _test_profiles[1]['slug']}
+    spawner.user_options = {'profile': test_profiles[idx]['slug']}
 
     # nothing should be loaded yet
     assert spawner.cpu_limit is None
     await spawner.load_user_options()
-    for key, value in _test_profiles[1]['kubespawner_override'].items():
+    for key, value in test_profiles[idx]['kubespawner_override'].items():
         assert getattr(spawner, key) == value
 
 
-async def test_default_profile():
+@pytest.mark.parametrize("test_profiles", [_test_profiles_list, _test_profiles_dict])
+async def test_default_profile(test_profiles):
     spawner = KubeSpawner(_mock=True)
-    spawner.profile_list = _test_profiles
+    spawner.profile_list = test_profiles
     spawner.user_options = {}
+    idx = get_idx_based_on_profile_list_type(test_profiles, 0)
+
     # nothing should be loaded yet
     assert spawner.cpu_limit is None
     await spawner.load_user_options()
-    for key, value in _test_profiles[0]['kubespawner_override'].items():
+    for key, value in test_profiles[idx]['kubespawner_override'].items():
         assert getattr(spawner, key) == value
 
 
@@ -1800,7 +1889,7 @@ async def test_variable_expansion(ssl_app):
         "pod": await spawner.get_pod_manifest(),
         "pvc": spawner.get_pvc_manifest(),
         "secret": spawner.get_secret_manifest("dummy-owner-ref"),
-        "service": spawner.get_service_manifest("dummy-owner-ref"),
+        "service": spawner.get_service_manifest("dummy-owner-ref", 8888),
     }
 
     for resource_kind, manifest in manifests.items():
@@ -1853,6 +1942,18 @@ async def test_url_changed(kube_ns, kube_client, config, hub_pod, hub):
     # run it again, to make sure we aren't incorrectly detecting and committing
     # changes on every poll
     await spawner.poll()
+    assert spawner.db.commit.call_count == previous_commit_count
+
+    # changing spawner.port (e.g. updated config while pod is running)
+    # should _not_ indicate changed url of running pod
+    spawner.port = 1234
+    await spawner.poll()
+    ref_key = f"{spawner.namespace}/{spawner.pod_name}"
+    pod = spawner.pod_reflector.pods.get(ref_key, None)
+    assert spawner._get_pod_port(pod) == 8888
+    url = spawner._get_pod_url(pod)
+    assert url == pod_host
+    # didn't commit to the db
     assert spawner.db.commit.call_count == previous_commit_count
 
     await spawner.stop()
@@ -1962,7 +2063,22 @@ async def test_ipv6_addr():
     spawner = KubeSpawner(
         _mock=True,
     )
-    url = spawner._get_pod_url({"status": {"podIP": "cafe:f00d::"}})
+    url = spawner._get_pod_url(
+        {
+            "metadata": {
+                "name": "jupyter-test",
+            },
+            "spec": {
+                "containers": [
+                    {
+                        "name": "notebook",
+                        "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    }
+                ]
+            },
+            "status": {"podIP": "cafe:f00d::"},
+        }
+    )
     assert "[" in url and "]" in url
 
 
@@ -2683,3 +2799,95 @@ async def test_pod_anti_affinity_required():
         spec[1].topology_key
         == pod_anti_affinity_required_dict["02-group-beta"]["topologyKey"]
     )
+
+
+class MockReflector:
+    """Stand-in for ResourceReflector that needs no cluster.
+
+    Its watch task runs until cancelled, like a healthy reflector.
+    """
+
+    def __init__(self, **kwargs):
+        self.first_load_future = asyncio.Future()
+        self.watch_task = None
+        self.stopped = False
+
+    async def start(self):
+        self.first_load_future.set_result(None)
+        self.watch_task = asyncio.create_task(self._watch())
+
+    async def _watch(self):
+        await asyncio.Event().wait()
+
+    async def stop(self):
+        self.stopped = True
+        if self.watch_task and not self.watch_task.done():
+            self.watch_task.cancel()
+
+
+class MockGivingUpReflector(MockReflector):
+    """A reflector whose watch task exits on its own.
+
+    This is what ResourceReflector._watch_and_update does once its backoff is
+    exhausted: it logs "Watching resources never recovered, giving up" and
+    returns, leaving `resources` frozen at the last state it saw.
+    """
+
+    async def _watch(self):
+        return
+
+
+@pytest.fixture
+def isolated_reflectors():
+    """Keep the class-level reflector registry from leaking between tests"""
+    saved = KubeSpawner.reflectors
+    KubeSpawner.reflectors = {}
+    yield KubeSpawner.reflectors
+    for reflector in KubeSpawner.reflectors.values():
+        if reflector.watch_task and not reflector.watch_task.done():
+            reflector.watch_task.cancel()
+    KubeSpawner.reflectors = saved
+
+
+async def test_start_reflector_reuses_running_reflector(isolated_reflectors):
+    spawner = KubeSpawner(_mock=True)
+
+    first = await spawner._start_reflector("pods", MockReflector)
+    second = await spawner._start_reflector("pods", MockReflector)
+
+    assert second is first
+    assert not first.stopped
+
+
+async def test_start_reflector_reuses_reflector_that_is_still_starting(
+    isolated_reflectors,
+):
+    """watch_task is None until start() creates it, which is not a failure"""
+    spawner = KubeSpawner(_mock=True)
+    starting = MockReflector()
+    starting.first_load_future.set_result(None)
+    assert starting.watch_task is None
+    isolated_reflectors[spawner._get_reflector_key("pods")] = starting
+
+    assert await spawner._start_reflector("pods", MockReflector) is starting
+
+
+async def test_start_reflector_replaces_reflector_that_stopped_watching(
+    isolated_reflectors,
+):
+    """A reflector that gave up must not be handed out again
+
+    Its cache can no longer be updated, so reusing it means serving stale
+    state indefinitely with no path back to a working reflector.
+    """
+    spawner = KubeSpawner(_mock=True)
+
+    gave_up = await spawner._start_reflector("pods", MockGivingUpReflector)
+    await asyncio.sleep(0)
+    assert gave_up.watch_task.done()
+
+    replacement = await spawner._start_reflector("pods", MockGivingUpReflector)
+
+    assert replacement is not gave_up
+    assert gave_up.stopped
+    assert isolated_reflectors[spawner._get_reflector_key("pods")] is replacement

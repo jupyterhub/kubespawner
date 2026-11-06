@@ -27,3 +27,9 @@
   margin-right: 8px;
   min-width: 96px;
 }
+
+/* Make .hidden win over the .option flex rule */
+#kubespawner-profiles-list .profile .option.hidden,
+#kubespawner-profiles-list .js-other-input-container.hidden {
+  display: none;
+}

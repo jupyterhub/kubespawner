@@ -12,7 +12,11 @@ import os
 import re
 import string
 import sys
+import textwrap
+import time
+import uuid
 import warnings
+from datetime import datetime, timezone
 from functools import partial
 from typing import Optional, Tuple, Type
 from urllib.parse import urlparse
@@ -29,6 +33,7 @@ from traitlets import (
     Bool,
     Dict,
     Enum,
+    Instance,
     Integer,
     List,
     Unicode,
@@ -37,9 +42,16 @@ from traitlets import (
     observe,
     validate,
 )
+from traitlets import Type as TypeTrait
 
 from . import __version__
 from .clients import load_config, shared_client
+from .events import (
+    EventFormatter,
+    RuleEventFormatter,
+    decorate_html_message,
+    decorate_plain_message,
+)
 from .objects import (
     make_namespace,
     make_owner_reference,
@@ -50,7 +62,7 @@ from .objects import (
 )
 from .reflector import ResourceReflector
 from .slugs import escape_slug, is_valid_label, multi_slug, safe_slug
-from .utils import recursive_format, recursive_update
+from .utils import recursive_format, recursive_update, sorted_dict_values
 
 
 class PodReflector(ResourceReflector):
@@ -306,6 +318,22 @@ class KubeSpawner(Spawner):
 
         Disable if these events are not desirable
         or to save some performance cost.
+        """,
+    )
+
+    custom_event_queue = List(
+        [],
+        config=False,
+        help="""
+        Queue of custom events to be reported to the user on the spawn page.
+        """,
+    )
+
+    _sent_custom_events = List(
+        [],
+        config=False,
+        help="""
+        List of (index, event) tuples of custom events that have been sent to the user.
         """,
     )
 
@@ -694,9 +722,7 @@ class KubeSpawner(Spawner):
             """
             KubeSpawner.{0} is deprecated with JupyterHub >= 0.8.
             Use JupyterHub.{0}
-            """.format(
-                change.name
-            ),
+            """.format(change.name),
             DeprecationWarning,
         )
         setattr(self.hub, change.name.split('_', 1)[1], change.new)
@@ -1734,24 +1760,30 @@ class KubeSpawner(Spawner):
     )
 
     profile_list = Union(
-        trait_types=[List(trait=Dict()), Callable()],
+        trait_types=[List(trait=Dict()), Callable(), Dict()],
         config=True,
         help="""
-        List of profiles to offer for selection by the user.
+        Callable, List or Dict of profiles to offer for selection by the user.
 
-        Signature is: `List(Dict())`, where each item is a dictionary that has two keys:
+        - If a list, then each item is a dictionary.
+        - If it's a dictionary, then its keys are "slugs" - machine
+        readable strings that identify a profile. The values are dictionaries.
+
+        In both cases, the inner, dictionaries representing the profiles,
+        have the following keys:
 
         - `display_name`: the human readable display name (should be HTML safe)
         - `default`: (Optional Bool) True if this is the default selected option
         - `description`: Optional description of this profile displayed to the user.
         - `slug`: (Optional) the machine readable string to identify the
-          profile (missing slugs are generated from display_name)
+          profile (missing slugs are generated from display_name, and might not match the
+          outer "slug" key, in case profile_list is a dict. This is ok.)
         - `kubespawner_override`: a dictionary with overrides to apply to the KubeSpawner
           settings. Each value can be either the final value to change or a callable that
           take the `KubeSpawner` instance as parameter and return the final value. This can
           be further overridden by 'profile_options'
-          If the traitlet being overriden is a *dictionary*, the dictionary
-          will be *recursively updated*, rather than overriden. If you want to
+          If the traitlet being overridden is a *dictionary*, the dictionary
+          will be *recursively updated*, rather than overridden. If you want to
           remove a key, set its value to `None`
         - `profile_options`: A dictionary of sub-options that allow users to further customize the
           selected profile. By default, these are rendered as a dropdown with the label
@@ -1781,7 +1813,7 @@ class KubeSpawner(Spawner):
               .. code-block:: python
 
                  {
-                     "image_spec": "jupyter/datascience-notebook:{value}",
+                     "image_spec": "quay.io/jupyter/datascience-notebook:{value}",
                      "default_url": "/lab",
                      "extra_labels: {
                         "user-specified-image-tag": "{value}",
@@ -1799,8 +1831,8 @@ class KubeSpawner(Spawner):
               and value can be either the final value or a callable that returns the final
               value when called with the spawner instance as the only parameter. The callable
               may be async.
-              If the traitlet being overriden is a *dictionary*, the dictionary
-              will be *recursively updated*, rather than overriden. If you want to
+              If the traitlet being overridden is a *dictionary*, the dictionary
+              will be *recursively updated*, rather than overridden. If you want to
               remove a key, set its value to `None`
 
         kubespawner setting overrides work in the following manner, with items further in the
@@ -1812,7 +1844,7 @@ class KubeSpawner(Spawner):
            profile, applied linearly based on the ordering of the option in the profile
            definition configuration
 
-        Example::
+        List example::
 
             c.KubeSpawner.profile_list = [
                 {
@@ -1825,16 +1857,16 @@ class KubeSpawner(Spawner):
                             'display_name': 'Image',
                             'choices': {
                                 'base': {
-                                    'display_name': 'jupyter/base-notebook:latest',
+                                    'display_name': 'quay.io/jupyter/base-notebook:latest',
                                     'kubespawner_override': {
-                                        'image': 'jupyter/base-notebook:latest'
+                                        'image': 'quay.io/jupyter/base-notebook:latest'
                                     },
                                 },
                                 'minimal': {
-                                    'display_name': 'jupyter/minimal-notebook:latest',
+                                    'display_name': 'quay.io/jupyter/minimal-notebook:latest',
                                     'default': True,
                                     'kubespawner_override': {
-                                        'image': 'jupyter/minimal-notebook:latest'
+                                        'image': 'quay.io/jupyter/minimal-notebook:latest'
                                     },
                                 },
                             },
@@ -1842,8 +1874,8 @@ class KubeSpawner(Spawner):
                                 'enabled': True,
                                 'display_name': 'Other image',
                                 'display_name_in_choices': 'Enter image manually',
-                                'validation_regex': '^jupyter/.+:.+$',
-                                'validation_message': 'Must be an image matching ^jupyter/<name>:<tag>$',
+                                'validation_regex': '^quay\\.io/jupyter/.+:.+$',
+                                'validation_message': 'Must be an image matching ^quay\\.io/jupyter/<name>:<tag>$',
                                 'kubespawner_override': {'image': '{value}'},
                             },
                         },
@@ -1860,6 +1892,48 @@ class KubeSpawner(Spawner):
                     },
                 },
             ]
+        Dict example::
+
+            c.KubeSpawner.profile_list = {
+                "demo-1": {
+                    'display_name': 'Demo - profile_list entry 1',
+                    'description': 'Demo description for profile_list entry 1, and it should look good even though it is a bit lengthy.',
+                    'slug': 'demo-1',
+                    'default': True,
+                    'profile_options': {
+                        'image': {
+                            'display_name': 'Image',
+                            'choices': {
+                                'base': {
+                                    'display_name': 'quay.io/jupyter/base-notebook:latest',
+                                    'kubespawner_override': {
+                                        'image': 'quay.io/jupyter/base-notebook:latest'
+                                    },
+                                },
+                            },
+                            'unlisted_choice': {
+                                'enabled': True,
+                                'display_name': 'Other image',
+                                'display_name_in_choices': 'Enter image manually',
+                                'validation_regex': '^quay\\.io/jupyter/.+:.+$',
+                                'validation_message': 'Must be an image matching ^quay\\.io/jupyter/<name>:<tag>$',
+                                'kubespawner_override': {'image': '{value}'},
+                            },
+                        },
+                    },
+                    'kubespawner_override': {
+                        'default_url': '/lab',
+                    },
+                },
+                demo-2: {
+                    'display_name': 'Demo - profile_list entry 2',
+                    'slug': 'demo-2',
+                    'kubespawner_override': {
+                        'extra_resource_guarantees': {"nvidia.com/gpu": "1"},
+                    },
+                },
+            }
+
 
         Instead of a list of dictionaries, this could also be a callable that takes as one
         parameter the current spawner instance and returns a list of dictionaries. The
@@ -1895,6 +1969,99 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    slow_spawn_message_threshold = Integer(
+        60,
+        config=True,
+        help="""
+        Time in seconds to wait before injecting a 'please be patient' message
+        to display to the user. If this value is 0, no message will be shown.
+        """,
+    )
+
+    slow_spawn_message_frequency = Integer(
+        15,
+        config=True,
+        help="""
+        Sets a delay of N seconds between updates to the message buffer, so
+        that we don't spam the user with too many messages.
+        """,
+    )
+
+    slow_spawn_message = Unicode(
+        "Server launch is taking longer than expected. Please be patient! Current time spent waiting: {seconds} seconds. Timeout is currently {timeout} seconds.",
+        config=True,
+        help="""
+        The injected timing message to display to the user. The variable `{seconds}`
+        will be replaced by the number of seconds the spawn has currently taken.
+        The variable `{timeout}` will be replaced by the default `start_timeout` setting.
+        """,
+    )
+
+    def _decorate_progress_message(spawner, event, message):
+        return {
+            "message": decorate_plain_message(message, event),
+            "html_message": decorate_html_message(message, event),
+        }
+
+    decorate_progress_message = Callable(
+        _decorate_progress_message,
+        allow_none=True,
+        config=True,
+        help="""
+        Callable to decorate a rendered event message from a reflected Event object.
+
+        Expects a callable that returns a dictionary containing a required key `message`,
+        and an optional key `html_message`, each with callable values that render plain-text and 
+        rich-representation of the formatted event, respectively. The callable takes three parameters:
+
+           1. The spawner object that is doing the spawning
+           2. The event object to be formatted
+           3. The rendered event message string
+
+        This can be a coroutine if necessary. When set to None, the default decorator is used.
+        
+        Example
+        -------
+        .. code-block:: python
+
+           def my_plain_decorator(message, event):
+               event_type = event["type"]
+               if event_type == "Normal":
+                   return f"INFO: {message}"
+               elif event_type == "Warning":
+                   return f"WARNING: {message}"
+               else:
+                   return f"{message}"
+
+            def my_html_decorator(message, event):
+                return f"{event['lastTimestamp']}<span class='badge bg-info-subtle text-info-emphasis rounded-pill'>Info</span>{message}"
+
+            def my_decorator(spawner, event, message):
+                return {
+                    "message": my_plain_decorator(message, event),
+                    "html_message": my_html_decorator(message, event)
+                }
+           
+           c.KubeSpawner.decorate_progress_message = my_decorator
+        """,
+    )
+
+    event_formatter_class = TypeTrait(
+        klass=EventFormatter,
+        default_value=RuleEventFormatter,
+        config=True,
+        help="""The class to use for formatting Kubernetes Event objects.
+
+        Should be a subclass of :class:`jupyterhub.event.EventFormatter`.
+        """,
+    )
+
+    event_formatter = Instance(EventFormatter)
+
+    @default("event_formatter")
+    def _default_event_formatter(self):
+        return self.event_formatter_class(parent=self)
+
     # deprecate redundant and inconsistent singleuser_ and user_ prefixes:
     _deprecated_traits_09 = [
         "singleuser_working_dir",
@@ -1909,7 +2076,8 @@ class KubeSpawner(Spawner):
         "singleuser_fs_gid",
         "singleuser_supplemental_gids",
         "singleuser_privileged",
-        "singleuser_allow_privilege_escalation" "singleuser_lifecycle_hooks",
+        "singleuser_allow_privilege_escalation",
+        "singleuser_lifecycle_hooks",
         "singleuser_extra_pod_config",
         "singleuser_init_containers",
         "singleuser_extra_container_config",
@@ -2130,15 +2298,6 @@ class KubeSpawner(Spawner):
         else:
             return src
 
-    def _sorted_dict_values(self, src):
-        """
-        Return a list of dict values sorted by keys if src is a dict, otherwise return src as-is.
-        """
-        if isinstance(src, dict):
-            return [src[key] for key in sorted(src.keys())]
-        else:
-            return src
-
     def _build_common_labels(self, extra_labels):
         # Default set of labels, picked up from
         # https://github.com/helm/helm-www/blob/HEAD/content/en/docs/chart_best_practices/labels.md
@@ -2201,6 +2360,19 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    def _get_pod_port(self, pod):
+        """
+        Return the port of the server in the pod.
+
+        That port must be called 'notebook-port'.
+        """
+        for container in pod["spec"]["containers"]:
+            for port in container["ports"]:
+                if port.get("name") == "notebook-port":
+                    return port["containerPort"]
+        pod_name = pod["metadata"]["name"]
+        raise KeyError(f"No port 'notebook-port' in pod {pod_name}")
+
     def _get_pod_url(self, pod):
         """Return the pod url
 
@@ -2231,10 +2403,12 @@ class KubeSpawner(Spawner):
                 ]
             )
 
+        port = self._get_pod_port(pod)
+
         return "{}://{}:{}".format(
             proto,
             hostname,
-            self.port,
+            port,
         )
 
     async def get_pod_manifest(self):
@@ -2303,10 +2477,8 @@ class KubeSpawner(Spawner):
             container_security_context=csc,
             pod_security_context=psc,
             env=self.get_env(),  # Expansion is handled by get_env
-            volumes=self._expand_all(self._sorted_dict_values(self.volumes)),
-            volume_mounts=self._expand_all(
-                self._sorted_dict_values(self.volume_mounts)
-            ),
+            volumes=self._expand_all(sorted_dict_values(self.volumes)),
+            volume_mounts=self._expand_all(sorted_dict_values(self.volume_mounts)),
             working_dir=self.working_dir,
             labels=labels,
             annotations=annotations,
@@ -2317,32 +2489,24 @@ class KubeSpawner(Spawner):
             extra_resource_limits=self.extra_resource_limits,
             extra_resource_guarantees=self.extra_resource_guarantees,
             lifecycle_hooks=self.lifecycle_hooks,
-            init_containers=self._expand_all(
-                self._sorted_dict_values(self.init_containers)
-            ),
+            init_containers=self._expand_all(sorted_dict_values(self.init_containers)),
             service_account=self._expand_all(self.service_account),
             automount_service_account_token=self.automount_service_account_token,
             extra_container_config=self.extra_container_config,
             extra_pod_config=self._expand_all(self.extra_pod_config),
             extra_containers=self._expand_all(
-                self._sorted_dict_values(self.extra_containers)
+                sorted_dict_values(self.extra_containers)
             ),
             scheduler_name=self.scheduler_name,
-            tolerations=self._sorted_dict_values(self.tolerations),
-            node_affinity_preferred=self._sorted_dict_values(
-                self.node_affinity_preferred
-            ),
-            node_affinity_required=self._sorted_dict_values(
-                self.node_affinity_required
-            ),
-            pod_affinity_preferred=self._sorted_dict_values(
-                self.pod_affinity_preferred
-            ),
-            pod_affinity_required=self._sorted_dict_values(self.pod_affinity_required),
-            pod_anti_affinity_preferred=self._sorted_dict_values(
+            tolerations=sorted_dict_values(self.tolerations),
+            node_affinity_preferred=sorted_dict_values(self.node_affinity_preferred),
+            node_affinity_required=sorted_dict_values(self.node_affinity_required),
+            pod_affinity_preferred=sorted_dict_values(self.pod_affinity_preferred),
+            pod_affinity_required=sorted_dict_values(self.pod_affinity_required),
+            pod_anti_affinity_preferred=sorted_dict_values(
                 self.pod_anti_affinity_preferred
             ),
-            pod_anti_affinity_required=self._sorted_dict_values(
+            pod_anti_affinity_required=sorted_dict_values(
                 self.pod_anti_affinity_required
             ),
             priority_class_name=self.priority_class_name,
@@ -2371,7 +2535,7 @@ class KubeSpawner(Spawner):
             annotations=annotations,
         )
 
-    def get_service_manifest(self, owner_reference):
+    def get_service_manifest(self, owner_reference, port):
         """
         Make a service manifest for dns.
         """
@@ -2385,7 +2549,7 @@ class KubeSpawner(Spawner):
         # TODO: validate that the service name
         return make_service(
             name=self.pod_name,
-            port=self.port,
+            port=port,
             selector=selector,
             owner_references=[owner_reference],
             labels=labels,
@@ -2558,6 +2722,43 @@ class KubeSpawner(Spawner):
         )
         # reset namespace as well?
 
+    def add_custom_event(
+        self,
+        message,
+        type="Normal",
+        eventTime=None,
+        lastTimestamp=None,
+        involvedObject=None,
+        metadata=None,
+    ):
+        """Add an event to the event queue
+
+        This is used to add custom events that are not part of the normal
+        kubernetes event stream.
+        """
+        if not self.events_enabled:
+            return
+
+        if eventTime is None and lastTimestamp is None:
+            lastTimestamp = datetime.now(timezone.utc).isoformat()
+
+        if involvedObject is None:
+            involvedObject = {"name": self.pod_name}
+
+        if metadata is None:
+            metadata = {"uid": uuid.uuid4().hex}
+
+        event = {
+            "eventTime": eventTime,
+            "lastTimestamp": lastTimestamp,
+            "message": message,
+            "type": type,
+            "involvedObject": involvedObject,
+            "metadata": metadata,
+        }
+
+        self.custom_event_queue.append(event)
+
     async def poll(self):
         """
         Check if the pod is still running.
@@ -2639,7 +2840,9 @@ class KubeSpawner(Spawner):
             return []
 
         events = []
+
         for event in self.event_reflector.events:
+
             if event["involvedObject"]["name"] != self.pod_name:
                 # only consider events for my pod name
                 continue
@@ -2649,8 +2852,20 @@ class KubeSpawner(Spawner):
                 # and only consider future events
                 # only include events *after* our _last_event marker
                 events = []
+
             else:
                 events.append(event)
+
+        for idx, event in self._sent_custom_events:
+            events.insert(idx, event)
+
+        for event in self.custom_event_queue:
+            idx = len(events)
+            events.append(event)
+            self._sent_custom_events.append((idx, event))
+
+        self.custom_event_queue = []
+
         return events
 
     async def progress(self):
@@ -2673,6 +2888,10 @@ class KubeSpawner(Spawner):
         progress = 0
         next_event = 0
 
+        # timers for deciding when to show slow spawn patience message
+        start_time = time.perf_counter()
+        last_message_time = 0
+
         break_while_loop = False
         while True:
             # This logic avoids a race condition. self._start() will be invoked by
@@ -2689,6 +2908,24 @@ class KubeSpawner(Spawner):
             if start_future and start_future.done():
                 break_while_loop = True
 
+            # if the timer is greater than self.slow_spawn_message_threshold display
+            # a message to the user with an incrementing count in seconds
+            elapsed = time.perf_counter() - start_time
+            if (
+                elapsed >= self.slow_spawn_message_threshold
+                and self.slow_spawn_message_threshold > 0
+            ):
+                # don't spam the user, so only update the timer message every few seconds
+                if elapsed >= last_message_time + self.slow_spawn_message_frequency:
+                    patience_message = textwrap.dedent(self.slow_spawn_message)
+                    patience_message = patience_message.format(
+                        seconds=int(elapsed), timeout=self.start_timeout
+                    )
+                    last_message_time = elapsed
+                    yield {
+                        'message': patience_message,
+                    }
+
             events = self.events
             len_events = len(events)
             if next_event < len_events:
@@ -2701,15 +2938,16 @@ class KubeSpawner(Spawner):
                     # 30 50 63 72 78 82 84 86 87 88 88 89
                     progress += (90 - progress) / 3
 
+                    message = self.event_formatter.format_event(event)
+
+                    message_bundle = await maybe_future(
+                        self.decorate_progress_message(self, event, message)
+                    )
+
                     yield {
-                        'progress': int(progress),
-                        'raw_event': event,
-                        'message': "%s [%s] %s"
-                        % (
-                            event["lastTimestamp"] or event["eventTime"],
-                            event["type"],
-                            event["message"],
-                        ),
+                        "progress": int(progress),
+                        "raw_event": event,
+                        **message_bundle,
                     }
                 next_event = len_events
 
@@ -2741,12 +2979,27 @@ class KubeSpawner(Spawner):
         previous_reflector = self.__class__.reflectors.get(key, None)
 
         if previous_reflector and not replace:
-            # fast path
-            if not previous_reflector.first_load_future.done():
-                # make sure it's loaded, so subsequent calls to start_reflector
-                # don't finish before the first
-                await previous_reflector.first_load_future
-            return previous_reflector
+            if (
+                previous_reflector.watch_task is not None
+                and previous_reflector.watch_task.done()
+            ):
+                # The watch task has exited, e.g. because the reflector gave up
+                # after repeated failures. Its cache is frozen at whatever it
+                # last saw and will never be updated again, so reusing it would
+                # mean serving stale state indefinitely. Start a fresh one.
+                # Note that watch_task is None while start() is still in
+                # progress, which is not a failure and must not trigger this.
+                self.log.warning(
+                    "Reflector with key %r stopped watching, restarting it.", key
+                )
+                replace = True
+            else:
+                # fast path
+                if not previous_reflector.first_load_future.done():
+                    # make sure it's loaded, so subsequent calls to start_reflector
+                    # don't finish before the first
+                    await previous_reflector.first_load_future
+                return previous_reflector
 
         if self.enable_user_namespaces:
             # Create one reflector for all namespaces.
@@ -3131,18 +3384,20 @@ class KubeSpawner(Spawner):
                             self.pvc_name = legacy_pvc_name
                             self._pvc_exists = True
 
-            pvc = self.get_pvc_manifest()
-            # If there's a timeout, just let it propagate
-            await exponential_backoff(
-                partial(
-                    self._make_create_pvc_request, pvc, self.k8s_api_request_timeout
-                ),
-                f'Could not create PVC {self.pvc_name}',
-                # Each req should be given k8s_api_request_timeout seconds.
-                timeout=self.k8s_api_request_retry_timeout,
-            )
-            # indicate that pvc name is known and should be persisted
-            self._pvc_exists = True
+            if not self._pvc_exists:
+                pvc = self.get_pvc_manifest()
+                # If there's a timeout, just let it propagate
+                self.log.info(f"Creating PVC {self.pvc_name}")
+                await exponential_backoff(
+                    partial(
+                        self._make_create_pvc_request, pvc, self.k8s_api_request_timeout
+                    ),
+                    f'Could not create PVC {self.pvc_name}',
+                    # Each req should be given k8s_api_request_timeout seconds.
+                    timeout=self.k8s_api_request_retry_timeout,
+                )
+                # indicate that pvc name is known and should be persisted
+                self._pvc_exists = True
 
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
@@ -3197,7 +3452,9 @@ class KubeSpawner(Spawner):
                     )
 
                 if self.internal_ssl or self.services_enabled:
-                    service_manifest = self.get_service_manifest(owner_reference)
+                    service_manifest = self.get_service_manifest(
+                        owner_reference, self._get_pod_port(pod)
+                    )
                     await exponential_backoff(
                         partial(
                             self._ensure_not_exists,
@@ -3395,6 +3652,20 @@ class KubeSpawner(Spawner):
         """
         profile_list = self._get_initialized_profile_list(profile_list)
 
+        # user_options may be stale (e.g. profile_list changed since the last spawn)
+        # or set unvalidated via the REST API, so validate them first and fall back
+        # to defaults if invalid.
+        user_options = self.user_options or {}
+        if user_options:
+            try:
+                self._validate_user_options(profile_list)
+            except ValueError as e:
+                self.log.warning(
+                    f"Not pre-selecting saved user_options on the spawn form "
+                    f"because they failed validation: {e}"
+                )
+                user_options = {}
+
         loader = ChoiceLoader(
             [
                 FileSystemLoader(self.additional_profile_form_template_paths),
@@ -3419,7 +3690,9 @@ class KubeSpawner(Spawner):
             profile_form_template = env.from_string(self.profile_form_template)
         else:
             profile_form_template = env.get_template("form.html")
-        return profile_form_template.render(profile_list=profile_list)
+        return profile_form_template.render(
+            profile_list=profile_list, user_options=self.user_options
+        )
 
     async def _render_options_form_dynamically(self, current_spawner):
         """
@@ -3457,7 +3730,7 @@ class KubeSpawner(Spawner):
             return self._render_options_form_dynamically
         else:
             # Return the rendered string, as it does not change
-            return self._render_options_form(self.profile_list)
+            return self._render_options_form(sorted_dict_values(self.profile_list))
 
     @default('options_from_form')
     def _options_from_form_default(self):
@@ -3540,7 +3813,7 @@ class KubeSpawner(Spawner):
         Some examples of `user_options` to validate are::
 
             {"profile": "demo-1", "image": "minimal"}
-            {"profile": "demo-1", "image--unlisted-choice": "jupyter/datascience-notebook:latest"}
+            {"profile": "demo-1", "image--unlisted-choice": "quay.io/jupyter/datascience-notebook:latest"}
             {}
             {"garbage-arrived-via-rest-api": "anything"}
             {"profile": "demo-1", "garbage-arrived-via-rest-api": "anything"}
@@ -3692,7 +3965,7 @@ class KubeSpawner(Spawner):
 
             self._apply_overrides(option_overrides)
 
-    def _get_initialized_profile_list(self, profile_list: list):
+    def _get_initialized_profile_list(self, profile_list) -> list:
         """
         Returns a fully initialized copy of profile_list.
 
@@ -3702,7 +3975,7 @@ class KubeSpawner(Spawner):
         - If no default profile is set, the first profile is set to be the
           default
         """
-        profile_list = copy.deepcopy(profile_list)
+        profile_list = copy.deepcopy(sorted_dict_values(profile_list))
 
         if not profile_list:
             # empty profile lists are just returned
@@ -3750,9 +4023,10 @@ class KubeSpawner(Spawner):
         Override in subclasses to support other options.
         """
         # get an initialized profile list
-        profile_list = self.profile_list
+        profile_list = sorted_dict_values(self.profile_list)
         if callable(profile_list):
             profile_list = await maybe_future(profile_list(self))
+
         profile_list = self._get_initialized_profile_list(profile_list)
 
         # validate user_options against initialized profile_list
