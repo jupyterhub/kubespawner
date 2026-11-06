@@ -3,7 +3,7 @@ import base64
 import json
 import os
 from functools import partial
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import jupyterhub
 import pytest
@@ -2035,6 +2035,48 @@ async def test_ipv6_addr():
         }
     )
     assert "[" in url and "]" in url
+
+
+@pytest.mark.parametrize(
+    "pod_status, expected",
+    [
+        # still pulling its image: poll() can't correct the url yet, get_url() can
+        (
+            {"phase": "Pending", "podIP": "10.0.0.5"},
+            "http://10.0.0.5:8888/user/mock@name/",
+        ),
+        # not scheduled yet, no IP: keep the stored url
+        ({"phase": "Pending"}, "http://hub-1234:55787/user/mock@name/"),
+        # no pod at all: keep the stored url
+        (None, "http://hub-1234:55787/user/mock@name/"),
+    ],
+)
+async def test_get_url_after_interrupted_launch(pod_status, expected):
+    """A launch interrupted by a hub restart leaves a placeholder url in the db"""
+    spawner = KubeSpawner(_mock=True)
+
+    async def _start_watching_pods():
+        pass
+
+    spawner._start_watching_pods = _start_watching_pods
+    spawner.server = Server.from_url("http://hub-1234:55787/user/mock@name/")
+    pods = {}
+    if pod_status is not None:
+        pods[f"{spawner.namespace}/{spawner.pod_name}"] = {
+            "metadata": {"name": spawner.pod_name},
+            "spec": {
+                "containers": [
+                    {
+                        "name": "notebook",
+                        "ports": [{"name": "notebook-port", "containerPort": 8888}],
+                    }
+                ]
+            },
+            "status": pod_status,
+        }
+    reflector_key = spawner._get_reflector_key("pods")
+    with patch.dict(KubeSpawner.reflectors, {reflector_key: Mock(pods=pods)}):
+        assert await spawner.get_url() == expected
 
 
 async def test_volume_mount_dictionary():
