@@ -36,9 +36,13 @@ from traitlets import (
     Instance,
     Integer,
     List,
+    Unicode,
+    Union,
+    default,
+    observe,
+    validate,
 )
 from traitlets import Type as TypeTrait
-from traitlets import Unicode, Union, default, observe, validate
 
 from . import __version__
 from .clients import load_config, shared_client
