@@ -4,7 +4,54 @@
 
 ## [Unreleased]
 
-## 7.0
+## 7
+
+### 7.2.0 - 2026-11-09
+
+kubespawner 7.2 bumps the minimum supported Python to 3.10 and kubernetes to 1.31.
+
+([full changelog](https://github.com/jupyterhub/kubespawner/compare/7.1.0...7.2.0))
+
+#### API and Breaking Changes
+
+- bump required Python to 3.10, kubernetes to 1.31 [#907](https://github.com/jupyterhub/kubespawner/pull/907) ([@minrk](https://github.com/minrk))
+
+#### New features added
+
+- Add hook for formatting Kubernetes Event messages [#910](https://github.com/jupyterhub/kubespawner/pull/910) ([@agoose77](https://github.com/agoose77), [@jnywong](https://github.com/jnywong), [@manics](https://github.com/manics), [@minrk](https://github.com/minrk), [@rtmiz](https://github.com/rtmiz), [@yuvipanda](https://github.com/yuvipanda))
+- Add KubeSpawner.add_custom_event [#900](https://github.com/jupyterhub/kubespawner/pull/900) ([@rtmiz](https://github.com/rtmiz), [@minrk](https://github.com/minrk))
+
+#### Enhancements made
+
+- Decrease frequency of 'please be patient' messages [#941](https://github.com/jupyterhub/kubespawner/pull/941) ([@yuvipanda](https://github.com/yuvipanda), [@GeorgianaElena](https://github.com/GeorgianaElena), [@minrk](https://github.com/minrk))
+- display the singleuser server `start_timeout` during slow spawns [#929](https://github.com/jupyterhub/kubespawner/pull/929) ([@shaneknapp](https://github.com/shaneknapp), [@GeorgianaElena](https://github.com/GeorgianaElena))
+- Unconditionally put servername in annotations [#887](https://github.com/jupyterhub/kubespawner/pull/887) ([@yuvipanda](https://github.com/yuvipanda), [@consideRatio](https://github.com/consideRatio), [@manics](https://github.com/manics), [@minrk](https://github.com/minrk))
+
+#### Bugs fixed
+
+- Expand testing and make sure `_get_initialized_profile_list` works for a dict `profile_list` [#940](https://github.com/jupyterhub/kubespawner/pull/940) ([@GeorgianaElena](https://github.com/GeorgianaElena), [@jabbera](https://github.com/jabbera), [@manics](https://github.com/manics), [@minrk](https://github.com/minrk))
+- Don't reuse a reflector that stopped watching [#938](https://github.com/jupyterhub/kubespawner/pull/938) ([@micopes](https://github.com/micopes), [@minrk](https://github.com/minrk))
+- Fix implicit string concatenation breaking singleuser_lifecycle_hooks deprecation [#933](https://github.com/jupyterhub/kubespawner/pull/933) ([@Dev9269](https://github.com/Dev9269), [@GeorgianaElena](https://github.com/GeorgianaElena), [@manics](https://github.com/manics), [@minrk](https://github.com/minrk))
+- Don't delete PVC if it may be shared by others [#883](https://github.com/jupyterhub/kubespawner/pull/883) ([@manics](https://github.com/manics), [@minrk](https://github.com/minrk))
+
+#### Maintenance and upkeep improvements
+
+- Fix Kubernetes object test serialization/unpin pytest-asyncio [#946](https://github.com/jupyterhub/kubespawner/pull/946) ([@jabbera](https://github.com/jabbera), [@Copilot](https://github.com/Copilot), [@GeorgianaElena](https://github.com/GeorgianaElena), [@manics](https://github.com/manics), [@mike-barry-gmo](https://github.com/mike-barry-gmo), [@minrk](https://github.com/minrk))
+- Make the ssl_app fixture async so it has a running event loop [#939](https://github.com/jupyterhub/kubespawner/pull/939) ([@micopes](https://github.com/micopes), [@minrk](https://github.com/minrk))
+- Add py.typed marker for PEP 561 typing support [#934](https://github.com/jupyterhub/kubespawner/pull/934) ([@jabbera](https://github.com/jabbera), [@Copilot](https://github.com/Copilot), [@GeorgianaElena](https://github.com/GeorgianaElena), [@mike-barry-gmo](https://github.com/mike-barry-gmo))
+
+#### Documentation improvements
+
+- Prefix `jupyter/*` images with `quay.io` [#931](https://github.com/jupyterhub/kubespawner/pull/931) ([@manics](https://github.com/manics), [@consideRatio](https://github.com/consideRatio))
+
+#### Contributors to this release
+
+The following people contributed discussions, new ideas, code and documentation contributions, and review.
+See [our definition of contributors](https://github-activity.readthedocs.io/en/latest/use/#how-does-this-tool-define-contributions-in-the-reports).
+
+([GitHub contributors page for this release](https://github.com/jupyterhub/kubespawner/graphs/contributors?from=2026-07-16&to=2026-11-06&type=c))
+
+@agoose77 ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aagoose77+updated%3A2026-07-16..2026-11-06&type=Issues)) | @consideRatio ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AconsideRatio+updated%3A2026-07-16..2026-11-06&type=Issues)) | @Copilot ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3ACopilot+updated%3A2026-07-16..2026-11-06&type=Issues)) | @Dev9269 ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3ADev9269+updated%3A2026-07-16..2026-11-06&type=Issues)) | @GeorgianaElena ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3AGeorgianaElena+updated%3A2026-07-16..2026-11-06&type=Issues)) | @jabbera ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajabbera+updated%3A2026-07-16..2026-11-06&type=Issues)) | @jnywong ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ajnywong+updated%3A2026-07-16..2026-11-06&type=Issues)) | @manics ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amanics+updated%3A2026-07-16..2026-11-06&type=Issues)) | @micopes ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amicopes+updated%3A2026-07-16..2026-11-06&type=Issues)) | @mike-barry-gmo ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Amike-barry-gmo+updated%3A2026-07-16..2026-11-06&type=Issues)) | @minrk ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Aminrk+updated%3A2026-07-16..2026-11-06&type=Issues)) | @rtmiz ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Artmiz+updated%3A2026-07-16..2026-11-06&type=Issues)) | @shaneknapp ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ashaneknapp+updated%3A2026-07-16..2026-11-06&type=Issues)) | @yuvipanda ([activity](https://github.com/search?q=repo%3Ajupyterhub%2Fkubespawner+involves%3Ayuvipanda+updated%3A2026-07-16..2026-11-06&type=Issues))
 
 ### [7.1.0] - 2026-06-16
 
