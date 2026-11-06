@@ -3,11 +3,13 @@ Test functions used to create k8s objects
 """
 
 import pytest
-from kubernetes.client import ApiClient
+from kubernetes_asyncio.client import ApiClient
 
 from kubespawner.objects import make_ingress, make_namespace, make_pod, make_pvc
 
-api_client = ApiClient()
+# These tests only need serialization; ApiClient() opens an aiohttp connector
+# and requires a running event loop.
+api_client = ApiClient.__new__(ApiClient)
 
 
 def test_make_simplest_pod():

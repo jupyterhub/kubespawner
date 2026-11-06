@@ -70,15 +70,6 @@ async def cancel_tasks():
             log.debug("Task status: %s", t)
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    # cancel tasks, as is done in JupyterHub
-    loop.run_until_complete(cancel_tasks())
-    loop.close()
-
-
 @pytest.fixture(autouse=True)
 def traitlets_logging():
     """Ensure traitlets default logging is enabled
@@ -122,8 +113,8 @@ def config(kube_ns):
     return cfg
 
 
-@pytest.fixture(scope="session")
-def ssl_app(tmpdir_factory, kube_ns):
+@pytest_asyncio.fixture(scope="session")
+async def ssl_app(tmpdir_factory, kube_ns):
     """Partially instantiate a JupyterHub instance to generate ssl certificates
 
     Generates ssl certificates on the host,
@@ -132,6 +123,9 @@ def ssl_app(tmpdir_factory, kube_ns):
     This is not a fully instantiated Hub,
     but it will have internal_ssl-related attributes such as
     .internal_trust_bundles and .internal_certs_location initialized.
+
+    This is async because init_internal_ssl() instantiates
+    JupyterHubHTTPClient, which calls asyncio.get_running_loop().
     """
     tmpdir = tmpdir_factory.mktemp("ssl")
     tmpdir.chdir()
@@ -238,7 +232,7 @@ async def watch_kubernetes(kube_client, kube_ns):
 
 async def _delete_namespace(client, namespace):
     await client.delete_namespace(namespace, body={}, grace_period_seconds=0)
-    for _ in range(20):  # Usually finishes a good deal faster
+    for _ in range(60):  # Usually finishes a good deal faster
         try:
             await client.read_namespace(namespace)
         except ApiException as e:
@@ -249,7 +243,8 @@ async def _delete_namespace(client, namespace):
         else:
             print("waiting for %s to delete" % namespace)
             await asyncio.sleep(1)
-    raise Exception(f"Namespace {namespace} not deleted after 20 s")
+
+    raise Exception(f"Namespace {namespace} not deleted after 60s")
 
 
 @pytest_asyncio.fixture(scope="session")

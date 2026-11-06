@@ -1,0 +1,262 @@
+[
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.1893392793e68985",
+      "namespace": "prod",
+      "uid": "0f21b2ad-eba0-4a1f-a6a0-1d85aaf96d4c",
+      "resourceVersion": "624056796",
+      "creationTimestamp": "2026-02-11T14:58:40Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "prod",
+      "name": "jupyter-agoose77",
+      "uid": "fc31fa1b-fc8c-4054-a94a-12fb4c4171cf",
+      "apiVersion": "v1",
+      "resourceVersion": "624056788",
+      "fieldPath": "spec.initContainers{block-nfs-access}"
+    },
+    "reason": "Pulled",
+    "message": "Container image \"quay.io/jupyterhub/k8s-network-tools:4.1.0\" already present on machine",
+    "source": {
+      "component": "kubelet",
+      "host": "ip-192-168-25-166.us-west-2.compute.internal"
+    },
+    "firstTimestamp": "2026-02-11T14:58:40Z",
+    "lastTimestamp": "2026-02-11T14:58:40Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "ip-192-168-25-166.us-west-2.compute.internal"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.1893392795738eac",
+      "namespace": "prod",
+      "uid": "c44c8e57-12f9-4232-9623-61ca4dd00f34",
+      "resourceVersion": "624056798",
+      "creationTimestamp": "2026-02-11T14:58:40Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "prod",
+      "name": "jupyter-agoose77",
+      "uid": "fc31fa1b-fc8c-4054-a94a-12fb4c4171cf",
+      "apiVersion": "v1",
+      "resourceVersion": "624056788",
+      "fieldPath": "spec.initContainers{block-nfs-access}"
+    },
+    "reason": "Created",
+    "message": "Created container: block-nfs-access",
+    "source": {
+      "component": "kubelet",
+      "host": "ip-192-168-25-166.us-west-2.compute.internal"
+    },
+    "firstTimestamp": "2026-02-11T14:58:40Z",
+    "lastTimestamp": "2026-02-11T14:58:40Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "ip-192-168-25-166.us-west-2.compute.internal"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.189339279998364c",
+      "namespace": "prod",
+      "uid": "5e8e9a50-de13-4daa-a127-f54a4c86b82e",
+      "resourceVersion": "624056799",
+      "creationTimestamp": "2026-02-11T14:58:40Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "prod",
+      "name": "jupyter-agoose77",
+      "uid": "fc31fa1b-fc8c-4054-a94a-12fb4c4171cf",
+      "apiVersion": "v1",
+      "resourceVersion": "624056788",
+      "fieldPath": "spec.initContainers{block-nfs-access}"
+    },
+    "reason": "Started",
+    "message": "Started container block-nfs-access",
+    "source": {
+      "component": "kubelet",
+      "host": "ip-192-168-25-166.us-west-2.compute.internal"
+    },
+    "firstTimestamp": "2026-02-11T14:58:40Z",
+    "lastTimestamp": "2026-02-11T14:58:40Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "ip-192-168-25-166.us-west-2.compute.internal"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18933927778cc48c",
+      "namespace": "prod",
+      "uid": "e428175b-41c0-485f-9cf6-071a869bce8a",
+      "resourceVersion": "624056789",
+      "creationTimestamp": "2026-02-11T14:58:40Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "prod",
+      "name": "jupyter-agoose77",
+      "uid": "fc31fa1b-fc8c-4054-a94a-12fb4c4171cf",
+      "apiVersion": "v1",
+      "resourceVersion": "624056787"
+    },
+    "reason": "Scheduled",
+    "message": "Successfully assigned prod/jupyter-agoose77 to ip-192-168-25-166.us-west-2.compute.internal",
+    "source": {},
+    "firstTimestamp": null,
+    "lastTimestamp": null,
+    "type": "Normal",
+    "eventTime": "2026-02-11T14:58:40.158951Z",
+    "action": "Binding",
+    "reportingComponent": "prod-user-scheduler",
+    "reportingInstance": "prod-user-scheduler-user-scheduler-5dddd6d69b-9t24l"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18933927cea5a166",
+      "namespace": "prod",
+      "uid": "d502a860-9c40-49f0-9f77-6ef0c18b89cc",
+      "resourceVersion": "624056805",
+      "creationTimestamp": "2026-02-11T14:58:41Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "prod",
+      "name": "jupyter-agoose77",
+      "uid": "fc31fa1b-fc8c-4054-a94a-12fb4c4171cf",
+      "apiVersion": "v1",
+      "resourceVersion": "624056788",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "Pulled",
+    "message": "Container image \"quay.io/cryointhecloud/cryo-hub-image:d624b28e39c4\" already present on machine",
+    "source": {
+      "component": "kubelet",
+      "host": "ip-192-168-25-166.us-west-2.compute.internal"
+    },
+    "firstTimestamp": "2026-02-11T14:58:41Z",
+    "lastTimestamp": "2026-02-11T14:58:41Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "ip-192-168-25-166.us-west-2.compute.internal"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18933927d2856e2d",
+      "namespace": "prod",
+      "uid": "30e259ea-9efa-48e2-89c6-d972e7ad80e5",
+      "resourceVersion": "624056808",
+      "creationTimestamp": "2026-02-11T14:58:41Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "prod",
+      "name": "jupyter-agoose77",
+      "uid": "fc31fa1b-fc8c-4054-a94a-12fb4c4171cf",
+      "apiVersion": "v1",
+      "resourceVersion": "624056788",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "Created",
+    "message": "Created container: notebook",
+    "source": {
+      "component": "kubelet",
+      "host": "ip-192-168-25-166.us-west-2.compute.internal"
+    },
+    "firstTimestamp": "2026-02-11T14:58:41Z",
+    "lastTimestamp": "2026-02-11T14:58:41Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "ip-192-168-25-166.us-west-2.compute.internal"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18933927d7c68d3c",
+      "namespace": "prod",
+      "uid": "b3433920-4c07-4c4a-bf46-4bfa3be205f5",
+      "resourceVersion": "624056810",
+      "creationTimestamp": "2026-02-11T14:58:41Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "prod",
+      "name": "jupyter-agoose77",
+      "uid": "fc31fa1b-fc8c-4054-a94a-12fb4c4171cf",
+      "apiVersion": "v1",
+      "resourceVersion": "624056788",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "Started",
+    "message": "Started container notebook",
+    "source": {
+      "component": "kubelet",
+      "host": "ip-192-168-25-166.us-west-2.compute.internal"
+    },
+    "firstTimestamp": "2026-02-11T14:58:41Z",
+    "lastTimestamp": "2026-02-11T14:58:41Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "ip-192-168-25-166.us-west-2.compute.internal"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.189339d7910da8f8",
+      "namespace": "prod",
+      "uid": "2e9f8da1-b057-4ed2-b10c-1bc96ac7890d",
+      "resourceVersion": "624061999",
+      "creationTimestamp": "2026-02-11T15:11:16Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "prod",
+      "name": "jupyter-agoose77",
+      "uid": "fc31fa1b-fc8c-4054-a94a-12fb4c4171cf",
+      "apiVersion": "v1",
+      "resourceVersion": "624056788",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "Killing",
+    "message": "Stopping container notebook",
+    "source": {
+      "component": "kubelet",
+      "host": "ip-192-168-25-166.us-west-2.compute.internal"
+    },
+    "firstTimestamp": "2026-02-11T15:11:16Z",
+    "lastTimestamp": "2026-02-11T15:11:16Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "ip-192-168-25-166.us-west-2.compute.internal"
+  }
+]
