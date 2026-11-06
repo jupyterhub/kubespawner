@@ -12,7 +12,7 @@ c.JupyterHub.cleanup_servers = False
 
 # A small user image with jupyterlab that is easy to test against, assumed to be
 # downloadable in less than 60 seconds.
-c.KubeSpawner.image = 'jupyter/base-notebook:latest'
+c.KubeSpawner.image = 'quay.io/jupyter/base-notebook:latest'
 c.KubeSpawner.start_timeout = 60
 
 if os.environ.get("CI"):
@@ -46,24 +46,24 @@ c.KubeSpawner.profile_list = [
                 'display_name': 'Image',
                 'choices': {
                     'base': {
-                        'display_name': 'jupyter/base-notebook:latest',
+                        'display_name': 'quay.io/jupyter/base-notebook:latest',
                         'kubespawner_override': {
-                            'image': 'jupyter/base-notebook:latest'
+                            'image': 'quay.io/jupyter/base-notebook:latest'
                         },
                     },
                     'minimal': {
-                        'display_name': 'jupyter/minimal-notebook:latest',
+                        'display_name': 'quay.io/jupyter/minimal-notebook:latest',
                         'default': True,
                         'kubespawner_override': {
-                            'image': 'jupyter/minimal-notebook:latest'
+                            'image': 'quay.io/jupyter/minimal-notebook:latest'
                         },
                     },
                 },
                 'unlisted_choice': {
                     'enabled': True,
                     'display_name': 'Other image',
-                    'validation_regex': '^jupyter/.+:.+$',
-                    'validation_message': 'Must be an image matching ^jupyter/<name>:<tag>$',
+                    'validation_regex': '^quay\\.io/jupyter/.+:.+$',
+                    'validation_message': 'Must be an image matching ^quay\\.io/jupyter/<name>:<tag>$',
                     'kubespawner_override': {'image': '{value}'},
                 },
             },

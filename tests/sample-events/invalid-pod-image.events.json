@@ -1,0 +1,357 @@
+[
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18a63bb9b3e5407d",
+      "namespace": "staging",
+      "uid": "fe6c721d-2312-4372-9cf7-a6cae3583e89",
+      "resourceVersion": "4520095",
+      "creationTimestamp": "2026-04-14T13:19:31Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "staging",
+      "name": "jupyter-agoose77",
+      "uid": "1a8acb75-3567-4162-8fff-8c21c96f9ec1",
+      "apiVersion": "v1",
+      "resourceVersion": "4520093"
+    },
+    "reason": "Scheduled",
+    "message": "Successfully assigned staging/jupyter-agoose77 to nixos",
+    "source": {},
+    "firstTimestamp": null,
+    "lastTimestamp": null,
+    "type": "Normal",
+    "eventTime": "2026-04-14T13:19:31.817356Z",
+    "action": "Binding",
+    "reportingComponent": "jhub-user-scheduler",
+    "reportingInstance": "jhub-user-scheduler-user-scheduler-744cbc6766-5dr7f"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18a63bba45db66c0",
+      "namespace": "staging",
+      "uid": "0551e739-eb82-4b5a-986f-81eb75f078a5",
+      "resourceVersion": "4520099",
+      "creationTimestamp": "2026-04-14T13:19:34Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "staging",
+      "name": "jupyter-agoose77",
+      "uid": "1a8acb75-3567-4162-8fff-8c21c96f9ec1",
+      "apiVersion": "v1",
+      "resourceVersion": "4520094",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "Pulled",
+    "message": "Container image \"ghcr.io/geojupyter/geojupyter:21bdbc2698c4\" already present on machine",
+    "source": {
+      "component": "kubelet",
+      "host": "nixos"
+    },
+    "firstTimestamp": "2026-04-14T13:19:34Z",
+    "lastTimestamp": "2026-04-14T13:19:34Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "nixos"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18a63bba498feb18",
+      "namespace": "staging",
+      "uid": "385974d3-aa5f-4f4f-9e5e-1225117777c1",
+      "resourceVersion": "4520101",
+      "creationTimestamp": "2026-04-14T13:19:34Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "staging",
+      "name": "jupyter-agoose77",
+      "uid": "1a8acb75-3567-4162-8fff-8c21c96f9ec1",
+      "apiVersion": "v1",
+      "resourceVersion": "4520094",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "Created",
+    "message": "Created container: notebook",
+    "source": {
+      "component": "kubelet",
+      "host": "nixos"
+    },
+    "firstTimestamp": "2026-04-14T13:19:34Z",
+    "lastTimestamp": "2026-04-14T13:19:34Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "nixos"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18a63bba4d8601e3",
+      "namespace": "staging",
+      "uid": "f7791612-25ef-4b77-86ed-5e21206421d5",
+      "resourceVersion": "4520102",
+      "creationTimestamp": "2026-04-14T13:19:34Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "staging",
+      "name": "jupyter-agoose77",
+      "uid": "1a8acb75-3567-4162-8fff-8c21c96f9ec1",
+      "apiVersion": "v1",
+      "resourceVersion": "4520094",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "Started",
+    "message": "Started container notebook",
+    "source": {
+      "component": "kubelet",
+      "host": "nixos"
+    },
+    "firstTimestamp": "2026-04-14T13:19:34Z",
+    "lastTimestamp": "2026-04-14T13:19:34Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "nixos"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18a63c36e17af66f",
+      "namespace": "staging",
+      "uid": "d7d658e2-7e9a-4e00-8941-8ba3943d9047",
+      "resourceVersion": "4520892",
+      "creationTimestamp": "2026-04-14T13:28:29Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "staging",
+      "name": "jupyter-agoose77",
+      "uid": "1a8acb75-3567-4162-8fff-8c21c96f9ec1",
+      "apiVersion": "v1",
+      "resourceVersion": "4520094",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "Killing",
+    "message": "Stopping container notebook",
+    "source": {
+      "component": "kubelet",
+      "host": "nixos"
+    },
+    "firstTimestamp": "2026-04-14T13:28:29Z",
+    "lastTimestamp": "2026-04-14T13:28:29Z",
+    "count": 1,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "nixos"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18a63c36e9e70e61",
+      "namespace": "staging",
+      "uid": "836346df-a965-4edd-b702-1b2b28a322d4",
+      "resourceVersion": "4520895",
+      "creationTimestamp": "2026-04-14T13:28:29Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "staging",
+      "name": "jupyter-agoose77",
+      "uid": "033a909d-40b7-488c-8d0a-b1e19a814e74",
+      "apiVersion": "v1",
+      "resourceVersion": "4520893"
+    },
+    "reason": "Scheduled",
+    "message": "Successfully assigned staging/jupyter-agoose77 to nixos",
+    "source": {},
+    "firstTimestamp": null,
+    "lastTimestamp": null,
+    "type": "Normal",
+    "eventTime": "2026-04-14T13:28:29.594364Z",
+    "action": "Binding",
+    "reportingComponent": "jhub-user-scheduler",
+    "reportingInstance": "jhub-user-scheduler-user-scheduler-744cbc6766-5dr7f"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18a63c37094b7bfd",
+      "namespace": "staging",
+      "uid": "71db64f1-a9b7-488f-83c2-95b5f4670fb4",
+      "resourceVersion": "4520915",
+      "creationTimestamp": "2026-04-14T13:28:30Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "staging",
+      "name": "jupyter-agoose77",
+      "uid": "033a909d-40b7-488c-8d0a-b1e19a814e74",
+      "apiVersion": "v1",
+      "resourceVersion": "4520894",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "Pulling",
+    "message": "Pulling image \"ghcr.io/foo:bat\"",
+    "source": {
+      "component": "kubelet",
+      "host": "nixos"
+    },
+    "firstTimestamp": "2026-04-14T13:28:30Z",
+    "lastTimestamp": "2026-04-14T13:28:42Z",
+    "count": 2,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "nixos"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18a63c371845c5c0",
+      "namespace": "staging",
+      "uid": "3ad4568c-f954-4f97-9b6c-c69c8f7d17fd",
+      "resourceVersion": "4520917",
+      "creationTimestamp": "2026-04-14T13:28:30Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "staging",
+      "name": "jupyter-agoose77",
+      "uid": "033a909d-40b7-488c-8d0a-b1e19a814e74",
+      "apiVersion": "v1",
+      "resourceVersion": "4520894",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "Failed",
+    "message": "Failed to pull image \"ghcr.io/foo:bat\": failed to pull and unpack image \"ghcr.io/foo:bat\": failed to resolve reference \"ghcr.io/foo:bat\": failed to authorize: failed to fetch anonymous token: unexpected status from GET request to https://ghcr.io/token?scope=repository%3Afoo%3Apull&service=ghcr.io: 400 Bad Request",
+    "source": {
+      "component": "kubelet",
+      "host": "nixos"
+    },
+    "firstTimestamp": "2026-04-14T13:28:30Z",
+    "lastTimestamp": "2026-04-14T13:28:42Z",
+    "count": 2,
+    "type": "Warning",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "nixos"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18a63c3718462ec0",
+      "namespace": "staging",
+      "uid": "6506be30-3b7f-4a28-bc0e-23984ec23526",
+      "resourceVersion": "4520918",
+      "creationTimestamp": "2026-04-14T13:28:30Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "staging",
+      "name": "jupyter-agoose77",
+      "uid": "033a909d-40b7-488c-8d0a-b1e19a814e74",
+      "apiVersion": "v1",
+      "resourceVersion": "4520894",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "Failed",
+    "message": "Error: ErrImagePull",
+    "source": {
+      "component": "kubelet",
+      "host": "nixos"
+    },
+    "firstTimestamp": "2026-04-14T13:28:30Z",
+    "lastTimestamp": "2026-04-14T13:28:42Z",
+    "count": 2,
+    "type": "Warning",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "nixos"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18a63c3740240520",
+      "namespace": "staging",
+      "uid": "918d24fb-fc9e-4de3-8233-f4b0772ebba0",
+      "resourceVersion": "4520930",
+      "creationTimestamp": "2026-04-14T13:28:31Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "staging",
+      "name": "jupyter-agoose77",
+      "uid": "033a909d-40b7-488c-8d0a-b1e19a814e74",
+      "apiVersion": "v1",
+      "resourceVersion": "4520894",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "BackOff",
+    "message": "Back-off pulling image \"ghcr.io/foo:bat\"",
+    "source": {
+      "component": "kubelet",
+      "host": "nixos"
+    },
+    "firstTimestamp": "2026-04-14T13:28:31Z",
+    "lastTimestamp": "2026-04-14T13:28:56Z",
+    "count": 2,
+    "type": "Normal",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "nixos"
+  },
+  {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+      "name": "jupyter-agoose77.18a63c3740248632",
+      "namespace": "staging",
+      "uid": "d112ccbf-048c-4127-b7c8-4e2c4e8b9c6b",
+      "resourceVersion": "4520932",
+      "creationTimestamp": "2026-04-14T13:28:31Z"
+    },
+    "involvedObject": {
+      "kind": "Pod",
+      "namespace": "staging",
+      "name": "jupyter-agoose77",
+      "uid": "033a909d-40b7-488c-8d0a-b1e19a814e74",
+      "apiVersion": "v1",
+      "resourceVersion": "4520894",
+      "fieldPath": "spec.containers{notebook}"
+    },
+    "reason": "Failed",
+    "message": "Error: ImagePullBackOff",
+    "source": {
+      "component": "kubelet",
+      "host": "nixos"
+    },
+    "firstTimestamp": "2026-04-14T13:28:31Z",
+    "lastTimestamp": "2026-04-14T13:28:56Z",
+    "count": 2,
+    "type": "Warning",
+    "eventTime": null,
+    "reportingComponent": "kubelet",
+    "reportingInstance": "nixos"
+  }
+]
