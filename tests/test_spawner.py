@@ -2754,3 +2754,95 @@ async def test_pod_anti_affinity_required():
         spec[1].topology_key
         == pod_anti_affinity_required_dict["02-group-beta"]["topologyKey"]
     )
+
+
+class MockReflector:
+    """Stand-in for ResourceReflector that needs no cluster.
+
+    Its watch task runs until cancelled, like a healthy reflector.
+    """
+
+    def __init__(self, **kwargs):
+        self.first_load_future = asyncio.Future()
+        self.watch_task = None
+        self.stopped = False
+
+    async def start(self):
+        self.first_load_future.set_result(None)
+        self.watch_task = asyncio.create_task(self._watch())
+
+    async def _watch(self):
+        await asyncio.Event().wait()
+
+    async def stop(self):
+        self.stopped = True
+        if self.watch_task and not self.watch_task.done():
+            self.watch_task.cancel()
+
+
+class MockGivingUpReflector(MockReflector):
+    """A reflector whose watch task exits on its own.
+
+    This is what ResourceReflector._watch_and_update does once its backoff is
+    exhausted: it logs "Watching resources never recovered, giving up" and
+    returns, leaving `resources` frozen at the last state it saw.
+    """
+
+    async def _watch(self):
+        return
+
+
+@pytest.fixture
+def isolated_reflectors():
+    """Keep the class-level reflector registry from leaking between tests"""
+    saved = KubeSpawner.reflectors
+    KubeSpawner.reflectors = {}
+    yield KubeSpawner.reflectors
+    for reflector in KubeSpawner.reflectors.values():
+        if reflector.watch_task and not reflector.watch_task.done():
+            reflector.watch_task.cancel()
+    KubeSpawner.reflectors = saved
+
+
+async def test_start_reflector_reuses_running_reflector(isolated_reflectors):
+    spawner = KubeSpawner(_mock=True)
+
+    first = await spawner._start_reflector("pods", MockReflector)
+    second = await spawner._start_reflector("pods", MockReflector)
+
+    assert second is first
+    assert not first.stopped
+
+
+async def test_start_reflector_reuses_reflector_that_is_still_starting(
+    isolated_reflectors,
+):
+    """watch_task is None until start() creates it, which is not a failure"""
+    spawner = KubeSpawner(_mock=True)
+    starting = MockReflector()
+    starting.first_load_future.set_result(None)
+    assert starting.watch_task is None
+    isolated_reflectors[spawner._get_reflector_key("pods")] = starting
+
+    assert await spawner._start_reflector("pods", MockReflector) is starting
+
+
+async def test_start_reflector_replaces_reflector_that_stopped_watching(
+    isolated_reflectors,
+):
+    """A reflector that gave up must not be handed out again
+
+    Its cache can no longer be updated, so reusing it means serving stale
+    state indefinitely with no path back to a working reflector.
+    """
+    spawner = KubeSpawner(_mock=True)
+
+    gave_up = await spawner._start_reflector("pods", MockGivingUpReflector)
+    await asyncio.sleep(0)
+    assert gave_up.watch_task.done()
+
+    replacement = await spawner._start_reflector("pods", MockGivingUpReflector)
+
+    assert replacement is not gave_up
+    assert gave_up.stopped
+    assert isolated_reflectors[spawner._get_reflector_key("pods")] is replacement
