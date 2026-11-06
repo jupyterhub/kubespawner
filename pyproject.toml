@@ -44,8 +44,7 @@ test = [
     "kubernetes>=11",
     "pytest>=5.4",
     "pytest-cov",
-    # FIXME: unpin pytest-asyncio
-    "pytest-asyncio>=0.17,<0.23",
+    "pytest-asyncio",
 ]
 
 [project.urls]
@@ -106,6 +105,8 @@ profile = "black"
 [tool.pytest.ini_options]
 addopts = "--verbose --color=yes --durations=10"
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 # Ignore thousands of tests in dependencies installed in a virtual environment
 norecursedirs = "lib lib64"
 
