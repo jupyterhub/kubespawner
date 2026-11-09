@@ -19,7 +19,7 @@ kubespawner 7.2 bumps the minimum supported Python to 3.10 and kubernetes to 1.3
 #### New features added
 
 - Add hook for formatting Kubernetes Event messages [#910](https://github.com/jupyterhub/kubespawner/pull/910) ([@agoose77](https://github.com/agoose77), [@jnywong](https://github.com/jnywong), [@manics](https://github.com/manics), [@minrk](https://github.com/minrk), [@rtmiz](https://github.com/rtmiz), [@yuvipanda](https://github.com/yuvipanda))
-- Add KubeSpawner.add_custom_event [#900](https://github.com/jupyterhub/kubespawner/pull/900) ([@rtmiz](https://github.com/rtmiz), [@minrk](https://github.com/minrk))
+- Add support for emitting custom events during the spawn progress [#900](https://github.com/jupyterhub/kubespawner/pull/900) ([@rtmiz](https://github.com/rtmiz), [@minrk](https://github.com/minrk))
 
 #### Enhancements made
 
