@@ -7,12 +7,16 @@ from kubernetes_asyncio.client import ApiClient
 
 from kubespawner.objects import make_ingress, make_namespace, make_pod, make_pvc
 
-# These tests only need serialization; ApiClient() opens an aiohttp connector
-# and requires a running event loop.
-api_client = ApiClient.__new__(ApiClient)
+
+@pytest.fixture(scope="module")
+async def api_client():
+    # constructor requires running event loop
+    client = ApiClient()
+    yield client
+    await client.close()
 
 
-def test_make_simplest_pod():
+def test_make_simplest_pod(api_client):
     """
     Test specification of the simplest possible pod specification
     """
@@ -47,7 +51,7 @@ def test_make_simplest_pod():
     }
 
 
-def test_make_labeled_pod():
+def test_make_labeled_pod(api_client):
     """
     Test specification of the simplest possible pod specification with labels
     """
@@ -85,7 +89,7 @@ def test_make_labeled_pod():
     }
 
 
-def test_make_annotated_pod():
+def test_make_annotated_pod(api_client):
     """
     Test specification of the simplest possible pod specification with annotations
     """
@@ -127,7 +131,7 @@ def test_make_annotated_pod():
     }
 
 
-def test_make_pod_with_image_pull_secrets_simplified_format():
+def test_make_pod_with_image_pull_secrets_simplified_format(api_client):
     """
     Test specification of the simplest possible pod specification
     """
@@ -170,7 +174,7 @@ def test_make_pod_with_image_pull_secrets_simplified_format():
     }
 
 
-def test_make_pod_with_image_pull_secrets_k8s_native_format():
+def test_make_pod_with_image_pull_secrets_k8s_native_format(api_client):
     """
     Test specification of the simplest possible pod specification
     """
@@ -213,7 +217,7 @@ def test_make_pod_with_image_pull_secrets_k8s_native_format():
     }
 
 
-def test_set_container_uid_and_gid():
+def test_set_container_uid_and_gid(api_client):
     """
     Test specification of the simplest possible pod specification
     """
@@ -260,7 +264,7 @@ def test_set_container_uid_and_gid():
     }
 
 
-def test_set_container_uid_and_pod_fs_gid():
+def test_set_container_uid_and_pod_fs_gid(api_client):
     """
     Test specification of the simplest possible pod specification
     """
@@ -309,7 +313,7 @@ def test_set_container_uid_and_pod_fs_gid():
     }
 
 
-def test_set_pod_supplemental_gids():
+def test_set_pod_supplemental_gids(api_client):
     """
     Test specification of the simplest possible pod specification
     """
@@ -358,7 +362,7 @@ def test_set_pod_supplemental_gids():
     }
 
 
-def test_privileged_container():
+def test_privileged_container(api_client):
     """
     Test specification of the container to run as privileged
     """
@@ -403,7 +407,7 @@ def test_privileged_container():
     }
 
 
-def test_allow_privilege_escalation_container():
+def test_allow_privilege_escalation_container(api_client):
     """
     Test specification of the container to run without privilege escalation (AllowPrivilegeEscalation=False).
     """
@@ -445,7 +449,7 @@ def test_allow_privilege_escalation_container():
     }
 
 
-def test_pod_security_context_container():
+def test_pod_security_context_container(api_client):
     """
     Test specification of the container to run with a security context.
 
@@ -514,7 +518,7 @@ def test_pod_security_context_container():
     }
 
 
-def test_container_security_context_container():
+def test_container_security_context_container(api_client):
     """
     Test specification of the container to run with a security context.
 
@@ -586,7 +590,7 @@ def test_container_security_context_container():
     }
 
 
-def test_bad_pod_security_context_container():
+def test_bad_pod_security_context_container(api_client):
     """
     Test specification of the container to run with a security context.
 
@@ -607,7 +611,7 @@ def test_bad_pod_security_context_container():
         )
 
 
-def test_bad_container_security_context_container():
+def test_bad_container_security_context_container(api_client):
     """
     Test specification of the container to run with a security context.
 
@@ -628,7 +632,7 @@ def test_bad_container_security_context_container():
         )
 
 
-def test_make_pod_resources_all():
+def test_make_pod_resources_all(api_client):
     """
     Test specifying all possible resource limits & guarantees
     """
@@ -678,7 +682,7 @@ def test_make_pod_resources_all():
     }
 
 
-def test_make_pod_with_env():
+def test_make_pod_with_env(api_client):
     """
     Test specification of a pod with custom environment variables.
     """
@@ -777,7 +781,7 @@ def test_make_pod_with_env():
     }
 
 
-def test_make_pod_with_env_dependency_sorted():
+def test_make_pod_with_env_dependency_sorted(api_client):
     """
     Test specification of a pod with custom environment variables that involve
     references to other environment variables. Note that KubeSpawner also tries
@@ -869,7 +873,7 @@ def test_make_pod_with_env_dependency_sorted():
     }
 
 
-def test_make_pod_with_lifecycle():
+def test_make_pod_with_lifecycle(api_client):
     """
     Test specification of a pod with lifecycle
     """
@@ -914,7 +918,7 @@ def test_make_pod_with_lifecycle():
     }
 
 
-def test_make_pod_with_init_containers():
+def test_make_pod_with_init_containers(api_client):
     """
     Test specification of a pod with initContainers
     """
@@ -995,7 +999,7 @@ def test_make_pod_with_init_containers():
     }
 
 
-def test_make_pod_with_extra_container_config():
+def test_make_pod_with_extra_container_config(api_client):
     """
     Test specification of a pod with initContainers
     """
@@ -1040,7 +1044,7 @@ def test_make_pod_with_extra_container_config():
     }
 
 
-def test_make_pod_with_extra_pod_config():
+def test_make_pod_with_extra_pod_config(api_client):
     """
     Test specification of a pod with initContainers
     """
@@ -1103,7 +1107,7 @@ def test_make_pod_with_extra_pod_config():
     }
 
 
-def test_make_pod_with_extra_containers():
+def test_make_pod_with_extra_containers(api_client):
     """
     Test specification of a pod with initContainers
     """
@@ -1156,7 +1160,7 @@ def test_make_pod_with_extra_containers():
     }
 
 
-def test_make_pod_with_extra_resources():
+def test_make_pod_with_extra_resources(api_client):
     """
     Test specification of extra resources (like GPUs)
     """
@@ -1217,7 +1221,7 @@ def test_make_pod_with_extra_resources():
     }
 
 
-def test_make_pvc_simple():
+def test_make_pvc_simple(api_client):
     """
     Test specification of the simplest possible pvc specification
     """
@@ -1238,7 +1242,7 @@ def test_make_pvc_simple():
     }
 
 
-def test_make_pvc_empty_storage_class():
+def test_make_pvc_empty_storage_class(api_client):
     """
     Test specification of pvc with empty storage class
     """
@@ -1267,7 +1271,7 @@ def test_make_pvc_empty_storage_class():
     }
 
 
-def test_make_resources_all():
+def test_make_resources_all(api_client):
     """
     Test specifying all possible resource limits & guarantees
     """
@@ -1299,7 +1303,7 @@ def test_make_resources_all():
     }
 
 
-def test_make_pod_with_service_account():
+def test_make_pod_with_service_account(api_client):
     """
     Test specification of the simplest possible pod specification with non-default service account.
     """
@@ -1337,7 +1341,7 @@ def test_make_pod_with_service_account():
     }
 
 
-def test_make_pod_with_service_account_and_with_automount_sa_token():
+def test_make_pod_with_service_account_and_with_automount_sa_token(api_client):
     """
     Test specification of the simplest possible pod specification with non-default service account and automount service account token.
     """
@@ -1377,7 +1381,7 @@ def test_make_pod_with_service_account_and_with_automount_sa_token():
     }
 
 
-def test_make_pod_with_service_account_and_with_negative_automount_sa_token():
+def test_make_pod_with_service_account_and_with_negative_automount_sa_token(api_client):
     """
     Test specification of the simplest possible pod specification with non-default service account and negative automount service account token.
     """
@@ -1417,7 +1421,7 @@ def test_make_pod_with_service_account_and_with_negative_automount_sa_token():
     }
 
 
-def test_make_pod_with_automount_service_account_token():
+def test_make_pod_with_automount_service_account_token(api_client):
     """
     Test specification of the simplest possible pod specification with automount service account token.
     """
@@ -1455,7 +1459,7 @@ def test_make_pod_with_automount_service_account_token():
     }
 
 
-def test_make_pod_with_negative_automount_service_account_token():
+def test_make_pod_with_negative_automount_service_account_token(api_client):
     """
     Test specification of the simplest possible pod specification with negative automount service account token.
     """
@@ -1493,7 +1497,7 @@ def test_make_pod_with_negative_automount_service_account_token():
     }
 
 
-def test_make_pod_with_scheduler_name():
+def test_make_pod_with_scheduler_name(api_client):
     """
     Test specification of the simplest possible pod specification with non-default scheduler name
     """
@@ -1536,7 +1540,7 @@ def test_make_pod_with_scheduler_name():
     }
 
 
-def test_make_pod_with_tolerations():
+def test_make_pod_with_tolerations(api_client):
     """
     Test specification of the simplest possible pod specification with non-empty tolerations
     """
@@ -1584,7 +1588,7 @@ def test_make_pod_with_tolerations():
     }
 
 
-def test_make_pod_with_node_affinity_preferred():
+def test_make_pod_with_node_affinity_preferred(api_client):
     """
     Test specification of the simplest possible pod specification with non-empty node_affinity_preferred
     """
@@ -1641,7 +1645,7 @@ def test_make_pod_with_node_affinity_preferred():
     }
 
 
-def test_make_pod_with_node_affinity_required():
+def test_make_pod_with_node_affinity_required(api_client):
     """
     Test specification of the simplest possible pod specification with non-empty node_affinity_required
     """
@@ -1697,7 +1701,7 @@ def test_make_pod_with_node_affinity_required():
     }
 
 
-def test_make_pod_with_pod_affinity_preferred():
+def test_make_pod_with_pod_affinity_preferred(api_client):
     """
     Test specification of the simplest possible pod specification with non-empty pod_affinity_preferred
     """
@@ -1757,7 +1761,7 @@ def test_make_pod_with_pod_affinity_preferred():
     }
 
 
-def test_make_pod_with_pod_affinity_required():
+def test_make_pod_with_pod_affinity_required(api_client):
     """
     Test specification of the simplest possible pod specification with non-empty pod_affinity_required
     """
@@ -1814,7 +1818,7 @@ def test_make_pod_with_pod_affinity_required():
     }
 
 
-def test_make_pod_with_pod_anti_affinity_preferred():
+def test_make_pod_with_pod_anti_affinity_preferred(api_client):
     """
     Test specification of the simplest possible pod specification with non-empty pod_anti_affinity_preferred
     """
@@ -1874,7 +1878,7 @@ def test_make_pod_with_pod_anti_affinity_preferred():
     }
 
 
-def test_make_pod_with_pod_anti_affinity_required():
+def test_make_pod_with_pod_anti_affinity_required(api_client):
     """
     Test specification of the simplest possible pod specification with non-empty pod_anti_affinity_required
     """
@@ -1931,7 +1935,7 @@ def test_make_pod_with_pod_anti_affinity_required():
     }
 
 
-def test_make_pod_with_priority_class_name():
+def test_make_pod_with_priority_class_name(api_client):
     """
     Test specification of the simplest possible pod specification with non-default priorityClassName set
     """
@@ -1983,7 +1987,7 @@ def test_make_pod_with_priority_class_name():
     ],
     ids=["ipv4", "ipv6"],
 )
-def test_make_ingress_for_ip(reuse_existing_services, target, ip):
+def test_make_ingress_for_ip(reuse_existing_services, target, ip, api_client):
     """
     Test specification of the ingress objects
     """
@@ -2100,7 +2104,7 @@ def test_make_ingress_for_ip(reuse_existing_services, target, ip):
         'http://my-service.my-namespace.svc.cluster.local:9000',
     ],
 )
-def test_make_ingress_for_service_reuse_existing_services_enabled(target):
+def test_make_ingress_for_service_reuse_existing_services_enabled(target, api_client):
     """
     `KubeSpawner.services_enabled=True` or `KubeSpawner.internal_ssl=True` with `KubeIngressProxy.reuse_existing_services=True`
     leads to reusing the same service which was created by KubeSpawner
@@ -2186,7 +2190,7 @@ def test_make_ingress_for_service_reuse_existing_services_enabled(target):
     ],
 )
 def test_make_ingress_for_service_reuse_existing_services_disabled(
-    target, external_name
+    target, external_name, api_client
 ):
     """
     `KubeSpawner.services_enabled=True` or `KubeSpawner.internal_ssl=True` with `KubeIngressProxy.reuse_existing_services=False`
@@ -2296,7 +2300,7 @@ def test_make_ingress_for_service_reuse_existing_services_disabled(
     ],
 )
 def test_make_ingress_for_service_reuse_existing_services_ignored(
-    reuse_existing_services, target, external_name
+    reuse_existing_services, target, external_name, api_client
 ):
     """
     `KubeSpawner.services_enabled=True` or `KubeSpawner.internal_ssl=True`,
@@ -2390,7 +2394,7 @@ def test_make_ingress_for_service_reuse_existing_services_ignored(
     ],
     ids=["ipv4", "ipv6", "service"],
 )
-def test_make_ingress_with_subdomain_host(target):
+def test_make_ingress_with_subdomain_host(target, api_client):
     """
     Test specification of the ingress objects
     """
@@ -2457,7 +2461,7 @@ def test_make_ingress_with_subdomain_host(target):
     ],
     ids=["ipv4", "ipv6"],
 )
-def test_make_ingress_with_specifications(target, ip):
+def test_make_ingress_with_specifications(target, ip, api_client):
     """
     Test specification of the ingress objects
     """
@@ -2587,7 +2591,7 @@ def test_make_ingress_with_specifications(target, ip):
     }
 
 
-def test_make_ingress_external_name_with_specifications():
+def test_make_ingress_external_name_with_specifications(api_client):
     """
     Test specification of the ingress objects
     """
@@ -2722,7 +2726,9 @@ def test_make_ingress_external_name_with_specifications():
     },
     ids=["same_domain", "wildcard"],
 )
-def test_make_ingress_with_specifications_and_matching_subdomain_host(target, host):
+def test_make_ingress_with_specifications_and_matching_subdomain_host(
+    api_client, target, host
+):
     """
     Test specification of the ingress objects
     """
@@ -2817,7 +2823,9 @@ def test_make_ingress_with_specifications_and_matching_subdomain_host(target, ho
     },
     ids=["parent_domain", "sibling_domain", "wrong_wildcard", "sup_wildcard"],
 )
-def test_make_ingress_with_specifications_and_not_matching_subdomain_host(target, host):
+def test_make_ingress_with_specifications_and_not_matching_subdomain_host(
+    api_client, target, host
+):
     """
     Test specification of the ingress objects
     """
@@ -2909,7 +2917,7 @@ def test_make_ingress_with_specifications_and_not_matching_subdomain_host(target
     }
 
 
-def test_make_namespace():
+def test_make_namespace(api_client):
     labels = {
         'some/label': 'value0',
     }
@@ -2927,7 +2935,7 @@ def test_make_namespace():
     }
 
 
-def test_make_pod_with_ssl():
+def test_make_pod_with_ssl(api_client):
     """
     Test specification of a pod with ssl enabled
     """
