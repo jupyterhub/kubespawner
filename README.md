@@ -91,7 +91,7 @@ All code is licensed under the terms of the revised BSD license.
 
 - [Reporting Issues](https://github.com/jupyterhub/kubespawner/issues)
 - [Documentation for JupyterHub](https://jupyterhub.readthedocs.io)
-- [Documentation for JupyterHub's REST API](https://petstore.swagger.io/?url=https://raw.githubusercontent.com/jupyter/jupyterhub/master/docs/rest-api.yml#/default)
+- [Documentation for JupyterHub's REST API](https://jupyterhub.readthedocs.io/en/stable/reference/rest-api.html)
 
 #### Jupyter
 
