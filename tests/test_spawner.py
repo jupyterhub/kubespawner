@@ -2056,6 +2056,29 @@ async def test_delete_pvc(
         assert pvc_name in pvc_names
 
 
+async def test_delete_named_server_pvc(kube_client, kube_ns):
+    spawner = KubeSpawner(
+        orm_spawner=Spawner(name=f"custom-{uuid4().hex[:8]}"),
+        namespace=kube_ns,
+        storage_capacity="1Mi",
+        _mock=True,
+    )
+    spawner.api = kube_client
+    await kube_client.create_namespaced_persistent_volume_claim(
+        kube_ns, spawner.get_pvc_manifest()
+    )
+
+    await spawner.delete_forever()
+
+    async def pvc_is_gone():
+        claims = await kube_client.list_namespaced_persistent_volume_claim(
+            kube_ns, field_selector=f"metadata.name={spawner.pvc_name}"
+        )
+        return not claims.items
+
+    await exponential_backoff(pvc_is_gone, f"PVC {spawner.pvc_name} still exists")
+
+
 async def test_ipv6_addr():
     """make sure ipv6 addresses are templated into URL correctly"""
     # https://github.com/jupyterhub/jupyterhub/pull/3020
