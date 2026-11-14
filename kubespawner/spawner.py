@@ -4104,7 +4104,7 @@ class KubeSpawner(Spawner):
             self.log.info(f"Not deleting pvc for {log_name}: {self.pvc_name}")
             return
 
-        if self.name and not _server_sensitive_template(self.pvc_template):
+        if self.name and not _server_sensitive_template(self.pvc_name_template):
             # named server has the same PVC as the default server
             # don't delete the default server's PVC!
             self.log.info(
