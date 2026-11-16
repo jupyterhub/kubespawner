@@ -43,6 +43,7 @@ def test_make_simplest_pod(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -81,6 +82,7 @@ def test_make_labeled_pod(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -123,6 +125,7 @@ def test_make_annotated_pod(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -166,6 +169,7 @@ def test_make_pod_with_image_pull_secrets_simplified_format(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -209,6 +213,7 @@ def test_make_pod_with_image_pull_secrets_k8s_native_format(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -256,6 +261,7 @@ def test_set_container_uid_and_gid(api_client):
                     "resources": {"limits": {}, "requests": {}},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -302,6 +308,7 @@ def test_set_container_uid_and_pod_fs_gid(api_client):
                     "resources": {"limits": {}, "requests": {}},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'securityContext': {
                 'fsGroup': 0,
@@ -351,6 +358,7 @@ def test_set_pod_supplemental_gids(api_client):
                     "resources": {"limits": {}, "requests": {}},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'securityContext': {
                 'supplementalGroups': [100],
@@ -399,6 +407,7 @@ def test_privileged_container(api_client):
                     'volumeMounts': [],
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -441,6 +450,7 @@ def test_allow_privilege_escalation_container(api_client):
                     'volumeMounts': [],
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -498,6 +508,7 @@ def test_pod_security_context_container(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'securityContext': {
                 'supplementalGroups': [200],
@@ -582,6 +593,7 @@ def test_container_security_context_container(api_client):
                     },
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -674,6 +686,7 @@ def test_make_pod_resources_all(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -773,6 +786,7 @@ def test_make_pod_with_env(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -865,6 +879,7 @@ def test_make_pod_with_env_dependency_sorted(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -910,6 +925,7 @@ def test_make_pod_with_lifecycle(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -991,6 +1007,7 @@ def test_make_pod_with_init_containers(api_client):
                     ],
                 },
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -1036,6 +1053,7 @@ def test_make_pod_with_extra_container_config(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -1093,6 +1111,7 @@ def test_make_pod_with_extra_pod_config(api_client):
             ],
             'volumes': [],
             'dnsPolicy': 'ClusterFirstWithHostNet',
+            'hostname': 'test',
             'restartPolicy': 'Always',
             'tolerations': [
                 {
@@ -1152,6 +1171,7 @@ def test_make_pod_with_extra_containers(api_client):
                     'command': ['/usr/local/bin/supercronic', '/etc/crontab'],
                 },
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -1213,6 +1233,7 @@ def test_make_pod_with_extra_resources(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -1332,6 +1353,7 @@ def test_make_pod_with_service_account(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
             'serviceAccountName': 'test',
@@ -1372,6 +1394,7 @@ def test_make_pod_with_service_account_and_with_automount_sa_token(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
             'serviceAccountName': 'test',
@@ -1412,6 +1435,7 @@ def test_make_pod_with_service_account_and_with_negative_automount_sa_token(api_
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
             'serviceAccountName': 'test',
@@ -1451,6 +1475,7 @@ def test_make_pod_with_automount_service_account_token(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -1489,6 +1514,7 @@ def test_make_pod_with_negative_automount_service_account_token(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
         },
@@ -1531,6 +1557,7 @@ def test_make_pod_with_scheduler_name(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
             'schedulerName': 'my-custom-scheduler',
@@ -1579,6 +1606,7 @@ def test_make_pod_with_tolerations(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
             'tolerations': tolerations,
@@ -1632,6 +1660,7 @@ def test_make_pod_with_node_affinity_preferred(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
@@ -1686,6 +1715,7 @@ def test_make_pod_with_node_affinity_required(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
@@ -1748,6 +1778,7 @@ def test_make_pod_with_pod_affinity_preferred(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
@@ -1805,6 +1836,7 @@ def test_make_pod_with_pod_affinity_required(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
@@ -1865,6 +1897,7 @@ def test_make_pod_with_pod_anti_affinity_preferred(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
@@ -1922,6 +1955,7 @@ def test_make_pod_with_pod_anti_affinity_required(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             "volumes": [],
             "affinity": {
@@ -1969,6 +2003,7 @@ def test_make_pod_with_priority_class_name(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'test',
             'restartPolicy': 'OnFailure',
             'volumes': [],
             'priorityClassName': 'my-custom-priority-class',
@@ -2996,6 +3031,7 @@ def test_make_pod_with_ssl(api_client):
                     "securityContext": {"allowPrivilegeEscalation": False},
                 }
             ],
+            'hostname': 'ssl',
             'restartPolicy': 'OnFailure',
             'volumes': [
                 {
